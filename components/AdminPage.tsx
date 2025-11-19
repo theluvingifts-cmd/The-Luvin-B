@@ -8,7 +8,9 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem } from '../types';
 import { FRAME_OPTIONS } from '../constants';
 
-// --- HELPER FUNCTIONS ---
+// --- CONSTANTS & HELPERS ---
+
+const CHARACTER_BASE_PRICE = 10000;
 
 const getStartOfDay = (date: Date) => {
     const newDate = new Date(date);
@@ -257,6 +259,48 @@ const AdminPage: React.FC = () => {
         }
     };
 
+    // --- PRICE CALCULATION LOGIC ---
+    const calculateOrderPrice = (order: Order, allParts: LegoPart[]) => {
+        let subtotal = 0;
+        const partLookup = allParts.reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>);
+
+        order.items.forEach(item => {
+            const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
+            subtotal += frame.price;
+            
+            // Characters
+            subtotal += item.characters.length * CHARACTER_BASE_PRICE;
+            item.characters.forEach(char => {
+                if (char.customPrintPrice) subtotal += char.customPrintPrice;
+                if (char.hair?.price) subtotal += char.hair.price;
+                if (char.hat?.price) subtotal += char.hat.price;
+                if (char.shirt?.price) subtotal += char.shirt.price;
+                if (char.selectedShirtColor?.price) subtotal += char.selectedShirtColor.price;
+                if (char.pants?.price) subtotal += char.pants.price;
+                if (char.selectedPantsColor?.price) subtotal += char.selectedPantsColor.price;
+            });
+
+            // Accessories/Pets
+            item.draggableItems.forEach(di => {
+                if (di.type !== 'charm' && partLookup[di.partId]) {
+                     subtotal += partLookup[di.partId].price;
+                }
+            });
+        });
+
+        const giftBoxFee = order.addGiftBox ? 30000 : 0;
+        const shippingFee = order.shipping.fee || 0;
+        const totalPrice = subtotal + giftBoxFee + shippingFee;
+        
+        // Recalculate amount to pay based on payment method
+        let amountToPay = totalPrice;
+        if (order.payment.method === 'deposit') {
+            amountToPay = Math.round(totalPrice * 0.7);
+        }
+
+        return { totalPrice, amountToPay };
+    };
+
     // --- EDIT ORDER LOGIC EXTENDED ---
     const startEditingOrder = () => {
         if (!selectedOrder) return;
@@ -281,24 +325,32 @@ const AdminPage: React.FC = () => {
         alert("Đã lưu thay đổi!");
     };
 
+    const updateEditFormWithPrice = (newOrder: Order) => {
+        const { totalPrice, amountToPay } = calculateOrderPrice(newOrder, products);
+        return { ...newOrder, totalPrice, amountToPay };
+    };
+
     const handleEditFormChange = (field: string, value: any, nestedField?: string, itemIndex?: number) => {
         if (!editForm) return;
         
         setEditForm(prev => {
             if (!prev) return null;
+            let newOrder = { ...prev };
             
             if (itemIndex !== undefined && nestedField === 'frameId') {
-                 const newItems = [...prev.items];
+                 const newItems = [...newOrder.items];
                  newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
-                 return { ...prev, items: newItems };
+                 newOrder.items = newItems;
+                 newOrder = updateEditFormWithPrice(newOrder); // Recalculate price
+            } else if (nestedField && field === 'customer') {
+                newOrder.customer = { ...newOrder.customer, [nestedField]: value };
+            } else if (field === 'delivery' && nestedField) {
+                newOrder.delivery = { ...newOrder.delivery, [nestedField]: value };
+            } else {
+                // Direct field update (e.g., manual price override)
+                (newOrder as any)[field] = value;
             }
-            if (nestedField && field === 'customer') {
-                return { ...prev, customer: { ...prev.customer, [nestedField]: value } };
-            }
-            if (field === 'delivery' && nestedField) {
-                return { ...prev, delivery: { ...prev.delivery, [nestedField]: value } };
-            }
-            return { ...prev, [field]: value };
+            return newOrder;
         });
     };
 
@@ -306,15 +358,26 @@ const AdminPage: React.FC = () => {
         if (!editForm) return;
         
         const selectedPart = products.find(p => p.id === partId);
-        if (!selectedPart) return;
-
+        // Allow selecting "None" (empty string)
+        
         setEditForm(prev => {
             if (!prev) return null;
-            const newItems = [...prev.items];
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
             const newCharacters = [...newItems[itemIndex].characters];
-            newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
+            
+            if (partId === "") {
+                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
+            } else if (selectedPart) {
+                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
+                 // Reset color if changing part
+                 if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = selectedPart.colors?.[0];
+                 if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = selectedPart.colors?.[0];
+            }
+
             newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
-            return { ...prev, items: newItems };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder); // Recalculate price
         });
     };
 
@@ -322,10 +385,12 @@ const AdminPage: React.FC = () => {
         if (!editForm) return;
         setEditForm(prev => {
             if (!prev) return null;
-            const newItems = [...prev.items];
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
             const newDraggables = newItems[itemIndex].draggableItems.filter((_, i) => i !== dragIndex);
             newItems[itemIndex] = { ...newItems[itemIndex], draggableItems: newDraggables };
-            return { ...prev, items: newItems };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder); // Recalculate price
         });
     };
 
@@ -340,12 +405,14 @@ const AdminPage: React.FC = () => {
 
         setEditForm(prev => {
              if (!prev) return null;
-             const newItems = [...prev.items];
+             let newOrder = { ...prev };
+             const newItems = [...newOrder.items];
              newItems[itemIndex] = { 
                  ...newItems[itemIndex], 
                  draggableItems: [...newItems[itemIndex].draggableItems, newItem] 
              };
-             return { ...prev, items: newItems };
+             newOrder.items = newItems;
+             return updateEditFormWithPrice(newOrder); // Recalculate price
         });
         setAddingAccessoryToItemIndex(null);
     };
@@ -461,13 +528,13 @@ const AdminPage: React.FC = () => {
 
     // Generate VietQR Link
     const getVietQR = (order: Order) => {
-        const BANK_ID = 'tcp'; // Techcombank ID for VietQR
+        const BANK_ID = '970407'; // Techcombank ID (970407) or ShortName (TCB)
         const ACCOUNT_NO = '65838666666';
         const TEMPLATE = 'compact2'; // or 'compact'
-        const DESCRIPTION = order.id.replace('#', '');
+        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
         const amount = order.amountToPay || order.totalPrice;
         
-        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.jpg?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
     };
 
 
