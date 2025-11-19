@@ -96,8 +96,19 @@ const AdminPage: React.FC = () => {
     
     // Role Check
     const role = useMemo(() => {
-        if (!currentUser) return null;
-        return currentUser.email.includes('admin') ? 'admin' : 'warehouse';
+        if (!currentUser || !currentUser.email) return null;
+        
+        // Danh sách email Quản trị viên (Admin)
+        // Thêm email của bạn vào đây để được nhận diện là Admin
+        const ADMIN_EMAILS = ['jinbduong@gmail.com']; 
+        
+        // Logic: Nếu email nằm trong danh sách ADMIN_EMAILS HOẶC chứa chữ 'admin' -> Là Admin
+        if (ADMIN_EMAILS.includes(currentUser.email) || currentUser.email.includes('admin')) {
+            return 'admin';
+        }
+        
+        // Các trường hợp còn lại (ví dụ: kho1@gmail.com, kho2@gmail.com) -> Là Kho
+        return 'warehouse';
     }, [currentUser]);
 
     const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products'>('dashboard');
