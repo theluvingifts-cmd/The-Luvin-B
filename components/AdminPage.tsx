@@ -1,7 +1,7 @@
 
 // components/AdminPage.tsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { getAllOrders, updateOrder } from '../services/orderService';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
@@ -19,6 +19,84 @@ const getEndOfDay = (date: Date) => {
     const newDate = new Date(date);
     newDate.setHours(23, 59, 59, 999);
     return newDate;
+};
+
+// --- STATUS CONFIGURATION ---
+const STATUS_CONFIG = [
+    { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
+    { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
+    { label: 'Ưu tiên xuất đơn', color: 'bg-pink-100 text-pink-800', icon: '⚡' },
+    { label: 'Đang đóng hàng', color: 'bg-indigo-100 text-indigo-800', icon: '🎁' },
+    { label: 'Chờ chuyển hàng', color: 'bg-purple-100 text-purple-800', icon: '✓' }, // Status after packing
+    { label: 'Gửi hàng đi', color: 'bg-orange-100 text-orange-800', icon: '🚚' },
+    { label: 'Đã giao hàng', color: 'bg-green-100 text-green-800', icon: '✅' },
+    { label: 'Huỷ đơn', color: 'bg-red-100 text-red-800', icon: '❌' },
+    { label: 'Xoá đơn', color: 'bg-gray-200 text-gray-800', icon: '🗑️', isAction: true }, // Special action
+];
+
+// --- COMPONENT: STATUS DROPDOWN ---
+const StatusDropdown: React.FC<{ 
+    currentStatus: string; 
+    onStatusChange: (status: string) => void;
+    onDelete?: () => void;
+    isAdmin: boolean;
+}> = ({ currentStatus, onStatusChange, onDelete, isAdmin }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const currentConfig = STATUS_CONFIG.find(s => s.label === currentStatus) || STATUS_CONFIG[0];
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button 
+                onClick={() => setIsOpen(!isOpen)} 
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50`}
+            >
+                <span>{currentConfig.icon}</span>
+                <span>{currentStatus}</span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                    <div className="p-1">
+                        {STATUS_CONFIG.map((status) => {
+                            // Hide 'Delete' from list if not admin or for standard flow
+                            if (status.isAction && !isAdmin) return null;
+
+                            return (
+                                <button
+                                    key={status.label}
+                                    onClick={() => {
+                                        setIsOpen(false);
+                                        if (status.isAction && status.label === 'Xoá đơn' && onDelete) {
+                                            onDelete();
+                                        } else {
+                                            onStatusChange(status.label);
+                                        }
+                                    }}
+                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors ${status.label === currentStatus ? 'bg-blue-50 text-blue-600' : 'text-gray-700'} ${status.isAction ? 'text-red-600 hover:bg-red-50' : ''}`}
+                                >
+                                    <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-md text-xs">{status.icon}</span>
+                                    {status.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
@@ -97,17 +175,10 @@ const AdminPage: React.FC = () => {
     // Role Check
     const role = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
-        
-        // Danh sách email Quản trị viên (Admin)
-        // Thêm email của bạn vào đây để được nhận diện là Admin
         const ADMIN_EMAILS = ['jinbduong@gmail.com']; 
-        
-        // Logic: Nếu email nằm trong danh sách ADMIN_EMAILS HOẶC chứa chữ 'admin' -> Là Admin
         if (ADMIN_EMAILS.includes(currentUser.email) || currentUser.email.includes('admin')) {
             return 'admin';
         }
-        
-        // Các trường hợp còn lại (ví dụ: kho1@gmail.com, kho2@gmail.com) -> Là Kho
         return 'warehouse';
     }, [currentUser]);
 
@@ -170,8 +241,22 @@ const AdminPage: React.FC = () => {
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); fetchProducts(); } };
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
+    
+    const handleDeleteOrder = async () => {
+        if (!selectedOrder) return;
+        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không? Hành động này không thể hoàn tác.`)) {
+            setLoading(true);
+            await deleteOrder(selectedOrder.id);
+            setOrders(prev => prev.filter(o => o.id !== selectedOrder.id));
+            setSelectedOrder(null);
+            setLoading(false);
+            alert('Đã xoá đơn hàng.');
+        }
+    };
+
     const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
+    const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString('vi-VN');
 
     // --- WAREHOUSE ACTION ---
     const handleMarkAsPacked = async () => {
@@ -179,7 +264,7 @@ const AdminPage: React.FC = () => {
         if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói đơn này?`)) {
             const now = new Date().toISOString();
             await handleUpdate(selectedOrder.id, { 
-                status: 'Đã giao hàng', 
+                status: 'Chờ chuyển hàng', // Auto switch to 'Ready to Ship'
                 packedBy: currentUser.email,
                 packedAt: now
             });
@@ -219,14 +304,8 @@ const AdminPage: React.FC = () => {
         }
 
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
-            if (!o.id) return false;
-            // Try to parse ID for timestamp (#TL + numeric) or fallback to created field if existed (using mock logic here)
-            const timestampStr = o.id.slice(3);
-            // This is a hack for mock IDs. In real app, createAt field is better.
-            // If ID is small (mock), treat as 'now' for demo unless filtered
-            const timestamp = Number(timestampStr);
-            if (timestamp < 1000000000000) return true; // Mock orders usually show up
-            return timestamp >= s.getTime() && timestamp <= e.getTime();
+            const time = o.createdAt || Number(o.id.slice(3)) || 0; // Fallback for old data
+            return time >= s.getTime() && time <= e.getTime();
         });
 
         const currentOrders = getOrdersInPeriod(start, end);
@@ -275,7 +354,7 @@ const AdminPage: React.FC = () => {
             });
         });
 
-        // 4. Packing Performance (All time or Current Period? Let's do Current Period)
+        // 4. Packing Performance (Current Period)
         const packerStats: Record<string, number> = {};
         currentOrders.forEach(order => {
             if (order.packedBy) {
@@ -314,7 +393,8 @@ const AdminPage: React.FC = () => {
                 return 0;
             });
         } else {
-            result.sort((a, b) => (a.id < b.id ? 1 : -1));
+            // Sort by createdAt if available, else id
+            result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
     }, [orders, sortMode]);
@@ -523,11 +603,14 @@ const AdminPage: React.FC = () => {
                                              <p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p>
                                              <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice)}</p>
                                         </div>
-                                        {(order.adminDeadline || order.delivery.date) && (
-                                            <p className="text-xs text-gray-400 mt-1">
-                                                {order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}
-                                            </p>
-                                        )}
+                                        <div className="flex justify-between items-center mt-1">
+                                            <p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>
+                                            {(order.adminDeadline || order.delivery.date) && (
+                                                <p className="text-xs text-gray-500">
+                                                    {order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -544,11 +627,11 @@ const AdminPage: React.FC = () => {
                                                 {selectedOrder.id}
                                                 {selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
                                             </h2>
-                                            <p className="text-sm text-gray-500 mt-1">Đặt ngày {new Date(Number(selectedOrder.id.slice(3)) || Date.now()).toLocaleDateString('vi-VN')}</p>
+                                            <p className="text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
                                             {selectedOrder.packedBy && (
                                                 <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                    Đã đóng gói bởi {selectedOrder.packedBy} lúc {new Date(selectedOrder.packedAt!).toLocaleTimeString('vi-VN')}
+                                                    Đã đóng gói bởi {selectedOrder.packedBy} lúc {selectedOrder.packedAt ? new Date(selectedOrder.packedAt).toLocaleTimeString('vi-VN') : ''}
                                                 </p>
                                             )}
                                         </div>
@@ -626,7 +709,6 @@ const AdminPage: React.FC = () => {
                                                             <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
                                                                 <li>{item.characters.length} nhân vật</li>
                                                                 <li>Nền: {item.background.type}</li>
-                                                                {/* Liệt kê nhanh các phụ kiện nếu cần */}
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -639,7 +721,7 @@ const AdminPage: React.FC = () => {
                                     <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2 justify-end items-center">
                                         
                                         {/* WAREHOUSE ACTION BUTTON */}
-                                        {!selectedOrder.packedBy && selectedOrder.status !== 'Đã giao hàng' && (
+                                        {role === 'warehouse' && !selectedOrder.packedBy && selectedOrder.status !== 'Đã giao hàng' && (
                                             <button 
                                                 onClick={handleMarkAsPacked}
                                                 className="mr-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md transition-colors flex items-center gap-2"
@@ -649,20 +731,13 @@ const AdminPage: React.FC = () => {
                                             </button>
                                         )}
 
-                                        {['Chờ thanh toán', 'Đã xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng', 'Hủy đơn'].map(st => (
-                                            <button 
-                                                key={st} 
-                                                onClick={() => handleUpdate(selectedOrder.id, { status: st })} 
-                                                className={`px-4 py-2 text-xs font-medium rounded-md border transition-all ${
-                                                    selectedOrder.status === st 
-                                                    ? 'bg-gray-900 text-white border-gray-900' 
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                                                }`}
-                                                disabled={role !== 'admin'} // Only admin can change status freely
-                                            >
-                                                {st}
-                                            </button>
-                                        ))}
+                                        {/* STATUS DROPDOWN */}
+                                        <StatusDropdown 
+                                            currentStatus={selectedOrder.status} 
+                                            onStatusChange={(st) => handleUpdate(selectedOrder.id, { status: st })}
+                                            onDelete={handleDeleteOrder}
+                                            isAdmin={role === 'admin'}
+                                        />
                                     </div>
                                 </div>
                             ) : (

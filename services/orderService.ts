@@ -1,6 +1,7 @@
+
 // services/orderService.ts
 import { db, storage } from '../config/firebase';
-import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import type { Order } from '../types';
 
@@ -16,25 +17,21 @@ const uploadImageToStorage = async (dataUrl: string, orderId: string, timestamp:
     }
 };
 
-// 1. Hàm tạo đơn hàng mới (ĐÃ TẮT UPLOAD ĐỂ TRÁNH LỖI TREO)
-export const createOrder = async (order: Omit<Order, 'status'>) => {
+// 1. Hàm tạo đơn hàng mới
+export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
-        // Xử lý ảnh: Bỏ qua upload để tránh lỗi CORS
+        // Xử lý ảnh: Bỏ qua upload để tránh lỗi CORS/Cloudinary
         const itemsWithImages = await Promise.all(order.items.map(async (item) => {
-            if (item.previewImageUrl && item.previewImageUrl.startsWith('data:image')) {
-                
-                // --- QUAN TRỌNG: Không upload nữa ---
-                // const cloudUrl = await uploadImageToStorage(item.previewImageUrl, order.id, Date.now());
-                
-                // --- Thay bằng: Trả về rỗng để đơn hàng đi qua luôn ---
-                return { ...item, previewImageUrl: "" }; 
-            }
-            return item;
+            // Logic cũ: return { ...item, previewImageUrl: "" }; 
+            // Giữ nguyên dataUrl base64 để hiển thị được ngay, hoặc xử lý upload tại đây nếu backend hỗ trợ
+            return item; 
         }));
 
+        const timestamp = Date.now();
         const finalOrder: Order = {
             ...order,
             items: itemsWithImages,
+            createdAt: timestamp, // Thêm timestamp thực
             status: "Chờ thanh toán",
             internalNotes: "",
             isUrgent: false,
@@ -59,14 +56,15 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
         return docSnap.exists() ? (docSnap.data() as Order) : null;
     } catch (error: any) {
         console.error("Lỗi lấy đơn hàng:", error);
-        throw error; // Ném lại lỗi để component gọi có thể xử lý
+        throw error; 
     }
 };
 
 // 3. Hàm lấy toàn bộ danh sách đơn hàng (cho trang Admin)
 export const getAllOrders = async (): Promise<Order[]> => {
     try {
-        const q = query(collection(db, "orders"), orderBy("id", "desc")); 
+        // Sắp xếp theo createdAt mới nhất
+        const q = query(collection(db, "orders"), orderBy("createdAt", "desc")); 
         const querySnapshot = await getDocs(q);
         
         const orders: Order[] = [];
@@ -88,6 +86,17 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>) => {
         return true;
     } catch (error) {
         console.error("Lỗi cập nhật đơn hàng:", error);
+        return false;
+    }
+};
+
+// 5. Hàm xóa đơn hàng (Dành cho Admin dọn đơn rác)
+export const deleteOrder = async (orderId: string) => {
+    try {
+        await deleteDoc(doc(db, "orders", orderId));
+        return true;
+    } catch (error) {
+        console.error("Lỗi xóa đơn hàng:", error);
         return false;
     }
 };

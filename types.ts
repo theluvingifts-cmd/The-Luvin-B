@@ -96,6 +96,7 @@ export interface FrameConfig {
 
 export interface Order {
   id: string;
+  createdAt: number; // Timestamp chính xác khi tạo đơn
   status: string;
   customer: {
     name: string;

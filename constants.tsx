@@ -1,3 +1,4 @@
+
 import type { FrameOption, LegoPart, FrameConfig, OutfitColor, Order } from './types';
 
 
@@ -204,6 +205,7 @@ export const FEEDBACK_ITEMS = [
 export const MOCK_ORDERS: Record<string, Order> = {
   "#TL012804": {
     id: "#TL012804",
+    createdAt: 1732813200000,
     status: "Đang xử lý",
     customer: {
       name: "Dương",
@@ -233,6 +235,7 @@ export const MOCK_ORDERS: Record<string, Order> = {
   },
   "#TL123884": {
     id: "#TL123884",
+    createdAt: 1732899600000,
     status: "Chờ thanh toán",
      customer: {
       name: "Dương",

@@ -1349,7 +1349,7 @@ const ZoomIcon = () => (
 const CheckoutPage: React.FC<{
   cartItems: FrameConfig[];
   allParts: Record<string, LegoPart>;
-  onPlaceOrder: (order: Omit<Order, 'status'>) => void;
+  onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => void;
   onZoomImage: (url: string) => void;
 }> = ({ cartItems, allParts, onPlaceOrder, onZoomImage }) => {
   const [name, setName] = useState('');
@@ -1853,7 +1853,7 @@ const App: React.FC = () => {
     setCartItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handlePlaceOrder = async (orderData: Omit<Order, 'status'>) => {
+  const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
       const res = await createOrder(orderData);
       if (res.success && res.data) {
         setCurrentOrder(res.data);
