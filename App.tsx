@@ -1828,6 +1828,22 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  // --- ADDED HASH LISTENER FOR ADMIN ROUTING ---
+  useEffect(() => {
+      const checkHash = () => {
+          if (window.location.hash === '#/admin') {
+              setCurrentPage('admin');
+          }
+      };
+      
+      // Check on initial load
+      checkHash();
+
+      // Listen for hash changes (e.g. user manually changing URL)
+      window.addEventListener('hashchange', checkHash);
+      return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
+
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
     setCartItems(prev => [...prev, newConfig]);
     if (openCart) setIsCartOpen(true);
