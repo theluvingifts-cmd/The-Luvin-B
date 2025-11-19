@@ -57,9 +57,9 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
         const docRef = doc(db, "orders", orderId);
         const docSnap = await getDoc(docRef);
         return docSnap.exists() ? (docSnap.data() as Order) : null;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Lỗi lấy đơn hàng:", error);
-        return null;
+        throw error; // Ném lại lỗi để component gọi có thể xử lý
     }
 };
 

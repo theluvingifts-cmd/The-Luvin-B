@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order } from './types';
 import { 
@@ -1447,7 +1448,7 @@ const CheckoutPage: React.FC<{
               <h2 className="font-bold text-xl text-gray-800 mb-6 pb-2 border-b border-gray-200">Thông tin giao hàng</h2>
               
               {/* Recipient Sub-section */}
-              <div className="mb-6">
+              <div className="mb-6 border-b border-gray-200 pb-6">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">1. Người nhận</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
@@ -1457,7 +1458,7 @@ const CheckoutPage: React.FC<{
               </div>
 
               {/* Address Sub-section */}
-              <div>
+              <div className="mb-6 border-b border-gray-200 pb-6">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">2. Địa chỉ & Vận chuyển</h3>
                   <div className="space-y-4">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1504,13 +1505,15 @@ const CheckoutPage: React.FC<{
                      </div>
                   </div>
               </div>
+
+              {/* Notes Sub-section (Merged) */}
+              <div>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">3. Ghi chú đơn hàng</h3>
+                  <textarea placeholder="Ví dụ: Giao hàng trong giờ hành chính,..." value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none"></textarea>
+              </div>
             </div>
             {/* MERGED SECTION END */}
 
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <h2 className="font-bold text-lg mb-4">Ghi chú cho đơn hàng</h2>
-              <textarea placeholder="Ví dụ: Giao hàng trong giờ hành chính,..." value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none"></textarea>
-            </div>
             <div className="bg-gray-50 p-4 rounded-lg border">
                  <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
                     <img src={GENERAL_ASSETS.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
@@ -1658,25 +1661,41 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
 
 const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoomImage}) => {
     const [orderCode, setOrderCode] = useState('');
-    const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found'>(null);
+    const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Hàm tra cứu mới (đã kết nối Firebase)
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
-        const codeToSearch = orderCode.trim().toUpperCase();
+        let codeToSearch = orderCode.trim().toUpperCase();
         if (!codeToSearch) return;
+
+        if (!codeToSearch.startsWith('#')) {
+            codeToSearch = '#' + codeToSearch;
+        }
 
         setIsLoading(true);
         setFoundOrder(null);
         
         try {
-            // Gọi hàm lấy dữ liệu từ Firebase
-            const order = await getOrderById(codeToSearch);
+            // 1. Tìm trên Firebase trước
+            let order = await getOrderById(codeToSearch);
+
+            // 2. Nếu không thấy trên Firebase, tìm trong MOCK_ORDERS
+            if (!order) {
+                order = MOCK_ORDERS[codeToSearch] || null;
+            }
+
             setFoundOrder(order || 'not_found');
-        } catch (error) {
-            console.error(error);
-            setFoundOrder('not_found');
+        } catch (error: any) {
+            console.error("Lỗi tra cứu đơn hàng:", error);
+            // 3. Xử lý lỗi đặc biệt (ví dụ: không có quyền truy cập)
+            if (error.code === 'permission-denied') {
+                setFoundOrder('permission_error');
+            } else {
+                // Với các lỗi khác, vẫn thử fallback về mock data
+                const mockOrder = MOCK_ORDERS[codeToSearch];
+                setFoundOrder(mockOrder || 'not_found');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -1732,46 +1751,59 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                     {isLoading && <p className="text-center">Đang tìm kiếm...</p>}
                     {foundOrder === 'not_found' && (
                         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center">
-                            Không tìm thấy đơn hàng.
+                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng (Ví dụ: #TL123456).
+                        </div>
+                    )}
+                    {foundOrder === 'permission_error' && (
+                        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg text-center">
+                            <p className="font-bold">Hệ thống đang bảo trì</p>
+                            <p className="text-sm mt-1">
+                                Tính năng tra cứu đang được nâng cấp. Vui lòng inbox Fanpage hoặc gọi Hotline <strong className="whitespace-nowrap">0964 393 115</strong> để được hỗ trợ kiểm tra đơn hàng nhanh nhất.
+                            </p>
                         </div>
                     )}
                     {foundOrder && typeof foundOrder === 'object' && (
                         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h2 className="font-bold text-lg">Chi tiết đơn hàng</h2>
-                                    <p className="text-sm text-gray-500">{foundOrder.id}</p>
+                                    <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
+                                    <p className="text-sm text-gray-500">
+                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date().toLocaleDateString('vi-VN') : '---'}
+                                    </p>
                                 </div>
-                                <button className="text-sm bg-pink-100 text-luvin-pink font-semibold px-3 py-1 rounded-full">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                     {foundOrder.status}
-                                </button>
+                                </span>
                             </div>
+
                             <StatusTracker currentStatus={foundOrder.status} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-b py-6 my-6">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div>
-                                    <h3 className="font-bold mb-2">Thông tin giao hàng</h3>
-                                    <p className="text-sm"><span className="font-semibold">Họ tên:</span> {foundOrder.customer.name}</p>
-                                    <p className="text-sm"><span className="font-semibold">SĐT:</span> {foundOrder.customer.phone}</p>
-                                    <p className="text-sm"><span className="font-semibold">Địa chỉ:</span> {foundOrder.customer.address}</p>
+                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Thông tin nhận hàng</h3>
+                                    <p><span className="font-semibold">Người nhận:</span> {foundOrder.customer.name}</p>
+                                    <p><span className="font-semibold">SĐT:</span> {foundOrder.customer.phone}</p>
+                                    <p><span className="font-semibold">Địa chỉ:</span> {foundOrder.customer.address}</p>
                                 </div>
                                 <div>
-                                    <h3 className="font-bold mb-2">Tóm tắt thanh toán</h3>
-                                    <p className="text-sm flex justify-between"><span>Tổng cộng:</span> <span>{formatCurrency(foundOrder.totalPrice, 'payment')}</span></p>
-                                    <p className="text-sm flex justify-between"><span>Đã thanh toán:</span> <span>{formatCurrency(foundOrder.status === 'Chờ thanh toán' ? 0 : foundOrder.amountToPay, 'payment')}</span></p>
-                                    <p className="text-sm flex justify-between font-semibold mt-1"><span>Còn lại:</span> <span>{formatCurrency(foundOrder.status === 'Chờ thanh toán' ? foundOrder.totalPrice : foundOrder.totalPrice - foundOrder.amountToPay, 'payment')}</span></p>
+                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Đơn hàng</h3>
+                                    <div className="space-y-2">
+                                        {foundOrder.items.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-gray-100 rounded border overflow-hidden cursor-pointer" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                                                    {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold">Khung thiết kế</p>
+                                                    <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                             <div>
-                                <h3 className="font-bold mb-2">Sản phẩm</h3>
-                                <div className="bg-gray-50 p-2 rounded-lg flex items-center gap-4">
-                                    <div className="w-20 h-20 flex-shrink-0 bg-white rounded p-1 border">
-                                       <img src={foundOrder.items[0]?.previewImageUrl} className="w-full h-full object-contain" alt="product preview"/>
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Khung LEGO tùy chỉnh</p>
-                                        <p className="text-xs text-gray-500">Kích thước: {FRAME_OPTIONS.find(f => f.id === foundOrder.items[0]?.frameId)?.name}</p>
-                                    </div>
-                                </div>
+                             <div className="mt-6 pt-4 border-t text-right">
+                                <p className="text-lg">Tổng tiền: <span className="font-bold text-luvin-pink">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(foundOrder.totalPrice)}</span></p>
                             </div>
                         </div>
                     )}
@@ -1781,146 +1813,92 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
     );
 };
 
-const ZoomModal: React.FC<{ imageUrl: string; onClose: () => void }> = ({ imageUrl, onClose }) => {
+const App: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
+  const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+
+  const allParts = useMemo(() => Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), []);
+
+  const navigateTo = (page: Page) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+
+  const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
+    setCartItems(prev => [...prev, newConfig]);
+    if (openCart) setIsCartOpen(true);
+  };
+
+  const handleRemoveCartItem = (index: number) => {
+    setCartItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePlaceOrder = async (orderData: Omit<Order, 'status'>) => {
+      const res = await createOrder(orderData);
+      if (res.success && res.data) {
+        setCurrentOrder(res.data);
+        setCartItems([]); // Clear cart
+        // Send email
+        sendOrderEmail(res.data);
+        navigateTo('order-confirmation');
+      } else {
+        alert('Có lỗi xảy ra khi tạo đơn hàng.');
+      }
+  };
+
+  const handleZoomImage = (url: string) => {
+      setZoomedImageUrl(url);
+  }
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'home': return <HomePage navigateTo={navigateTo} />;
+      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} />;
+      case 'collection': return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
+      case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />;
+      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} />;
+      case 'order-confirmation': return <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={handleZoomImage} />;
+      case 'order-lookup': return <OrderLookupPage onZoomImage={handleZoomImage} />;
+      case 'admin': return <AdminPage />; 
+      default: return <HomePage navigateTo={navigateTo} />;
+    }
+  };
+
   return (
-    <div 
-      className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div 
-        className="relative bg-white p-2 sm:p-4 rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh]"
-        onClick={e => e.stopPropagation()} // Prevent closing when clicking on the image itself
-      >
-        <img src={imageUrl} alt="Zoomed Preview" className="w-full h-full object-contain" />
-        <button 
-          onClick={onClose} 
-          className="absolute -top-3 -right-3 bg-white text-black rounded-full h-8 w-8 flex items-center justify-center text-xl font-bold shadow-lg hover:bg-gray-200 transition-colors"
-          aria-label="Close"
-        >
-          &times;
-        </button>
-      </div>
+    <div className="min-h-screen flex flex-col font-sans text-gray-800">
+       {currentPage !== 'admin' && (
+           <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} />
+       )}
+       
+       <main className="flex-grow">
+         {renderPage()}
+       </main>
+
+       {currentPage !== 'admin' && (
+           <Footer navigateTo={navigateTo} />
+       )}
+
+       <CartPanel 
+         isOpen={isCartOpen} 
+         onClose={() => setIsCartOpen(false)} 
+         cartItems={cartItems} 
+         onRemoveItem={handleRemoveCartItem}
+         allParts={allParts}
+         navigateTo={navigateTo}
+       />
+
+       {zoomedImageUrl && (
+           <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
+               <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain" />
+               <button className="absolute top-4 right-4 text-white text-2xl font-bold">&times;</button>
+           </div>
+       )}
     </div>
   );
-};
-
-
-const App: React.FC = () => {
-    // 1. Kiểm tra đường dẫn khi vừa vào web
-    const [currentPage, setCurrentPage] = useState<Page>(() => {
-        if (window.location.hash === '#/admin') return 'admin';
-        return 'home';
-    });
-
-    const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
-    const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
-    const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
-    const [isCartOpen, setIsCartOpen] = useState(false);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-
-    const allParts = useMemo(() => Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), []);
-
-    // 2. Lắng nghe khi người dùng gõ link trên thanh địa chỉ
-    useEffect(() => {
-        const handleHashChange = () => {
-            if (window.location.hash === '#/admin') {
-                setCurrentPage('admin');
-            } else if (window.location.hash === '#/home' || window.location.hash === '') {
-                setCurrentPage('home');
-            }
-        };
-        window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
-    }, []);
-
-    const showToast = (message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
-
-    const handleAddToCart = (itemConfig: FrameConfig, openCartPanel = true) => {
-        setCartItems(prev => [...prev, itemConfig]);
-        showToast('Đã thêm vào giỏ hàng!', 'success');
-        if (openCartPanel) {
-            setIsCartOpen(true);
-        }
-    };
-
-    const handleRemoveFromCart = (index: number) => {
-        setCartItems(prev => prev.filter((_, i) => i !== index));
-    };
-
-    // Hàm đặt hàng mới (đã kết nối Firebase + Email)
-    const handlePlaceOrder = async (orderData: Omit<Order, 'status'>) => {
-        showToast('Đang gửi đơn hàng...', 'success');
-
-        const result = await createOrder(orderData);
-
-        if (result.success && result.data) {
-            // Gửi email xác nhận (tính năng mới)
-            sendOrderEmail(result.data);
-
-            setCompletedOrder(result.data);
-            setCartItems([]); 
-            navigateTo('order-confirmation');
-        } else {
-            showToast('Có lỗi xảy ra, vui lòng thử lại!', 'error');
-        }
-    };
-
-    const navigateTo = (page: Page) => {
-        setCurrentPage(page);
-        window.location.hash = page === 'home' ? '' : `#/${page}`;
-        window.scrollTo(0, 0);
-    };
-
-    const renderPage = () => {
-        switch (currentPage) {
-            case 'home':
-                return <HomePage navigateTo={navigateTo} />;
-            case 'builder':
-                return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={showToast} />;
-            case 'collection':
-                return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
-            case 'order-lookup':
-                return <OrderLookupPage onZoomImage={setZoomedImageUrl} />;
-            case 'cart':
-                return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveFromCart} allParts={allParts} navigateTo={navigateTo} />;
-            case 'checkout':
-                return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} />;
-            case 'order-confirmation':
-                return <OrderConfirmationPage order={completedOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />;
-            case 'admin': // Trang Admin mới
-                return <AdminPage />;
-            default:
-                return <HomePage navigateTo={navigateTo} />;
-        }
-    };
-
-    return (
-        <div className="flex flex-col min-h-screen font-body bg-gray-50">
-            <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} />
-            <main className="flex-grow">
-                {renderPage()}
-            </main>
-            <Footer navigateTo={navigateTo} />
-            <CartPanel 
-                isOpen={isCartOpen}
-                onClose={() => setIsCartOpen(false)}
-                cartItems={cartItems}
-                onRemoveItem={handleRemoveFromCart}
-                allParts={allParts}
-                navigateTo={navigateTo}
-            />
-             {toast && (
-                <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-                    {toast.message}
-                </div>
-            )}
-            {zoomedImageUrl && <ZoomModal imageUrl={zoomedImageUrl} onClose={() => setZoomedImageUrl(null)} />}
-        </div>
-    );
 };
 
 export default App;
