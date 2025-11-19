@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Luvin - Personalized LEGO Frame Gifts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@400;500;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'luvin-pink': '#efa3b5',
+              'luvin-cream': '#f4eee8',
+              'luvin-light-gray': '#d8d8d8',
+            },
+            fontFamily: {
+              heading: ['"Playfair Display"', 'serif'],
+              body: ['"Montserrat"', 'sans-serif'],
+              script: ['"Dancing Script"', 'cursive'],
+            },
+            boxShadow: {
+              'top': '0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)',
+            },
+            animation: {
+              marquee: 'marquee 40s linear infinite',
+            },
+            keyframes: {
+              marquee: {
+                '0%': { transform: 'translateX(0%)' },
+                '100%': { transform: 'translateX(-50%)' },
+              },
+            },
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light; /* Force browser light mode */
+      }
+      body {
+        font-family: 'Montserrat', sans-serif;
+        background-color: #f9f4ef;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+      .group:hover .animate-marquee {
+        animation-play-state: paused;
+      }
+      
+      /* FIX: Force light mode styles for inputs to prevent dark backgrounds on Chrome/Edge */
+      input, select, textarea {
+        background-color: #ffffff !important;
+        color: #1f2937 !important; /* text-gray-800 */
+        border-color: #d1d5db; /* gray-300 */
+      }
+
+      /* Fix autofill specifically to keep background white */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px white inset !important;
+          -webkit-text-fill-color: #1f2937 !important;
+          transition: background-color 5000s ease-in-out 0s;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
