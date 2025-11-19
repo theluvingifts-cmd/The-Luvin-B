@@ -274,12 +274,17 @@ const AdminPage: React.FC = () => {
     
     const handleSaveAssets = async () => {
         setIsSavingAssets(true);
-        const success = await saveGeneralAssets(assets);
+        const result = await saveGeneralAssets(assets);
         setIsSavingAssets(false);
-        if (success) {
+        
+        if (result.success) {
             alert("Đã lưu cấu hình giao diện!");
         } else {
-            alert("Có lỗi xảy ra khi lưu (Kiểm tra quyền hoặc kết nối).");
+            if (result.code === 'permission-denied') {
+                 alert("Lỗi phân quyền: Bạn không có quyền chỉnh sửa cấu hình này trên Firebase. Vui lòng kiểm tra lại tài khoản hoặc Security Rules.");
+            } else {
+                 alert(`Có lỗi xảy ra khi lưu: ${result.error?.message || 'Lỗi không xác định'}`);
+            }
         }
     };
 

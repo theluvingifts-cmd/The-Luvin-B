@@ -27,9 +27,13 @@ export const getGeneralAssets = async () => {
 export const saveGeneralAssets = async (assets: any) => {
     try {
         await setDoc(doc(db, "settings", "assets"), assets);
-        return true;
-    } catch (error) {
+        return { success: true };
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            console.warn("Firestore: Write access to 'settings/assets' denied.");
+            return { success: false, error: error, code: 'permission-denied' };
+        }
         console.error("Error saving assets:", error);
-        return false;
+        return { success: false, error: error, code: error.code || 'unknown' };
     }
 };
