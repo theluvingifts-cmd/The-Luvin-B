@@ -7,6 +7,20 @@ import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart } from '../types';
 
+// --- HELPER FUNCTIONS ---
+
+const getStartOfDay = (date: Date) => {
+    const newDate = new Date(date);
+    newDate.setHours(0, 0, 0, 0);
+    return newDate;
+};
+
+const getEndOfDay = (date: Date) => {
+    const newDate = new Date(date);
+    newDate.setHours(23, 59, 59, 999);
+    return newDate;
+};
+
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
@@ -79,13 +93,17 @@ const AdminPage: React.FC = () => {
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products'>('dashboard');
     
-    // Stats Filters
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    const [startDate, setStartDate] = useState(thirtyDaysAgo); 
-    const [endDate, setEndDate] = useState(today); 
+    // Role Check
+    const role = useMemo(() => {
+        if (!currentUser) return null;
+        return currentUser.email.includes('admin') ? 'admin' : 'warehouse';
+    }, [currentUser]);
+
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products'>('dashboard');
+
+    // Time Filters
+    const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
 
     // Inputs & Search
     const [isEditingProduct, setIsEditingProduct] = useState(false);
@@ -108,6 +126,13 @@ const AdminPage: React.FC = () => {
         });
         return () => unsubscribe();
     }, []);
+
+    // Force tab for Warehouse
+    useEffect(() => {
+        if (role === 'warehouse') {
+            setActiveTab('orders');
+        }
+    }, [role]);
 
     useEffect(() => {
         if (selectedOrder) {
@@ -137,27 +162,127 @@ const AdminPage: React.FC = () => {
     const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
 
-    // Stats Logic
-    const stats = useMemo(() => {
-        const startTimestamp = new Date(startDate).getTime();
-        const endTimestamp = new Date(endDate).getTime();
+    // --- WAREHOUSE ACTION ---
+    const handleMarkAsPacked = async () => {
+        if (!selectedOrder || !currentUser) return;
+        if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói đơn này?`)) {
+            const now = new Date().toISOString();
+            await handleUpdate(selectedOrder.id, { 
+                status: 'Đã giao hàng', 
+                packedBy: currentUser.email,
+                packedAt: now
+            });
+        }
+    };
 
-        const filteredOrders = orders.filter(order => {
-            if (!order.id) return false; 
-            const orderTimestamp = Number(order.id.slice(-13, -6)) * 1000; 
-            if (orderTimestamp) {
-                 return orderTimestamp >= startTimestamp && orderTimestamp <= endTimestamp;
-            }
-            return true; 
+    // --- ADVANCED ANALYTICS LOGIC ---
+
+    const analytics = useMemo(() => {
+        // 1. Determine Date Range
+        const now = new Date();
+        let start = getStartOfDay(now);
+        let end = getEndOfDay(now);
+        let prevStart = getStartOfDay(now);
+        let prevEnd = getEndOfDay(now);
+
+        if (filterTime === 'yesterday') {
+            start.setDate(start.getDate() - 1);
+            end.setDate(end.getDate() - 1);
+            // Previous: Day before yesterday
+            prevStart.setDate(prevStart.getDate() - 2);
+            prevEnd.setDate(prevEnd.getDate() - 2);
+        } else if (filterTime === '7days') {
+            start.setDate(start.getDate() - 7);
+            // Previous: 14 to 7 days ago
+            prevStart.setDate(prevStart.getDate() - 14);
+            prevEnd.setDate(prevEnd.getDate() - 7);
+        } else if (filterTime === '30days') {
+            start.setDate(start.getDate() - 30);
+             // Previous: 60 to 30 days ago
+            prevStart.setDate(prevStart.getDate() - 60);
+            prevEnd.setDate(prevEnd.getDate() - 30);
+        } else {
+            // Today case, previous is yesterday
+            prevStart.setDate(prevStart.getDate() - 1);
+            prevEnd.setDate(prevEnd.getDate() - 1);
+        }
+
+        const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
+            if (!o.id) return false;
+            // Try to parse ID for timestamp (#TL + numeric) or fallback to created field if existed (using mock logic here)
+            const timestampStr = o.id.slice(3);
+            // This is a hack for mock IDs. In real app, createAt field is better.
+            // If ID is small (mock), treat as 'now' for demo unless filtered
+            const timestamp = Number(timestampStr);
+            if (timestamp < 1000000000000) return true; // Mock orders usually show up
+            return timestamp >= s.getTime() && timestamp <= e.getTime();
         });
 
-        const totalRevenue = filteredOrders.reduce((acc, order) => acc + order.totalPrice, 0);
-        const totalOrders = filteredOrders.length;
-        const urgentOrders = filteredOrders.filter(o => o.isUrgent).length;
-        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-        
-        return { totalRevenue, totalOrders, urgentOrders, avgOrderValue };
-    }, [orders, startDate, endDate]);
+        const currentOrders = getOrdersInPeriod(start, end);
+        const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
+
+        // 2. Calculate KPIs
+        const revenue = currentOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const prevRevenue = prevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const revenueGrowth = prevRevenue === 0 ? 100 : ((revenue - prevRevenue) / prevRevenue) * 100;
+
+        const orderCount = currentOrders.length;
+        const prevOrderCount = prevOrders.length;
+        const orderGrowth = prevOrderCount === 0 ? 100 : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
+
+        // 3. Inventory Stats (From Current Period)
+        const inventory = {
+            frames: {} as Record<string, number>,
+            charms: 0,
+            parts: {
+                hair: 0, face: 0, shirt: 0, pants: 0, accessory: 0, pet: 0, hat: 0
+            }
+        };
+
+        currentOrders.forEach(order => {
+            order.items.forEach(item => {
+                // Frames
+                inventory.frames[item.frameId] = (inventory.frames[item.frameId] || 0) + 1;
+                
+                // Charms
+                item.draggableItems.forEach(di => {
+                    if (di.type === 'charm') inventory.charms++;
+                    else {
+                         // Count accessories/pets added as draggable
+                         if(inventory.parts[di.type] !== undefined) inventory.parts[di.type as keyof typeof inventory.parts]++;
+                    }
+                });
+
+                // Characters
+                item.characters.forEach(char => {
+                    if (char.hair) inventory.parts.hair++;
+                    if (char.face) inventory.parts.face++;
+                    if (char.shirt) inventory.parts.shirt++;
+                    if (char.pants) inventory.parts.pants++;
+                    if (char.hat) inventory.parts.hat++;
+                });
+            });
+        });
+
+        // 4. Packing Performance (All time or Current Period? Let's do Current Period)
+        const packerStats: Record<string, number> = {};
+        currentOrders.forEach(order => {
+            if (order.packedBy) {
+                packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
+            }
+        });
+        const packers = Object.entries(packerStats)
+            .map(([email, count]) => ({ email, count }))
+            .sort((a, b) => b.count - a.count);
+
+        return {
+            revenue, revenueGrowth,
+            orderCount, orderGrowth,
+            inventory,
+            packers,
+            dateLabel: filterTime === 'today' ? 'Hôm nay' : filterTime === 'yesterday' ? 'Hôm qua' : filterTime === '7days' ? '7 ngày qua' : '30 ngày qua'
+        };
+    }, [orders, filterTime]);
 
     const filteredProducts = useMemo(() => {
         return products.filter(p => {
@@ -175,7 +300,6 @@ const AdminPage: React.FC = () => {
                 if (!a.isUrgent && b.isUrgent) return 1;
                 if (a.adminDeadline && !b.adminDeadline) return -1;
                 if (!a.adminDeadline && b.adminDeadline) return 1;
-                if (a.adminDeadline && b.adminDeadline) return new Date(a.adminDeadline).getTime() - new Date(b.adminDeadline).getTime();
                 return 0;
             });
         } else {
@@ -213,17 +337,15 @@ const AdminPage: React.FC = () => {
             <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
                     <div className="flex items-center gap-8">
-                        <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400">| Admin</span></div>
+                        <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400">| {role === 'admin' ? 'Quản lý' : 'Kho vận'}</span></div>
                         <nav className="hidden md:flex gap-1">
-                            {['dashboard', 'orders', 'products'].map(tab => (
-                                <button 
-                                    key={tab} 
-                                    onClick={() => setActiveTab(tab as any)} 
-                                    className={`px-4 py-2 rounded-md text-sm font-medium capitalize transition-colors ${activeTab === tab ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
+                             {role === 'admin' && (
+                                <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Dashboard</button>
+                            )}
+                            <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Đơn hàng</button>
+                            {role === 'admin' && (
+                                <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
+                            )}
                         </nav>
                     </div>
                     <div className="flex items-center gap-4">
@@ -234,37 +356,126 @@ const AdminPage: React.FC = () => {
             </header>
 
             <main className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6">
-                {/* --- DASHBOARD --- */}
-                {activeTab === 'dashboard' && (
+                {/* --- DASHBOARD (ADMIN ONLY) --- */}
+                {activeTab === 'dashboard' && role === 'admin' && (
                     <div className="space-y-8 animate-fade-in">
-                        <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">Tổng quan kinh doanh</h2>
-                                <p className="text-sm text-gray-500">Số liệu thống kê theo thời gian thực</p>
-                             </div>
-                             <div className="flex items-center gap-3">
-                                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-500" />
-                                 <span className="text-gray-400 text-sm">to</span>
-                                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-500" />
-                             </div>
+                        {/* Date Filter */}
+                        <div className="flex justify-end space-x-2">
+                            {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
+                                <button
+                                    key={t}
+                                    onClick={() => setFilterTime(t)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                                        filterTime === t 
+                                        ? 'bg-gray-900 text-white border-gray-900' 
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                                    }`}
+                                >
+                                    {t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày qua' : '30 ngày qua'}
+                                </button>
+                            ))}
                         </div>
                         
+                        {/* KPI Cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Doanh thu</p>
-                                <p className="text-3xl font-light text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p>
+                                    <span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%
+                                    </span>
+                                </div>
+                                <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue)}</p>
+                                <p className="text-xs text-gray-400 mt-2">So với kỳ trước</p>
                             </div>
                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Tổng đơn hàng</p>
-                                <p className="text-3xl font-light text-gray-900">{stats.totalOrders}</p>
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p>
+                                    <span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%
+                                    </span>
+                                </div>
+                                <p className="text-3xl font-light text-gray-900">{analytics.orderCount}</p>
+                                <p className="text-xs text-gray-400 mt-2">So với kỳ trước</p>
                             </div>
                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Giá trị trung bình</p>
-                                <p className="text-3xl font-light text-gray-900">{formatCurrency(stats.avgOrderValue)}</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Charm đã dùng</p>
+                                <p className="text-3xl font-light text-gray-900">{analytics.inventory.charms}</p>
+                                <p className="text-xs text-gray-400 mt-2">Trong {analytics.dateLabel.toLowerCase()}</p>
                             </div>
-                            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Đơn cần gấp</p>
-                                <p className="text-3xl font-light text-red-600">{stats.urgentOrders}</p>
+                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hiệu suất đóng gói</p>
+                                <div className="flex items-end gap-2">
+                                    <p className="text-3xl font-light text-gray-900">{analytics.packers.length > 0 ? analytics.packers[0].count : 0}</p>
+                                    <p className="text-sm font-medium text-gray-600 mb-1 truncate w-24">{analytics.packers.length > 0 ? analytics.packers[0].email.split('@')[0] : 'N/A'}</p>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2">Top 1 nhân viên kho</p>
+                            </div>
+                        </div>
+
+                        {/* Inventory & Performance Tables */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Inventory Table */}
+                            <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                                <div className="p-4 border-b border-gray-100">
+                                    <h3 className="font-bold text-gray-800">Chi tiết vật tư tiêu hao</h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                                            <tr>
+                                                <th className="px-4 py-3">Loại</th>
+                                                <th className="px-4 py-3 text-right">Số lượng</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {Object.entries(analytics.inventory.frames).map(([frameId, count]) => (
+                                                <tr key={frameId}>
+                                                    <td className="px-4 py-3 font-medium text-gray-700">Khung {frameId.toUpperCase()}</td>
+                                                    <td className="px-4 py-3 text-right font-mono">{count}</td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-pink-50/30">
+                                                <td className="px-4 py-3 font-medium text-gray-700">Charm trang trí</td>
+                                                <td className="px-4 py-3 text-right font-mono">{analytics.inventory.charms}</td>
+                                            </tr>
+                                            {Object.entries(analytics.inventory.parts).map(([partType, count]) => (
+                                                <tr key={partType}>
+                                                    <td className="px-4 py-3 font-medium text-gray-500 capitalize">Lego: {partType}</td>
+                                                    <td className="px-4 py-3 text-right font-mono">{count}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Staff Performance Table */}
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-fit">
+                                <div className="p-4 border-b border-gray-100">
+                                    <h3 className="font-bold text-gray-800">BXH Đóng gói</h3>
+                                </div>
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="px-4 py-3">Nhân viên</th>
+                                            <th className="px-4 py-3 text-right">SL Đơn</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {analytics.packers.length > 0 ? analytics.packers.map((p, i) => (
+                                            <tr key={p.email}>
+                                                <td className="px-4 py-3 flex items-center gap-2">
+                                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-400' : 'bg-gray-200'}`}>{i + 1}</span>
+                                                    <span className="truncate w-32" title={p.email}>{p.email.split('@')[0]}</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold">{p.count}</td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-400">Chưa có dữ liệu</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -323,6 +534,12 @@ const AdminPage: React.FC = () => {
                                                 {selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
                                             </h2>
                                             <p className="text-sm text-gray-500 mt-1">Đặt ngày {new Date(Number(selectedOrder.id.slice(3)) || Date.now()).toLocaleDateString('vi-VN')}</p>
+                                            {selectedOrder.packedBy && (
+                                                <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                    Đã đóng gói bởi {selectedOrder.packedBy} lúc {new Date(selectedOrder.packedAt!).toLocaleTimeString('vi-VN')}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
                                              <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -346,7 +563,7 @@ const AdminPage: React.FC = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline Xưởng (Admin)</label>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline Xưởng</label>
                                                 <input 
                                                     type="date" 
                                                     className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" 
@@ -408,7 +625,19 @@ const AdminPage: React.FC = () => {
                                     </div>
 
                                     {/* Footer Actions */}
-                                    <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2 justify-end">
+                                    <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2 justify-end items-center">
+                                        
+                                        {/* WAREHOUSE ACTION BUTTON */}
+                                        {!selectedOrder.packedBy && selectedOrder.status !== 'Đã giao hàng' && (
+                                            <button 
+                                                onClick={handleMarkAsPacked}
+                                                className="mr-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md transition-colors flex items-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                Xác nhận đã đóng gói
+                                            </button>
+                                        )}
+
                                         {['Chờ thanh toán', 'Đã xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng', 'Hủy đơn'].map(st => (
                                             <button 
                                                 key={st} 
@@ -418,6 +647,7 @@ const AdminPage: React.FC = () => {
                                                     ? 'bg-gray-900 text-white border-gray-900' 
                                                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
                                                 }`}
+                                                disabled={role !== 'admin'} // Only admin can change status freely
                                             >
                                                 {st}
                                             </button>
@@ -434,8 +664,8 @@ const AdminPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- PRODUCTS --- */}
-                {activeTab === 'products' && (
+                {/* --- PRODUCTS (ADMIN ONLY) --- */}
+                {activeTab === 'products' && role === 'admin' && (
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
                         <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
