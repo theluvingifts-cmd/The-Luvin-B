@@ -17,6 +17,7 @@ import FramePreview from './components/FramePreview';
 import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
+import { getGeneralAssets } from './services/settingsService'; // Lấy cấu hình giao diện
 
 declare var html2canvas: any;
 
@@ -740,7 +741,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
   );
 };
 
-const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) => {
+const HomePage: React.FC<{ navigateTo: (page: Page) => void; assets: any }> = ({ navigateTo, assets }) => {
   const BowIcon = () => (
     <svg className="w-6 h-6 text-luvin-pink opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -769,7 +770,7 @@ const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }
     <div>
       <div className="flex flex-col min-h-[calc(100vh-80px)]">
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
-          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${GENERAL_ASSETS.hero})`}}></div>
+          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${assets.hero})`}}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
              <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
              <p className="font-script text-3xl my-4 text-gray-600">self love, self care</p>
@@ -785,7 +786,7 @@ const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }
 
       <div className="container mx-auto my-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
-          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${GENERAL_ASSETS.inspire})`}}></div>
+          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${assets.inspire})`}}></div>
           <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative">
               <div className="relative w-full max-w-xs aspect-square">
                   {sliderProducts.map((product, index) => (
@@ -1351,7 +1352,8 @@ const CheckoutPage: React.FC<{
   allParts: Record<string, LegoPart>;
   onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => void;
   onZoomImage: (url: string) => void;
-}> = ({ cartItems, allParts, onPlaceOrder, onZoomImage }) => {
+  assets: any;
+}> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, assets }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -1516,7 +1518,7 @@ const CheckoutPage: React.FC<{
 
             <div className="bg-gray-50 p-4 rounded-lg border">
                  <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
-                    <img src={GENERAL_ASSETS.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
+                    <img src={assets.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
                     <div className="flex-grow">
                         <span className="font-semibold text-gray-800">Thêm hộp quà</span>
                         <p className="text-xs text-gray-500">Hộp quà cao cấp & thiệp viết tay.</p>
@@ -1585,7 +1587,7 @@ const CheckoutPage: React.FC<{
   );
 };
 
-const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void }> = ({ order, navigateTo, onZoomImage }) => {
+const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void, assets: any }> = ({ order, navigateTo, onZoomImage, assets }) => {
     useEffect(() => {
         if (!order) {
             navigateTo('home');
@@ -1595,6 +1597,19 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
     if (!order) return null;
 
     const amountRemaining = order.totalPrice - order.amountToPay;
+
+    // Generate VietQR Link
+    const getVietQR = (order: Order) => {
+        const BANK_ID = '970407'; // Techcombank ID (970407) or ShortName (TCB)
+        const ACCOUNT_NO = '65838666666';
+        const TEMPLATE = 'compact2'; // or 'compact'
+        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
+        const amount = order.amountToPay || order.totalPrice;
+        
+        // If user has customized QR image in assets, use that as base or instruction, otherwise generate dynamic QR
+        // But dynamic generation is best. 
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+    };
 
     return (
         <div className="bg-gray-50 py-12">
@@ -1610,7 +1625,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                     
                     <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
                         <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
-                        <img src={GENERAL_ASSETS.vietqr} alt="VietQR" className="mt-4 w-48 mx-auto" />
+                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto" />
                         <div className="mt-4 bg-white p-3 rounded-lg border">
                            <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
                            <p className="font-bold text-gray-800 tracking-wider">{order.id}</p>
@@ -1820,6 +1835,9 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+  
+  // New State for Dynamic Assets
+  const [assets, setAssets] = useState(GENERAL_ASSETS);
 
   const allParts = useMemo(() => Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), []);
 
@@ -1827,6 +1845,17 @@ const App: React.FC = () => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
+
+  // --- LOAD ASSETS ON MOUNT ---
+  useEffect(() => {
+    const loadAssets = async () => {
+        const dynamicAssets = await getGeneralAssets();
+        if (dynamicAssets) {
+            setAssets(dynamicAssets);
+        }
+    };
+    loadAssets();
+  }, []);
 
   // --- ADDED HASH LISTENER FOR ADMIN ROUTING ---
   useEffect(() => {
@@ -1872,15 +1901,15 @@ const App: React.FC = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'home': return <HomePage navigateTo={navigateTo} />;
+      case 'home': return <HomePage navigateTo={navigateTo} assets={assets} />;
       case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} />;
       case 'collection': return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
       case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />;
-      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} />;
-      case 'order-confirmation': return <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={handleZoomImage} />;
+      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} assets={assets} />;
+      case 'order-confirmation': return <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={handleZoomImage} assets={assets} />;
       case 'order-lookup': return <OrderLookupPage onZoomImage={handleZoomImage} />;
       case 'admin': return <AdminPage />; 
-      default: return <HomePage navigateTo={navigateTo} />;
+      default: return <HomePage navigateTo={navigateTo} assets={assets} />;
     }
   };
 
