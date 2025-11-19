@@ -5,7 +5,8 @@ import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
-import type { Order, LegoPart } from '../types';
+import type { Order, LegoPart, FrameConfig } from '../types';
+import { FRAME_OPTIONS } from '../constants';
 
 // --- HELPER FUNCTIONS ---
 
@@ -62,13 +63,14 @@ const StatusDropdown: React.FC<{
                 onClick={() => setIsOpen(!isOpen)} 
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50`}
             >
+                {/* Minimal Icon */}
                 <span>{currentConfig.icon}</span>
                 <span>{currentStatus}</span>
-                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <span className={`text-xs transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                <div className="absolute bottom-full mb-2 right-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
                     <div className="p-1">
                         {STATUS_CONFIG.map((status) => {
                             // Hide 'Delete' from list if not admin or for standard flow
@@ -172,6 +174,13 @@ const AdminPage: React.FC = () => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(false);
     
+    // Mobile menu
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Edit Mode State
+    const [isEditingOrder, setIsEditingOrder] = useState(false);
+    const [editForm, setEditForm] = useState<Order | null>(null);
+
     // Role Check
     const role = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
@@ -208,13 +217,6 @@ const AdminPage: React.FC = () => {
         });
         return () => unsubscribe();
     }, []);
-
-    // Force tab for Warehouse
-    useEffect(() => {
-        if (role === 'warehouse') {
-            setActiveTab('orders');
-        }
-    }, [role]);
 
     useEffect(() => {
         if (selectedOrder) {
@@ -253,6 +255,56 @@ const AdminPage: React.FC = () => {
             alert('Đã xoá đơn hàng.');
         }
     };
+
+    // --- EDIT ORDER LOGIC ---
+    const startEditingOrder = () => {
+        if (!selectedOrder) return;
+        setEditForm({ ...selectedOrder });
+        setIsEditingOrder(true);
+    };
+
+    const cancelEditingOrder = () => {
+        setEditForm(null);
+        setIsEditingOrder(false);
+    };
+
+    const saveOrderChanges = async () => {
+        if (!editForm || !selectedOrder) return;
+        
+        setLoading(true);
+        // Update logic for saving
+        // We update: customer info, frame ids for items, and pricing
+        await handleUpdate(selectedOrder.id, editForm, false);
+        setIsEditingOrder(false);
+        setEditForm(null);
+        setLoading(false);
+        alert("Đã lưu thay đổi!");
+    };
+
+    const handleEditFormChange = (field: string, value: any, nestedField?: string, itemIndex?: number) => {
+        if (!editForm) return;
+        
+        setEditForm(prev => {
+            if (!prev) return null;
+            
+            if (itemIndex !== undefined && nestedField === 'frameId') {
+                 const newItems = [...prev.items];
+                 newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
+                 return { ...prev, items: newItems };
+            }
+
+            if (nestedField && field === 'customer') {
+                return { ...prev, customer: { ...prev.customer, [nestedField]: value } };
+            }
+
+            if (field === 'delivery' && nestedField) {
+                return { ...prev, delivery: { ...prev.delivery, [nestedField]: value } };
+            }
+
+            return { ...prev, [field]: value };
+        });
+    };
+
 
     const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
@@ -428,12 +480,20 @@ const AdminPage: React.FC = () => {
             <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
                     <div className="flex items-center gap-8">
+                        {/* Mobile Hamburger */}
+                        <button className="md:hidden text-gray-700" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        </button>
+                        
                         <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400">| {role === 'admin' ? 'Quản lý' : 'Kho vận'}</span></div>
+                        
+                        {/* Desktop Nav */}
                         <nav className="hidden md:flex gap-1">
-                             {role === 'admin' && (
-                                <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Dashboard</button>
-                            )}
+                            {/* Warehouse CAN see Dashboard now */}
+                             <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Dashboard</button>
+                            
                             <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Đơn hàng</button>
+                            
                             {role === 'admin' && (
                                 <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
                             )}
@@ -444,11 +504,20 @@ const AdminPage: React.FC = () => {
                         <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors">Đăng xuất</button>
                     </div>
                 </div>
+                
+                {/* Mobile Menu */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2 shadow-lg">
+                        <button onClick={() => {setActiveTab('dashboard'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Dashboard</button>
+                        <button onClick={() => {setActiveTab('orders'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Đơn hàng</button>
+                        {role === 'admin' && <button onClick={() => {setActiveTab('products'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Sản phẩm</button>}
+                    </div>
+                )}
             </header>
 
             <main className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6">
-                {/* --- DASHBOARD (ADMIN ONLY) --- */}
-                {activeTab === 'dashboard' && role === 'admin' && (
+                {/* --- DASHBOARD --- */}
+                {activeTab === 'dashboard' && (
                     <div className="space-y-8 animate-fade-in">
                         {/* Date Filter */}
                         <div className="flex justify-end space-x-2">
@@ -469,16 +538,20 @@ const AdminPage: React.FC = () => {
                         
                         {/* KPI Cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                <div className="flex justify-between items-start mb-2">
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p>
-                                    <span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%
-                                    </span>
+                            {/* HIDE REVENUE FROM WAREHOUSE */}
+                            {role === 'admin' && (
+                                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p>
+                                        <span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue)}</p>
+                                    <p className="text-xs text-gray-400 mt-2">So với kỳ trước</p>
                                 </div>
-                                <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue)}</p>
-                                <p className="text-xs text-gray-400 mt-2">So với kỳ trước</p>
-                            </div>
+                            )}
+                            
                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                                 <div className="flex justify-between items-start mb-2">
                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p>
@@ -576,7 +649,7 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'orders' && (
                      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-fade-in">
                         {/* Order List Sidebar */}
-                        <div className="lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+                        <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                             <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2">
                                 <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
                                 <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
@@ -585,7 +658,10 @@ const AdminPage: React.FC = () => {
                                 {sortedOrders.map(order => (
                                     <div 
                                         key={order.id} 
-                                        onClick={() => setSelectedOrder(order)} 
+                                        onClick={() => {
+                                            setSelectedOrder(order); 
+                                            setIsEditingOrder(false); // Reset edit mode when switching
+                                        }} 
                                         className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}
                                     >
                                         <div className="flex justify-between items-start mb-1">
@@ -617,25 +693,38 @@ const AdminPage: React.FC = () => {
                         </div>
 
                         {/* Order Detail View */}
-                        <div className="lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+                        <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                             {selectedOrder ? (
                                 <div className="flex flex-col h-full">
                                     {/* Header Detail */}
                                     <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-white">
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                                {selectedOrder.id}
-                                                {selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
-                                            </h2>
-                                            <p className="text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
-                                            {selectedOrder.packedBy && (
-                                                <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
-                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                    Đã đóng gói bởi {selectedOrder.packedBy} lúc {selectedOrder.packedAt ? new Date(selectedOrder.packedAt).toLocaleTimeString('vi-VN') : ''}
-                                                </p>
-                                            )}
+                                        <div className="flex items-start gap-2">
+                                            <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-500 mr-2">←</button>
+                                            <div>
+                                                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                                    {selectedOrder.id}
+                                                    {selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
+                                                </h2>
+                                                <p className="text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
+                                                {selectedOrder.packedBy && (
+                                                    <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
+                                                        <span>✓</span>
+                                                        Đã đóng gói bởi {selectedOrder.packedBy} lúc {selectedOrder.packedAt ? new Date(selectedOrder.packedAt).toLocaleTimeString('vi-VN') : ''}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
+                                             <div className="flex gap-2">
+                                                {!isEditingOrder ? (
+                                                    <button onClick={startEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Sửa</button>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button>
+                                                        <button onClick={saveOrderChanges} className="text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Lưu</button>
+                                                    </div>
+                                                )}
+                                             </div>
                                              <label className="flex items-center gap-2 cursor-pointer select-none">
                                                 <span className="text-xs font-medium text-gray-500">Đánh dấu Gấp</span>
                                                 <input type="checkbox" className="accent-red-600 w-4 h-4" checked={selectedOrder.isUrgent || false} onChange={(e) => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} />
@@ -643,7 +732,9 @@ const AdminPage: React.FC = () => {
                                         </div>
                                     </div>
 
+                                    {/* EDITING MODE VS VIEW MODE */}
                                     <div className="flex-grow overflow-y-auto p-6 space-y-8">
+                                        
                                         {/* Admin Notes Section */}
                                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
@@ -675,11 +766,23 @@ const AdminPage: React.FC = () => {
                                             <div>
                                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3>
                                                 <div className="space-y-2 text-sm text-gray-700">
-                                                    <p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p>
-                                                    <p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
-                                                    <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
-                                                    <p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p>
-                                                    <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p>
+                                                    {isEditingOrder && editForm ? (
+                                                        <>
+                                                            <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div>
+                                                            <div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div>
+                                                            <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
+                                                            <div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div>
+                                                            <div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p>
+                                                            <p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
+                                                            <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
+                                                            <p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p>
+                                                            <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div>
@@ -688,8 +791,17 @@ const AdminPage: React.FC = () => {
                                                     <p><span className="text-gray-500 w-24 inline-block">Phương thức:</span> {selectedOrder.payment.method === 'deposit' ? 'Cọc 70%' : 'Toàn bộ'}</p>
                                                     <p><span className="text-gray-500 w-24 inline-block">Vận chuyển:</span> {selectedOrder.shipping.method}</p>
                                                     <div className="border-t border-gray-100 my-2 pt-2">
-                                                        <p><span className="text-gray-500 w-24 inline-block">Tổng đơn:</span> <span className="font-bold">{formatCurrency(selectedOrder.totalPrice)}</span></p>
-                                                        <p><span className="text-gray-500 w-24 inline-block">Cần thu:</span> <span className="font-bold text-red-600">{formatCurrency(selectedOrder.amountToPay)}</span></p>
+                                                        {isEditingOrder && editForm ? (
+                                                            <>
+                                                                <div className="flex items-center gap-2 mb-2"><span className="w-24 text-gray-500">Tổng đơn:</span> <input type="number" className="border rounded p-1 w-32 font-bold" value={editForm.totalPrice} onChange={e => handleEditFormChange('totalPrice', Number(e.target.value))} /></div>
+                                                                <div className="flex items-center gap-2"><span className="w-24 text-gray-500">Cần thu:</span> <input type="number" className="border rounded p-1 w-32 font-bold text-red-600" value={editForm.amountToPay} onChange={e => handleEditFormChange('amountToPay', Number(e.target.value))} /></div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <p><span className="text-gray-500 w-24 inline-block">Tổng đơn:</span> <span className="font-bold">{formatCurrency(selectedOrder.totalPrice)}</span></p>
+                                                                <p><span className="text-gray-500 w-24 inline-block">Cần thu:</span> <span className="font-bold text-red-600">{formatCurrency(selectedOrder.amountToPay)}</span></p>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -704,8 +816,22 @@ const AdminPage: React.FC = () => {
                                                         <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
                                                             {item.previewImageUrl ? <img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No img</span>}
                                                         </div>
-                                                        <div>
-                                                            <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
+                                                        <div className="flex-grow">
+                                                            {isEditingOrder && editForm ? (
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <span className="font-bold text-gray-800">Khung:</span>
+                                                                    <select 
+                                                                        className="border rounded p-1 text-sm"
+                                                                        value={editForm.items[idx].frameId}
+                                                                        onChange={e => handleEditFormChange('items', e.target.value, 'frameId', idx)}
+                                                                    >
+                                                                        {FRAME_OPTIONS.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                                    </select>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
+                                                            )}
+                                                            
                                                             <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
                                                                 <li>{item.characters.length} nhân vật</li>
                                                                 <li>Nền: {item.background.type}</li>
@@ -726,7 +852,7 @@ const AdminPage: React.FC = () => {
                                                 onClick={handleMarkAsPacked}
                                                 className="mr-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md transition-colors flex items-center gap-2"
                                             >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                <span>✓</span>
                                                 Xác nhận đã đóng gói
                                             </button>
                                         )}
@@ -742,7 +868,7 @@ const AdminPage: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-400 flex-col gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                                    <span className="text-4xl opacity-20">📦</span>
                                     <span>Chọn đơn hàng để xem chi tiết</span>
                                 </div>
                             )}
