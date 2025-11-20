@@ -794,6 +794,11 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
         <div className="border-t border-gray-200">
             <div className="container mx-auto px-6 py-4 text-center text-xs text-gray-500 relative">
                 <p>Copyright © {new Date().getFullYear()} The Luvin. All Rights Reserved.</p>
+                <p className="mt-1">
+                    <a href="https://www.facebook.com/ngojinbtrongduong/" target="_blank" rel="noopener noreferrer" className="hover:text-luvin-pink transition-colors">
+                        Crafted with ❤️ by <b>Trong Duong</b>
+                    </a>
+                </p>
             </div>
         </div>
     </footer>
@@ -1433,7 +1438,7 @@ const ZoomIcon = () => (
 const CheckoutPage: React.FC<{
   cartItems: FrameConfig[];
   allParts: Record<string, LegoPart>;
-  onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => void;
+  onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => Promise<void>;
   onZoomImage: (url: string) => void;
 }> = ({ cartItems, allParts, onPlaceOrder, onZoomImage }) => {
   const [name, setName] = useState('');
@@ -1455,6 +1460,8 @@ const CheckoutPage: React.FC<{
   const [addGiftBox, setAddGiftBox] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
   
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
 
@@ -1496,24 +1503,36 @@ const CheckoutPage: React.FC<{
   const totalPrice = subtotal + shippingFee + giftBoxFee;
   const amountToPay = paymentMethod === 'deposit' ? totalPrice * 0.7 : totalPrice;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent double clicking
+
+    setIsSubmitting(true);
+
     const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || '';
     const districtName = districts.find(d => d.code === parseInt(selectedDistrict))?.name || '';
     const wardName = wards.find(w => w.code === parseInt(selectedWard))?.name || '';
     const fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
     const orderId = `#TL${Date.now().toString().slice(-6)}`;
-    onPlaceOrder({
-      id: orderId,
-      customer: { name, phone, email, address: fullAddress },
-      delivery: { date: deliveryDate, notes },
-      items: cartItems,
-      addGiftBox,
-      shipping: { method: shippingOption, fee: shippingFee },
-      payment: { method: paymentMethod },
-      totalPrice,
-      amountToPay,
-    });
+    
+    try {
+        await onPlaceOrder({
+          id: orderId,
+          customer: { name, phone, email, address: fullAddress },
+          delivery: { date: deliveryDate, notes },
+          items: cartItems,
+          addGiftBox,
+          shipping: { method: shippingOption, fee: shippingFee },
+          payment: { method: paymentMethod },
+          totalPrice,
+          amountToPay,
+        });
+        // If successful, onPlaceOrder will navigate away, so no need to reset state immediately.
+    } catch (error) {
+        console.error("Order submission error:", error);
+        setIsSubmitting(false);
+        alert("Đã có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.");
+    }
   };
 
   if (cartItems.length === 0) {
@@ -1658,8 +1677,8 @@ const CheckoutPage: React.FC<{
                   </label>
                 </div>
               </div>
-              <button type="submit" className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90">
-                ĐẶT HÀNG
+              <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-wait">
+                {isSubmitting ? 'Đang xử lý...' : 'ĐẶT HÀNG'}
               </button>
             </div>
           </div>
@@ -1679,6 +1698,16 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
     if (!order) return null;
 
     const amountRemaining = order.totalPrice - order.amountToPay;
+    
+    const getVietQR = (order: Order) => {
+        const BANK_ID = '970407'; // Techcombank
+        const ACCOUNT_NO = '65838666666';
+        const TEMPLATE = 'compact2';
+        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
+        const amount = order.amountToPay;
+        
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+    };
 
     return (
         <div className="bg-gray-50 py-12">
@@ -1694,7 +1723,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                     
                     <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
                         <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
-                        <img src={GENERAL_ASSETS.vietqr} alt="VietQR" className="mt-4 w-48 mx-auto" />
+                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto border rounded-lg" />
                         <div className="mt-4 bg-white p-3 rounded-lg border">
                            <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
                            <p className="font-bold text-gray-800 tracking-wider">{order.id}</p>
@@ -1785,29 +1814,61 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         }
     };
 
+    // Helper to map internal status to customer friendly status
+    const getCustomerStatusDisplay = (internalStatus: string) => {
+        const map: Record<string, string> = {
+            'Chờ thanh toán': 'Chờ thanh toán',
+            'Đã xác nhận': 'Đã xác nhận',
+            'Ưu tiên xuất đơn': 'Đang xử lý',
+            'Đang đóng hàng': 'Đang xử lý',
+            'Chờ chuyển hàng': 'Đang xử lý',
+            'Gửi hàng đi': 'Đang giao hàng',
+            'Đã giao hàng': 'Đã giao hàng',
+            'Huỷ đơn': 'Đã huỷ'
+        };
+        return map[internalStatus] || internalStatus;
+    };
+
     const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
         const steps = ['Chờ thanh toán', 'Đã xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng'];
-        const currentStepIndex = steps.indexOf(currentStatus);
+        
+        const displayStatus = getCustomerStatusDisplay(currentStatus);
+        
+        // Determine active index. 'Đã huỷ' will return -1, hiding progress
+        let currentStepIndex = steps.indexOf(displayStatus);
+        
+        // If status isn't found directly (e.g. cancelled or weird data), fallback
+        if (currentStepIndex === -1 && displayStatus !== 'Đã huỷ') {
+             currentStepIndex = 0; 
+        }
 
         return (
             <div className="relative my-8">
-                <div className="flex justify-between items-start">
-                    {steps.map((step, index) => (
-                        <div key={step} className="z-10 text-center" style={{ width: `${100 / steps.length}%` }}>
-                             <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
-                                {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                            </div>
-                            <p className={`mt-2 text-[10px] sm:text-xs font-semibold ${index <= currentStepIndex ? 'text-luvin-pink' : 'text-gray-500'}`}>{step}</p>
+                {displayStatus === 'Đã huỷ' ? (
+                     <div className="text-center py-4 bg-red-50 text-red-700 font-bold rounded-lg border border-red-200">
+                         Đơn hàng đã bị huỷ
+                     </div>
+                ) : (
+                    <>
+                        <div className="flex justify-between items-start">
+                            {steps.map((step, index) => (
+                                <div key={step} className="z-10 text-center" style={{ width: `${100 / steps.length}%` }}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
+                                        {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                    </div>
+                                    <p className={`mt-2 text-[10px] sm:text-xs font-semibold ${index <= currentStepIndex ? 'text-luvin-pink' : 'text-gray-500'}`}>{step}</p>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-                <div className="absolute top-3 left-0 right-0 h-0.5 -z-0" style={{ padding: '0 10%' }}>
-                    <div className="w-full h-full bg-gray-200"></div>
-                     <div 
-                        className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-500"
-                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-                    ></div>
-                </div>
+                        <div className="absolute top-3 left-0 right-0 h-0.5 -z-0" style={{ padding: '0 10%' }}>
+                            <div className="w-full h-full bg-gray-200"></div>
+                            <div 
+                                className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-500"
+                                style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                            ></div>
+                        </div>
+                    </>
+                )}
             </div>
         );
     };
@@ -1855,8 +1916,8 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                         Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date().toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                    {foundOrder.status}
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${['Đã giao hàng', 'Gửi hàng đi'].includes(foundOrder.status) ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {getCustomerStatusDisplay(foundOrder.status)}
                                 </span>
                             </div>
 
@@ -1921,7 +1982,10 @@ const App: React.FC = () => {
   // STATE MỚI: Lưu danh sách sản phẩm động từ DB
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
   // STATE MỚI: Lưu background động từ DB
-  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([...PRESET_BACKGROUNDS_SQUARE, ...PRESET_BACKGROUNDS_RECTANGLE].map(bg => ({...bg, id: bg.name, type: 'square'}))); // Fallback
+  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([
+      ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: bg.name, type: 'square' as const })),
+      ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: bg.name, type: 'rectangle' as const }))
+  ]); // Fallback với type chính xác
 
 
   // Fetch products & backgrounds on mount
@@ -1981,6 +2045,7 @@ const App: React.FC = () => {
         navigateTo('order-confirmation');
       } else {
         alert('Có lỗi xảy ra khi tạo đơn hàng.');
+        throw new Error('Order creation failed'); // Rethrow so CheckoutPage can catch it
       }
   };
 
