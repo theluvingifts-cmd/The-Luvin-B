@@ -19,7 +19,7 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
                 name: data.name || doc.id,
                 url: data.url,
                 category: data.category || 'Khác',
-                type: data.type || 'square'
+                type: (data.type === 'rectangle' ? 'rectangle' : 'square')
             } as PresetBackground);
         });
         return backgrounds;
