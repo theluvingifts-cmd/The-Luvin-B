@@ -113,6 +113,7 @@ export interface Order {
     email: string;
     address: string;
   };
+  contactLink?: string; // New field: Link liên hệ (FB/Insta)
   delivery: {
     date: string;
     notes: string;
@@ -133,7 +134,6 @@ export interface Order {
   internalNotes?: string; // Ghi chú nội bộ của Admin
   isUrgent?: boolean;     // Cờ đánh dấu đơn gấp thủ công
   adminDeadline?: string; // Deadline do admin đặt
-  contactLink?: string;   // Link Facebook/Insta của khách
   
   // --- Warehouse Fields ---
   packedBy?: string;      // Email người đóng gói
