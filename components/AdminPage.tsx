@@ -64,17 +64,17 @@ const StatusDropdown: React.FC<{
     return (
         <div className="relative" ref={dropdownRef}>
             <button 
-                onClick={() => setIsOpen(!isOpen)} 
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50`}
+                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50 whitespace-nowrap`}
             >
                 {/* Minimal Icon */}
                 <span>{currentConfig.icon}</span>
                 <span>{currentStatus}</span>
-                <span className={`text-xs transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                <span className={`text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
 
             {isOpen && (
-                <div className="absolute bottom-full mb-2 right-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                <div className="absolute top-full mt-1 right-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-[60] overflow-hidden animate-fade-in">
                     <div className="p-1">
                         {STATUS_CONFIG.map((status) => {
                             // Hide 'Delete' from list if not admin or for standard flow
@@ -83,7 +83,8 @@ const StatusDropdown: React.FC<{
                             return (
                                 <button
                                     key={status.label}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         setIsOpen(false);
                                         if (status.isAction && status.label === 'Xoá đơn' && onDelete) {
                                             onDelete();
@@ -91,9 +92,9 @@ const StatusDropdown: React.FC<{
                                             onStatusChange(status.label);
                                         }
                                     }}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors ${status.label === currentStatus ? 'bg-blue-50 text-blue-600' : 'text-gray-700'} ${status.isAction ? 'text-red-600 hover:bg-red-50' : ''}`}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors ${status.label === currentStatus ? 'bg-blue-50 text-blue-600' : 'text-gray-700'} ${status.isAction ? 'text-red-600 hover:bg-red-50' : ''}`}
                                 >
-                                    <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-md text-xs">{status.icon}</span>
+                                    <span className="w-5 h-5 flex items-center justify-center bg-gray-100 rounded-md text-[10px]">{status.icon}</span>
                                     {status.label}
                                 </button>
                             );
@@ -386,13 +387,14 @@ const AdminPage: React.FC = () => {
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
     
-    const handleDeleteOrder = async () => {
-        if (!selectedOrder) return;
-        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không? Hành động này không thể hoàn tác.`)) {
+    const handleDeleteOrder = async (orderId?: string) => {
+        const id = orderId || selectedOrder?.id;
+        if (!id) return;
+        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${id} không? Hành động này không thể hoàn tác.`)) {
             setLoading(true);
-            await deleteOrder(selectedOrder.id);
-            setOrders(prev => prev.filter(o => o.id !== selectedOrder.id));
-            setSelectedOrder(null);
+            await deleteOrder(id);
+            setOrders(prev => prev.filter(o => o.id !== id));
+            if (selectedOrder?.id === id) setSelectedOrder(null);
             setLoading(false);
             alert('Đã xoá đơn hàng.');
         }
@@ -890,10 +892,10 @@ const AdminPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* ORDERS TAB */}
+                {/* ORDERS TAB (TABLE VIEW) */}
                 {activeTab === 'orders' && (
                     <div className="space-y-6 animate-fade-in">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <h2 className="text-xl font-bold text-gray-800">Danh sách đơn hàng</h2>
                             <div className="flex gap-2">
                                 <button onClick={() => setSortMode('newest')} className={`px-3 py-1.5 text-sm rounded border ${sortMode === 'newest' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600'}`}>Mới nhất</button>
@@ -901,44 +903,74 @@ const AdminPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            {sortedOrders.map(order => (
-                                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow ${selectedOrder?.id === order.id ? 'ring-2 ring-gray-900 border-transparent' : 'border-gray-200'} ${order.isUrgent ? 'bg-red-50' : ''}`}>
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-lg">{order.id}</span>
-                                                {order.isUrgent && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold">GẤP</span>}
-                                            </div>
-                                            <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
-                                        </div>
-                                        <StatusDropdown 
-                                            currentStatus={order.status} 
-                                            onStatusChange={(s) => handleUpdate(order.id, { status: s }, false)}
-                                            isAdmin={role === 'admin'}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                                        <div>
-                                            <p className="text-xs text-gray-500">Khách hàng</p>
-                                            <p className="font-medium">{order.customer.name}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Tổng tiền</p>
-                                            <p className="font-bold text-gray-900">{formatCurrency(order.totalPrice)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Thanh toán</p>
-                                            <p className={`${order.amountToPay < order.totalPrice ? 'text-orange-600' : 'text-green-600'} font-medium`}>{order.payment.method === 'deposit' ? 'Cọc 70%' : 'Full'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Giao hàng</p>
-                                            <p className="font-medium">{order.delivery.date}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {sortedOrders.length === 0 && <p className="text-center text-gray-500 py-10">Không có đơn hàng nào.</p>}
+                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
+                                        <tr>
+                                            <th className="px-6 py-4 whitespace-nowrap">Mã đơn / Thời gian</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Khách hàng</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Tổng tiền</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Thanh toán</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Giao hàng</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Trạng thái</th>
+                                            <th className="px-6 py-4 text-right whitespace-nowrap">Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {sortedOrders.map(order => (
+                                            <tr key={order.id} className={`hover:bg-gray-50 transition-colors ${order.isUrgent ? 'bg-red-50 hover:bg-red-100' : ''}`}>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-gray-900">{order.id}</div>
+                                                    <div className="text-xs text-gray-500 mt-1 whitespace-nowrap">{formatDateTime(order.createdAt)}</div>
+                                                    {order.isUrgent && <span className="inline-block mt-1 bg-red-100 text-red-700 text-[10px] px-1.5 py-0.5 rounded font-bold border border-red-200">GẤP</span>}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-medium text-gray-900 whitespace-nowrap">{order.customer.name}</div>
+                                                    <div className="text-xs text-gray-500 whitespace-nowrap">{order.customer.phone}</div>
+                                                    <div className="text-xs text-gray-400 truncate max-w-[150px]" title={order.customer.address}>{order.customer.address}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-gray-900 whitespace-nowrap">{formatCurrency(order.totalPrice)}</div>
+                                                    <div className="text-xs text-gray-500">{order.items.length} khung</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${order.payment.method === 'full' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                        {order.payment.method === 'full' ? 'Full' : 'Cọc 70%'}
+                                                     </span>
+                                                     {order.payment.method === 'deposit' && (
+                                                         <div className="text-xs text-red-500 mt-1 font-medium whitespace-nowrap">Thu: {formatCurrency(order.amountToPay)}</div>
+                                                     )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="font-medium">{order.delivery.date}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <StatusDropdown 
+                                                        currentStatus={order.status} 
+                                                        onStatusChange={(s) => handleUpdate(order.id, { status: s }, false)}
+                                                        isAdmin={role === 'admin'}
+                                                        onDelete={() => handleDeleteOrder(order.id)}
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button 
+                                                        onClick={() => setSelectedOrder(order)}
+                                                        className="text-blue-600 hover:text-blue-800 font-medium text-xs sm:text-sm"
+                                                    >
+                                                        Chi tiết
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {sortedOrders.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-10 text-center text-gray-500">Không có đơn hàng nào.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1057,7 +1089,7 @@ const AdminPage: React.FC = () => {
                             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-xs font-bold uppercase text-gray-500">Admin Notes</span>
-                                    {role === 'admin' && <button onClick={handleDeleteOrder} className="text-xs text-red-600 hover:underline">Xoá đơn</button>}
+                                    {role === 'admin' && <button onClick={() => handleDeleteOrder(selectedOrder.id)} className="text-xs text-red-600 hover:underline">Xoá đơn</button>}
                                 </div>
                                 <textarea className="w-full p-2 border rounded text-sm mb-2" placeholder="Ghi chú nội bộ..." value={noteInput} onChange={e => setNoteInput(e.target.value)} />
                                 <input type="date" className="w-full p-2 border rounded text-sm mb-2" value={adminDeadlineInput} onChange={e => setAdminDeadlineInput(e.target.value)} />
