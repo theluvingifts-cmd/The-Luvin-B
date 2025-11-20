@@ -39,6 +39,32 @@ const STATUS_CONFIG = [
     { label: 'Xoá đơn', color: 'bg-gray-200 text-gray-800', icon: '🗑️', isAction: true }, // Special action
 ];
 
+// --- RULES TEMPLATE ---
+const FIRESTORE_RULES_TEMPLATE = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // 1. Rules for Orders
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // 2. Rules for Products (Lego Parts)
+    match /lego_parts/{partId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 3. Rules for Backgrounds (MỚI THÊM)
+    match /backgrounds/{bgId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}`;
+
 // --- COMPONENT: STATUS DROPDOWN ---
 const StatusDropdown: React.FC<{ 
     currentStatus: string; 
@@ -104,6 +130,53 @@ const StatusDropdown: React.FC<{
         </div>
     );
 };
+
+// --- COMPONENT: RULES HELPER MODAL ---
+const RulesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(FIRESTORE_RULES_TEMPLATE);
+        alert('Đã copy Rules! Hãy dán vào Firebase Console.');
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] font-sans p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 bg-red-50 border-b border-red-100">
+                    <h3 className="text-xl font-bold text-red-700 flex items-center gap-2">
+                        <span className="text-2xl">⚠️</span> Cập nhật Firebase Rules
+                    </h3>
+                    <p className="text-sm text-red-600 mt-1">
+                        Lỗi "Permission Denied" xảy ra do Database chưa cho phép ghi dữ liệu vào bảng <b>backgrounds</b>.
+                    </p>
+                </div>
+                
+                <div className="p-6 overflow-y-auto flex-grow">
+                    <p className="text-sm text-gray-700 mb-4">
+                        Vui lòng truy cập <a href="https://console.firebase.google.com/" target="_blank" className="text-blue-600 hover:underline font-bold">Firebase Console</a> &rarr; Firestore Database &rarr; Tab <b>Rules</b>, và thay thế toàn bộ bằng đoạn code sau:
+                    </p>
+                    <div className="relative">
+                        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs sm:text-sm font-mono overflow-x-auto border border-gray-700">
+                            {FIRESTORE_RULES_TEMPLATE}
+                        </pre>
+                        <button 
+                            onClick={copyToClipboard}
+                            className="absolute top-2 right-2 bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-gray-200 transition-colors"
+                        >
+                            Copy Code
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-4 border-t bg-gray-50 flex justify-end">
+                    <button onClick={onClose} className="px-6 py-2 bg-gray-900 text-white font-bold rounded-lg hover:bg-black transition-colors">
+                        Đã hiểu, đóng lại
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
 const ProductForm: React.FC<{ 
@@ -303,6 +376,7 @@ const AdminPage: React.FC = () => {
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(false);
+    const [showRulesModal, setShowRulesModal] = useState(false);
     
     // Mobile menu
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -388,7 +462,7 @@ const AdminPage: React.FC = () => {
             } catch (error: any) {
                 console.error(error);
                 if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
-                     alert("LỖI QUYỀN TRUY CẬP: Tài khoản của bạn chưa được cấp quyền ghi vào Database.\n\nVui lòng kiểm tra lại Firestore Rules hoặc đăng nhập đúng tài khoản Admin.");
+                    setShowRulesModal(true); // SHOW RULES MODAL
                 } else {
                      alert("Đã xảy ra lỗi khi đồng bộ: " + (error.message || "Lỗi không xác định"));
                 }
@@ -408,7 +482,7 @@ const AdminPage: React.FC = () => {
             } catch (error: any) {
                 console.error(error);
                 if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
-                     alert("LỖI QUYỀN TRUY CẬP: Tài khoản của bạn chưa được cấp quyền ghi vào Database.\n\nVui lòng kiểm tra lại Firestore Rules hoặc đăng nhập đúng tài khoản Admin.");
+                     setShowRulesModal(true); // SHOW RULES MODAL
                 } else {
                      alert("Đã xảy ra lỗi khi đồng bộ: " + (error.message || "Lỗi không xác định"));
                 }
@@ -1040,6 +1114,10 @@ const AdminPage: React.FC = () => {
                     onSave={handleSaveBackground} 
                     onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} 
                 />
+            )}
+
+            {showRulesModal && (
+                <RulesModal onClose={() => setShowRulesModal(false)} />
             )}
             
             {selectedOrder && (
