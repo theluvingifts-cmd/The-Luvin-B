@@ -15,6 +15,7 @@ import {
 } from './constants';
 import FramePreview from './components/FramePreview';
 import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
+import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
@@ -367,7 +368,11 @@ const PartButton: React.FC<{
 };
 
 
-const Step3Characters: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>> }> = ({ config, setConfig }) => {
+const Step3Characters: React.FC<{ 
+    config: FrameConfig; 
+    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
+    legoParts: typeof LEGO_PARTS;
+}> = ({ config, setConfig, legoParts }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt');
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -381,18 +386,19 @@ const Step3Characters: React.FC<{ config: FrameConfig; setConfig: React.Dispatch
 
     const handleAddChar = () => {
         const newId = Date.now();
+        // Use the first available part from dynamic props, fallbacks to empty object if unavailable
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
-            shirt: LEGO_PARTS.shirt[0], 
-            pants: LEGO_PARTS.pants[0],
-            face: LEGO_PARTS.face[0], 
-            hair: LEGO_PARTS.hair[0],
+            shirt: legoParts.shirt[0] || LEGO_PARTS.shirt[0], 
+            pants: legoParts.pants[0] || LEGO_PARTS.pants[0],
+            face: legoParts.face[0] || LEGO_PARTS.face[0], 
+            hair: legoParts.hair[0] || LEGO_PARTS.hair[0],
             x: 30 + (config.characters.length % 3) * 20, 
             y: 75, 
             rotation: 0, 
             scale: 1,
-            selectedShirtColor: LEGO_PARTS.shirt[0].colors?.[0],
-            selectedPantsColor: LEGO_PARTS.pants[0].colors?.[0],
+            selectedShirtColor: (legoParts.shirt[0] || LEGO_PARTS.shirt[0])?.colors?.[0],
+            selectedPantsColor: (legoParts.pants[0] || LEGO_PARTS.pants[0])?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -483,7 +489,8 @@ const Step3Characters: React.FC<{ config: FrameConfig; setConfig: React.Dispatch
         { key: 'hat', label: 'Mũ' },
     ];
 
-    const currentPartList = LEGO_PARTS[activePartType] || [];
+    // Use dynamic legoParts
+    const currentPartList = legoParts[activePartType] || [];
 
     return (
         <div className="space-y-4">
@@ -593,7 +600,7 @@ const Step3Characters: React.FC<{ config: FrameConfig; setConfig: React.Dispatch
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM PHỤ KIỆN</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {LEGO_PARTS.accessory.map(part => (
+                    {legoParts.accessory.map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -602,7 +609,7 @@ const Step3Characters: React.FC<{ config: FrameConfig; setConfig: React.Dispatch
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {LEGO_PARTS.pet.map(part => (
+                    {legoParts.pet.map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -957,7 +964,8 @@ const BuilderPage: React.FC<{
     navigateTo: (p:Page) => void; 
     onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
     showToast: (message: string, type: 'success' | 'error') => void;
-}> = ({ config, setConfig, navigateTo, onAddToCart, showToast }) => {
+    legoParts: typeof LEGO_PARTS; // New prop
+}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1005,7 +1013,8 @@ const BuilderPage: React.FC<{
     };
   }, []);
   
-  const allParts = useMemo(() => Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), []);
+  // Use legoParts from props to generate allParts
+  const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts), [config, allParts]);
   
@@ -1149,7 +1158,7 @@ const BuilderPage: React.FC<{
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
@@ -1872,6 +1881,19 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
     );
 };
 
+// Helper to categorize parts
+const categorizeParts = (parts: LegoPart[]) => {
+    const categories: typeof LEGO_PARTS = {
+        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: []
+    };
+    parts.forEach(p => {
+        if (p.type in categories) {
+            categories[p.type as keyof typeof LEGO_PARTS].push(p);
+        }
+    });
+    return categories;
+};
+
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
@@ -1879,8 +1901,23 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+  
+  // STATE MỚI: Lưu danh sách sản phẩm động từ DB
+  const [legoParts, setLegoParts] = useState(LEGO_PARTS);
 
-  const allParts = useMemo(() => Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), []);
+  // Fetch products on mount
+  useEffect(() => {
+      const fetchParts = async () => {
+          const parts = await getAllParts();
+          if (parts && parts.length > 0) {
+              setLegoParts(categorizeParts(parts));
+          }
+      };
+      fetchParts();
+  }, []);
+
+  // Tính toán allParts dựa trên legoParts động thay vì hằng số tĩnh
+  const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
     setCurrentPage(page);
@@ -1932,7 +1969,8 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'home': return <HomePage navigateTo={navigateTo} />;
-      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} />;
+      // Truyền legoParts vào BuilderPage
+      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} legoParts={legoParts} />;
       case 'collection': return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
       case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />;
       case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} />;
