@@ -344,8 +344,14 @@ const AdminPage: React.FC = () => {
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
+    
+    // --- FILTERS STATE ---
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
+    
+    const [bgSearch, setBgSearch] = useState('');
+    const [bgFilterType, setBgFilterType] = useState<'all' | 'square' | 'rectangle'>('all');
+    const [bgFilterCategory, setBgFilterCategory] = useState<string>('all');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -737,6 +743,22 @@ const AdminPage: React.FC = () => {
         }
         return result;
     }, [orders, sortMode]);
+
+    // --- FILTERED BACKGROUNDS ---
+    const uniqueBgCategories = useMemo(() => {
+        const cats = new Set(backgrounds.map(bg => bg.category));
+        return Array.from(cats);
+    }, [backgrounds]);
+
+    const filteredBackgrounds = useMemo(() => {
+        return backgrounds.filter(bg => {
+            const matchSearch = bg.name.toLowerCase().includes(bgSearch.toLowerCase());
+            const matchType = bgFilterType === 'all' ? true : bg.type === bgFilterType;
+            const matchCategory = bgFilterCategory === 'all' ? true : bg.category === bgFilterCategory;
+            return matchSearch && matchType && matchCategory;
+        });
+    }, [backgrounds, bgSearch, bgFilterType, bgFilterCategory]);
+
 
     // --- DROPDOWN DATA FOR EDIT ---
     const partsByType = useMemo(() => {
@@ -1169,10 +1191,30 @@ const AdminPage: React.FC = () => {
 
                 {activeTab === 'backgrounds' && role === 'admin' && (
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
-                        <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4">
-                            <div className="flex items-center gap-2"><h2 className="text-lg font-bold text-gray-900">Quản lý Hình nền</h2><span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-600">{backgrounds.length}</span></div>
-                            <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
+                        <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-2"><h2 className="text-lg font-bold text-gray-900">Quản lý Hình nền</h2><span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-600">{filteredBackgrounds.length}</span></div>
+                            
+                            {/* --- FILTERS UI --- */}
+                            <div className="flex flex-grow md:flex-grow-0 gap-3 w-full md:w-auto flex-wrap md:flex-nowrap">
+                                <input type="text" placeholder="Tìm tên nền..." className="p-2 border border-gray-300 rounded text-sm w-full md:w-48 focus:border-gray-900 focus:ring-0 outline-none" value={bgSearch} onChange={e => setBgSearch(e.target.value)} />
+                                
+                                <select className="p-2 border border-gray-300 rounded text-sm focus:border-gray-900 focus:ring-0 outline-none" value={bgFilterType} onChange={e => setBgFilterType(e.target.value as any)}>
+                                    <option value="all">Tất cả loại khung</option>
+                                    <option value="square">Vuông (15x15, 23x23)</option>
+                                    <option value="rectangle">Chữ nhật (A5)</option>
+                                </select>
+
+                                <select className="p-2 border border-gray-300 rounded text-sm focus:border-gray-900 focus:ring-0 outline-none" value={bgFilterCategory} onChange={e => setBgFilterCategory(e.target.value)}>
+                                    <option value="all">Tất cả chủ đề</option>
+                                    {uniqueBgCategories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+
+                                <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
+                            </div>
                         </div>
+
                         <div className="flex-grow overflow-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
@@ -1185,7 +1227,7 @@ const AdminPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {backgrounds.length > 0 ? backgrounds.map(bg => (
+                                    {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(bg => (
                                         <tr key={bg.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="p-3 border-b border-gray-100">
                                                 <div className="w-16 h-20 bg-gray-100 rounded overflow-hidden">
@@ -1193,7 +1235,7 @@ const AdminPage: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{bg.name}</td>
-                                            <td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{bg.type === 'square' ? 'Vuông' : 'Chữ nhật'}</td>
+                                            <td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{bg.type === 'square' ? 'Vuông (15x15, 23x23)' : 'Chữ nhật (A5)'}</td>
                                             <td className="p-3 border-b border-gray-100 text-sm text-gray-500">{bg.category}</td>
                                             <td className="p-3 border-b border-gray-100 text-right">
                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1203,17 +1245,21 @@ const AdminPage: React.FC = () => {
                                             </td>
                                         </tr>
                                     )) : (
-                                        <tr>
-                                            <td colSpan={5} className="p-12 text-center">
-                                                <div className="flex flex-col items-center justify-center text-gray-400">
-                                                     <span className="text-4xl mb-2">🖼️</span>
-                                                     <p className="text-sm mb-4">Chưa có hình nền nào trong Database.</p>
-                                                     <button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
-                                                         Đồng bộ hình nền mẫu
-                                                     </button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        backgrounds.length > 0 ? (
+                                            <tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy nền phù hợp bộ lọc.</td></tr>
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="p-12 text-center">
+                                                    <div className="flex flex-col items-center justify-center text-gray-400">
+                                                         <span className="text-4xl mb-2">🖼️</span>
+                                                         <p className="text-sm mb-4">Chưa có hình nền nào trong Database.</p>
+                                                         <button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
+                                                             Đồng bộ hình nền mẫu
+                                                         </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
                                     )}
                                 </tbody>
                             </table>
