@@ -74,17 +74,19 @@ export const seedBackgrounds = async () => {
         console.log("Bắt đầu đồng bộ background mẫu...");
         let count = 0;
         
-        // Seed Square
-        for (const bg of PRESET_BACKGROUNDS_SQUARE) {
-            const id = `bg_sq_${Date.now()}_${count}`;
+        // Seed Square (Sử dụng ID cố định để tránh trùng lặp khi sync nhiều lần)
+        for (let i = 0; i < PRESET_BACKGROUNDS_SQUARE.length; i++) {
+            const bg = PRESET_BACKGROUNDS_SQUARE[i];
+            const id = `preset_sq_${i + 1}`; // ID cố định: preset_sq_1, preset_sq_2...
             const newBg: PresetBackground = { ...bg, id, type: 'square' };
             await setDoc(doc(db, COLLECTION_NAME, id), newBg);
             count++;
         }
 
         // Seed Rectangle
-        for (const bg of PRESET_BACKGROUNDS_RECTANGLE) {
-            const id = `bg_rect_${Date.now()}_${count}`;
+        for (let i = 0; i < PRESET_BACKGROUNDS_RECTANGLE.length; i++) {
+            const bg = PRESET_BACKGROUNDS_RECTANGLE[i];
+            const id = `preset_rect_${i + 1}`; // ID cố định
             const newBg: PresetBackground = { ...bg, id, type: 'rectangle' };
             await setDoc(doc(db, COLLECTION_NAME, id), newBg);
             count++;

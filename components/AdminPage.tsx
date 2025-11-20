@@ -898,9 +898,24 @@ const AdminPage: React.FC = () => {
                                 </select>
 
                                 <div className="flex gap-2 ml-auto">
-                                    <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 whitespace-nowrap">
-                                        ↻ Đồng bộ từ Code
-                                    </button>
+                                    {backgrounds.length === 0 && (
+                                        <button 
+                                            onClick={handleSeedBackgrounds} 
+                                            disabled={loading}
+                                            className="px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded hover:bg-blue-700 whitespace-nowrap disabled:opacity-50 shadow-sm flex items-center gap-2"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                                    Đang lưu...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>☁️</span> Lưu mẫu vào Database
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                     <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="px-3 py-2 text-sm font-bold text-white bg-gray-900 rounded hover:bg-black whitespace-nowrap">
                                         + Thêm BG
                                     </button>
@@ -909,18 +924,17 @@ const AdminPage: React.FC = () => {
                         </div>
                         
                         {backgrounds.length === 0 && (
-                            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="font-bold text-sm">Đang hiển thị dữ liệu mẫu</p>
-                                    <p className="text-xs mt-1 opacity-80">Database hiện đang trống. Danh sách dưới đây là các mẫu có sẵn trong Code. Bạn cần bấm <span className="font-bold">"Đồng bộ từ Code"</span> để lưu vào Database thì mới có thể chỉnh sửa/xóa.</p>
+                            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                                <div className="flex gap-3">
+                                    <span className="text-2xl">⚠️</span>
+                                    <div>
+                                        <p className="font-bold text-sm">Database chưa có dữ liệu</p>
+                                        <p className="text-xs mt-1 opacity-90">
+                                            Hệ thống đang hiển thị <strong>{localBackgrounds.length} mẫu có sẵn</strong> từ mã nguồn để bạn xem trước. 
+                                            Vui lòng bấm nút <strong>"Lưu mẫu vào Database"</strong> ở trên để kích hoạt tính năng chỉnh sửa & xóa.
+                                        </p>
+                                    </div>
                                 </div>
-                                <button 
-                                    onClick={handleSeedBackgrounds} 
-                                    disabled={loading}
-                                    className="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap disabled:opacity-50"
-                                >
-                                    {loading ? 'Đang xử lý...' : 'Đồng bộ ngay'}
-                                </button>
                             </div>
                         )}
 
