@@ -1,4 +1,3 @@
-
 // services/productService.ts
 import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -71,8 +70,8 @@ export const seedDatabase = async () => {
         }
         console.log(`Đã đồng bộ thành công ${count} sản phẩm!`);
         return count;
-    } catch (error: any) {
+    } catch (error) {
         console.error("Lỗi đồng bộ:", error);
-        throw error; // Ném lỗi ra ngoài để UI xử lý
+        return 0;
     }
 };
