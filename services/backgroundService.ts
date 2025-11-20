@@ -13,23 +13,11 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
         const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
         const backgrounds: PresetBackground[] = [];
         querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            backgrounds.push({
-                id: doc.id,
-                name: data.name || doc.id,
-                url: data.url,
-                category: data.category || 'Khác',
-                type: data.type || 'square'
-            } as PresetBackground);
+            backgrounds.push(doc.data() as PresetBackground);
         });
         return backgrounds;
-    } catch (error: any) {
-        // Bắt lỗi quyền truy cập để không làm crash app, trả về mảng rỗng để App dùng fallback constants
-        if (error.code === 'permission-denied') {
-            console.warn("Firestore: Không có quyền đọc 'backgrounds'. Đang sử dụng dữ liệu mẫu cục bộ.");
-        } else {
-            console.error("Lỗi lấy danh sách background:", error);
-        }
+    } catch (error) {
+        console.error("Lỗi lấy danh sách background:", error);
         return [];
     }
 };
