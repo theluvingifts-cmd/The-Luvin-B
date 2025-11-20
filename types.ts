@@ -112,7 +112,6 @@ export interface Order {
     phone: string;
     email: string;
     address: string;
-    socialLink?: string; // Link Facebook/Instagram
   };
   delivery: {
     date: string;

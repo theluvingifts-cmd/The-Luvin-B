@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground } from './types';
 import { 
@@ -794,19 +793,9 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
         <div className="border-t border-gray-200">
             <div className="container mx-auto px-6 py-4 flex flex-col items-center justify-center text-xs text-gray-500 relative">
                 <p className="mb-2">Copyright © {new Date().getFullYear()} The Luvin. All Rights Reserved.</p>
-                <div className="flex items-center gap-1 text-base font-medium text-gray-600">
-                    <span>Crafted with</span>
-                    <span className="text-red-500">❤️</span>
-                    <span>by</span>
-                    <a 
-                        href="https://www.facebook.com/ngojinbtrongduong/" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="font-bold text-gray-800 hover:text-luvin-pink transition-colors"
-                    >
-                        Trọng Dương
-                    </a>
-                </div>
+                <a href="https://www.facebook.com/ngojinbtrongduong/" target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors font-medium">
+                   Designed & Developed by Trọng Dương
+                </a>
             </div>
         </div>
     </footer>
@@ -1469,7 +1458,6 @@ const CheckoutPage: React.FC<{
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [phoneError, setPhoneError] = useState('');
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
@@ -1512,29 +1500,14 @@ const CheckoutPage: React.FC<{
   const totalPrice = subtotal + shippingFee + giftBoxFee;
   const amountToPay = paymentMethod === 'deposit' ? totalPrice * 0.7 : totalPrice;
 
-  const validatePhoneNumber = (num: string) => {
-      // Vietnam phone format: Start with 0, followed by 9 digits (total 10 digits)
-      const phoneRegex = /^0\d{9}$/;
-      if (!phoneRegex.test(num)) {
-          setPhoneError('Số điện thoại không hợp lệ (phải có 10 số, bắt đầu bằng 0)');
-          return false;
-      }
-      setPhoneError('');
-      return true;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = e.target.value;
-      setPhone(val);
-      if (val) validatePhoneNumber(val);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    
-    if (!validatePhoneNumber(phone)) {
-        alert('Vui lòng kiểm tra lại số điện thoại.');
+    if (isSubmitting) return; // Prevent double clicking
+
+    // Phone validation: Standard Vietnam phone format (starts with 0, 10 digits total)
+    const phoneRegex = /^0\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+        alert("Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng số 0).");
         return;
     }
 
@@ -1558,6 +1531,7 @@ const CheckoutPage: React.FC<{
           totalPrice,
           amountToPay,
         });
+        // If successful, onPlaceOrder will navigate away, so no need to reset state immediately.
     } catch (error) {
         console.error("Order submission error:", error);
         setIsSubmitting(false);
@@ -1585,10 +1559,7 @@ const CheckoutPage: React.FC<{
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">1. Người nhận</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
-                    <div>
-                         <input type="tel" placeholder="Số điện thoại" value={phone} onChange={handlePhoneChange} className={`w-full p-3 border rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none ${phoneError ? 'border-red-500 focus:ring-red-200' : 'border-gray-300'}`} required />
-                         {phoneError && <p className="text-red-500 text-xs mt-1 ml-1">{phoneError}</p>}
-                    </div>
+                    <input type="tel" placeholder="Số điện thoại" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
                     <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
                   </div>
               </div>
