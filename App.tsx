@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground } from './types';
 import { 
@@ -791,11 +792,13 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
             </div>
         </div>
         <div className="border-t border-gray-200">
-            <div className="container mx-auto px-6 py-4 flex flex-col items-center justify-center text-xs text-gray-500 relative">
-                <p className="mb-2">Copyright © {new Date().getFullYear()} The Luvin. All Rights Reserved.</p>
-                <a href="https://www.facebook.com/ngojinbtrongduong/" target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors font-medium">
-                   Designed & Developed by Trọng Dương
-                </a>
+            <div className="container mx-auto px-6 py-4 text-center text-xs text-gray-500 relative">
+                <p>Copyright © {new Date().getFullYear()} The Luvin. All Rights Reserved.</p>
+                <p className="mt-1">
+                    <a href="https://www.facebook.com/ngojinbtrongduong/" target="_blank" rel="noopener noreferrer" className="hover:text-luvin-pink transition-colors">
+                        Crafted with ❤️ by <b>Trong Duong</b>
+                    </a>
+                </p>
             </div>
         </div>
     </footer>
@@ -1504,13 +1507,6 @@ const CheckoutPage: React.FC<{
     e.preventDefault();
     if (isSubmitting) return; // Prevent double clicking
 
-    // Phone validation: Standard Vietnam phone format (starts with 0, 10 digits total)
-    const phoneRegex = /^0\d{9}$/;
-    if (!phoneRegex.test(phone)) {
-        alert("Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng số 0).");
-        return;
-    }
-
     setIsSubmitting(true);
 
     const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || '';
@@ -1818,49 +1814,61 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         }
     };
 
-    const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
-        // Mapping logic: Internal statuses -> Public steps
-        const getStepIndex = (status: string) => {
-            switch(status) {
-                case 'Chờ thanh toán': return 0;
-                case 'Đã xác nhận': return 1;
-                // Group processing statuses
-                case 'Ưu tiên xuất đơn':
-                case 'Đang đóng hàng':
-                case 'Chờ chuyển hàng':
-                case 'Đang xử lý': 
-                    return 2;
-                // Group shipping statuses
-                case 'Gửi hàng đi':
-                case 'Đang giao hàng': 
-                    return 3;
-                case 'Đã giao hàng': return 4;
-                default: return -1; // Huỷ đơn or unknown
-            }
+    // Helper to map internal status to customer friendly status
+    const getCustomerStatusDisplay = (internalStatus: string) => {
+        const map: Record<string, string> = {
+            'Chờ thanh toán': 'Chờ thanh toán',
+            'Đã xác nhận': 'Đã xác nhận',
+            'Ưu tiên xuất đơn': 'Đang xử lý',
+            'Đang đóng hàng': 'Đang xử lý',
+            'Chờ chuyển hàng': 'Đang xử lý',
+            'Gửi hàng đi': 'Đang giao hàng',
+            'Đã giao hàng': 'Đã giao hàng',
+            'Huỷ đơn': 'Đã huỷ'
         };
+        return map[internalStatus] || internalStatus;
+    };
 
+    const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
         const steps = ['Chờ thanh toán', 'Đã xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng'];
-        const currentStepIndex = getStepIndex(currentStatus);
+        
+        const displayStatus = getCustomerStatusDisplay(currentStatus);
+        
+        // Determine active index. 'Đã huỷ' will return -1, hiding progress
+        let currentStepIndex = steps.indexOf(displayStatus);
+        
+        // If status isn't found directly (e.g. cancelled or weird data), fallback
+        if (currentStepIndex === -1 && displayStatus !== 'Đã huỷ') {
+             currentStepIndex = 0; 
+        }
 
         return (
             <div className="relative my-8">
-                <div className="flex justify-between items-start">
-                    {steps.map((step, index) => (
-                        <div key={step} className="z-10 text-center" style={{ width: `${100 / steps.length}%` }}>
-                             <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
-                                {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                            </div>
-                            <p className={`mt-2 text-[10px] sm:text-xs font-semibold ${index <= currentStepIndex ? 'text-luvin-pink' : 'text-gray-500'}`}>{step}</p>
+                {displayStatus === 'Đã huỷ' ? (
+                     <div className="text-center py-4 bg-red-50 text-red-700 font-bold rounded-lg border border-red-200">
+                         Đơn hàng đã bị huỷ
+                     </div>
+                ) : (
+                    <>
+                        <div className="flex justify-between items-start">
+                            {steps.map((step, index) => (
+                                <div key={step} className="z-10 text-center" style={{ width: `${100 / steps.length}%` }}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
+                                        {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                    </div>
+                                    <p className={`mt-2 text-[10px] sm:text-xs font-semibold ${index <= currentStepIndex ? 'text-luvin-pink' : 'text-gray-500'}`}>{step}</p>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-                <div className="absolute top-3 left-0 right-0 h-0.5 -z-0" style={{ padding: '0 10%' }}>
-                    <div className="w-full h-full bg-gray-200"></div>
-                     <div 
-                        className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-500"
-                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-                    ></div>
-                </div>
+                        <div className="absolute top-3 left-0 right-0 h-0.5 -z-0" style={{ padding: '0 10%' }}>
+                            <div className="w-full h-full bg-gray-200"></div>
+                            <div 
+                                className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-500"
+                                style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                            ></div>
+                        </div>
+                    </>
+                )}
             </div>
         );
     };
@@ -1908,8 +1916,8 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                         Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date().toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                    {foundOrder.status}
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${['Đã giao hàng', 'Gửi hàng đi'].includes(foundOrder.status) ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {getCustomerStatusDisplay(foundOrder.status)}
                                 </span>
                             </div>
 
