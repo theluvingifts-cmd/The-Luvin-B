@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
+import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem } from '../types';
@@ -112,10 +113,32 @@ const ProductForm: React.FC<{
     const [formData, setFormData] = useState<LegoPart>(initialData || {
         id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1
     });
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'widthCm' || name === 'heightCm' ? Number(value) : value }));
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setIsUploading(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    setFormData(prev => ({ ...prev, imageUrl: url }));
+                } else {
+                    alert("Lỗi: Không thể tải ảnh lên Cloudinary. Vui lòng kiểm tra lại 'Cloud Name' và 'Upload Preset' đã chính xác chưa.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Đã xảy ra lỗi khi tải ảnh.");
+            } finally {
+                setIsUploading(false);
+            }
+        }
     };
 
     return (
@@ -138,13 +161,54 @@ const ProductForm: React.FC<{
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá (VNĐ)</label>
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
                         </div>
+                        
+                        {/* --- PHẦN UPLOAD ẢNH ĐƯỢC CẬP NHẬT --- */}
                         <div className="col-span-2">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">URL Hình ảnh</label>
-                            <div className="flex gap-3">
-                                <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="flex-grow p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" placeholder="https://..." />
-                                {formData.imageUrl && <div className="w-10 h-10 border rounded bg-gray-100 flex-shrink-0 overflow-hidden"><img src={formData.imageUrl} alt="" className="w-full h-full object-contain" /></div>}
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh</label>
+                            
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handleFileChange} 
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    disabled={isUploading}
+                                />
+                                
+                                {isUploading ? (
+                                    <div className="flex flex-col items-center justify-center py-4">
+                                        <svg className="animate-spin h-6 w-6 text-gray-600 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span className="text-xs text-gray-500">Đang tải ảnh lên...</span>
+                                    </div>
+                                ) : formData.imageUrl ? (
+                                    <div className="relative flex items-center justify-center">
+                                        <img src={formData.imageUrl} alt="Preview" className="max-h-32 object-contain rounded shadow-sm" />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded">
+                                            <span className="text-white text-xs font-bold border border-white px-2 py-1 rounded">Thay đổi</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="py-4 text-gray-400">
+                                        <svg className="mx-auto h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <span className="text-xs">Bấm để chọn ảnh từ máy</span>
+                                    </div>
+                                )}
                             </div>
+                            
+                            {/* Hiển thị URL dạng readonly để debug nếu cần */}
+                            <input 
+                                name="imageUrl" 
+                                value={formData.imageUrl} 
+                                readOnly 
+                                className="w-full mt-2 p-1.5 border-none text-gray-400 bg-transparent text-[10px] focus:ring-0 text-center" 
+                                placeholder="URL ảnh sẽ hiện ở đây sau khi upload"
+                            />
                         </div>
+                        {/* --- HẾT PHẦN UPLOAD ẢNH --- */}
+
                         <div>
                              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rộng (cm)</label>
                              <input type="number" name="widthCm" value={formData.widthCm} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" step="0.1" />
@@ -157,7 +221,7 @@ const ProductForm: React.FC<{
                 </div>
                 <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                     <button onClick={onCancel} className="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">Hủy bỏ</button>
-                    <button onClick={() => onSave(formData)} className="px-5 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded transition-colors shadow-sm">Lưu thay đổi</button>
+                    <button onClick={() => onSave(formData)} disabled={isUploading} className="px-5 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded transition-colors shadow-sm disabled:opacity-50">Lưu thay đổi</button>
                 </div>
             </div>
         </div>

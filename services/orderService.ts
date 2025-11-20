@@ -1,29 +1,21 @@
 
 // services/orderService.ts
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import type { Order } from '../types';
-
-// Hàm phụ: Upload ảnh (Giữ nguyên để sau này dùng)
-const uploadImageToStorage = async (dataUrl: string, orderId: string, timestamp: number) => {
-    try {
-        const storageRef = ref(storage, `orders/${orderId}/preview_${timestamp}.png`);
-        await uploadString(storageRef, dataUrl, 'data_url');
-        return await getDownloadURL(storageRef);
-    } catch (error) {
-        console.error("Lỗi upload ảnh:", error);
-        return null;
-    }
-};
+import { uploadToCloudinary } from './uploadService';
 
 // 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
-        // Xử lý ảnh: Bỏ qua upload để tránh lỗi CORS/Cloudinary
+        // Xử lý ảnh: Upload ảnh preview lên Cloudinary nếu là chuỗi base64
+        // Điều này giúp giảm kích thước document Firestore tránh lỗi QuotaExceeded
         const itemsWithImages = await Promise.all(order.items.map(async (item) => {
-            // Logic cũ: return { ...item, previewImageUrl: "" }; 
-            // Giữ nguyên dataUrl base64 để hiển thị được ngay, hoặc xử lý upload tại đây nếu backend hỗ trợ
+            if (item.previewImageUrl && item.previewImageUrl.startsWith('data:')) {
+                const cloudUrl = await uploadToCloudinary(item.previewImageUrl);
+                // Nếu upload thành công thì dùng link mới, nếu lỗi thì giữ nguyên base64 (fallback)
+                return { ...item, previewImageUrl: cloudUrl || item.previewImageUrl };
+            }
             return item; 
         }));
 
