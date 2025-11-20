@@ -17,7 +17,6 @@ import FramePreview from './components/FramePreview';
 import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
-import { getGeneralAssets } from './services/settingsService'; // Lấy cấu hình giao diện
 
 declare var html2canvas: any;
 
@@ -71,28 +70,67 @@ type Transform = { x: number; y: number; rotation: number; scale: number; width?
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
+  
   return (
-    <div className="flex items-center space-x-2 sm:space-x-4 my-4 overflow-x-auto no-scrollbar pb-2">
-      {steps.map((label, index) => {
-        const stepNumber = index + 1;
-        const isActive = currentStep === stepNumber;
-        const isCompleted = currentStep > stepNumber;
+    <div className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2">
+      <div className="flex justify-between md:justify-start md:gap-4 items-center relative md:w-max">
+        {/* Connecting Line Background */}
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 transform -translate-y-1/2 hidden sm:block"></div>
+        
+        {steps.map((label, index) => {
+            const stepNumber = index + 1;
+            const isActive = currentStep === stepNumber;
+            const isCompleted = currentStep > stepNumber;
+            
+            return (
+                <button
+                    key={index}
+                    onClick={() => setStep(stepNumber)}
+                    className={`
+                        relative flex items-center justify-center
+                        transition-all duration-300 ease-in-out
+                        ${isActive ? 'flex-grow sm:flex-grow-0' : 'flex-shrink-0'}
+                    `}
+                    style={{ minWidth: isActive ? 'auto' : '32px' }}
+                >
+                    <div className={`
+                        flex items-center rounded-full border-2 transition-all duration-300 overflow-hidden bg-white
+                        ${isActive 
+                            ? 'border-luvin-pink pl-1 pr-4 py-1 gap-2 shadow-sm w-full' 
+                            : isCompleted 
+                                ? 'border-luvin-pink p-1 w-8 h-8 justify-center' 
+                                : 'border-gray-300 p-1 w-8 h-8 justify-center'
+                        }
+                        sm:w-auto sm:h-auto sm:px-4 sm:py-1.5 sm:gap-2
+                    `}>
+                        {/* Circle Number/Icon */}
+                        <div className={`
+                            w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors
+                            ${isActive 
+                                ? 'bg-luvin-pink text-white' 
+                                : isCompleted 
+                                    ? 'bg-luvin-pink text-white' 
+                                    : 'bg-gray-200 text-gray-500'
+                            }
+                        `}>
+                            {isCompleted ? '✓' : stepNumber}
+                        </div>
 
-        return(
-          <button
-            key={index}
-            onClick={() => setStep(stepNumber)}
-            className={`flex flex-shrink-0 items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 ${
-              isActive ? 'bg-luvin-pink text-white' : isCompleted ? 'bg-gray-300 text-gray-700' : 'bg-white text-gray-500 border border-gray-300'
-            }`}
-          >
-            <div className={`w-4 h-4 flex items-center justify-center rounded-full text-xs font-bold ${isActive ? 'bg-white text-luvin-pink' : 'bg-gray-400 text-white'}`}>
-              {stepNumber}
-            </div>
-            <span>{label}</span>
-          </button>
-        );
-      })}
+                        {/* Label Text */}
+                        <span className={`
+                            text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-300
+                            ${isActive 
+                                ? 'text-luvin-pink opacity-100 max-w-[150px]' 
+                                : 'text-gray-500 max-w-0 opacity-0 sm:max-w-[150px] sm:opacity-100 sm:block hidden'
+                            }
+                        `}>
+                            {label}
+                        </span>
+                    </div>
+                </button>
+            );
+        })}
+      </div>
     </div>
   );
 };
@@ -741,7 +779,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
   );
 };
 
-const HomePage: React.FC<{ navigateTo: (page: Page) => void; assets: any }> = ({ navigateTo, assets }) => {
+const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) => {
   const BowIcon = () => (
     <svg className="w-6 h-6 text-luvin-pink opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -770,7 +808,7 @@ const HomePage: React.FC<{ navigateTo: (page: Page) => void; assets: any }> = ({
     <div>
       <div className="flex flex-col min-h-[calc(100vh-80px)]">
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
-          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${assets.hero})`}}></div>
+          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${GENERAL_ASSETS.hero})`}}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
              <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
              <p className="font-script text-3xl my-4 text-gray-600">self love, self care</p>
@@ -786,7 +824,7 @@ const HomePage: React.FC<{ navigateTo: (page: Page) => void; assets: any }> = ({
 
       <div className="container mx-auto my-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
-          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${assets.inspire})`}}></div>
+          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${GENERAL_ASSETS.inspire})`}}></div>
           <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative">
               <div className="relative w-full max-w-xs aspect-square">
                   {sliderProducts.map((product, index) => (
@@ -1142,6 +1180,17 @@ const BuilderPage: React.FC<{
                         setIsEditingText={setIsEditingText}
                     />
                 </div>
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
+                    <span className="text-amber-500 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                    </span>
+                    <div className="text-xs text-amber-900 leading-relaxed">
+                        <p className="font-bold mb-1">Lưu ý quan trọng:</p>
+                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
+                    </div>
+                </div>
                 <div className="h-10 mt-4"></div>
             </div>
           </div>
@@ -1352,8 +1401,7 @@ const CheckoutPage: React.FC<{
   allParts: Record<string, LegoPart>;
   onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => void;
   onZoomImage: (url: string) => void;
-  assets: any;
-}> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, assets }) => {
+}> = ({ cartItems, allParts, onPlaceOrder, onZoomImage }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -1518,7 +1566,7 @@ const CheckoutPage: React.FC<{
 
             <div className="bg-gray-50 p-4 rounded-lg border">
                  <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
-                    <img src={assets.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
+                    <img src={GENERAL_ASSETS.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
                     <div className="flex-grow">
                         <span className="font-semibold text-gray-800">Thêm hộp quà</span>
                         <p className="text-xs text-gray-500">Hộp quà cao cấp & thiệp viết tay.</p>
@@ -1587,7 +1635,7 @@ const CheckoutPage: React.FC<{
   );
 };
 
-const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void, assets: any }> = ({ order, navigateTo, onZoomImage, assets }) => {
+const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void }> = ({ order, navigateTo, onZoomImage }) => {
     useEffect(() => {
         if (!order) {
             navigateTo('home');
@@ -1597,19 +1645,6 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
     if (!order) return null;
 
     const amountRemaining = order.totalPrice - order.amountToPay;
-
-    // Generate VietQR Link
-    const getVietQR = (order: Order) => {
-        const BANK_ID = '970407'; // Techcombank ID (970407) or ShortName (TCB)
-        const ACCOUNT_NO = '65838666666';
-        const TEMPLATE = 'compact2'; // or 'compact'
-        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
-        const amount = order.amountToPay || order.totalPrice;
-        
-        // If user has customized QR image in assets, use that as base or instruction, otherwise generate dynamic QR
-        // But dynamic generation is best. 
-        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
-    };
 
     return (
         <div className="bg-gray-50 py-12">
@@ -1625,7 +1660,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                     
                     <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
                         <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
-                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto" />
+                        <img src={GENERAL_ASSETS.vietqr} alt="VietQR" className="mt-4 w-48 mx-auto" />
                         <div className="mt-4 bg-white p-3 rounded-lg border">
                            <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
                            <p className="font-bold text-gray-800 tracking-wider">{order.id}</p>
@@ -1835,9 +1870,6 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-  
-  // New State for Dynamic Assets
-  const [assets, setAssets] = useState(GENERAL_ASSETS);
 
   const allParts = useMemo(() => Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), []);
 
@@ -1845,17 +1877,6 @@ const App: React.FC = () => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
-
-  // --- LOAD ASSETS ON MOUNT ---
-  useEffect(() => {
-    const loadAssets = async () => {
-        const dynamicAssets = await getGeneralAssets();
-        if (dynamicAssets) {
-            setAssets(dynamicAssets);
-        }
-    };
-    loadAssets();
-  }, []);
 
   // --- ADDED HASH LISTENER FOR ADMIN ROUTING ---
   useEffect(() => {
@@ -1901,15 +1922,15 @@ const App: React.FC = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'home': return <HomePage navigateTo={navigateTo} assets={assets} />;
+      case 'home': return <HomePage navigateTo={navigateTo} />;
       case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} />;
       case 'collection': return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
       case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />;
-      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} assets={assets} />;
-      case 'order-confirmation': return <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={handleZoomImage} assets={assets} />;
+      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} />;
+      case 'order-confirmation': return <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={handleZoomImage} />;
       case 'order-lookup': return <OrderLookupPage onZoomImage={handleZoomImage} />;
       case 'admin': return <AdminPage />; 
-      default: return <HomePage navigateTo={navigateTo} assets={assets} />;
+      default: return <HomePage navigateTo={navigateTo} />;
     }
   };
 

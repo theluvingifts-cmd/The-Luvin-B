@@ -1,3 +1,4 @@
+
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig } from '../types';
@@ -469,7 +470,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         <Transformable 
                             key={id} id={id} initialTransform={item} onTransform={onItemTransform} onRemove={onItemRemove}
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={isInteractive} 
+                            isResizable={false} 
                             isRotatable={isInteractive} 
                             isDraggable={isInteractive}
                             zIndex={10} // Accessories are on top of characters

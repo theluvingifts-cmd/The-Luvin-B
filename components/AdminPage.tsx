@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
-import { getGeneralAssets, saveGeneralAssets } from '../services/settingsService';
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem } from '../types';
@@ -107,10 +106,9 @@ const StatusDropdown: React.FC<{
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
-    onSave: (part: LegoPart) => Promise<void>; 
-    onCancel: () => void;
-    isSaving: boolean;
-}> = ({ initialData, onSave, onCancel, isSaving }) => {
+    onSave: (part: LegoPart) => void; 
+    onCancel: () => void 
+}> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
         id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1
     });
@@ -158,10 +156,8 @@ const ProductForm: React.FC<{
                     </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
-                    <button onClick={onCancel} disabled={isSaving} className="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors disabled:opacity-50">Hủy bỏ</button>
-                    <button onClick={() => onSave(formData)} disabled={isSaving} className="px-5 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded transition-colors shadow-sm disabled:opacity-50">
-                        {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                    </button>
+                    <button onClick={onCancel} className="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">Hủy bỏ</button>
+                    <button onClick={() => onSave(formData)} className="px-5 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded transition-colors shadow-sm">Lưu thay đổi</button>
                 </div>
             </div>
         </div>
@@ -198,14 +194,13 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'assets'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products'>('dashboard');
 
     // Time Filters
     const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
 
     // Inputs & Search
     const [isEditingProduct, setIsEditingProduct] = useState(false);
-    const [isSavingProduct, setIsSavingProduct] = useState(false);
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
@@ -213,17 +208,12 @@ const AdminPage: React.FC = () => {
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
 
-    // Assets Settings
-    const [assets, setAssets] = useState<any>({});
-    const [isSavingAssets, setIsSavingAssets] = useState(false);
-
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 setCurrentUser(user);
                 fetchOrders();
                 fetchProducts();
-                fetchAssets();
             } else {
                 setCurrentUser(null);
             }
@@ -251,43 +241,12 @@ const AdminPage: React.FC = () => {
     const handleLogout = async () => { await signOut(auth); };
     const fetchOrders = async () => { const data = await getAllOrders(); setOrders(data); };
     const fetchProducts = async () => { const data = await getAllParts(); setProducts(data); };
-    const fetchAssets = async () => { const data = await getGeneralAssets(); setAssets(data); };
-
     const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
-    
-    const handleSaveProduct = async (part: LegoPart) => {
-        setIsSavingProduct(true);
-        if (editingPart) {
-             await updatePart(part.id, part);
-        } else {
-             await addPart(part);
-        }
-        await fetchProducts();
-        setIsSavingProduct(false);
-        setIsEditingProduct(false);
-        setEditingPart(null);
-    };
-
+    const handleSaveProduct = async (part: LegoPart) => { setIsEditingProduct(false); if (editingPart) await updatePart(part.id, part); else await addPart(part); fetchProducts(); setEditingPart(null); };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); fetchProducts(); } };
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
     
-    const handleSaveAssets = async () => {
-        setIsSavingAssets(true);
-        const result = await saveGeneralAssets(assets);
-        setIsSavingAssets(false);
-        
-        if (result.success) {
-            alert("Đã lưu cấu hình giao diện!");
-        } else {
-            if (result.code === 'permission-denied') {
-                 alert("Lỗi phân quyền: Bạn không có quyền chỉnh sửa cấu hình này trên Firebase. Vui lòng kiểm tra lại tài khoản hoặc Security Rules.");
-            } else {
-                 alert(`Có lỗi xảy ra khi lưu: ${result.error?.message || 'Lỗi không xác định'}`);
-            }
-        }
-    };
-
     const handleDeleteOrder = async () => {
         if (!selectedOrder) return;
         if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không? Hành động này không thể hoàn tác.`)) {
@@ -615,10 +574,7 @@ const AdminPage: React.FC = () => {
                              <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Dashboard</button>
                             <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Đơn hàng</button>
                             {role === 'admin' && (
-                                <>
-                                    <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
-                                    <button onClick={() => setActiveTab('assets')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'assets' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Giao diện</button>
-                                </>
+                                <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
                             )}
                         </nav>
                     </div>
@@ -631,12 +587,7 @@ const AdminPage: React.FC = () => {
                     <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2 shadow-lg">
                         <button onClick={() => {setActiveTab('dashboard'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Dashboard</button>
                         <button onClick={() => {setActiveTab('orders'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Đơn hàng</button>
-                        {role === 'admin' && (
-                            <>
-                                <button onClick={() => {setActiveTab('products'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Sản phẩm</button>
-                                <button onClick={() => {setActiveTab('assets'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Giao diện</button>
-                            </>
-                        )}
+                        {role === 'admin' && <button onClick={() => {setActiveTab('products'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Sản phẩm</button>}
                     </div>
                 )}
             </header>
@@ -946,43 +897,7 @@ const AdminPage: React.FC = () => {
                          {products.length === 0 && (<div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-center"><button onClick={handleSeedData} className="text-xs text-gray-500 underline hover:text-gray-900">Database trống? Bấm để đồng bộ dữ liệu mẫu</button></div>)}
                     </div>
                 )}
-
-                {activeTab === 'assets' && role === 'admin' && (
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 max-w-4xl mx-auto animate-fade-in">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Cấu hình Giao diện</h2>
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Hero Banner (Trang chủ)</label>
-                                    <input type="text" className="w-full p-2 border rounded" value={assets.hero || ''} onChange={e => setAssets({...assets, hero: e.target.value})} />
-                                    {assets.hero && <img src={assets.hero} className="mt-2 h-32 object-cover rounded border" />}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Ảnh truyền cảm hứng (Trang chủ)</label>
-                                    <input type="text" className="w-full p-2 border rounded" value={assets.inspire || ''} onChange={e => setAssets({...assets, inspire: e.target.value})} />
-                                    {assets.inspire && <img src={assets.inspire} className="mt-2 h-32 object-cover rounded border" />}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Ảnh Hộp quà (Trang Checkout)</label>
-                                    <input type="text" className="w-full p-2 border rounded" value={assets.giftbox || ''} onChange={e => setAssets({...assets, giftbox: e.target.value})} />
-                                    {assets.giftbox && <img src={assets.giftbox} className="mt-2 h-20 object-contain rounded border bg-gray-50" />}
-                                </div>
-                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Ảnh QR Code (Tuỳ chọn, mặc định dùng VietQR động)</label>
-                                    <input type="text" className="w-full p-2 border rounded" value={assets.vietqr || ''} onChange={e => setAssets({...assets, vietqr: e.target.value})} placeholder="URL ảnh QR tĩnh (nếu có)" />
-                                    {assets.vietqr && <img src={assets.vietqr} className="mt-2 h-32 object-contain rounded border" />}
-                                </div>
-                            </div>
-                            <div className="pt-4 border-t flex justify-end">
-                                <button onClick={handleSaveAssets} disabled={isSavingAssets} className="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 disabled:opacity-50">
-                                    {isSavingAssets ? 'Đang lưu...' : 'Lưu cấu hình'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => setIsEditingProduct(false)} isSaving={isSavingProduct} />}
+                {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => setIsEditingProduct(false)} />}
                 {loading && <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50"><div className="text-gray-900 font-bold">Đang xử lý...</div></div>}
             </main>
         </div>
