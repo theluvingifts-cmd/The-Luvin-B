@@ -38,6 +38,15 @@ export interface LegoPart {
   dy?: number; 
 }
 
+// Interface mới cho Background
+export interface PresetBackground {
+    id: string;
+    name: string;
+    url: string;
+    category: string;
+    type: 'square' | 'rectangle'; // Phân loại cho khung vuông hoặc chữ nhật
+}
+
 export interface LegoCharacterConfig {
   id: number;
   hair?: LegoPart;

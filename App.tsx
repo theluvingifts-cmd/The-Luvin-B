@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order } from './types';
+import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground } from './types';
 import { 
     FRAME_OPTIONS, 
     LEGO_PARTS, 
@@ -16,6 +16,7 @@ import {
 import FramePreview from './components/FramePreview';
 import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
 import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
+import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
@@ -174,7 +175,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
 };
 
 const PresetBackgroundButton: React.FC<{
-    bg: { name: string; url: string };
+    bg: PresetBackground;
     isSelected: boolean;
     onClick: () => void;
 }> = ({ bg, isSelected, onClick }) => {
@@ -224,7 +225,8 @@ const Step2BackgroundAndDecorations: React.FC<{
   setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
   addText: () => void;
   addCharm: (dataUrl: string) => void;
-}> = ({ config, setConfig, addText, addCharm }) => {
+  backgrounds: PresetBackground[];
+}> = ({ config, setConfig, addText, addCharm, backgrounds }) => {
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -232,8 +234,9 @@ const Step2BackgroundAndDecorations: React.FC<{
   const availableBackgrounds = useMemo(() => {
     // Check if the selected frame is square ('sm' or 'lg') or rectangle ('md')
     const isSquare = config.frameId === 'sm' || config.frameId === 'lg';
-    return isSquare ? PRESET_BACKGROUNDS_SQUARE : PRESET_BACKGROUNDS_RECTANGLE;
-  }, [config.frameId]);
+    const typeNeeded = isSquare ? 'square' : 'rectangle';
+    return backgrounds.filter(bg => bg.type === typeNeeded);
+  }, [config.frameId, backgrounds]);
 
   const categories = useMemo(() => {
     return ['Tất cả', ...Array.from(new Set(availableBackgrounds.map(bg => bg.category)))];
@@ -304,7 +307,7 @@ const Step2BackgroundAndDecorations: React.FC<{
           {filteredBackgrounds.length > 0 ? (
             filteredBackgrounds.map((bg) => (
               <PresetBackgroundButton
-                key={bg.name}
+                key={bg.id}
                 bg={bg}
                 isSelected={config.background.value === bg.url}
                 onClick={() => setConfig((prev) => ({ ...prev, background: { type: 'image', value: bg.url } }))}
@@ -976,7 +979,8 @@ const BuilderPage: React.FC<{
     onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
     showToast: (message: string, type: 'success' | 'error') => void;
     legoParts: typeof LEGO_PARTS; // New prop
-}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts }) => {
+    backgrounds: PresetBackground[]; // New prop
+}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts, backgrounds }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1168,7 +1172,7 @@ const BuilderPage: React.FC<{
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
       case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
@@ -1916,16 +1920,25 @@ const App: React.FC = () => {
   
   // STATE MỚI: Lưu danh sách sản phẩm động từ DB
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
+  // STATE MỚI: Lưu background động từ DB
+  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([
+      ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: bg.name, type: 'square' as const })),
+      ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: bg.name, type: 'rectangle' as const }))
+  ]); // Fallback với type chính xác
 
-  // Fetch products on mount
+
+  // Fetch products & backgrounds on mount
   useEffect(() => {
-      const fetchParts = async () => {
-          const parts = await getAllParts();
+      const fetchData = async () => {
+          const [parts, bgs] = await Promise.all([getAllParts(), getAllBackgrounds()]);
           if (parts && parts.length > 0) {
               setLegoParts(categorizeParts(parts));
           }
+          if (bgs && bgs.length > 0) {
+              setBackgrounds(bgs);
+          }
       };
-      fetchParts();
+      fetchData();
   }, []);
 
   // Tính toán allParts dựa trên legoParts động thay vì hằng số tĩnh
@@ -1981,8 +1994,8 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'home': return <HomePage navigateTo={navigateTo} />;
-      // Truyền legoParts vào BuilderPage
-      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} legoParts={legoParts} />;
+      // Truyền legoParts và backgrounds vào BuilderPage
+      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} legoParts={legoParts} backgrounds={backgrounds} />;
       case 'collection': return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
       case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />;
       case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} />;
