@@ -8,7 +8,7 @@ import { uploadToCloudinary } from '../services/uploadService'; // Import hàm u
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS, PRESET_BACKGROUNDS_SQUARE, PRESET_BACKGROUNDS_RECTANGLE } from '../constants';
+import { FRAME_OPTIONS, LEGO_PARTS } from '../constants';
 
 // --- CONSTANTS & HELPERS ---
 
@@ -338,10 +338,6 @@ const AdminPage: React.FC = () => {
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
 
-    // Background Filters
-    const [bgCategoryFilter, setBgCategoryFilter] = useState('all');
-    const [bgTypeFilter, setBgTypeFilter] = useState('all');
-
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -378,45 +374,8 @@ const AdminPage: React.FC = () => {
     const fetchProducts = async () => { const data = await getAllParts(); setProducts(data); };
     const fetchBackgrounds = async () => { const data = await getAllBackgrounds(); setBackgrounds(data); };
     
-    const handleSeedData = async () => { 
-        if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { 
-            setLoading(true); 
-            try {
-                await seedDatabase(); 
-                await fetchProducts();
-                alert("Đã đồng bộ dữ liệu sản phẩm thành công!");
-            } catch (error: any) {
-                console.error(error);
-                if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
-                     alert("LỖI QUYỀN TRUY CẬP: Tài khoản của bạn chưa được cấp quyền ghi vào Database.\n\nVui lòng kiểm tra lại Firestore Rules hoặc đăng nhập đúng tài khoản Admin.");
-                } else {
-                     alert("Đã xảy ra lỗi khi đồng bộ: " + (error.message || "Lỗi không xác định"));
-                }
-            } finally {
-                setLoading(false); 
-            }
-        } 
-    };
-
-    const handleSeedBackgrounds = async () => { 
-        if (confirm("Thao tác này sẽ thêm các background mẫu vào danh sách. Tiếp tục?")) { 
-            setLoading(true); 
-            try {
-                await seedBackgrounds(); 
-                await fetchBackgrounds(); 
-                alert("Đã đồng bộ dữ liệu background thành công!");
-            } catch (error: any) {
-                console.error(error);
-                if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
-                     alert("LỖI QUYỀN TRUY CẬP: Tài khoản của bạn chưa được cấp quyền ghi vào Database.\n\nVui lòng kiểm tra lại Firestore Rules hoặc đăng nhập đúng tài khoản Admin.");
-                } else {
-                     alert("Đã xảy ra lỗi khi đồng bộ: " + (error.message || "Lỗi không xác định"));
-                }
-            } finally {
-                setLoading(false);
-            }
-        } 
-    };
+    const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
+    const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); fetchBackgrounds(); } };
     
     const handleSaveProduct = async (part: LegoPart) => { setIsEditingProduct(false); if (editingPart) await updatePart(part.id, part); else await addPart(part); fetchProducts(); setEditingPart(null); };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); fetchProducts(); } };
@@ -479,6 +438,161 @@ const AdminPage: React.FC = () => {
         }
 
         return { totalPrice, amountToPay };
+    };
+
+    // --- EDIT ORDER LOGIC EXTENDED ---
+    const startEditingOrder = () => {
+        if (!selectedOrder) return;
+        setEditForm(JSON.parse(JSON.stringify(selectedOrder))); // Deep copy to avoid ref issues
+        setIsEditingOrder(true);
+    };
+
+    const cancelEditingOrder = () => {
+        setEditForm(null);
+        setIsEditingOrder(false);
+        setAddingAccessoryToItemIndex(null);
+    };
+
+    const saveOrderChanges = async () => {
+        if (!editForm || !selectedOrder) return;
+        
+        setLoading(true);
+        await handleUpdate(selectedOrder.id, editForm, false);
+        setIsEditingOrder(false);
+        setEditForm(null);
+        setLoading(false);
+        alert("Đã lưu thay đổi!");
+    };
+
+    const updateEditFormWithPrice = (newOrder: Order) => {
+        const { totalPrice, amountToPay } = calculateOrderPrice(newOrder, products);
+        return { ...newOrder, totalPrice, amountToPay };
+    };
+
+    const handleEditFormChange = (field: string, value: any, nestedField?: string, itemIndex?: number) => {
+        if (!editForm) return;
+        
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            
+            if (itemIndex !== undefined && nestedField === 'frameId') {
+                 const newItems = [...newOrder.items];
+                 newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
+                 newOrder.items = newItems;
+                 newOrder = updateEditFormWithPrice(newOrder); // Recalculate price
+            } else if (nestedField && field === 'customer') {
+                newOrder.customer = { ...newOrder.customer, [nestedField]: value };
+            } else if (field === 'delivery' && nestedField) {
+                newOrder.delivery = { ...newOrder.delivery, [nestedField]: value };
+            } else {
+                // Direct field update (e.g., manual price override)
+                (newOrder as any)[field] = value;
+            }
+            return newOrder;
+        });
+    };
+
+    const handleAddCharacter = (itemIndex: number) => {
+        if (!editForm) return;
+        
+        // Default empty character
+        const newChar: LegoCharacterConfig = {
+            id: Date.now(),
+            x: 50, y: 50, rotation: 0, scale: 1,
+            // Default parts will be undefined, allowing selection via dropdowns
+        };
+
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            // Append new char
+            newItems[itemIndex] = { 
+                ...newItems[itemIndex], 
+                characters: [...newItems[itemIndex].characters, newChar] 
+            };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder);
+        });
+    };
+
+    const handleRemoveCharacter = (itemIndex: number, charIndex: number) => {
+        if (!editForm) return;
+
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            // Filter out char
+            const newChars = newItems[itemIndex].characters.filter((_, i) => i !== charIndex);
+            newItems[itemIndex] = { ...newItems[itemIndex], characters: newChars };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder);
+        });
+    };
+
+    const handleCharacterChange = (itemIndex: number, charIndex: number, partType: keyof LegoCharacterConfig, partId: string) => {
+        if (!editForm) return;
+        
+        const selectedPart = products.find(p => p.id === partId);
+        // Allow selecting "None" (empty string)
+        
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            const newCharacters = [...newItems[itemIndex].characters];
+            
+            if (partId === "") {
+                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
+            } else if (selectedPart) {
+                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
+                 // Reset color if changing part
+                 if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = selectedPart.colors?.[0];
+                 if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = selectedPart.colors?.[0];
+            }
+
+            newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder); // Recalculate price
+        });
+    };
+
+    const handleRemoveDraggable = (itemIndex: number, dragIndex: number) => {
+        if (!editForm) return;
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            const newDraggables = newItems[itemIndex].draggableItems.filter((_, i) => i !== dragIndex);
+            newItems[itemIndex] = { ...newItems[itemIndex], draggableItems: newDraggables };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder); // Recalculate price
+        });
+    };
+
+    const handleAddDraggable = (itemIndex: number, part: LegoPart) => {
+        if (!editForm) return;
+        const newItem: DraggableItem = {
+            id: Date.now(),
+            partId: part.id,
+            type: part.type as 'accessory' | 'pet',
+            x: 50, y: 50, rotation: 0, scale: 1
+        };
+
+        setEditForm(prev => {
+             if (!prev) return null;
+             let newOrder = { ...prev };
+             const newItems = [...newOrder.items];
+             newItems[itemIndex] = { 
+                 ...newItems[itemIndex], 
+                 draggableItems: [...newItems[itemIndex].draggableItems, newItem] 
+             };
+             newOrder.items = newItems;
+             return updateEditFormWithPrice(newOrder); // Recalculate price
+        });
+        setAddingAccessoryToItemIndex(null);
     };
 
     // --- DISPLAY HELPERS ---
@@ -615,32 +729,15 @@ const AdminPage: React.FC = () => {
         return result;
     }, [orders, sortMode]);
 
-    // --- BACKGROUND DATA HANDLING ---
-    // Merge presets for display if DB is empty so user can see "what would be imported"
-    // Use a special property `_isLocal` to disable editing until imported
-    const localBackgrounds: (PresetBackground & { _isLocal?: boolean })[] = useMemo(() => [
-        ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: `local_${bg.name}`, type: 'square' as const, _isLocal: true })),
-        ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: `local_${bg.name}`, type: 'rectangle' as const, _isLocal: true }))
-    ], []);
-
-    const displayBackgrounds = useMemo(() => {
-        if (backgrounds.length > 0) return backgrounds;
-        return localBackgrounds;
-    }, [backgrounds, localBackgrounds]);
-
-    // Filter Logic for Backgrounds
-    const filteredBackgrounds = useMemo(() => {
-        return displayBackgrounds.filter(bg => {
-            const matchCat = bgCategoryFilter === 'all' || bg.category === bgCategoryFilter;
-            const matchType = bgTypeFilter === 'all' || bg.type === bgTypeFilter;
-            return matchCat && matchType;
+    // --- DROPDOWN DATA FOR EDIT ---
+    const partsByType = useMemo(() => {
+        const types: Record<string, LegoPart[]> = {};
+        products.forEach(p => {
+            if (!types[p.type]) types[p.type] = [];
+            types[p.type].push(p);
         });
-    }, [displayBackgrounds, bgCategoryFilter, bgTypeFilter]);
-
-    const uniqueBgCategories = useMemo(() => {
-        const cats = new Set(displayBackgrounds.map(b => b.category).filter(Boolean));
-        return Array.from(cats).sort();
-    }, [displayBackgrounds]);
+        return types;
+    }, [products]);
 
     // Generate VietQR Link
     const getVietQR = (order: Order) => {
@@ -878,148 +975,52 @@ const AdminPage: React.FC = () => {
                             </div>
                         </div>
 
-                         {products.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-16 bg-white border-2 border-dashed border-gray-300 rounded-xl text-center">
-                                <div className="bg-blue-50 p-4 rounded-full mb-4">
-                                    <span className="text-4xl">📦</span>
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">Danh sách sản phẩm đang trống</h3>
-                                <p className="text-gray-500 max-w-md mb-6">
-                                    Database chưa có dữ liệu. Bạn có thể thêm thủ công hoặc đồng bộ dữ liệu mẫu (Lego, Phụ kiện...) để bắt đầu nhanh.
-                                </p>
-                                <button 
-                                    onClick={handleSeedData} 
-                                    disabled={loading}
-                                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
-                                >
-                                    {loading ? 'Đang xử lý...' : '⚡ Đồng bộ Dữ liệu Mẫu ngay'}
-                                </button>
-                            </div>
-                        )}
-
-                        {products.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                                {filteredProducts.map(part => (
-                                    <div key={part.id} className="bg-white border border-gray-200 rounded-lg p-3 flex flex-col gap-2 group relative">
-                                        <div className="aspect-square bg-gray-50 rounded flex items-center justify-center overflow-hidden">
-                                            <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-sm truncate">{part.name}</h4>
-                                            <p className="text-xs text-gray-500 capitalize">{part.type} - {formatCurrency(part.price)}</p>
-                                        </div>
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
-                                            <button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100">✏️</button>
-                                            <button onClick={() => handleDeleteProduct(part.id)} className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50">🗑️</button>
-                                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {filteredProducts.map(part => (
+                                <div key={part.id} className="bg-white border border-gray-200 rounded-lg p-3 flex flex-col gap-2 group relative">
+                                    <div className="aspect-square bg-gray-50 rounded flex items-center justify-center overflow-hidden">
+                                        <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain" />
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                    <div>
+                                        <h4 className="font-bold text-sm truncate">{part.name}</h4>
+                                        <p className="text-xs text-gray-500 capitalize">{part.type} - {formatCurrency(part.price)}</p>
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
+                                        <button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100">✏️</button>
+                                        <button onClick={() => handleDeleteProduct(part.id)} className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50">🗑️</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                      </div>
                 )}
 
                 {/* BACKGROUNDS TAB */}
                 {activeTab === 'backgrounds' && role === 'admin' && (
                     <div className="space-y-6 animate-fade-in">
-                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800">Quản lý Background</h2>
-                                <p className="text-xs text-gray-500 mt-1">Quản lý hình nền cho khung ảnh</p>
-                            </div>
-                             
-                             <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-                                <select 
-                                    value={bgTypeFilter} 
-                                    onChange={e => setBgTypeFilter(e.target.value)} 
-                                    className="p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-gray-200 outline-none"
-                                >
-                                    <option value="all">Tất cả loại khung</option>
-                                    <option value="square">Vuông (15x15, 23x23)</option>
-                                    <option value="rectangle">Chữ nhật (A5)</option>
-                                </select>
-                                
-                                <select 
-                                    value={bgCategoryFilter} 
-                                    onChange={e => setBgCategoryFilter(e.target.value)} 
-                                    className="p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-gray-200 outline-none"
-                                >
-                                    <option value="all">Tất cả danh mục</option>
-                                    {uniqueBgCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-
-                                <div className="flex gap-2 ml-auto">
-                                    {backgrounds.length === 0 && (
-                                        <button 
-                                            onClick={handleSeedBackgrounds} 
-                                            disabled={loading}
-                                            className="px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded hover:bg-blue-700 whitespace-nowrap disabled:opacity-50 shadow-sm flex items-center gap-2"
-                                        >
-                                            {loading ? (
-                                                <>
-                                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                                    Đang lưu...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span>☁️</span> Lưu mẫu vào Database
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
-                                    <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="px-3 py-2 text-sm font-bold text-white bg-gray-900 rounded hover:bg-black whitespace-nowrap">
-                                        + Thêm BG
-                                    </button>
-                                </div>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-gray-800">Quản lý Background</h2>
+                             <div className="flex gap-2">
+                                <button onClick={handleSeedBackgrounds} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Reset BG</button>
+                                <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded hover:bg-black">+ Thêm BG</button>
                             </div>
                         </div>
-                        
-                        {backgrounds.length === 0 && (
-                            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
-                                <div className="flex gap-3">
-                                    <span className="text-2xl">⚠️</span>
-                                    <div>
-                                        <p className="font-bold text-sm">Database chưa có dữ liệu</p>
-                                        <p className="text-xs mt-1 opacity-90">
-                                            Hệ thống đang hiển thị <strong>{localBackgrounds.length} mẫu có sẵn</strong> từ mã nguồn để bạn xem trước. 
-                                            Vui lòng bấm nút <strong>"Lưu mẫu vào Database"</strong> ở trên để kích hoạt tính năng chỉnh sửa & xóa.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                            {filteredBackgrounds.map((bg: any) => (
-                                <div key={bg.id} className={`bg-white border border-gray-200 rounded-lg p-2 group relative flex flex-col h-full hover:shadow-md transition-shadow ${bg._isLocal ? 'opacity-80 border-dashed' : ''}`}>
-                                    <div className="relative aspect-[4/5] bg-gray-100 rounded overflow-hidden mb-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {backgrounds.map(bg => (
+                                <div key={bg.id} className="bg-white border border-gray-200 rounded-lg p-2 group relative">
+                                    <div className="aspect-[4/5] bg-gray-50 rounded overflow-hidden mb-2">
                                         <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
-                                        <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                            {bg.type === 'square' ? 'Vuông' : 'A5'}
-                                        </span>
-                                        {bg._isLocal && <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[9px] px-1.5 py-0.5 rounded font-bold shadow-sm">MẪU</span>}
                                     </div>
-                                    <div className="text-center mt-auto">
-                                        <p className="font-bold text-xs sm:text-sm truncate text-gray-800" title={bg.name}>{bg.name}</p>
-                                        <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
-                                            {bg.category}
-                                        </span>
+                                    <div className="text-center">
+                                        <p className="font-bold text-sm truncate">{bg.name}</p>
+                                        <p className="text-xs text-gray-500">{bg.category}</p>
                                     </div>
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg backdrop-blur-[1px]">
-                                        {bg._isLocal ? (
-                                            <span className="text-white text-xs font-bold text-center px-2">Cần đồng bộ để sửa</span>
-                                        ) : (
-                                            <>
-                                                <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 shadow-sm transition-transform hover:scale-110" title="Sửa">✏️</button>
-                                                <button onClick={() => handleDeleteBackground(bg.id)} className="bg-white text-red-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 shadow-sm transition-transform hover:scale-110" title="Xóa">🗑️</button>
-                                            </>
-                                        )}
+                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
+                                        <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100">✏️</button>
+                                        <button onClick={() => handleDeleteBackground(bg.id)} className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50">🗑️</button>
                                     </div>
                                 </div>
                             ))}
-                             {filteredBackgrounds.length === 0 && backgrounds.length > 0 && (
-                                <p className="col-span-full text-center text-gray-500 py-10">Không có background nào phù hợp bộ lọc.</p>
-                            )}
                         </div>
                     </div>
                 )}
