@@ -338,6 +338,10 @@ const AdminPage: React.FC = () => {
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
 
+    // Background Filters
+    const [bgCategoryFilter, setBgCategoryFilter] = useState('all');
+    const [bgTypeFilter, setBgTypeFilter] = useState('all');
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -375,7 +379,14 @@ const AdminPage: React.FC = () => {
     const fetchBackgrounds = async () => { const data = await getAllBackgrounds(); setBackgrounds(data); };
     
     const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
-    const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); fetchBackgrounds(); } };
+    const handleSeedBackgrounds = async () => { 
+        if (confirm("Thao tác này sẽ thêm các background mẫu vào danh sách. Tiếp tục?")) { 
+            setLoading(true); 
+            await seedBackgrounds(); 
+            setLoading(false); 
+            fetchBackgrounds(); 
+        } 
+    };
     
     const handleSaveProduct = async (part: LegoPart) => { setIsEditingProduct(false); if (editingPart) await updatePart(part.id, part); else await addPart(part); fetchProducts(); setEditingPart(null); };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); fetchProducts(); } };
@@ -739,6 +750,20 @@ const AdminPage: React.FC = () => {
         return types;
     }, [products]);
 
+    // New Filter Logic for Backgrounds
+    const filteredBackgrounds = useMemo(() => {
+        return backgrounds.filter(bg => {
+            const matchCat = bgCategoryFilter === 'all' || bg.category === bgCategoryFilter;
+            const matchType = bgTypeFilter === 'all' || bg.type === bgTypeFilter;
+            return matchCat && matchType;
+        });
+    }, [backgrounds, bgCategoryFilter, bgTypeFilter]);
+
+    const uniqueBgCategories = useMemo(() => {
+        const cats = new Set(backgrounds.map(b => b.category).filter(Boolean));
+        return Array.from(cats).sort();
+    }, [backgrounds]);
+
     // Generate VietQR Link
     const getVietQR = (order: Order) => {
         const BANK_ID = '970407'; // Techcombank ID (970407) or ShortName (TCB)
@@ -998,30 +1023,80 @@ const AdminPage: React.FC = () => {
                 {/* BACKGROUNDS TAB */}
                 {activeTab === 'backgrounds' && role === 'admin' && (
                     <div className="space-y-6 animate-fade-in">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800">Quản lý Background</h2>
-                             <div className="flex gap-2">
-                                <button onClick={handleSeedBackgrounds} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Reset BG</button>
-                                <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded hover:bg-black">+ Thêm BG</button>
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Quản lý Background</h2>
+                                <p className="text-xs text-gray-500 mt-1">Quản lý hình nền cho khung ảnh</p>
+                            </div>
+                             
+                             <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                                <select 
+                                    value={bgTypeFilter} 
+                                    onChange={e => setBgTypeFilter(e.target.value)} 
+                                    className="p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-gray-200 outline-none"
+                                >
+                                    <option value="all">Tất cả loại khung</option>
+                                    <option value="square">Vuông (15x15, 23x23)</option>
+                                    <option value="rectangle">Chữ nhật (A5)</option>
+                                </select>
+                                
+                                <select 
+                                    value={bgCategoryFilter} 
+                                    onChange={e => setBgCategoryFilter(e.target.value)} 
+                                    className="p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-gray-200 outline-none"
+                                >
+                                    <option value="all">Tất cả danh mục</option>
+                                    {uniqueBgCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+
+                                <div className="flex gap-2 ml-auto">
+                                    <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 whitespace-nowrap">
+                                        ↻ Đồng bộ từ Code
+                                    </button>
+                                    <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="px-3 py-2 text-sm font-bold text-white bg-gray-900 rounded hover:bg-black whitespace-nowrap">
+                                        + Thêm BG
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-                            {backgrounds.map(bg => (
-                                <div key={bg.id} className="bg-white border border-gray-200 rounded-lg p-2 group relative">
-                                    <div className="aspect-[4/5] bg-gray-50 rounded overflow-hidden mb-2">
-                                        <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
+
+                        {backgrounds.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-4">🖼️</div>
+                                <h3 className="text-lg font-bold text-gray-800 mb-2">Chưa có dữ liệu Background</h3>
+                                <p className="text-gray-500 mb-6 text-center max-w-md">Danh sách hiện đang trống. Bạn có thể thêm thủ công hoặc nhập các mẫu có sẵn từ mã nguồn.</p>
+                                <button 
+                                    onClick={handleSeedBackgrounds} 
+                                    disabled={loading}
+                                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg transition-transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none flex items-center gap-2"
+                                >
+                                    {loading ? 'Đang xử lý...' : '📥 Nhập mẫu có sẵn từ Code'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {filteredBackgrounds.map(bg => (
+                                    <div key={bg.id} className="bg-white border border-gray-200 rounded-lg p-2 group relative flex flex-col h-full hover:shadow-md transition-shadow">
+                                        <div className="relative aspect-[4/5] bg-gray-100 rounded overflow-hidden mb-2">
+                                            <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
+                                            <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                                {bg.type === 'square' ? 'Vuông' : 'A5'}
+                                            </span>
+                                        </div>
+                                        <div className="text-center mt-auto">
+                                            <p className="font-bold text-xs sm:text-sm truncate text-gray-800" title={bg.name}>{bg.name}</p>
+                                            <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
+                                                {bg.category}
+                                            </span>
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg backdrop-blur-[1px]">
+                                            <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 shadow-sm transition-transform hover:scale-110" title="Sửa">✏️</button>
+                                            <button onClick={() => handleDeleteBackground(bg.id)} className="bg-white text-red-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 shadow-sm transition-transform hover:scale-110" title="Xóa">🗑️</button>
+                                        </div>
                                     </div>
-                                    <div className="text-center">
-                                        <p className="font-bold text-sm truncate">{bg.name}</p>
-                                        <p className="text-xs text-gray-500">{bg.category}</p>
-                                    </div>
-                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
-                                        <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100">✏️</button>
-                                        <button onClick={() => handleDeleteBackground(bg.id)} className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50">🗑️</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </main>
