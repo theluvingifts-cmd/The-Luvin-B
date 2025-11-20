@@ -334,7 +334,7 @@ const AdminPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds'>('dashboard');
 
     // Time Filters
-    const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
+    const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days' | 'thisMonth'>('today');
 
     // Inputs & Search
     const [isEditingProduct, setIsEditingProduct] = useState(false);
@@ -343,12 +343,18 @@ const AdminPage: React.FC = () => {
     const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
-    const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     
-    // --- FILTERS STATE ---
+    // --- ORDER FILTER STATES ---
+    const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('urgent');
+    const [orderSearch, setOrderSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterPayment, setFilterPayment] = useState('all');
+    
+    // --- PRODUCTS FILTER STATE ---
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
     
+    // --- BACKGROUND FILTER STATE ---
     const [bgSearch, setBgSearch] = useState('');
     const [bgFilterType, setBgFilterType] = useState<'all' | 'square' | 'rectangle'>('all');
     const [bgFilterCategory, setBgFilterCategory] = useState<string>('all');
@@ -636,7 +642,7 @@ const AdminPage: React.FC = () => {
     }, [products]);
 
 
-    // --- ANALYTICS LOGIC (Enhanced for specific Charms) ---
+    // --- ANALYTICS LOGIC (Updated for Month Filter) ---
     const analytics = useMemo(() => {
         const now = new Date();
         let start = getStartOfDay(now);
@@ -653,8 +659,15 @@ const AdminPage: React.FC = () => {
         } else if (filterTime === '30days') {
             start.setDate(start.getDate() - 30);
             prevStart.setDate(prevStart.getDate() - 60); prevEnd.setDate(prevEnd.getDate() - 30);
+        } else if (filterTime === 'thisMonth') {
+             start = new Date(now.getFullYear(), now.getMonth(), 1); // First day of current month
+             end = now; // Until now
+             // Prev period = Previous month
+             prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+             prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
         } else {
-            prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1);
+            // today
+             prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1);
         }
 
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
@@ -723,26 +736,72 @@ const AdminPage: React.FC = () => {
 
         const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
 
-        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel: filterTime === 'today' ? 'Hôm nay' : filterTime === 'yesterday' ? 'Hôm qua' : filterTime === '7days' ? '7 ngày qua' : '30 ngày qua' };
+        const dateLabelMap: Record<string, string> = {
+            today: 'Hôm nay',
+            yesterday: 'Hôm qua',
+            '7days': '7 ngày qua',
+            '30days': '30 ngày qua',
+            'thisMonth': 'Tháng này'
+        };
+
+        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel: dateLabelMap[filterTime] };
     }, [orders, filterTime, allKnownParts]); // Add allKnownParts dependency
 
     const filteredProducts = useMemo(() => products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), [products, productSearch, productCategory]);
     
+    // --- NEW SORTING & FILTERING LOGIC ---
     const sortedOrders = useMemo(() => {
-        let result = [...orders];
-        if (sortMode === 'urgent') {
-            result.sort((a, b) => {
-                if (a.isUrgent && !b.isUrgent) return -1;
-                if (!a.isUrgent && b.isUrgent) return 1;
-                if (a.adminDeadline && !b.adminDeadline) return -1;
-                if (!a.adminDeadline && b.adminDeadline) return 1;
-                return 0;
-            });
-        } else {
-            result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
-        }
+        // 1. Filter first
+        let result = orders.filter(o => {
+            const searchLower = orderSearch.toLowerCase();
+            const matchesSearch = 
+                o.id.toLowerCase().includes(searchLower) || 
+                o.customer.name.toLowerCase().includes(searchLower) ||
+                o.customer.phone.includes(searchLower) ||
+                o.customer.email.toLowerCase().includes(searchLower);
+
+            const matchesStatus = filterStatus === 'all' ? true : o.status === filterStatus;
+            const matchesPayment = filterPayment === 'all' ? true : o.payment.method === filterPayment;
+
+            return matchesSearch && matchesStatus && matchesPayment;
+        });
+
+        // 2. Sort logic
+        // Priority: 
+        // 1. Urgent (Manual Flag) - ONLY IF NOT SHIPPED/DONE
+        // 2. Nearest Delivery Date (ascending) - ONLY IF NOT SHIPPED/DONE
+        // 3. Created Date (descending)
+        
+        const isOrderActive = (status: string) => !['Gửi hàng đi', 'Đã giao hàng', 'Huỷ đơn'].includes(status);
+
+        result.sort((a, b) => {
+            const aActive = isOrderActive(a.status);
+            const bActive = isOrderActive(b.status);
+
+            // Logic for Urgent Flag: Only effective if order is active
+            const aIsUrgent = a.isUrgent && aActive;
+            const bIsUrgent = b.isUrgent && bActive;
+
+            if (sortMode === 'urgent') {
+                // 1. Manual Urgent Flag
+                if (aIsUrgent && !bIsUrgent) return -1;
+                if (!aIsUrgent && bIsUrgent) return 1;
+
+                // 2. Nearest Deadline (Only for active orders)
+                // If both active, compare dates. If one inactive, active one usually comes first but here we group by urgency first.
+                if (aActive && bActive) {
+                    const aDate = a.delivery.date ? new Date(a.delivery.date).getTime() : Infinity;
+                    const bDate = b.delivery.date ? new Date(b.delivery.date).getTime() : Infinity;
+                    if (aDate !== bDate) return aDate - bDate;
+                }
+            }
+            
+            // 3. Created Date (Newest first) - Default tie breaker
+            return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+
         return result;
-    }, [orders, sortMode]);
+    }, [orders, sortMode, orderSearch, filterStatus, filterPayment]);
 
     // --- FILTERED BACKGROUNDS ---
     const uniqueBgCategories = useMemo(() => {
@@ -848,8 +907,10 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'dashboard' && (
                     <div className="space-y-8 animate-fade-in">
                         <div className="flex justify-end space-x-2">
-                            {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
-                                <button key={t} onClick={() => setFilterTime(t)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${filterTime === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày qua' : '30 ngày qua'}</button>
+                            {(['today', 'yesterday', '7days', '30days', 'thisMonth'] as const).map(t => (
+                                <button key={t} onClick={() => setFilterTime(t)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${filterTime === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                                    {t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày qua' : t === '30days' ? '30 ngày qua' : 'Tháng này'}
+                                </button>
                             ))}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -914,10 +975,44 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'orders' && (
                      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-fade-in">
                         <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
-                            <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2">
-                                <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
-                                <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
+                            <div className="p-4 border-b border-gray-100 bg-gray-50 space-y-3">
+                                {/* --- SEARCH BAR --- */}
+                                <input 
+                                    type="text" 
+                                    placeholder="🔍 Tìm mã, tên, sđt..." 
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400"
+                                    value={orderSearch}
+                                    onChange={e => setOrderSearch(e.target.value)}
+                                />
+
+                                {/* --- FILTERS --- */}
+                                <div className="flex gap-2">
+                                    <select 
+                                        className="flex-1 text-xs p-2 border border-gray-300 rounded focus:outline-none"
+                                        value={filterStatus}
+                                        onChange={e => setFilterStatus(e.target.value)}
+                                    >
+                                        <option value="all">Tất cả trạng thái</option>
+                                        {STATUS_CONFIG.filter(s => !s.isAction).map(s => <option key={s.label} value={s.label}>{s.label}</option>)}
+                                    </select>
+                                    <select 
+                                        className="w-24 text-xs p-2 border border-gray-300 rounded focus:outline-none"
+                                        value={filterPayment}
+                                        onChange={e => setFilterPayment(e.target.value)}
+                                    >
+                                        <option value="all">T.Toán</option>
+                                        <option value="deposit">Cọc</option>
+                                        <option value="full">Full</option>
+                                    </select>
+                                </div>
+
+                                {/* --- SORT MODE --- */}
+                                <div className="flex gap-2 bg-white p-1 rounded border border-gray-200">
+                                    <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Ưu tiên Gấp</button>
+                                    <button onClick={() => setSortMode('newest')} className={`flex-1 py-1 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
+                                </div>
                             </div>
+
                             <div className="overflow-y-auto flex-grow divide-y divide-gray-100">
                                 {sortedOrders.map(order => (
                                     <div key={order.id} onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}>
@@ -926,6 +1021,7 @@ const AdminPage: React.FC = () => {
                                         <div className="flex justify-between items-center mt-1"><p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>{(order.adminDeadline || order.delivery.date) && (<p className="text-xs text-gray-500">{order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}</p>)}</div>
                                     </div>
                                 ))}
+                                {sortedOrders.length === 0 && <div className="p-8 text-center text-gray-400 text-sm">Không tìm thấy đơn hàng nào.</div>}
                             </div>
                         </div>
 
@@ -971,6 +1067,7 @@ const AdminPage: React.FC = () => {
                                                             <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div>
                                                             <div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div>
                                                             <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
+                                                            <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Link Social:</span> <input placeholder="Facebook/Instagram URL..." className="border rounded p-1 w-full" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} /></div>
                                                             <div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div>
                                                             <div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div>
                                                         </>
@@ -979,6 +1076,14 @@ const AdminPage: React.FC = () => {
                                                             <p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p>
                                                             <p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
                                                             <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
+                                                            {selectedOrder.customer.socialLink && (
+                                                                <p className="flex items-center gap-2">
+                                                                    <span className="text-gray-500 w-20 inline-block">Liên hệ:</span> 
+                                                                    <a href={selectedOrder.customer.socialLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1">
+                                                                        🔗 Mở Link
+                                                                    </a>
+                                                                </p>
+                                                            )}
                                                             <p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p>
                                                             <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p>
                                                         </>
