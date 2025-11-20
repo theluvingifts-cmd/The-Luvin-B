@@ -8,7 +8,7 @@ import { uploadToCloudinary } from '../services/uploadService'; // Import hàm u
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS } from '../constants';
+import { FRAME_OPTIONS, LEGO_PARTS, PRESET_BACKGROUNDS_SQUARE, PRESET_BACKGROUNDS_RECTANGLE } from '../constants';
 
 // --- CONSTANTS & HELPERS ---
 
@@ -451,161 +451,6 @@ const AdminPage: React.FC = () => {
         return { totalPrice, amountToPay };
     };
 
-    // --- EDIT ORDER LOGIC EXTENDED ---
-    const startEditingOrder = () => {
-        if (!selectedOrder) return;
-        setEditForm(JSON.parse(JSON.stringify(selectedOrder))); // Deep copy to avoid ref issues
-        setIsEditingOrder(true);
-    };
-
-    const cancelEditingOrder = () => {
-        setEditForm(null);
-        setIsEditingOrder(false);
-        setAddingAccessoryToItemIndex(null);
-    };
-
-    const saveOrderChanges = async () => {
-        if (!editForm || !selectedOrder) return;
-        
-        setLoading(true);
-        await handleUpdate(selectedOrder.id, editForm, false);
-        setIsEditingOrder(false);
-        setEditForm(null);
-        setLoading(false);
-        alert("Đã lưu thay đổi!");
-    };
-
-    const updateEditFormWithPrice = (newOrder: Order) => {
-        const { totalPrice, amountToPay } = calculateOrderPrice(newOrder, products);
-        return { ...newOrder, totalPrice, amountToPay };
-    };
-
-    const handleEditFormChange = (field: string, value: any, nestedField?: string, itemIndex?: number) => {
-        if (!editForm) return;
-        
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            
-            if (itemIndex !== undefined && nestedField === 'frameId') {
-                 const newItems = [...newOrder.items];
-                 newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
-                 newOrder.items = newItems;
-                 newOrder = updateEditFormWithPrice(newOrder); // Recalculate price
-            } else if (nestedField && field === 'customer') {
-                newOrder.customer = { ...newOrder.customer, [nestedField]: value };
-            } else if (field === 'delivery' && nestedField) {
-                newOrder.delivery = { ...newOrder.delivery, [nestedField]: value };
-            } else {
-                // Direct field update (e.g., manual price override)
-                (newOrder as any)[field] = value;
-            }
-            return newOrder;
-        });
-    };
-
-    const handleAddCharacter = (itemIndex: number) => {
-        if (!editForm) return;
-        
-        // Default empty character
-        const newChar: LegoCharacterConfig = {
-            id: Date.now(),
-            x: 50, y: 50, rotation: 0, scale: 1,
-            // Default parts will be undefined, allowing selection via dropdowns
-        };
-
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            // Append new char
-            newItems[itemIndex] = { 
-                ...newItems[itemIndex], 
-                characters: [...newItems[itemIndex].characters, newChar] 
-            };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder);
-        });
-    };
-
-    const handleRemoveCharacter = (itemIndex: number, charIndex: number) => {
-        if (!editForm) return;
-
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            // Filter out char
-            const newChars = newItems[itemIndex].characters.filter((_, i) => i !== charIndex);
-            newItems[itemIndex] = { ...newItems[itemIndex], characters: newChars };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder);
-        });
-    };
-
-    const handleCharacterChange = (itemIndex: number, charIndex: number, partType: keyof LegoCharacterConfig, partId: string) => {
-        if (!editForm) return;
-        
-        const selectedPart = products.find(p => p.id === partId);
-        // Allow selecting "None" (empty string)
-        
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            const newCharacters = [...newItems[itemIndex].characters];
-            
-            if (partId === "") {
-                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
-            } else if (selectedPart) {
-                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
-                 // Reset color if changing part
-                 if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = selectedPart.colors?.[0];
-                 if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = selectedPart.colors?.[0];
-            }
-
-            newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder); // Recalculate price
-        });
-    };
-
-    const handleRemoveDraggable = (itemIndex: number, dragIndex: number) => {
-        if (!editForm) return;
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            const newDraggables = newItems[itemIndex].draggableItems.filter((_, i) => i !== dragIndex);
-            newItems[itemIndex] = { ...newItems[itemIndex], draggableItems: newDraggables };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder); // Recalculate price
-        });
-    };
-
-    const handleAddDraggable = (itemIndex: number, part: LegoPart) => {
-        if (!editForm) return;
-        const newItem: DraggableItem = {
-            id: Date.now(),
-            partId: part.id,
-            type: part.type as 'accessory' | 'pet',
-            x: 50, y: 50, rotation: 0, scale: 1
-        };
-
-        setEditForm(prev => {
-             if (!prev) return null;
-             let newOrder = { ...prev };
-             const newItems = [...newOrder.items];
-             newItems[itemIndex] = { 
-                 ...newItems[itemIndex], 
-                 draggableItems: [...newItems[itemIndex].draggableItems, newItem] 
-             };
-             newOrder.items = newItems;
-             return updateEditFormWithPrice(newOrder); // Recalculate price
-        });
-        setAddingAccessoryToItemIndex(null);
-    };
-
     // --- DISPLAY HELPERS ---
     const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
@@ -740,29 +585,32 @@ const AdminPage: React.FC = () => {
         return result;
     }, [orders, sortMode]);
 
-    // --- DROPDOWN DATA FOR EDIT ---
-    const partsByType = useMemo(() => {
-        const types: Record<string, LegoPart[]> = {};
-        products.forEach(p => {
-            if (!types[p.type]) types[p.type] = [];
-            types[p.type].push(p);
-        });
-        return types;
-    }, [products]);
+    // --- BACKGROUND DATA HANDLING ---
+    // Merge presets for display if DB is empty so user can see "what would be imported"
+    // Use a special property `_isLocal` to disable editing until imported
+    const localBackgrounds: (PresetBackground & { _isLocal?: boolean })[] = useMemo(() => [
+        ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: `local_${bg.name}`, type: 'square' as const, _isLocal: true })),
+        ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: `local_${bg.name}`, type: 'rectangle' as const, _isLocal: true }))
+    ], []);
 
-    // New Filter Logic for Backgrounds
+    const displayBackgrounds = useMemo(() => {
+        if (backgrounds.length > 0) return backgrounds;
+        return localBackgrounds;
+    }, [backgrounds, localBackgrounds]);
+
+    // Filter Logic for Backgrounds
     const filteredBackgrounds = useMemo(() => {
-        return backgrounds.filter(bg => {
+        return displayBackgrounds.filter(bg => {
             const matchCat = bgCategoryFilter === 'all' || bg.category === bgCategoryFilter;
             const matchType = bgTypeFilter === 'all' || bg.type === bgTypeFilter;
             return matchCat && matchType;
         });
-    }, [backgrounds, bgCategoryFilter, bgTypeFilter]);
+    }, [displayBackgrounds, bgCategoryFilter, bgTypeFilter]);
 
     const uniqueBgCategories = useMemo(() => {
-        const cats = new Set(backgrounds.map(b => b.category).filter(Boolean));
+        const cats = new Set(displayBackgrounds.map(b => b.category).filter(Boolean));
         return Array.from(cats).sort();
-    }, [backgrounds]);
+    }, [displayBackgrounds]);
 
     // Generate VietQR Link
     const getVietQR = (order: Order) => {
@@ -1059,44 +907,55 @@ const AdminPage: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {backgrounds.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300">
-                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-4">🖼️</div>
-                                <h3 className="text-lg font-bold text-gray-800 mb-2">Chưa có dữ liệu Background</h3>
-                                <p className="text-gray-500 mb-6 text-center max-w-md">Danh sách hiện đang trống. Bạn có thể thêm thủ công hoặc nhập các mẫu có sẵn từ mã nguồn.</p>
+                        
+                        {backgrounds.length === 0 && (
+                            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="font-bold text-sm">Đang hiển thị dữ liệu mẫu</p>
+                                    <p className="text-xs mt-1 opacity-80">Database hiện đang trống. Danh sách dưới đây là các mẫu có sẵn trong Code. Bạn cần bấm <span className="font-bold">"Đồng bộ từ Code"</span> để lưu vào Database thì mới có thể chỉnh sửa/xóa.</p>
+                                </div>
                                 <button 
                                     onClick={handleSeedBackgrounds} 
                                     disabled={loading}
-                                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg transition-transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none flex items-center gap-2"
+                                    className="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap disabled:opacity-50"
                                 >
-                                    {loading ? 'Đang xử lý...' : '📥 Nhập mẫu có sẵn từ Code'}
+                                    {loading ? 'Đang xử lý...' : 'Đồng bộ ngay'}
                                 </button>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {filteredBackgrounds.map(bg => (
-                                    <div key={bg.id} className="bg-white border border-gray-200 rounded-lg p-2 group relative flex flex-col h-full hover:shadow-md transition-shadow">
-                                        <div className="relative aspect-[4/5] bg-gray-100 rounded overflow-hidden mb-2">
-                                            <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
-                                            <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                                {bg.type === 'square' ? 'Vuông' : 'A5'}
-                                            </span>
-                                        </div>
-                                        <div className="text-center mt-auto">
-                                            <p className="font-bold text-xs sm:text-sm truncate text-gray-800" title={bg.name}>{bg.name}</p>
-                                            <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
-                                                {bg.category}
-                                            </span>
-                                        </div>
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg backdrop-blur-[1px]">
-                                            <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 shadow-sm transition-transform hover:scale-110" title="Sửa">✏️</button>
-                                            <button onClick={() => handleDeleteBackground(bg.id)} className="bg-white text-red-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 shadow-sm transition-transform hover:scale-110" title="Xóa">🗑️</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         )}
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {filteredBackgrounds.map((bg: any) => (
+                                <div key={bg.id} className={`bg-white border border-gray-200 rounded-lg p-2 group relative flex flex-col h-full hover:shadow-md transition-shadow ${bg._isLocal ? 'opacity-80 border-dashed' : ''}`}>
+                                    <div className="relative aspect-[4/5] bg-gray-100 rounded overflow-hidden mb-2">
+                                        <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
+                                        <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                            {bg.type === 'square' ? 'Vuông' : 'A5'}
+                                        </span>
+                                        {bg._isLocal && <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[9px] px-1.5 py-0.5 rounded font-bold shadow-sm">MẪU</span>}
+                                    </div>
+                                    <div className="text-center mt-auto">
+                                        <p className="font-bold text-xs sm:text-sm truncate text-gray-800" title={bg.name}>{bg.name}</p>
+                                        <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
+                                            {bg.category}
+                                        </span>
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg backdrop-blur-[1px]">
+                                        {bg._isLocal ? (
+                                            <span className="text-white text-xs font-bold text-center px-2">Cần đồng bộ để sửa</span>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 shadow-sm transition-transform hover:scale-110" title="Sửa">✏️</button>
+                                                <button onClick={() => handleDeleteBackground(bg.id)} className="bg-white text-red-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 shadow-sm transition-transform hover:scale-110" title="Xóa">🗑️</button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                             {filteredBackgrounds.length === 0 && backgrounds.length > 0 && (
+                                <p className="col-span-full text-center text-gray-500 py-10">Không có background nào phù hợp bộ lọc.</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </main>
