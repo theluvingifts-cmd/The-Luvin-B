@@ -113,7 +113,6 @@ export interface Order {
     email: string;
     address: string;
   };
-  contactLink?: string; // Link liên hệ (Facebook/Zalo)
   delivery: {
     date: string;
     notes: string;
