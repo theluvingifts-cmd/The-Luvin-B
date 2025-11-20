@@ -19,18 +19,6 @@ const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') 
 
 const CHARACTER_BASE_PRICE = 10000;
 
-const getStartOfDay = (date: Date) => {
-    const newDate = new Date(date);
-    newDate.setHours(0, 0, 0, 0);
-    return newDate;
-};
-
-const getEndOfDay = (date: Date) => {
-    const newDate = new Date(date);
-    newDate.setHours(23, 59, 59, 999);
-    return newDate;
-};
-
 const isNearDeadline = (dateString: string) => {
     if (!dateString) return false;
     const target = new Date(dateString);
@@ -263,9 +251,6 @@ const AdminPage: React.FC = () => {
     
     const [activeStatusFilter, setActiveStatusFilter] = useState<string>('all');
 
-    // Mobile menu
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
     // Edit Mode State
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -281,15 +266,13 @@ const AdminPage: React.FC = () => {
     }, [currentUser]);
 
     const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds'>('orders');
-    const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
-
+    
     // Inputs & Search
     const [isEditingProduct, setIsEditingProduct] = useState(false);
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
     const [isEditingBackground, setIsEditingBackground] = useState(false);
     const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
     const [noteInput, setNoteInput] = useState('');
-    const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
 
@@ -310,7 +293,6 @@ const AdminPage: React.FC = () => {
     useEffect(() => {
         if (selectedOrder) {
             setNoteInput(selectedOrder.internalNotes || '');
-            setAdminDeadlineInput(selectedOrder.adminDeadline || '');
             setIsEditingOrder(false); // Reset edit mode when switching orders
             setEditForm(null);
         }
@@ -460,11 +442,6 @@ const AdminPage: React.FC = () => {
             });
         }
     };
-
-    const analytics = useMemo(() => { /* Simplified for brevity, logic remains same */ return { revenue: 0, orderCount: 0, inventory: { frames: {}, charms: {}, totalCharms: 0 }, packers: [] } }, [orders]);
-    const filteredProducts = useMemo(() => products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), [products, productSearch, productCategory]);
-    
-    const getVietQR = (order: Order) => `https://img.vietqr.io/image/970407-65838666666-compact2.png?amount=${order.amountToPay}&addInfo=${order.id.replace('#','')}&accountName=TheLuvin`;
 
     if (!currentUser) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
