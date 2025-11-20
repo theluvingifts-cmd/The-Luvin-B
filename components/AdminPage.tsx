@@ -378,13 +378,43 @@ const AdminPage: React.FC = () => {
     const fetchProducts = async () => { const data = await getAllParts(); setProducts(data); };
     const fetchBackgrounds = async () => { const data = await getAllBackgrounds(); setBackgrounds(data); };
     
-    const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
+    const handleSeedData = async () => { 
+        if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { 
+            setLoading(true); 
+            try {
+                await seedDatabase(); 
+                await fetchProducts();
+                alert("Đã đồng bộ dữ liệu sản phẩm thành công!");
+            } catch (error: any) {
+                console.error(error);
+                if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
+                     alert("LỖI QUYỀN TRUY CẬP: Tài khoản của bạn chưa được cấp quyền ghi vào Database.\n\nVui lòng kiểm tra lại Firestore Rules hoặc đăng nhập đúng tài khoản Admin.");
+                } else {
+                     alert("Đã xảy ra lỗi khi đồng bộ: " + (error.message || "Lỗi không xác định"));
+                }
+            } finally {
+                setLoading(false); 
+            }
+        } 
+    };
+
     const handleSeedBackgrounds = async () => { 
         if (confirm("Thao tác này sẽ thêm các background mẫu vào danh sách. Tiếp tục?")) { 
             setLoading(true); 
-            await seedBackgrounds(); 
-            setLoading(false); 
-            fetchBackgrounds(); 
+            try {
+                await seedBackgrounds(); 
+                await fetchBackgrounds(); 
+                alert("Đã đồng bộ dữ liệu background thành công!");
+            } catch (error: any) {
+                console.error(error);
+                if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
+                     alert("LỖI QUYỀN TRUY CẬP: Tài khoản của bạn chưa được cấp quyền ghi vào Database.\n\nVui lòng kiểm tra lại Firestore Rules hoặc đăng nhập đúng tài khoản Admin.");
+                } else {
+                     alert("Đã xảy ra lỗi khi đồng bộ: " + (error.message || "Lỗi không xác định"));
+                }
+            } finally {
+                setLoading(false);
+            }
         } 
     };
     
@@ -848,23 +878,44 @@ const AdminPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {filteredProducts.map(part => (
-                                <div key={part.id} className="bg-white border border-gray-200 rounded-lg p-3 flex flex-col gap-2 group relative">
-                                    <div className="aspect-square bg-gray-50 rounded flex items-center justify-center overflow-hidden">
-                                        <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-sm truncate">{part.name}</h4>
-                                        <p className="text-xs text-gray-500 capitalize">{part.type} - {formatCurrency(part.price)}</p>
-                                    </div>
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
-                                        <button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100">✏️</button>
-                                        <button onClick={() => handleDeleteProduct(part.id)} className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50">🗑️</button>
-                                    </div>
+                         {products.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-16 bg-white border-2 border-dashed border-gray-300 rounded-xl text-center">
+                                <div className="bg-blue-50 p-4 rounded-full mb-4">
+                                    <span className="text-4xl">📦</span>
                                 </div>
-                            ))}
-                        </div>
+                                <h3 className="text-xl font-bold text-gray-800 mb-2">Danh sách sản phẩm đang trống</h3>
+                                <p className="text-gray-500 max-w-md mb-6">
+                                    Database chưa có dữ liệu. Bạn có thể thêm thủ công hoặc đồng bộ dữ liệu mẫu (Lego, Phụ kiện...) để bắt đầu nhanh.
+                                </p>
+                                <button 
+                                    onClick={handleSeedData} 
+                                    disabled={loading}
+                                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                                >
+                                    {loading ? 'Đang xử lý...' : '⚡ Đồng bộ Dữ liệu Mẫu ngay'}
+                                </button>
+                            </div>
+                        )}
+
+                        {products.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                                {filteredProducts.map(part => (
+                                    <div key={part.id} className="bg-white border border-gray-200 rounded-lg p-3 flex flex-col gap-2 group relative">
+                                        <div className="aspect-square bg-gray-50 rounded flex items-center justify-center overflow-hidden">
+                                            <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm truncate">{part.name}</h4>
+                                            <p className="text-xs text-gray-500 capitalize">{part.type} - {formatCurrency(part.price)}</p>
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
+                                            <button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100">✏️</button>
+                                            <button onClick={() => handleDeleteProduct(part.id)} className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50">🗑️</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                      </div>
                 )}
 

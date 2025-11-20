@@ -94,8 +94,8 @@ export const seedBackgrounds = async () => {
 
         console.log(`Đã đồng bộ thành công ${count} background!`);
         return count;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Lỗi đồng bộ background:", error);
-        return 0;
+        throw error; // Ném lỗi ra ngoài để UI xử lý
     }
 };
