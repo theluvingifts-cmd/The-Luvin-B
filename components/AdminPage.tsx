@@ -45,7 +45,8 @@ const StatusDropdown: React.FC<{
     onStatusChange: (status: string) => void;
     onDelete?: () => void;
     isAdmin: boolean;
-}> = ({ currentStatus, onStatusChange, onDelete, isAdmin }) => {
+    direction?: 'up' | 'down'; // Control drop direction
+}> = ({ currentStatus, onStatusChange, onDelete, isAdmin, direction = 'down' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -62,28 +63,26 @@ const StatusDropdown: React.FC<{
     const currentConfig = STATUS_CONFIG.find(s => s.label === currentStatus) || STATUS_CONFIG[0];
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative inline-block" ref={dropdownRef}>
             <button 
-                onClick={() => setIsOpen(!isOpen)} 
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50`}
+                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50 whitespace-nowrap`}
             >
-                {/* Minimal Icon */}
                 <span>{currentConfig.icon}</span>
                 <span>{currentStatus}</span>
-                <span className={`text-xs transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                <span className={`text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
 
             {isOpen && (
-                <div className="absolute bottom-full mb-2 right-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                    <div className="p-1">
+                <div className={`absolute ${direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-[60] overflow-hidden animate-fade-in`}>
+                    <div className="p-1 max-h-60 overflow-y-auto">
                         {STATUS_CONFIG.map((status) => {
-                            // Hide 'Delete' from list if not admin or for standard flow
                             if (status.isAction && !isAdmin) return null;
-
                             return (
                                 <button
                                     key={status.label}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         setIsOpen(false);
                                         if (status.isAction && status.label === 'Xoá đơn' && onDelete) {
                                             onDelete();
@@ -91,9 +90,9 @@ const StatusDropdown: React.FC<{
                                             onStatusChange(status.label);
                                         }
                                     }}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors ${status.label === currentStatus ? 'bg-blue-50 text-blue-600' : 'text-gray-700'} ${status.isAction ? 'text-red-600 hover:bg-red-50' : ''}`}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors ${status.label === currentStatus ? 'bg-blue-50 text-blue-600' : 'text-gray-700'} ${status.isAction ? 'text-red-600 hover:bg-red-50' : ''}`}
                                 >
-                                    <span className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-md text-xs">{status.icon}</span>
+                                    <span className="w-5 h-5 flex items-center justify-center bg-gray-100 rounded-md text-[10px]">{status.icon}</span>
                                     {status.label}
                                 </button>
                             );
@@ -307,11 +306,6 @@ const AdminPage: React.FC = () => {
     // Mobile menu
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Edit Mode State
-    const [isEditingOrder, setIsEditingOrder] = useState(false);
-    const [editForm, setEditForm] = useState<Order | null>(null);
-    const [addingAccessoryToItemIndex, setAddingAccessoryToItemIndex] = useState<number | null>(null);
-
     // Role Check
     const role = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
@@ -322,7 +316,7 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds'>('orders'); // Default to orders for convenience
 
     // Time Filters
     const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
@@ -337,6 +331,14 @@ const AdminPage: React.FC = () => {
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
+    const [orderSearch, setOrderSearch] = useState(''); // New order search
+
+    // Editable order details state
+    const [editCustomerName, setEditCustomerName] = useState('');
+    const [editCustomerPhone, setEditCustomerPhone] = useState('');
+    const [editCustomerEmail, setEditCustomerEmail] = useState('');
+    const [editCustomerAddress, setEditCustomerAddress] = useState('');
+    const [editOrderNotes, setEditOrderNotes] = useState('');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -356,6 +358,12 @@ const AdminPage: React.FC = () => {
         if (selectedOrder) {
             setNoteInput(selectedOrder.internalNotes || '');
             setAdminDeadlineInput(selectedOrder.adminDeadline || '');
+            // Sync editable fields
+            setEditCustomerName(selectedOrder.customer.name);
+            setEditCustomerPhone(selectedOrder.customer.phone);
+            setEditCustomerEmail(selectedOrder.customer.email);
+            setEditCustomerAddress(selectedOrder.customer.address);
+            setEditOrderNotes(selectedOrder.delivery.notes);
         }
     }, [selectedOrder]);
 
@@ -384,220 +392,48 @@ const AdminPage: React.FC = () => {
     const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); fetchBackgrounds(); } };
 
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
-    const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
     
-    const handleDeleteOrder = async () => {
-        if (!selectedOrder) return;
-        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không? Hành động này không thể hoàn tác.`)) {
+    // Save extended admin info (Internal Note + Customer Edit)
+    const handleSaveAdminInfo = async () => { 
+        if (selectedOrder) { 
+            await handleUpdate(selectedOrder.id, { 
+                internalNotes: noteInput, 
+                adminDeadline: adminDeadlineInput,
+                customer: {
+                    ...selectedOrder.customer,
+                    name: editCustomerName,
+                    phone: editCustomerPhone,
+                    email: editCustomerEmail,
+                    address: editCustomerAddress
+                },
+                delivery: {
+                    ...selectedOrder.delivery,
+                    notes: editOrderNotes
+                }
+            }, true); 
+        } 
+    };
+    
+    const handleDeleteOrder = async (orderId?: string) => {
+        const id = orderId || selectedOrder?.id;
+        if (!id) return;
+        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${id} không? Hành động này không thể hoàn tác.`)) {
             setLoading(true);
-            await deleteOrder(selectedOrder.id);
-            setOrders(prev => prev.filter(o => o.id !== selectedOrder.id));
-            setSelectedOrder(null);
+            await deleteOrder(id);
+            setOrders(prev => prev.filter(o => o.id !== id));
+            if (selectedOrder?.id === id) setSelectedOrder(null);
             setLoading(false);
             alert('Đã xoá đơn hàng.');
         }
     };
 
-    // --- PRICE CALCULATION LOGIC ---
-    const calculateOrderPrice = (order: Order, allParts: LegoPart[]) => {
-        let subtotal = 0;
-        const partLookup = allParts.reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>);
-
-        order.items.forEach(item => {
-            const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
-            subtotal += frame.price;
-            
-            // Characters
-            subtotal += item.characters.length * CHARACTER_BASE_PRICE;
-            item.characters.forEach(char => {
-                if (char.customPrintPrice) subtotal += char.customPrintPrice;
-                if (char.hair?.price) subtotal += char.hair.price;
-                if (char.hat?.price) subtotal += char.hat.price;
-                if (char.shirt?.price) subtotal += char.shirt.price;
-                if (char.selectedShirtColor?.price) subtotal += char.selectedShirtColor.price;
-                if (char.pants?.price) subtotal += char.pants.price;
-                if (char.selectedPantsColor?.price) subtotal += char.selectedPantsColor.price;
-            });
-
-            // Accessories/Pets
-            item.draggableItems.forEach(di => {
-                if (di.type !== 'charm' && partLookup[di.partId]) {
-                     subtotal += partLookup[di.partId].price;
-                }
-            });
-        });
-
-        const giftBoxFee = order.addGiftBox ? 30000 : 0;
-        const shippingFee = order.shipping.fee || 0;
-        const totalPrice = subtotal + giftBoxFee + shippingFee;
-        
-        // Recalculate amount to pay based on payment method
-        let amountToPay = totalPrice;
-        if (order.payment.method === 'deposit') {
-            amountToPay = Math.round(totalPrice * 0.7);
-        }
-
-        return { totalPrice, amountToPay };
-    };
-
-    // --- EDIT ORDER LOGIC EXTENDED ---
-    const startEditingOrder = () => {
-        if (!selectedOrder) return;
-        setEditForm(JSON.parse(JSON.stringify(selectedOrder))); // Deep copy to avoid ref issues
-        setIsEditingOrder(true);
-    };
-
-    const cancelEditingOrder = () => {
-        setEditForm(null);
-        setIsEditingOrder(false);
-        setAddingAccessoryToItemIndex(null);
-    };
-
-    const saveOrderChanges = async () => {
-        if (!editForm || !selectedOrder) return;
-        
-        setLoading(true);
-        await handleUpdate(selectedOrder.id, editForm, false);
-        setIsEditingOrder(false);
-        setEditForm(null);
-        setLoading(false);
-        alert("Đã lưu thay đổi!");
-    };
-
-    const updateEditFormWithPrice = (newOrder: Order) => {
-        const { totalPrice, amountToPay } = calculateOrderPrice(newOrder, products);
-        return { ...newOrder, totalPrice, amountToPay };
-    };
-
-    const handleEditFormChange = (field: string, value: any, nestedField?: string, itemIndex?: number) => {
-        if (!editForm) return;
-        
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            
-            if (itemIndex !== undefined && nestedField === 'frameId') {
-                 const newItems = [...newOrder.items];
-                 newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
-                 newOrder.items = newItems;
-                 newOrder = updateEditFormWithPrice(newOrder); // Recalculate price
-            } else if (nestedField && field === 'customer') {
-                newOrder.customer = { ...newOrder.customer, [nestedField]: value };
-            } else if (field === 'delivery' && nestedField) {
-                newOrder.delivery = { ...newOrder.delivery, [nestedField]: value };
-            } else {
-                // Direct field update (e.g., manual price override)
-                (newOrder as any)[field] = value;
-            }
-            return newOrder;
-        });
-    };
-
-    const handleAddCharacter = (itemIndex: number) => {
-        if (!editForm) return;
-        
-        // Default empty character
-        const newChar: LegoCharacterConfig = {
-            id: Date.now(),
-            x: 50, y: 50, rotation: 0, scale: 1,
-            // Default parts will be undefined, allowing selection via dropdowns
-        };
-
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            // Append new char
-            newItems[itemIndex] = { 
-                ...newItems[itemIndex], 
-                characters: [...newItems[itemIndex].characters, newChar] 
-            };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder);
-        });
-    };
-
-    const handleRemoveCharacter = (itemIndex: number, charIndex: number) => {
-        if (!editForm) return;
-
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            // Filter out char
-            const newChars = newItems[itemIndex].characters.filter((_, i) => i !== charIndex);
-            newItems[itemIndex] = { ...newItems[itemIndex], characters: newChars };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder);
-        });
-    };
-
-    const handleCharacterChange = (itemIndex: number, charIndex: number, partType: keyof LegoCharacterConfig, partId: string) => {
-        if (!editForm) return;
-        
-        const selectedPart = products.find(p => p.id === partId);
-        // Allow selecting "None" (empty string)
-        
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            const newCharacters = [...newItems[itemIndex].characters];
-            
-            if (partId === "") {
-                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
-            } else if (selectedPart) {
-                 newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
-                 // Reset color if changing part
-                 if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = selectedPart.colors?.[0];
-                 if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = selectedPart.colors?.[0];
-            }
-
-            newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder); // Recalculate price
-        });
-    };
-
-    const handleRemoveDraggable = (itemIndex: number, dragIndex: number) => {
-        if (!editForm) return;
-        setEditForm(prev => {
-            if (!prev) return null;
-            let newOrder = { ...prev };
-            const newItems = [...newOrder.items];
-            const newDraggables = newItems[itemIndex].draggableItems.filter((_, i) => i !== dragIndex);
-            newItems[itemIndex] = { ...newItems[itemIndex], draggableItems: newDraggables };
-            newOrder.items = newItems;
-            return updateEditFormWithPrice(newOrder); // Recalculate price
-        });
-    };
-
-    const handleAddDraggable = (itemIndex: number, part: LegoPart) => {
-        if (!editForm) return;
-        const newItem: DraggableItem = {
-            id: Date.now(),
-            partId: part.id,
-            type: part.type as 'accessory' | 'pet',
-            x: 50, y: 50, rotation: 0, scale: 1
-        };
-
-        setEditForm(prev => {
-             if (!prev) return null;
-             let newOrder = { ...prev };
-             const newItems = [...newOrder.items];
-             newItems[itemIndex] = { 
-                 ...newItems[itemIndex], 
-                 draggableItems: [...newItems[itemIndex].draggableItems, newItem] 
-             };
-             newOrder.items = newItems;
-             return updateEditFormWithPrice(newOrder); // Recalculate price
-        });
-        setAddingAccessoryToItemIndex(null);
-    };
-
     // --- DISPLAY HELPERS ---
     const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-    const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
+    const formatDate = (dateString: string | number) => {
+        if (!dateString) return '---';
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? '---' : date.toLocaleDateString('vi-VN');
+    };
     const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString('vi-VN');
 
     // --- WAREHOUSE ACTION ---
@@ -613,15 +449,13 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    // NEW: Combine fetched products with static fallback parts to ensure names always resolve
     const allKnownParts = useMemo(() => {
         const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
         const defaultParts = Object.values(LEGO_PARTS).flat().reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
-        return { ...defaultParts, ...dbParts }; // DB parts override default if ID matches
+        return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
 
-    // --- ANALYTICS LOGIC (Enhanced for specific Charms) ---
     const analytics = useMemo(() => {
         const now = new Date();
         let start = getStartOfDay(now);
@@ -660,7 +494,7 @@ const AdminPage: React.FC = () => {
 
         const inventory = { 
             frames: {} as Record<string, number>, 
-            charms: {} as Record<string, number>, // Changed to Record for specific counts
+            charms: {} as Record<string, number>,
             totalCharms: 0,
             parts: { hair: 0, face: 0, shirt: 0, pants: 0, hat: 0 } 
         };
@@ -669,19 +503,16 @@ const AdminPage: React.FC = () => {
         currentOrders.forEach(order => {
             if (order.packedBy) packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
             order.items.forEach(item => {
-                // FIX: Use Frame Name instead of ID, handle case insensitivity
                 const frame = FRAME_OPTIONS.find(f => f.id === item.frameId.toLowerCase());
                 const frameName = frame ? `${frame.name}` : `Khung ${item.frameId}`; 
                 inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
                 
                 item.draggableItems.forEach(di => {
-                    // Logic mới để đếm chi tiết Charm
                     let itemName = '';
                     if (di.type === 'charm') {
                         itemName = 'Charm Upload (Ảnh)';
                         inventory.totalCharms++;
                     } else {
-                        // Tìm tên sản phẩm từ danh sách products HOẶC fallback constants
                         const part = allKnownParts[di.partId];
                         if (part) {
                              itemName = `${part.name}`;
@@ -709,14 +540,14 @@ const AdminPage: React.FC = () => {
         const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
 
         return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel: filterTime === 'today' ? 'Hôm nay' : filterTime === 'yesterday' ? 'Hôm qua' : filterTime === '7days' ? '7 ngày qua' : '30 ngày qua' };
-    }, [orders, filterTime, allKnownParts]); // Add allKnownParts dependency
+    }, [orders, filterTime, allKnownParts]);
 
     const filteredProducts = useMemo(() => products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), [products, productSearch, productCategory]);
     
     const sortedOrders = useMemo(() => {
         let result = [...orders];
         if (sortMode === 'urgent') {
-            result.sort((a, b) => {
+            result.filter(o => o.isUrgent || o.adminDeadline).sort((a, b) => {
                 if (a.isUrgent && !b.isUrgent) return -1;
                 if (!a.isUrgent && b.isUrgent) return 1;
                 if (a.adminDeadline && !b.adminDeadline) return -1;
@@ -726,30 +557,20 @@ const AdminPage: React.FC = () => {
         } else {
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
+        if (orderSearch) {
+            result = result.filter(o => o.id.toLowerCase().includes(orderSearch.toLowerCase()) || o.customer.name.toLowerCase().includes(orderSearch.toLowerCase()));
+        }
         return result;
-    }, [orders, sortMode]);
+    }, [orders, sortMode, orderSearch]);
 
-    // --- DROPDOWN DATA FOR EDIT ---
-    const partsByType = useMemo(() => {
-        const types: Record<string, LegoPart[]> = {};
-        products.forEach(p => {
-            if (!types[p.type]) types[p.type] = [];
-            types[p.type].push(p);
-        });
-        return types;
-    }, [products]);
-
-    // Generate VietQR Link
     const getVietQR = (order: Order) => {
-        const BANK_ID = '970407'; // Techcombank ID (970407) or ShortName (TCB)
+        const BANK_ID = '970407'; 
         const ACCOUNT_NO = '65838666666';
-        const TEMPLATE = 'compact2'; // or 'compact'
+        const TEMPLATE = 'compact2'; 
         const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
         const amount = order.amountToPay || order.totalPrice;
-        
         return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
     };
-
 
     if (!currentUser) {
         return (
@@ -774,6 +595,288 @@ const AdminPage: React.FC = () => {
         );
     }
 
+    // CONDITIONAL RENDER FOR ORDERS TAB (SPLIT VIEW)
+    if (activeTab === 'orders') {
+        return (
+            <div className="h-screen flex flex-col bg-white font-sans text-gray-900 overflow-hidden">
+                 {/* HEADER */}
+                <header className="bg-white border-b border-gray-200 flex-shrink-0">
+                    <div className="px-4 h-16 flex justify-between items-center">
+                         <div className="flex items-center gap-8">
+                            <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400">| Quản lý</span></div>
+                            <nav className="hidden md:flex gap-1">
+                                 <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-900`}>Dashboard</button>
+                                <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-900`}>Đơn hàng</button>
+                                {role === 'admin' && (
+                                    <>
+                                        <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-900`}>Sản phẩm</button>
+                                        <button onClick={() => setActiveTab('backgrounds')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-900`}>Hình nền</button>
+                                    </>
+                                )}
+                            </nav>
+                        </div>
+                        <div className="flex items-center gap-4">
+                             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors">Đăng xuất</button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* SPLIT VIEW CONTAINER */}
+                <div className="flex-grow flex overflow-hidden">
+                    {/* LEFT SIDEBAR: ORDER LIST */}
+                    <div className="w-1/3 md:w-1/4 border-r border-gray-200 bg-white flex flex-col min-w-[300px]">
+                         <div className="p-4 border-b border-gray-100 space-y-3">
+                             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                                 <button 
+                                    onClick={() => setSortMode('newest')} 
+                                    className={`flex-1 py-2 text-xs font-bold text-center ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                                >
+                                    Mới nhất
+                                </button>
+                                <button 
+                                    onClick={() => setSortMode('urgent')} 
+                                    className={`flex-1 py-2 text-xs font-bold text-center ${sortMode === 'urgent' ? 'bg-white text-red-600 shadow-sm' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                                >
+                                    Cần gấp
+                                </button>
+                             </div>
+                             <input 
+                                type="text" 
+                                placeholder="Tìm mã đơn, tên khách..." 
+                                className="w-full p-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-gray-400"
+                                value={orderSearch}
+                                onChange={(e) => setOrderSearch(e.target.value)}
+                             />
+                         </div>
+                         <div className="flex-grow overflow-y-auto">
+                             {sortedOrders.map(order => {
+                                 const statusConfig = STATUS_CONFIG.find(s => s.label === order.status) || STATUS_CONFIG[0];
+                                 return (
+                                    <div 
+                                        key={order.id} 
+                                        onClick={() => setSelectedOrder(order)}
+                                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${selectedOrder?.id === order.id ? 'bg-blue-50 hover:bg-blue-50 ring-1 ring-inset ring-blue-200' : ''} ${order.isUrgent ? 'bg-red-50 hover:bg-red-100' : ''}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-gray-800 text-sm">{order.id}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusConfig.color}`}>{order.status}</span>
+                                        </div>
+                                        <div className="text-xs font-semibold text-gray-700 mb-1 truncate">{order.customer.name}</div>
+                                        <div className="flex justify-between items-end">
+                                            <div className="text-[10px] text-gray-400 flex flex-col">
+                                                <span>{new Date(order.createdAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}</span>
+                                                <span>{new Date(order.createdAt).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'})}</span>
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                {order.delivery.date && <span className="text-[10px] text-gray-500 mb-0.5">Giao: {new Date(order.delivery.date).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'})}</span>}
+                                                <span className="font-bold text-sm text-gray-900">{formatCurrency(order.totalPrice)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                 )
+                             })}
+                             {sortedOrders.length === 0 && (
+                                 <div className="p-8 text-center text-gray-400 text-xs">Không tìm thấy đơn hàng</div>
+                             )}
+                         </div>
+                    </div>
+
+                    {/* RIGHT MAIN: ORDER DETAIL */}
+                    <div className="flex-grow bg-gray-50 overflow-y-auto">
+                        {!selectedOrder ? (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                <p className="text-sm font-medium">Chọn đơn hàng để xem chi tiết</p>
+                            </div>
+                        ) : (
+                            <div className="p-6 max-w-5xl mx-auto space-y-6">
+                                {/* Header */}
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="flex items-center gap-3">
+                                            <h2 className="text-2xl font-bold text-gray-900">{selectedOrder.id}</h2>
+                                            {selectedOrder.isUrgent && <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">GẤP</span>}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Đặt lúc: {formatDateTime(selectedOrder.createdAt)}</p>
+                                        {selectedOrder.packedBy && <p className="text-xs text-green-600 mt-0.5">✓ Đã đóng gói bởi {selectedOrder.packedBy} lúc {new Date(selectedOrder.packedAt!).toLocaleTimeString('vi-VN')}</p>}
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                         <StatusDropdown 
+                                            currentStatus={selectedOrder.status} 
+                                            onStatusChange={(s) => handleUpdate(selectedOrder.id, { status: s })}
+                                            isAdmin={role === 'admin'}
+                                            onDelete={() => handleDeleteOrder(selectedOrder.id)}
+                                            direction="down"
+                                        />
+                                        <button onClick={handleSaveAdminInfo} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition-colors shadow-sm">Lưu Ghi chú</button>
+                                    </div>
+                                </div>
+
+                                {/* Internal Note & Deadline */}
+                                <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Ghi chú nội bộ</label>
+                                        <textarea 
+                                            className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white" 
+                                            rows={3}
+                                            placeholder="Ghi chú cho admin/kho..."
+                                            value={noteInput}
+                                            onChange={(e) => setNoteInput(e.target.value)}
+                                        />
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <input type="checkbox" id="urgentCheck" checked={selectedOrder.isUrgent || false} onChange={e => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} className="rounded text-red-600 focus:ring-red-500" />
+                                            <label htmlFor="urgentCheck" className="text-xs font-bold text-red-600 cursor-pointer">Đánh dấu đơn GẤP</label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Deadline xưởng</label>
+                                        <input 
+                                            type="date" 
+                                            className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white"
+                                            value={adminDeadlineInput}
+                                            onChange={(e) => setAdminDeadlineInput(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Customer & Shipping Info */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Customer */}
+                                    <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+                                        <h3 className="text-sm font-bold text-gray-800 uppercase mb-4 border-b pb-2">Khách hàng</h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="grid grid-cols-3 items-center gap-2">
+                                                <span className="text-gray-500">Tên:</span>
+                                                <input className="col-span-2 p-1.5 border border-gray-200 rounded focus:border-blue-500 outline-none w-full" value={editCustomerName} onChange={e => setEditCustomerName(e.target.value)} />
+                                            </div>
+                                            <div className="grid grid-cols-3 items-center gap-2">
+                                                <span className="text-gray-500">SĐT:</span>
+                                                <input className="col-span-2 p-1.5 border border-gray-200 rounded focus:border-blue-500 outline-none w-full" value={editCustomerPhone} onChange={e => setEditCustomerPhone(e.target.value)} />
+                                            </div>
+                                            <div className="grid grid-cols-3 items-center gap-2">
+                                                <span className="text-gray-500">Email:</span>
+                                                <input className="col-span-2 p-1.5 border border-gray-200 rounded focus:border-blue-500 outline-none w-full" value={editCustomerEmail} onChange={e => setEditCustomerEmail(e.target.value)} />
+                                            </div>
+                                            <div className="grid grid-cols-3 items-start gap-2">
+                                                <span className="text-gray-500 mt-1.5">Địa chỉ:</span>
+                                                <textarea className="col-span-2 p-1.5 border border-gray-200 rounded focus:border-blue-500 outline-none w-full resize-none" rows={2} value={editCustomerAddress} onChange={e => setEditCustomerAddress(e.target.value)} />
+                                            </div>
+                                             <div className="grid grid-cols-3 items-start gap-2">
+                                                <span className="text-gray-500 mt-1.5">Note:</span>
+                                                <textarea className="col-span-2 p-1.5 border border-gray-200 rounded focus:border-blue-500 outline-none w-full resize-none bg-yellow-50" rows={2} value={editOrderNotes} onChange={e => setEditOrderNotes(e.target.value)} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Payment & Shipping */}
+                                    <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+                                        <h3 className="text-sm font-bold text-gray-800 uppercase mb-4 border-b pb-2">Thanh toán & Vận chuyển</h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="flex justify-between"><span className="text-gray-500">Phương thức:</span> <span className="font-medium">{selectedOrder.payment.method === 'full' ? 'Toàn bộ' : 'Cọc 70%'}</span></div>
+                                            <div className="flex justify-between"><span className="text-gray-500">Vận chuyển:</span> <span className="font-medium capitalize">{selectedOrder.shipping.method}</span></div>
+                                            <div className="border-t border-dashed my-2"></div>
+                                            <div className="flex justify-between"><span className="text-gray-500">Tổng đơn:</span> <span className="font-bold text-lg text-gray-900">{formatCurrency(selectedOrder.totalPrice)}</span></div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500">Cần thu:</span> 
+                                                <span className="font-bold text-red-600 text-lg">{formatCurrency(selectedOrder.amountToPay)}</span>
+                                            </div>
+                                            
+                                            <div className="mt-4 pt-4 border-t flex justify-center">
+                                                <div className="text-center">
+                                                    <span className="text-xs text-gray-400 mb-2 block uppercase font-bold">Mã QR thanh toán (VIETQR)</span>
+                                                    <img src={getVietQR(selectedOrder)} alt="QR" className="w-24 h-24 border rounded p-1 mx-auto" />
+                                                    <div className="text-[10px] text-gray-500 mt-1">{selectedOrder.id.replace('#', '')}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Products */}
+                                <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm mb-20">
+                                    <h3 className="text-sm font-bold text-gray-800 uppercase mb-4 border-b pb-2">Chi tiết sản phẩm</h3>
+                                    <div className="space-y-6">
+                                        {selectedOrder.items.map((item, idx) => (
+                                            <div key={idx} className="flex gap-4 items-start">
+                                                <div className="w-24 h-24 bg-gray-100 rounded-lg border overflow-hidden flex-shrink-0">
+                                                    {item.previewImageUrl ? (
+                                                        <a href={item.previewImageUrl} target="_blank" rel="noreferrer">
+                                                             <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="Preview" />
+                                                        </a>
+                                                    ) : <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No IMG</div>}
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <h4 className="font-bold text-gray-900">Khung: {FRAME_OPTIONS.find(f => f.id === item.frameId)?.name || item.frameId}</h4>
+                                                    <p className="text-xs text-gray-500 mb-2">Nền: {item.background.type === 'color' ? item.background.value : 'Ảnh'}</p>
+                                                    
+                                                    <div className="space-y-2">
+                                                        {item.characters.map((char, cIdx) => (
+                                                            <div key={cIdx} className="text-sm bg-gray-50 p-2 rounded border border-gray-100">
+                                                                <span className="font-semibold text-gray-700">Nhân vật {cIdx + 1}</span>
+                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-xs text-gray-600">
+                                                                    {char.hair && <p>Tóc: {char.hair.name}</p>}
+                                                                    {char.face && <p>Mặt: {char.face.name}</p>}
+                                                                    {char.shirt && <p>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</p>}
+                                                                    {char.pants && <p>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</p>}
+                                                                    {char.hat && <p>Mũ: {char.hat.name}</p>}
+                                                                    {char.customPrintPrice ? <p className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice)}</p> : null}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {item.draggableItems.length > 0 && (
+                                                            <div className="text-sm bg-gray-50 p-2 rounded border border-gray-100">
+                                                                <span className="font-semibold text-gray-700">Phụ kiện & Thú cưng</span>
+                                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                                    {item.draggableItems.map((di, dIdx) => {
+                                                                         const part = allKnownParts[di.partId];
+                                                                         const name = di.type === 'charm' ? 'Charm ảnh' : (part?.name || di.partId);
+                                                                         return <span key={dIdx} className="text-xs bg-white px-2 py-1 rounded border border-gray-200">{name}</span>
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {item.texts.length > 0 && (
+                                                            <div className="text-sm bg-gray-50 p-2 rounded border border-gray-100">
+                                                                <span className="font-semibold text-gray-700">Chữ</span>
+                                                                <div className="flex flex-col gap-1 mt-1">
+                                                                    {item.texts.map((t, tIdx) => (
+                                                                        <p key={tIdx} className="text-xs italic text-gray-600">"{t.content}" - Font: {t.font}</p>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Sticky Footer Actions */}
+                                <div className="sticky bottom-4 bg-white p-4 rounded-xl border border-gray-200 shadow-lg flex justify-between items-center z-10">
+                                     <StatusDropdown 
+                                        currentStatus={selectedOrder.status} 
+                                        onStatusChange={(s) => handleUpdate(selectedOrder.id, { status: s })}
+                                        isAdmin={role === 'admin'}
+                                        onDelete={() => handleDeleteOrder(selectedOrder.id)}
+                                        direction="up"
+                                    />
+                                     {role === 'warehouse' || role === 'admin' ? (
+                                         <button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-2">
+                                             <span>📦</span> Xác nhận đóng gói
+                                         </button>
+                                     ) : null}
+                                </div>
+
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // DEFAULT RETURN FOR OTHER TABS (DASHBOARD, PRODUCTS, BACKGROUNDS)
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
             <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
@@ -785,7 +888,7 @@ const AdminPage: React.FC = () => {
                         <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400">| {role === 'admin' ? 'Quản lý' : 'Kho vận'}</span></div>
                         <nav className="hidden md:flex gap-1">
                              <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Dashboard</button>
-                            <button onClick={() => setActiveTab('orders')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Đơn hàng</button>
+                            <button onClick={() => setActiveTab('orders')} className="px-4 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-900">Đơn hàng</button>
                             {role === 'admin' && (
                                 <>
                                     <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
@@ -890,59 +993,6 @@ const AdminPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* ORDERS TAB */}
-                {activeTab === 'orders' && (
-                    <div className="space-y-6 animate-fade-in">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800">Danh sách đơn hàng</h2>
-                            <div className="flex gap-2">
-                                <button onClick={() => setSortMode('newest')} className={`px-3 py-1.5 text-sm rounded border ${sortMode === 'newest' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600'}`}>Mới nhất</button>
-                                <button onClick={() => setSortMode('urgent')} className={`px-3 py-1.5 text-sm rounded border ${sortMode === 'urgent' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600'}`}>Gấp / Deadline</button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {sortedOrders.map(order => (
-                                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow ${selectedOrder?.id === order.id ? 'ring-2 ring-gray-900 border-transparent' : 'border-gray-200'} ${order.isUrgent ? 'bg-red-50' : ''}`}>
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-lg">{order.id}</span>
-                                                {order.isUrgent && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold">GẤP</span>}
-                                            </div>
-                                            <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
-                                        </div>
-                                        <StatusDropdown 
-                                            currentStatus={order.status} 
-                                            onStatusChange={(s) => handleUpdate(order.id, { status: s }, false)}
-                                            isAdmin={role === 'admin'}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                                        <div>
-                                            <p className="text-xs text-gray-500">Khách hàng</p>
-                                            <p className="font-medium">{order.customer.name}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Tổng tiền</p>
-                                            <p className="font-bold text-gray-900">{formatCurrency(order.totalPrice)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Thanh toán</p>
-                                            <p className={`${order.amountToPay < order.totalPrice ? 'text-orange-600' : 'text-green-600'} font-medium`}>{order.payment.method === 'deposit' ? 'Cọc 70%' : 'Full'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Giao hàng</p>
-                                            <p className="font-medium">{order.delivery.date}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {sortedOrders.length === 0 && <p className="text-center text-gray-500 py-10">Không có đơn hàng nào.</p>}
-                        </div>
-                    </div>
-                )}
-
                 {/* PRODUCTS TAB */}
                 {activeTab === 'products' && role === 'admin' && (
                      <div className="space-y-6 animate-fade-in">
@@ -1041,77 +1091,6 @@ const AdminPage: React.FC = () => {
                     onSave={handleSaveBackground} 
                     onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} 
                 />
-            )}
-            
-            {selectedOrder && (
-                <div className="fixed inset-0 z-40 flex justify-end pointer-events-none">
-                     <div className="absolute inset-0 bg-black/30 pointer-events-auto" onClick={() => setSelectedOrder(null)}></div>
-                     <div className="w-full max-w-md bg-white shadow-2xl h-full overflow-y-auto pointer-events-auto p-6 animate-slide-in">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold">{selectedOrder.id}</h2>
-                            <button onClick={() => setSelectedOrder(null)} className="text-gray-500 hover:text-gray-900 text-2xl">&times;</button>
-                        </div>
-
-                        <div className="space-y-6">
-                             {/* ADMIN ACTIONS */}
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-bold uppercase text-gray-500">Admin Notes</span>
-                                    {role === 'admin' && <button onClick={handleDeleteOrder} className="text-xs text-red-600 hover:underline">Xoá đơn</button>}
-                                </div>
-                                <textarea className="w-full p-2 border rounded text-sm mb-2" placeholder="Ghi chú nội bộ..." value={noteInput} onChange={e => setNoteInput(e.target.value)} />
-                                <input type="date" className="w-full p-2 border rounded text-sm mb-2" value={adminDeadlineInput} onChange={e => setAdminDeadlineInput(e.target.value)} />
-                                <div className="flex justify-between items-center">
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input type="checkbox" checked={selectedOrder.isUrgent || false} onChange={e => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked })} />
-                                        Đơn gấp
-                                    </label>
-                                    <button onClick={handleSaveAdminInfo} className="px-3 py-1 bg-gray-800 text-white text-xs rounded">Lưu</button>
-                                </div>
-                            </div>
-
-                             {/* CUSTOMER INFO */}
-                            <div>
-                                <h3 className="font-bold text-gray-800 border-b pb-1 mb-2">Khách hàng</h3>
-                                <p className="text-sm"><span className="text-gray-500">Tên:</span> {selectedOrder.customer.name}</p>
-                                <p className="text-sm"><span className="text-gray-500">SĐT:</span> {selectedOrder.customer.phone}</p>
-                                <p className="text-sm"><span className="text-gray-500">Đ/C:</span> {selectedOrder.customer.address}</p>
-                                <p className="text-sm"><span className="text-gray-500">Email:</span> {selectedOrder.customer.email}</p>
-                            </div>
-
-                             {/* ITEMS */}
-                             <div>
-                                <h3 className="font-bold text-gray-800 border-b pb-1 mb-2">Sản phẩm ({selectedOrder.items.length})</h3>
-                                {selectedOrder.items.map((item, idx) => (
-                                    <div key={idx} className="flex gap-3 mb-3">
-                                        <div className="w-16 h-16 bg-gray-100 rounded border overflow-hidden">
-                                            {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-semibold">Khung {item.frameId}</p>
-                                            <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
-                                        </div>
-                                    </div>
-                                ))}
-                             </div>
-
-                              {/* PAYMENT */}
-                             <div>
-                                <h3 className="font-bold text-gray-800 border-b pb-1 mb-2">Thanh toán</h3>
-                                <p className="text-sm flex justify-between"><span>Tổng tiền:</span> <span className="font-bold">{formatCurrency(selectedOrder.totalPrice)}</span></p>
-                                <p className="text-sm flex justify-between text-red-600"><span>Cần thu:</span> <span className="font-bold">{formatCurrency(selectedOrder.amountToPay)}</span></p>
-                                <div className="mt-2 text-center">
-                                    <a href={getVietQR(selectedOrder)} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline">Xem mã QR Thanh toán</a>
-                                </div>
-                             </div>
-
-                             {/* WAREHOUSE */}
-                             <button onClick={handleMarkAsPacked} className="w-full py-3 bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700">
-                                Xác nhận đã đóng gói
-                             </button>
-                        </div>
-                     </div>
-                </div>
             )}
         </div>
     );
