@@ -1433,7 +1433,7 @@ const ZoomIcon = () => (
 const CheckoutPage: React.FC<{
   cartItems: FrameConfig[];
   allParts: Record<string, LegoPart>;
-  onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => void;
+  onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => Promise<void>;
   onZoomImage: (url: string) => void;
 }> = ({ cartItems, allParts, onPlaceOrder, onZoomImage }) => {
   const [name, setName] = useState('');
@@ -1455,6 +1455,8 @@ const CheckoutPage: React.FC<{
   const [addGiftBox, setAddGiftBox] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
   
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
 
@@ -1496,24 +1498,36 @@ const CheckoutPage: React.FC<{
   const totalPrice = subtotal + shippingFee + giftBoxFee;
   const amountToPay = paymentMethod === 'deposit' ? totalPrice * 0.7 : totalPrice;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent double clicking
+
+    setIsSubmitting(true);
+
     const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || '';
     const districtName = districts.find(d => d.code === parseInt(selectedDistrict))?.name || '';
     const wardName = wards.find(w => w.code === parseInt(selectedWard))?.name || '';
     const fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
     const orderId = `#TL${Date.now().toString().slice(-6)}`;
-    onPlaceOrder({
-      id: orderId,
-      customer: { name, phone, email, address: fullAddress },
-      delivery: { date: deliveryDate, notes },
-      items: cartItems,
-      addGiftBox,
-      shipping: { method: shippingOption, fee: shippingFee },
-      payment: { method: paymentMethod },
-      totalPrice,
-      amountToPay,
-    });
+    
+    try {
+        await onPlaceOrder({
+          id: orderId,
+          customer: { name, phone, email, address: fullAddress },
+          delivery: { date: deliveryDate, notes },
+          items: cartItems,
+          addGiftBox,
+          shipping: { method: shippingOption, fee: shippingFee },
+          payment: { method: paymentMethod },
+          totalPrice,
+          amountToPay,
+        });
+        // If successful, onPlaceOrder will navigate away, so no need to reset state immediately.
+    } catch (error) {
+        console.error("Order submission error:", error);
+        setIsSubmitting(false);
+        alert("Đã có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.");
+    }
   };
 
   if (cartItems.length === 0) {
@@ -1658,8 +1672,8 @@ const CheckoutPage: React.FC<{
                   </label>
                 </div>
               </div>
-              <button type="submit" className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90">
-                ĐẶT HÀNG
+              <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-wait">
+                {isSubmitting ? 'Đang xử lý...' : 'ĐẶT HÀNG'}
               </button>
             </div>
           </div>
@@ -1679,6 +1693,16 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
     if (!order) return null;
 
     const amountRemaining = order.totalPrice - order.amountToPay;
+    
+    const getVietQR = (order: Order) => {
+        const BANK_ID = '970407'; // Techcombank
+        const ACCOUNT_NO = '65838666666';
+        const TEMPLATE = 'compact2';
+        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
+        const amount = order.amountToPay;
+        
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+    };
 
     return (
         <div className="bg-gray-50 py-12">
@@ -1694,7 +1718,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                     
                     <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
                         <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
-                        <img src={GENERAL_ASSETS.vietqr} alt="VietQR" className="mt-4 w-48 mx-auto" />
+                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto border rounded-lg" />
                         <div className="mt-4 bg-white p-3 rounded-lg border">
                            <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
                            <p className="font-bold text-gray-800 tracking-wider">{order.id}</p>
@@ -1984,6 +2008,7 @@ const App: React.FC = () => {
         navigateTo('order-confirmation');
       } else {
         alert('Có lỗi xảy ra khi tạo đơn hàng.');
+        throw new Error('Order creation failed'); // Rethrow so CheckoutPage can catch it
       }
   };
 

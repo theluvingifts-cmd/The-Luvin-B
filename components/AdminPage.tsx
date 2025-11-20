@@ -502,6 +502,45 @@ const AdminPage: React.FC = () => {
         });
     };
 
+    const handleAddCharacter = (itemIndex: number) => {
+        if (!editForm) return;
+        
+        // Default empty character
+        const newChar: LegoCharacterConfig = {
+            id: Date.now(),
+            x: 50, y: 50, rotation: 0, scale: 1,
+            // Default parts will be undefined, allowing selection via dropdowns
+        };
+
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            // Append new char
+            newItems[itemIndex] = { 
+                ...newItems[itemIndex], 
+                characters: [...newItems[itemIndex].characters, newChar] 
+            };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder);
+        });
+    };
+
+    const handleRemoveCharacter = (itemIndex: number, charIndex: number) => {
+        if (!editForm) return;
+
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            // Filter out char
+            const newChars = newItems[itemIndex].characters.filter((_, i) => i !== charIndex);
+            newItems[itemIndex] = { ...newItems[itemIndex], characters: newChars };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder);
+        });
+    };
+
     const handleCharacterChange = (itemIndex: number, charIndex: number, partType: keyof LegoCharacterConfig, partId: string) => {
         if (!editForm) return;
         
@@ -639,7 +678,10 @@ const AdminPage: React.FC = () => {
         currentOrders.forEach(order => {
             if (order.packedBy) packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
             order.items.forEach(item => {
-                inventory.frames[item.frameId] = (inventory.frames[item.frameId] || 0) + 1;
+                // FIX: Use Frame Name instead of ID
+                const frame = FRAME_OPTIONS.find(f => f.id === item.frameId);
+                const frameName = frame ? `Khung ${frame.name}` : `Khung ${item.frameId}`; 
+                inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
                 
                 item.draggableItems.forEach(di => {
                     // Logic mới để đếm chi tiết Charm
@@ -819,7 +861,7 @@ const AdminPage: React.FC = () => {
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="px-4 py-3">Loại</th><th className="px-4 py-3 text-right">Số lượng</th></tr></thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {Object.entries(analytics.inventory.frames).map(([frameId, count]) => (<tr key={frameId}><td className="px-4 py-3 font-medium text-gray-700">Khung {frameId.toUpperCase()}</td><td className="px-4 py-3 text-right font-mono">{count}</td></tr>))}
+                                            {Object.entries(analytics.inventory.frames).map(([frameId, count]) => (<tr key={frameId}><td className="px-4 py-3 font-medium text-gray-700">{frameId}</td><td className="px-4 py-3 text-right font-mono">{count}</td></tr>))}
                                             
                                             {/* Display Specific Charms */}
                                             {Object.entries(analytics.inventory.charms).map(([charmName, count]) => (
@@ -979,8 +1021,17 @@ const AdminPage: React.FC = () => {
                                                             {/* Detailed Characters */}
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                                                 {item.characters.map((char, charIdx) => (
-                                                                    <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs">
+                                                                    <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
                                                                         <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
+                                                                        {isEditingOrder && editForm && (
+                                                                            <button 
+                                                                                onClick={() => handleRemoveCharacter(idx, charIdx)} 
+                                                                                className="absolute top-1 right-1 text-red-500 hover:text-red-700 font-bold w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-100"
+                                                                                title="Xóa nhân vật"
+                                                                            >
+                                                                                &times;
+                                                                            </button>
+                                                                        )}
                                                                         {isEditingOrder && editForm ? (
                                                                             <div className="space-y-1">
                                                                                 {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (
@@ -1008,6 +1059,16 @@ const AdminPage: React.FC = () => {
                                                                         )}
                                                                     </div>
                                                                 ))}
+                                                                {isEditingOrder && editForm && (
+                                                                    <div className="flex items-center justify-center bg-gray-50 border border-dashed border-gray-300 rounded h-full min-h-[100px]">
+                                                                        <button 
+                                                                            onClick={() => handleAddCharacter(idx)}
+                                                                            className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-2 rounded hover:bg-blue-100"
+                                                                        >
+                                                                            + Thêm nhân vật
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             {/* Draggable Items (Accessories/Pets) */}
@@ -1086,11 +1147,23 @@ const AdminPage: React.FC = () => {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-20">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên sản phẩm</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Giá</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredProducts.length > 0 ? filteredProducts.map(part => (<tr key={part.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={part.imageUrl} alt="" className="w-full h-full object-contain" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{part.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{part.type}</td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{formatCurrency(part.price)}</td><td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteProduct(part.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy sản phẩm nào.</td></tr>)}
+                                    {filteredProducts.length > 0 ? filteredProducts.map(part => (<tr key={part.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={part.imageUrl} alt="" className="w-full h-full object-contain" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{part.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{part.type}</td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{formatCurrency(part.price)}</td><td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteProduct(part.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (
+                                        products.length > 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy sản phẩm nào.</td></tr>) :
+                                        (<tr>
+                                            <td colSpan={5} className="p-12 text-center">
+                                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                                     <span className="text-4xl mb-2">🧩</span>
+                                                     <p className="text-sm mb-4">Kho sản phẩm đang trống.</p>
+                                                     <button onClick={handleSeedData} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
+                                                         Đồng bộ dữ liệu mẫu
+                                                     </button>
+                                                </div>
+                                            </td>
+                                        </tr>)
+                                    )}
                                 </tbody>
                             </table>
                         </div>
-                         {products.length === 0 && (<div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-center"><button onClick={handleSeedData} className="text-xs text-gray-500 underline hover:text-gray-900">Database trống? Bấm để đồng bộ dữ liệu mẫu</button></div>)}
                     </div>
                 )}
 
@@ -1112,7 +1185,7 @@ const AdminPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {backgrounds.map(bg => (
+                                    {backgrounds.length > 0 ? backgrounds.map(bg => (
                                         <tr key={bg.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="p-3 border-b border-gray-100">
                                                 <div className="w-16 h-20 bg-gray-100 rounded overflow-hidden">
@@ -1129,11 +1202,22 @@ const AdminPage: React.FC = () => {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={5} className="p-12 text-center">
+                                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                                     <span className="text-4xl mb-2">🖼️</span>
+                                                     <p className="text-sm mb-4">Chưa có hình nền nào trong Database.</p>
+                                                     <button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
+                                                         Đồng bộ hình nền mẫu
+                                                     </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
-                         {backgrounds.length === 0 && (<div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-center"><button onClick={handleSeedBackgrounds} className="text-xs text-gray-500 underline hover:text-gray-900">Reset backgrounds về mặc định?</button></div>)}
                     </div>
                 )}
 
