@@ -1,18 +1,34 @@
-
 // services/orderService.ts
 import { db, storage } from '../config/firebase';
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Order } from '../types';
 
-// Hàm phụ: Upload ảnh (Giữ nguyên để sau này dùng)
-const uploadImageToStorage = async (dataUrl: string, orderId: string, timestamp: number) => {
+// Hàm phụ: Upload ảnh Base64 (Preview) lên Storage
+const uploadBase64Image = async (dataUrl: string, orderId: string, index: number) => {
     try {
-        const storageRef = ref(storage, `orders/${orderId}/preview_${timestamp}.png`);
+        // Tạo reference: orders/ORDER_ID/item_INDEX.png
+        const storageRef = ref(storage, `orders/${orderId}/item_${index}.png`);
+        
+        // Upload chuỗi base64
         await uploadString(storageRef, dataUrl, 'data_url');
+        
+        // Lấy URL
         return await getDownloadURL(storageRef);
     } catch (error) {
-        console.error("Lỗi upload ảnh:", error);
+        console.error("Lỗi upload ảnh preview:", error);
+        return null;
+    }
+};
+
+// Hàm phụ: Upload file ảnh thật (Admin dùng)
+export const uploadOrderImageFile = async (file: File, orderId: string, index: number) => {
+    try {
+        const storageRef = ref(storage, `orders/${orderId}/final_item_${index}_${Date.now()}.png`);
+        await uploadBytes(storageRef, file);
+        return await getDownloadURL(storageRef);
+    } catch (error) {
+        console.error("Lỗi upload ảnh final:", error);
         return null;
     }
 };
@@ -20,18 +36,25 @@ const uploadImageToStorage = async (dataUrl: string, orderId: string, timestamp:
 // 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
-        // Xử lý ảnh: Bỏ qua upload để tránh lỗi CORS/Cloudinary
-        const itemsWithImages = await Promise.all(order.items.map(async (item) => {
-            // Logic cũ: return { ...item, previewImageUrl: "" }; 
-            // Giữ nguyên dataUrl base64 để hiển thị được ngay, hoặc xử lý upload tại đây nếu backend hỗ trợ
-            return item; 
+        const timestamp = Date.now();
+        
+        // Xử lý upload ảnh preview cho từng item trong đơn hàng
+        const itemsWithUploadedImages = await Promise.all(order.items.map(async (item, index) => {
+            if (item.previewImageUrl && item.previewImageUrl.startsWith('data:image')) {
+                // Nếu là base64, upload lên Storage
+                const uploadedUrl = await uploadBase64Image(item.previewImageUrl, order.id, index);
+                return { 
+                    ...item, 
+                    previewImageUrl: uploadedUrl || item.previewImageUrl // Fallback về base64 nếu lỗi (dù rủi ro)
+                };
+            }
+            return item;
         }));
 
-        const timestamp = Date.now();
         const finalOrder: Order = {
             ...order,
-            items: itemsWithImages,
-            createdAt: timestamp, // Thêm timestamp thực
+            items: itemsWithUploadedImages,
+            createdAt: timestamp,
             status: "Chờ thanh toán",
             internalNotes: "",
             isUrgent: false,

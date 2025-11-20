@@ -1,6 +1,7 @@
 // services/productService.ts
-import { db } from '../config/firebase';
+import { db, storage } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { LEGO_PARTS } from '../constants'; // Lấy dữ liệu mẫu ban đầu
 import type { LegoPart } from '../types';
 
@@ -57,7 +58,25 @@ export const deletePart = async (partId: string) => {
     }
 };
 
-// 5. HÀM ĐẶC BIỆT: Đẩy dữ liệu mẫu từ constants.tsx lên Firebase (Chạy 1 lần đầu)
+// 5. Hàm upload ảnh sản phẩm lên Firebase Storage
+export const uploadProductImage = async (file: File): Promise<string | null> => {
+    try {
+        // Tạo đường dẫn: products/timestamp_tenfile
+        const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+        
+        // Upload file
+        await uploadBytes(storageRef, file);
+        
+        // Lấy URL tải về
+        const downloadURL = await getDownloadURL(storageRef);
+        return downloadURL;
+    } catch (error) {
+        console.error("Lỗi upload ảnh sản phẩm:", error);
+        return null;
+    }
+};
+
+// 6. HÀM ĐẶC BIỆT: Đẩy dữ liệu mẫu từ constants.tsx lên Firebase (Chạy 1 lần đầu)
 export const seedDatabase = async () => {
     try {
         console.log("Bắt đầu đồng bộ dữ liệu mẫu...");
