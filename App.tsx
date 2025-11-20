@@ -1196,7 +1196,7 @@ const BuilderPage: React.FC<{
                     </span>
                     <div className="text-xs text-amber-900 leading-relaxed">
                         <p className="font-bold mb-1">Lưu ý quan trọng:</p>
-                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục font chữ của background</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
+                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
                     </div>
                 </div>
                 <div className="h-10 mt-4"></div>
