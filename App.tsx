@@ -889,7 +889,8 @@ const TextEditor: React.FC<{
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
     selectedTextId: number;
     deselect: () => void;
-}> = ({ activeText, setConfig, selectedTextId, deselect }) => {
+    onAddText: () => void;
+}> = ({ activeText, setConfig, selectedTextId, deselect, onAddText }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
         setConfig(prev => ({
@@ -902,7 +903,14 @@ const TextEditor: React.FC<{
         <div className="p-4 border border-gray-200 rounded-lg">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-800">CHỈNH SỬA CHỮ</h3>
-                <button onClick={deselect} className="text-sm font-body bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300">Xong</button>
+                <div className="flex gap-2">
+                    <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
+                        + Thêm chữ
+                    </button>
+                    <button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
+                        Xong
+                    </button>
+                </div>
             </div>
             <div className="space-y-4">
                 <div>
@@ -1203,6 +1211,7 @@ const BuilderPage: React.FC<{
                           setConfig={setConfig}
                           selectedTextId={selectedText.id}
                           deselect={() => setSelectedItemId(null)}
+                          onAddText={addText}
                       />
                   ) : (
                       <>
