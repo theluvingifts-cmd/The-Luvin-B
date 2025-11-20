@@ -23,7 +23,15 @@ interface FramePreviewProps {
   selectedItemId: string | null;
   setSelectedItemId: (id: string | null) => void;
   setIsEditingText: (isEditing: boolean) => void;
+  allParts?: Record<string, LegoPart>;
 }
+
+// SafeImage component to handle broken URLs gracefully
+const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
+    const [hasError, setHasError] = useState(false);
+    if (hasError) return null;
+    return <img {...props} onError={() => setHasError(true)} />;
+};
 
 const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {
   const { hair, hat, face, shirt, pants } = character;
@@ -64,16 +72,16 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
         The stacking order is controlled by z-index.
       */}
       {pants && pantsImageUrl && (
-        <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />
+        <SafeImage src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />
       )}
       {shirt && shirtImageUrl && (
-        <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />
+        <SafeImage src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />
       )}
       {face && face.imageUrl && (
-        <img src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />
+        <SafeImage src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />
       )}
       {activeHeadwear && activeHeadwear.imageUrl && (
-        <img src={activeHeadwear.imageUrl} alt={activeHeadwear.name} style={{ ...partStyle, zIndex: 4 }} />
+        <SafeImage src={activeHeadwear.imageUrl} alt={activeHeadwear.name} style={{ ...partStyle, zIndex: 4 }} />
       )}
     </div>
   );
@@ -382,7 +390,7 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -409,9 +417,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       ? { backgroundColor: config.background.value }
       : { backgroundImage: `url(${config.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   
-  const allParts: Record<string, LegoPart> = {
-      ...Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {})
-  };
+  const allParts: Record<string, LegoPart> = useMemo(() => {
+      if (propAllParts) return propAllParts;
+      return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
+  }, [propAllParts]);
 
   return (
     // This outer div now correctly scales the entire component proportionally.
@@ -475,7 +484,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             isDraggable={isInteractive}
                             zIndex={10} // Accessories are on top of characters
                         >
-                            <img 
+                            <SafeImage 
                               src={imageUrl} 
                               alt={name} 
                               className="pointer-events-none"

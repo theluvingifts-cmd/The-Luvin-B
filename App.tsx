@@ -347,6 +347,8 @@ const PartButton: React.FC<{
     isSelected: boolean;
     onClick: () => void;
 }> = ({ part, isSelected, onClick }) => {
+    const [imgError, setImgError] = useState(false);
+    
     return (
         <button
             onClick={onClick}
@@ -357,7 +359,16 @@ const PartButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
-                <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain" />
+                {!imgError ? (
+                    <img 
+                        src={part.imageUrl} 
+                        alt={part.name} 
+                        className="w-full h-full object-contain" 
+                        onError={() => setImgError(true)}
+                    />
+                ) : (
+                    <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
+                )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-800">{part.name}</span>
@@ -1195,6 +1206,7 @@ const BuilderPage: React.FC<{
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
                         setIsEditingText={setIsEditingText}
+                        allParts={allParts} // PASS DYNAMIC PARTS DATA HERE
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
@@ -1308,7 +1320,7 @@ const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: numbe
                                       {item.previewImageUrl ? (
                                         <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                                       ) : (
-                                        <FramePreview config={item} containerWidth={144} onItemTransform={() => {}} onTextUpdate={() => {}} selectedItemId={null} setSelectedItemId={() => {}} isInteractive={false} onItemRemove={() => {}} setIsEditingText={() => {}} />
+                                        <FramePreview config={item} containerWidth={144} onItemTransform={() => {}} onTextUpdate={() => {}} selectedItemId={null} setSelectedItemId={() => {}} isInteractive={false} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                                       )}
                                     </div>
                                     <div className="flex-grow text-center sm:text-left">
@@ -1381,7 +1393,7 @@ const CartPanel: React.FC<{
                      {item.previewImageUrl ? (
                         <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                       ) : (
-                        <FramePreview config={item} containerWidth={72} isInteractive={false} onItemTransform={()=>{}} onTextUpdate={()=>{}} selectedItemId={null} setSelectedItemId={()=>{}} onItemRemove={() => {}} setIsEditingText={() => {}} />
+                        <FramePreview config={item} containerWidth={72} isInteractive={false} onItemTransform={()=>{}} onTextUpdate={()=>{}} selectedItemId={null} setSelectedItemId={()=>{}} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                       )}
                   </div>
                   <div className="flex-grow">
