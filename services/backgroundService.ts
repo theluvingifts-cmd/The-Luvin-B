@@ -14,12 +14,15 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
         const backgrounds: PresetBackground[] = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data() as any;
+            // Ensure type safety by validating or defaulting the 'type' field
+            const type = (data.type === 'square' || data.type === 'rectangle') ? data.type : 'square';
+            
             backgrounds.push({
                 id: doc.id,
                 name: data.name || doc.id,
                 url: data.url,
                 category: data.category || 'Khác',
-                type: (data.type === 'rectangle' ? 'rectangle' : 'square')
+                type: type
             } as PresetBackground);
         });
         return backgrounds;
