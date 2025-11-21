@@ -10,7 +10,6 @@ import {
     MOCK_ORDERS, 
     PRESET_BACKGROUNDS_SQUARE, 
     PRESET_BACKGROUNDS_RECTANGLE, 
-    PRODUCT_HIGHLIGHTS,
     GENERAL_ASSETS,
     defaultShirtColors,
     defaultPantsColors,
@@ -26,8 +25,6 @@ import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
 declare var html2canvas: any;
-
-const DEFAULT_LOGO_URL = "https://i.imgur.com/7gDkS1Q.png"; 
 
 const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
   if (amount === 0 && context === 'price') return 'Miễn phí';
@@ -322,7 +319,7 @@ const Step2BackgroundAndDecorations: React.FC<{
             ))
           ) : (
             <p className="col-span-3 text-center text-sm text-gray-500 py-10">
-              Không có mẫu nào phù hợp với lựa chọn của bạn.
+              {backgrounds.length === 0 ? "Đang tải dữ liệu..." : "Không có mẫu nào phù hợp."}
             </p>
           )}
         </div>
@@ -369,7 +366,7 @@ const PartButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
-                {!imgError ? (
+                {!imgError && part.imageUrl ? (
                     <img 
                         src={part.imageUrl} 
                         alt={part.name} 
@@ -410,16 +407,16 @@ const Step3Characters: React.FC<{
         // Use the first available part from dynamic props, fallbacks to empty object if unavailable
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
-            shirt: legoParts.shirt[0] || LEGO_PARTS.shirt[0], 
-            pants: legoParts.pants[0] || LEGO_PARTS.pants[0],
-            face: legoParts.face[0] || LEGO_PARTS.face[0], 
-            hair: legoParts.hair[0] || LEGO_PARTS.hair[0],
+            shirt: legoParts.shirt[0], 
+            pants: legoParts.pants[0],
+            face: legoParts.face[0], 
+            hair: legoParts.hair[0],
             x: 30 + (config.characters.length % 3) * 20, 
             y: 75, 
             rotation: 0, 
             scale: 1,
-            selectedShirtColor: (legoParts.shirt[0] || LEGO_PARTS.shirt[0])?.colors?.[0],
-            selectedPantsColor: (legoParts.pants[0] || LEGO_PARTS.pants[0])?.colors?.[0],
+            selectedShirtColor: legoParts.shirt[0]?.colors?.[0],
+            selectedPantsColor: legoParts.pants[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -438,7 +435,6 @@ const Step3Characters: React.FC<{
                     const newChar = { ...c, [part.type]: part };
                     // Logic to fallback if colors are missing but part type implies they should exist (Plain clothes)
                     let partColors = part.colors;
-                    // Improved check: matches ID or name with "trơn"/"plain"/"basic" (case-insensitive)
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
                         if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) {
@@ -617,14 +613,16 @@ const Step3Characters: React.FC<{
                                <span className="text-[11px] font-semibold">Không chọn</span>
                              </button>
                          )}
-                        {currentPartList.map(part => (
+                        {currentPartList.length > 0 ? currentPartList.map(part => (
                             <PartButton 
                                 key={part.id} 
                                 part={part}
                                 isSelected={activeCharacter[activePartType]?.id === part.id}
                                 onClick={() => handlePartSelect(part)} 
                             />
-                        ))}
+                        )) : (
+                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">Đang tải hoặc chưa có dữ liệu...</div>
+                        )}
                     </div>
 
                     {(activePartType === 'shirt' && activePartColors) && (
@@ -746,7 +744,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
       <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="cursor-pointer" onClick={() => handleNav('home')}>
-              <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" />
+              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-heading text-2xl text-luvin-pink">The Luvin</span>}
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => (
@@ -861,7 +859,8 @@ const HomePage: React.FC<{
     heroImage?: string;
     inspireImage?: string;
     feedbacks?: FeedbackItem[]; // Changed to prop
-}> = ({ navigateTo, heroImage, inspireImage, feedbacks }) => {
+    templates?: CollectionTemplate[]; // Added to display collections from DB
+}> = ({ navigateTo, heroImage, inspireImage, feedbacks, templates }) => {
   const BowIcon = () => (
     <svg className="w-6 h-6 text-luvin-pink opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -870,14 +869,19 @@ const HomePage: React.FC<{
   );
   
   const [activeSlide, setActiveSlide] = useState(0);
-  const sliderProducts = useMemo(() => PRODUCT_HIGHLIGHTS.slice(0, 4), []);
+  
+  // Use templates from DB if available for the carousel, fallback to constant
+  const sliderProducts = useMemo(() => {
+      if (templates && templates.length > 0) return templates.slice(0, 4);
+      return COLLECTION_TEMPLATES.slice(0, 4);
+  }, [templates]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       handleNext();
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sliderProducts]);
 
   const handlePrev = () => {
     setActiveSlide(prev => (prev - 1 + sliderProducts.length) % sliderProducts.length);
@@ -886,17 +890,17 @@ const HomePage: React.FC<{
     setActiveSlide(prev => (prev + 1) % sliderProducts.length);
   };
 
-  const finalHero = heroImage || GENERAL_ASSETS.hero;
-  const finalInspire = inspireImage || GENERAL_ASSETS.inspire;
-  
-  // Use dynamic feedbacks if available, else fallback to constant
-  const displayFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
+  // If no images are set, don't render the background image style or use a placeholder class
+  const heroStyle = heroImage ? {backgroundImage: `url(${heroImage})`} : { backgroundColor: '#fce7f3' }; 
+  const inspireStyle = inspireImage ? {backgroundImage: `url(${inspireImage})`} : { backgroundColor: '#fce7f3' };
+
+  const displayFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : [];
 
   return (
     <div>
       <div className="flex flex-col min-h-[calc(100vh-80px)]">
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
-          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${finalHero})`}}></div>
+          <div className="hidden md:block bg-cover bg-center" style={heroStyle}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
              <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
              <p className="font-script text-3xl my-4 text-gray-600">self love, self care</p>
@@ -912,34 +916,40 @@ const HomePage: React.FC<{
 
       <div className="container mx-auto my-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
-          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${finalInspire})`}}></div>
+          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={inspireStyle}></div>
           <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative">
-              <div className="relative w-full max-w-xs aspect-square">
-                  {sliderProducts.map((product, index) => (
-                      <img 
-                          key={product.id} 
-                          src={product.imageUrl} 
-                          alt={product.name}
-                          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${activeSlide === index ? 'opacity-100' : 'opacity-0'}`}
-                      />
-                  ))}
-              </div>
-               <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&larr;</button>
-               <button onClick={handleNext} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&rarr;</button>
-              <div className="flex gap-3 my-6">
-                  {sliderProducts.map((_, index) => (
-                      <button 
-                          key={index}
-                          onClick={() => setActiveSlide(index)}
-                          className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeSlide === index ? 'bg-gray-800 scale-125' : 'bg-gray-400 hover:bg-gray-400'}`}
-                          aria-label={`Go to slide ${index + 1}`}
-                      />
-                  ))}
-              </div>
-              <div className="text-center h-20">
-                   <p className="text-xs text-gray-500 uppercase tracking-wider">{sliderProducts[activeSlide].collection}</p>
-                   <h3 className="font-semibold text-lg mt-1">{sliderProducts[activeSlide].name}</h3>
-              </div>
+              {sliderProducts.length > 0 ? (
+                  <>
+                    <div className="relative w-full max-w-xs aspect-square">
+                        {sliderProducts.map((product, index) => (
+                            <img 
+                                key={product.id} 
+                                src={product.imageUrl} 
+                                alt={product.name}
+                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${activeSlide === index ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                        ))}
+                    </div>
+                    <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&larr;</button>
+                    <button onClick={handleNext} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&rarr;</button>
+                    <div className="flex gap-3 my-6">
+                        {sliderProducts.map((_, index) => (
+                            <button 
+                                key={index}
+                                onClick={() => setActiveSlide(index)}
+                                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeSlide === index ? 'bg-gray-800 scale-125' : 'bg-gray-400 hover:bg-gray-400'}`}
+                                aria-label={`Go to slide ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                    <div className="text-center h-20">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Featured</p>
+                        <h3 className="font-semibold text-lg mt-1">{sliderProducts[activeSlide].name}</h3>
+                    </div>
+                  </>
+              ) : (
+                  <p className="text-gray-500">Chưa có sản phẩm nổi bật.</p>
+              )}
           </div>
         </div>
       </div>
@@ -948,24 +958,28 @@ const HomePage: React.FC<{
         <div className="container mx-auto px-6">
           <h2 className="text-2xl font-bold font-body text-center mb-8">Our feedbacks</h2>
           <div className="w-full overflow-hidden relative">
-            <div className="flex animate-marquee whitespace-nowrap">
-                {/* Duplicate to create loop effect */}
-                {[...displayFeedbacks, ...displayFeedbacks].map((feedback, index) => (
-                   <div key={index} className="flex-shrink-0 w-60 sm:w-72 bg-luvin-cream p-4 rounded-xl flex flex-col items-center mx-4">
-                     <h3 className="font-script text-3xl text-luvin-pink mb-3">Feedback</h3>
-                     <div className="w-full aspect-square rounded-lg overflow-hidden">
-                       <img src={feedback.imageUrl} alt={feedback.name} className="w-full h-full object-cover"/>
-                     </div>
-                     <div className="mt-4 text-center whitespace-normal">
-                        <p className="text-sm font-semibold text-gray-800">{feedback.name}</p>
-                        <p className="text-xs text-gray-600 italic mt-1">"{feedback.text}"</p>
-                     </div>
-                     <div className="mt-4">
-                       <BowIcon />
-                     </div>
-                   </div>
-                ))}
-            </div>
+            {displayFeedbacks.length > 0 ? (
+                <div className="flex animate-marquee whitespace-nowrap">
+                    {/* Duplicate to create loop effect */}
+                    {[...displayFeedbacks, ...displayFeedbacks].map((feedback, index) => (
+                    <div key={index} className="flex-shrink-0 w-60 sm:w-72 bg-luvin-cream p-4 rounded-xl flex flex-col items-center mx-4">
+                        <h3 className="font-script text-3xl text-luvin-pink mb-3">Feedback</h3>
+                        <div className="w-full aspect-square rounded-lg overflow-hidden">
+                        <img src={feedback.imageUrl} alt={feedback.name} className="w-full h-full object-cover"/>
+                        </div>
+                        <div className="mt-4 text-center whitespace-normal">
+                            <p className="text-sm font-semibold text-gray-800">{feedback.name}</p>
+                            <p className="text-xs text-gray-600 italic mt-1">"{feedback.text}"</p>
+                        </div>
+                        <div className="mt-4">
+                        <BowIcon />
+                        </div>
+                    </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-center text-gray-500">Chưa có feedback nào.</p>
+            )}
             <div className="absolute top-0 left-0 w-16 h-full bg-gradient-to-r from-white to-transparent"></div>
             <div className="absolute top-0 right-0 w-16 h-full bg-gradient-to-l from-white to-transparent"></div>
           </div>
@@ -1380,7 +1394,7 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
       <div className="container mx-auto px-6 py-8">
         <h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">Bộ sưu tập The Luvin</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {displayTemplates.map((template, index) => ( 
+          {displayTemplates.length > 0 ? displayTemplates.map((template, index) => ( 
             <div key={template.id || index} className="bg-white rounded-lg shadow-lg overflow-hidden group">
               <div className="relative">
                 <img src={template.imageUrl} alt={template.name} className="w-full h-72 object-cover" />
@@ -1394,7 +1408,9 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
                 <h3 className="text-2xl font-bold font-body text-luvin-pink">{template.name}</h3>
               </div>
             </div> 
-          ))}
+          )) : (
+              <p className="col-span-3 text-center text-gray-500">Đang cập nhật bộ sưu tập...</p>
+          )}
         </div>
       </div> 
     );
@@ -2089,7 +2105,7 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_URL);
+  const [logoUrl, setLogoUrl] = useState<string>(""); // Start empty to avoid flash
   const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
   const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
 
@@ -2190,7 +2206,7 @@ const App: React.FC = () => {
         )}
         
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} />}
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} templates={templates} />}
             {currentPage === 'builder' && (
                 <BuilderPage 
                     config={config} 
