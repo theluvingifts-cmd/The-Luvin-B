@@ -334,7 +334,10 @@ const AdminPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds'>('dashboard');
 
     // Time Filters
-    const [filterTime, setFilterTime] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
+    const [filterType, setFilterType] = useState<'period' | 'month'>('period');
+    const [period, setPeriod] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
+    const [month, setMonth] = useState<number>(new Date().getMonth()); // 0-11
+    const [year, setYear] = useState<number>(new Date().getFullYear());
 
     // Inputs & Search for PRODUCTS
     const [isEditingProduct, setIsEditingProduct] = useState(false);
@@ -641,23 +644,41 @@ const AdminPage: React.FC = () => {
 
     // --- ANALYTICS LOGIC (Enhanced for specific Charms) ---
     const analytics = useMemo(() => {
-        const now = new Date();
-        let start = getStartOfDay(now);
-        let end = getEndOfDay(now);
-        let prevStart = getStartOfDay(now);
-        let prevEnd = getEndOfDay(now);
+        let start: Date, end: Date, prevStart: Date, prevEnd: Date;
+        let dateLabel = '';
 
-        if (filterTime === 'yesterday') {
-            start.setDate(start.getDate() - 1); end.setDate(end.getDate() - 1);
-            prevStart.setDate(prevStart.getDate() - 2); prevEnd.setDate(prevEnd.getDate() - 2);
-        } else if (filterTime === '7days') {
-            start.setDate(start.getDate() - 7);
-            prevStart.setDate(prevStart.getDate() - 14); prevEnd.setDate(prevEnd.getDate() - 7);
-        } else if (filterTime === '30days') {
-            start.setDate(start.getDate() - 30);
-            prevStart.setDate(prevStart.getDate() - 60); prevEnd.setDate(prevEnd.getDate() - 30);
+        if (filterType === 'month') {
+            dateLabel = `Tháng ${month + 1}/${year}`;
+            start = new Date(year, month, 1);
+            end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+            
+            // Previous month for comparison
+            prevStart = new Date(year, month - 1, 1);
+            prevEnd = new Date(year, month, 0, 23, 59, 59, 999);
         } else {
-            prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1);
+            // Period mode
+            const now = new Date();
+            start = getStartOfDay(now);
+            end = getEndOfDay(now);
+            prevStart = getStartOfDay(now);
+            prevEnd = getEndOfDay(now);
+
+            if (period === 'yesterday') {
+                start.setDate(start.getDate() - 1); end.setDate(end.getDate() - 1);
+                prevStart.setDate(prevStart.getDate() - 2); prevEnd.setDate(prevEnd.getDate() - 2);
+                dateLabel = 'Hôm qua';
+            } else if (period === '7days') {
+                start.setDate(start.getDate() - 7);
+                prevStart.setDate(prevStart.getDate() - 14); prevEnd.setDate(prevEnd.getDate() - 7);
+                dateLabel = '7 ngày qua';
+            } else if (period === '30days') {
+                start.setDate(start.getDate() - 30);
+                prevStart.setDate(prevStart.getDate() - 60); prevEnd.setDate(prevEnd.getDate() - 30);
+                dateLabel = '30 ngày qua';
+            } else {
+                prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1);
+                dateLabel = 'Hôm nay';
+            }
         }
 
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
@@ -670,15 +691,15 @@ const AdminPage: React.FC = () => {
 
         const revenue = currentOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const prevRevenue = prevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
-        const revenueGrowth = prevRevenue === 0 ? 100 : ((revenue - prevRevenue) / prevRevenue) * 100;
+        const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
 
         const orderCount = currentOrders.length;
         const prevOrderCount = prevOrders.length;
-        const orderGrowth = prevOrderCount === 0 ? 100 : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
+        const orderGrowth = prevOrderCount === 0 ? (orderCount > 0 ? 100 : 0) : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
 
         const inventory = { 
             frames: {} as Record<string, number>, 
-            charms: {} as Record<string, number>, // Changed to Record for specific counts
+            charms: {} as Record<string, number>, 
             totalCharms: 0,
             parts: { hair: 0, face: 0, shirt: 0, pants: 0, hat: 0 } 
         };
@@ -687,19 +708,16 @@ const AdminPage: React.FC = () => {
         currentOrders.forEach(order => {
             if (order.packedBy) packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
             order.items.forEach(item => {
-                // FIX: Use Frame Name instead of ID
                 const frame = FRAME_OPTIONS.find(f => f.id === item.frameId);
                 const frameName = frame ? `Khung ${frame.name}` : `Khung ${item.frameId}`; 
                 inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
                 
                 item.draggableItems.forEach(di => {
-                    // Logic mới để đếm chi tiết Charm
                     let itemName = '';
                     if (di.type === 'charm') {
                         itemName = 'Charm Upload (Ảnh)';
                         inventory.totalCharms++;
                     } else {
-                        // Tìm tên sản phẩm từ danh sách products HOẶC fallback constants
                         const part = allKnownParts[di.partId];
                         if (part) {
                              itemName = `${part.name} (${part.type})`;
@@ -726,8 +744,8 @@ const AdminPage: React.FC = () => {
 
         const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
 
-        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel: filterTime === 'today' ? 'Hôm nay' : filterTime === 'yesterday' ? 'Hôm qua' : filterTime === '7days' ? '7 ngày qua' : '30 ngày qua' };
-    }, [orders, filterTime, allKnownParts]); // Add allKnownParts dependency
+        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel };
+    }, [orders, filterType, period, month, year, allKnownParts]); 
 
     // --- FILTERING LOGIC ---
     const filteredProducts = useMemo(() => 
@@ -855,11 +873,53 @@ const AdminPage: React.FC = () => {
             <main className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6">
                 {activeTab === 'dashboard' && (
                     <div className="space-y-8 animate-fade-in">
-                        <div className="flex justify-end space-x-2">
-                            {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
-                                <button key={t} onClick={() => setFilterTime(t)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${filterTime === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày qua' : '30 ngày qua'}</button>
-                            ))}
+                        <div className="flex flex-col sm:flex-row justify-end items-center space-y-2 sm:space-y-0 sm:space-x-4 bg-white p-3 rounded-lg border shadow-sm w-fit ml-auto">
+                            {/* Filter Type Toggle */}
+                            <div className="flex bg-gray-100 p-1 rounded-md">
+                                <button 
+                                    onClick={() => setFilterType('period')}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Nhanh
+                                </button>
+                                <button 
+                                    onClick={() => setFilterType('month')}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Tháng
+                                </button>
+                            </div>
+
+                            {filterType === 'period' ? (
+                                <div className="flex gap-2">
+                                    {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
+                                        <button key={t} onClick={() => setPeriod(t)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors border ${period === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày' : '30 ngày'}</button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex gap-2 items-center">
+                                    <select 
+                                        value={month} 
+                                        onChange={(e) => setMonth(Number(e.target.value))}
+                                        className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none"
+                                    >
+                                        {Array.from({length: 12}, (_, i) => (
+                                            <option key={i} value={i}>Tháng {i + 1}</option>
+                                        ))}
+                                    </select>
+                                    <select 
+                                        value={year} 
+                                        onChange={(e) => setYear(Number(e.target.value))}
+                                        className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none"
+                                    >
+                                        <option value={2024}>2024</option>
+                                        <option value={2025}>2025</option>
+                                        <option value={2026}>2026</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {role === 'admin' && (
                                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
@@ -886,7 +946,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                                <div className="p-4 border-b border-gray-100"><h3 className="font-bold text-gray-800">Chi tiết vật tư tiêu hao</h3></div>
+                                <div className="p-4 border-b border-gray-100"><h3 className="font-bold text-gray-800">Chi tiết vật tư tiêu hao ({analytics.dateLabel})</h3></div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="px-4 py-3">Loại</th><th className="px-4 py-3 text-right">Số lượng</th></tr></thead>

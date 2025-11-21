@@ -433,11 +433,15 @@ const Step3Characters: React.FC<{
                     const newChar = { ...c, [part.type]: part };
                     // Logic to fallback if colors are missing but part type implies they should exist (Plain clothes)
                     let partColors = part.colors;
-                    if (!partColors && part.type === 'shirt' && (part.name.includes('trơn') || part.name.includes('Plain') || part.id === 'shirt1')) {
-                        partColors = defaultShirtColors;
-                    }
-                    if (!partColors && part.type === 'pants' && (part.name.includes('trơn') || part.name.includes('Plain') || part.id === 'pants1')) {
-                        partColors = defaultPantsColors;
+                    // Improved check: matches ID or name with "trơn"/"plain"/"basic" (case-insensitive)
+                    if (!partColors || partColors.length === 0) {
+                        const nameLower = part.name.toLowerCase();
+                        if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) {
+                            partColors = defaultShirtColors;
+                        }
+                        if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) {
+                            partColors = defaultPantsColors;
+                        }
                     }
 
                     if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
@@ -524,15 +528,25 @@ const Step3Characters: React.FC<{
         if (!activeCharacter) return null;
         if (activePartType === 'shirt') {
             const part = activeCharacter.shirt;
-            if (part?.colors) return part.colors;
-            // Fallback check
-            if (part && (part.id === 'shirt1' || part.name.toLowerCase().includes('trơn'))) return defaultShirtColors;
+            if (part?.colors && part.colors.length > 0) return part.colors;
+            // Fallback check - Enhanced keywords
+            if (part) {
+                const nameLower = part.name.toLowerCase();
+                if (part.id === 'shirt1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
+                    return defaultShirtColors;
+                }
+            }
         }
         if (activePartType === 'pants') {
             const part = activeCharacter.pants;
-            if (part?.colors) return part.colors;
-            // Fallback check
-            if (part && (part.id === 'pants1' || part.name.toLowerCase().includes('trơn'))) return defaultPantsColors;
+            if (part?.colors && part.colors.length > 0) return part.colors;
+            // Fallback check - Enhanced keywords
+            if (part) {
+                const nameLower = part.name.toLowerCase();
+                if (part.id === 'pants1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
+                    return defaultPantsColors;
+                }
+            }
         }
         return null;
     }, [activeCharacter, activePartType]);
