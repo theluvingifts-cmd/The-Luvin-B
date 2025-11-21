@@ -8,13 +8,13 @@ export const FRAME_OPTIONS: FrameOption[] = [
   { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: 'https://i.imgur.com/fL39v3o.jpg', description: 'Sang trọng, ấn tượng' },
 ];
 
-const defaultShirtColors: OutfitColor[] = [
+export const defaultShirtColors: OutfitColor[] = [
     { name: 'Trắng', hex: '#F8F8F8', imageUrl: 'https://lh3.googleusercontent.com/pw/AP1GczOVLrstztihrJqNhJzCC-d8TpHh0Bir1z82KMOOpuq3GOwWu6K9T6JDAyjgIBq8dj3jQaLWA9zAlZjGg2raYeER8dIVtBwMPUw6c-NbcsSlMvgYqbag39RYLuxKFZJ7Y4CkIpD3tDLQf4YkbTsrF6nT=w295-h472-s-no-gm?authuser=0', price: 0 },
     { name: 'Đỏ', hex: '#E53E3E', imageUrl: 'https://lh3.googleusercontent.com/pw/AP1GczNe9ZxuP5uYenmJ2OkBjYnoygoVshgZ2TDD8YKieOfsRQ-VLXe-lxNMIwn71vsmW7yNXS8RPo8ynHrj74ZawXVU6kwr5qbeqpDgzEBD0Zs_OiVXE-LojwwEsCVGDb6fG6DNDzDMcnIiN74tMHe9SDt9=w295-h154-s-no-gm?authuser=0', price: 10000 },
     { name: 'Xanh', hex: '#3B82F6', imageUrl: 'https://i.imgur.com/YAnk5Fv.png', price: 10000 },
 ];
 
-const defaultPantsColors: OutfitColor[] = [
+export const defaultPantsColors: OutfitColor[] = [
     { name: 'Đen', hex: '#1A202C', imageUrl: 'https://lh3.googleusercontent.com/pw/AP1GczPc3y3ZtsrHwqrhSrem6tH0Sb2jTukrs6IqM3ZcNWruncnNtpL7ysCpSNtTna2ZXX57U0imYog1TnHiBcE8P_286llBYKGzl_L0z9stZ7jhCwEYZf4BPSCsnKscwR5hqKydGhZvt6XY60yk3luu3CXi=w295-h472-s-no-gm?authuser=0', price: 0 },
     { name: 'Be', hex: '#F5F5DC', imageUrl: 'https://lh3.googleusercontent.com/pw/AP1GczNcsJgRKdG0ms5JKkz8Ka8pBJsocsiYcXh7fli0HGxzyNpQTaGvOWg3x-_Qh3Y1ZI6tRdLjAFvrt6ANJzk43UYJedjTpEJFit_UBDs_TkKMcSfPYHtvJgKFrS9iOvSXEKdjMpL-i_IfrgxVcYpZyyrC=w295-h154-s-no-gm?authuser=0', price: 10000 },
     { name: 'Xám', hex: '#A0AEC0', imageUrl: 'https://i.imgur.com/J4p3pAv.png', price: 10000 },

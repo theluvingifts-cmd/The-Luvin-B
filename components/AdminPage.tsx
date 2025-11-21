@@ -353,6 +353,7 @@ const AdminPage: React.FC = () => {
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
+    const [filterStatus, setFilterStatus] = useState<string>('all');
 
 
     useEffect(() => {
@@ -748,6 +749,11 @@ const AdminPage: React.FC = () => {
     
     const sortedOrders = useMemo(() => {
         let result = [...orders];
+        // FILTER BY STATUS
+        if (filterStatus !== 'all') {
+            result = result.filter(o => o.status === filterStatus);
+        }
+
         if (sortMode === 'urgent') {
             result.sort((a, b) => {
                 if (a.isUrgent && !b.isUrgent) return -1;
@@ -760,7 +766,7 @@ const AdminPage: React.FC = () => {
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
-    }, [orders, sortMode]);
+    }, [orders, sortMode, filterStatus]);
 
     // --- DROPDOWN DATA FOR EDIT ---
     const partsByType = useMemo(() => {
@@ -916,12 +922,35 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'orders' && (
                      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-fade-in">
                         <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
-                            <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2">
-                                <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
-                                <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
+                            <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
+                                <div className="flex gap-2 w-full">
+                                    <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
+                                    <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
+                                </div>
+                                <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+                                    <button 
+                                        onClick={() => setFilterStatus('all')}
+                                        className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}
+                                    >
+                                        Tất cả
+                                    </button>
+                                    {STATUS_CONFIG.filter(s => !s.isAction).map(status => (
+                                        <button
+                                            key={status.label}
+                                            onClick={() => setFilterStatus(status.label)}
+                                            className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors ${filterStatus === status.label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}
+                                        >
+                                            {status.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="overflow-y-auto flex-grow divide-y divide-gray-100">
-                                {sortedOrders.map(order => (
+                                {sortedOrders.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-400 text-sm">
+                                        Không có đơn hàng nào.
+                                    </div>
+                                ) : sortedOrders.map(order => (
                                     <div key={order.id} onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}>
                                         <div className="flex justify-between items-start mb-1"><span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id}</span><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span></div>
                                         <div className="flex justify-between items-center"><p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p><p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice)}</p></div>

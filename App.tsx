@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground } from './types';
 import { 
@@ -11,6 +12,8 @@ import {
     PRESET_BACKGROUNDS_RECTANGLE, 
     PRODUCT_HIGHLIGHTS,
     GENERAL_ASSETS,
+    defaultShirtColors,
+    defaultPantsColors,
 } from './constants';
 import FramePreview from './components/FramePreview';
 import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
@@ -428,8 +431,18 @@ const Step3Characters: React.FC<{
             characters: prev.characters.map(c => {
                 if (c.id === activeCharId) {
                     const newChar = { ...c, [part.type]: part };
-                    if (part.type === 'shirt') newChar.selectedShirtColor = part.colors?.[0];
-                    if (part.type === 'pants') newChar.selectedPantsColor = part.colors?.[0];
+                    // Logic to fallback if colors are missing but part type implies they should exist (Plain clothes)
+                    let partColors = part.colors;
+                    if (!partColors && part.type === 'shirt' && (part.name.includes('trơn') || part.name.includes('Plain') || part.id === 'shirt1')) {
+                        partColors = defaultShirtColors;
+                    }
+                    if (!partColors && part.type === 'pants' && (part.name.includes('trơn') || part.name.includes('Plain') || part.id === 'pants1')) {
+                        partColors = defaultPantsColors;
+                    }
+
+                    if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
+                    if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
+                    
                     // When selecting hair, remove hat and clear previousHair
                     if (part.type === 'hair') {
                         newChar.hat = undefined;
@@ -505,6 +518,26 @@ const Step3Characters: React.FC<{
     // Use dynamic legoParts
     const currentPartList = legoParts[activePartType] || [];
 
+    // --- FALLBACK COLOR LOGIC ---
+    // Determine colors for active part. Use fallback if database object is missing 'colors' array but matches ID or name
+    const activePartColors = useMemo(() => {
+        if (!activeCharacter) return null;
+        if (activePartType === 'shirt') {
+            const part = activeCharacter.shirt;
+            if (part?.colors) return part.colors;
+            // Fallback check
+            if (part && (part.id === 'shirt1' || part.name.toLowerCase().includes('trơn'))) return defaultShirtColors;
+        }
+        if (activePartType === 'pants') {
+            const part = activeCharacter.pants;
+            if (part?.colors) return part.colors;
+            // Fallback check
+            if (part && (part.id === 'pants1' || part.name.toLowerCase().includes('trơn'))) return defaultPantsColors;
+        }
+        return null;
+    }, [activeCharacter, activePartType]);
+
+
     return (
         <div className="space-y-4">
             {printDialogCharId && (
@@ -575,11 +608,11 @@ const Step3Characters: React.FC<{
                         ))}
                     </div>
 
-                    {(activePartType === 'shirt' && activeCharacter.shirt?.colors) && (
+                    {(activePartType === 'shirt' && activePartColors) && (
                       <div className="mt-4 pt-4 border-t">
                         <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu áo</label>
                          <div className="flex flex-wrap gap-2">
-                           {activeCharacter.shirt.colors.map(color => (
+                           {activePartColors.map(color => (
                              <button
                                key={color.name}
                                onClick={() => handleColorSelect('shirt', color)}
@@ -591,11 +624,11 @@ const Step3Characters: React.FC<{
                          </div>
                       </div>
                     )}
-                    {(activePartType === 'pants' && activeCharacter.pants?.colors) && (
+                    {(activePartType === 'pants' && activePartColors) && (
                       <div className="mt-4 pt-4 border-t">
                         <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu quần</label>
                          <div className="flex flex-wrap gap-2">
-                           {activeCharacter.pants.colors.map(color => (
+                           {activePartColors.map(color => (
                              <button
                                key={color.name}
                                onClick={() => handleColorSelect('pants', color)}
@@ -1458,6 +1491,7 @@ const CheckoutPage: React.FC<{
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
@@ -1504,10 +1538,11 @@ const CheckoutPage: React.FC<{
     e.preventDefault();
     if (isSubmitting) return; // Prevent double clicking
 
-    // Phone validation: Standard Vietnam phone format (starts with 0, 10 digits total)
+    // Strict Phone validation
     const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(phone)) {
-        alert("Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng số 0).");
+        setPhoneError("Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0");
+        // Scroll to error or focus input could be added here
         return;
     }
 
@@ -1559,7 +1594,17 @@ const CheckoutPage: React.FC<{
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">1. Người nhận</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
-                    <input type="tel" placeholder="Số điện thoại" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
+                    <div>
+                      <input 
+                        type="tel" 
+                        placeholder="Số điện thoại" 
+                        value={phone} 
+                        onChange={e => { setPhone(e.target.value); setPhoneError(''); }} 
+                        className={`w-full p-3 border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'} rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`} 
+                        required 
+                      />
+                      {phoneError && <p className="text-red-500 text-xs mt-1 ml-1">{phoneError}</p>}
+                    </div>
                     <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
                   </div>
               </div>
@@ -1995,7 +2040,7 @@ const App: React.FC = () => {
   }, []);
 
   // Tính toán allParts dựa trên legoParts động thay vì hằng số tĩnh
-  const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+  const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
     setCurrentPage(page);
@@ -2028,67 +2073,73 @@ const App: React.FC = () => {
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
-      const res = await createOrder(orderData);
-      if (res.success && res.data) {
+    const res = await createOrder(orderData);
+    if (res.success && res.data) {
         setCurrentOrder(res.data);
         setCartItems([]); // Clear cart
-        // Send email
-        sendOrderEmail(res.data);
         navigateTo('order-confirmation');
-      } else {
-        alert('Có lỗi xảy ra khi tạo đơn hàng.');
-        throw new Error('Order creation failed'); // Rethrow so CheckoutPage can catch it
-      }
-  };
-
-  const handleZoomImage = (url: string) => {
-      setZoomedImageUrl(url);
-  }
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home': return <HomePage navigateTo={navigateTo} />;
-      // Truyền legoParts và backgrounds vào BuilderPage
-      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} showToast={(msg) => alert(msg)} legoParts={legoParts} backgrounds={backgrounds} />;
-      case 'collection': return <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />;
-      case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />;
-      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={handleZoomImage} />;
-      case 'order-confirmation': return <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={handleZoomImage} />;
-      case 'order-lookup': return <OrderLookupPage onZoomImage={handleZoomImage} />;
-      case 'admin': return <AdminPage />; 
-      default: return <HomePage navigateTo={navigateTo} />;
+        sendOrderEmail(res.data);
+    } else {
+        alert("Lỗi đặt hàng. Vui lòng thử lại.");
     }
   };
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col font-sans text-gray-800">
-       {currentPage !== 'admin' && (
-           <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} />
-       )}
-       
-       <main className="flex-grow">
-         {renderPage()}
-       </main>
+    <div className="min-h-screen flex flex-col font-sans text-gray-900">
+         {currentPage !== 'admin' && (
+             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} />
+        )}
+        
+        <main className="flex-grow">
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} />}
+            {currentPage === 'builder' && (
+                <BuilderPage 
+                    config={config} 
+                    setConfig={setConfig} 
+                    navigateTo={navigateTo} 
+                    onAddToCart={handleAddToCart} 
+                    showToast={showToast}
+                    legoParts={legoParts}
+                    backgrounds={backgrounds}
+                />
+            )}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />}
+            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
+            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'admin' && <AdminPage />}
+        </main>
 
-       {currentPage !== 'admin' && (
-           <Footer navigateTo={navigateTo} />
-       )}
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
 
-       <CartPanel 
-         isOpen={isCartOpen} 
-         onClose={() => setIsCartOpen(false)} 
-         cartItems={cartItems} 
-         onRemoveItem={handleRemoveCartItem}
-         allParts={allParts}
-         navigateTo={navigateTo}
-       />
+        <CartPanel 
+            isOpen={isCartOpen} 
+            onClose={() => setIsCartOpen(false)} 
+            cartItems={cartItems} 
+            onRemoveItem={handleRemoveCartItem}
+            allParts={allParts}
+            navigateTo={navigateTo}
+        />
+        
+         {zoomedImageUrl && (
+            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
+                <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain rounded-lg" />
+                <button className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80">&times;</button>
+            </div>
+        )}
 
-       {zoomedImageUrl && (
-           <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
-               <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain" />
-               <button className="absolute top-4 right-4 text-white text-2xl font-bold">&times;</button>
-           </div>
-       )}
+        {toast && (
+            <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-bold z-50 ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                {toast.message}
+            </div>
+        )}
     </div>
   );
 };
