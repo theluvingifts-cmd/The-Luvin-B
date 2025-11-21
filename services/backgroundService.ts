@@ -13,7 +13,7 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
         const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
         const backgrounds: PresetBackground[] = [];
         querySnapshot.forEach((doc) => {
-            const data = doc.data() as any;
+            const data = doc.data();
             backgrounds.push({
                 id: doc.id,
                 name: data.name || doc.id,
