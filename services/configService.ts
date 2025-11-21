@@ -6,7 +6,10 @@ const CONFIG_DOC_ID = 'general';
 
 export interface StoreConfig {
     logoUrl?: string;
+    faviconUrl?: string;
     siteName?: string;
+    heroImageUrl?: string;
+    inspireImageUrl?: string;
 }
 
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {

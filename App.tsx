@@ -854,7 +854,11 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
   );
 };
 
-const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) => {
+const HomePage: React.FC<{ 
+    navigateTo: (page: Page) => void;
+    heroImage?: string;
+    inspireImage?: string;
+}> = ({ navigateTo, heroImage, inspireImage }) => {
   const BowIcon = () => (
     <svg className="w-6 h-6 text-luvin-pink opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -879,11 +883,14 @@ const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }
     setActiveSlide(prev => (prev + 1) % sliderProducts.length);
   };
 
+  const finalHero = heroImage || GENERAL_ASSETS.hero;
+  const finalInspire = inspireImage || GENERAL_ASSETS.inspire;
+
   return (
     <div>
       <div className="flex flex-col min-h-[calc(100vh-80px)]">
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
-          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${GENERAL_ASSETS.hero})`}}></div>
+          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${finalHero})`}}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
              <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
              <p className="font-script text-3xl my-4 text-gray-600">self love, self care</p>
@@ -899,7 +906,7 @@ const HomePage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }
 
       <div className="container mx-auto my-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
-          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${GENERAL_ASSETS.inspire})`}}></div>
+          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${finalInspire})`}}></div>
           <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative">
               <div className="relative w-full max-w-xs aspect-square">
                   {sliderProducts.map((product, index) => (
@@ -2044,6 +2051,9 @@ const App: React.FC = () => {
   ]); // Fallback với type chính xác
 
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_URL);
+  // New states for dynamic home content
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
 
   // Fetch products, backgrounds, and config on mount
   useEffect(() => {
@@ -2056,17 +2066,22 @@ const App: React.FC = () => {
           if (bgs && bgs.length > 0) {
               setBackgrounds(bgs);
           }
-          if (storeConfig && storeConfig.logoUrl) {
-              setLogoUrl(storeConfig.logoUrl);
-              // Update favicon dynamically
-              const link = document.querySelector("link[rel~='icon']");
-              if (link instanceof HTMLLinkElement) {
-                  link.href = storeConfig.logoUrl;
-              } else {
-                  const newLink = document.createElement('link');
-                  newLink.rel = 'icon';
-                  newLink.href = storeConfig.logoUrl;
-                  document.head.appendChild(newLink);
+          if (storeConfig) {
+              if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
+              if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
+              if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+              
+              if (storeConfig.faviconUrl) {
+                  // Update favicon dynamically
+                  const link = document.querySelector("link[rel~='icon']");
+                  if (link instanceof HTMLLinkElement) {
+                      link.href = storeConfig.faviconUrl;
+                  } else {
+                      const newLink = document.createElement('link');
+                      newLink.rel = 'icon';
+                      newLink.href = storeConfig.faviconUrl;
+                      document.head.appendChild(newLink);
+                  }
               }
           }
       };
@@ -2131,7 +2146,7 @@ const App: React.FC = () => {
         )}
         
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} />}
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} />}
             {currentPage === 'builder' && (
                 <BuilderPage 
                     config={config} 

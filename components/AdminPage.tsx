@@ -4,7 +4,7 @@ import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
 import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds } from '../services/backgroundService';
 import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
-import { updateStoreConfig, getStoreConfig } from '../services/configService'; // Import config service
+import { updateStoreConfig, getStoreConfig, StoreConfig } from '../services/configService'; // Import config service
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor } from '../types';
@@ -398,6 +398,58 @@ const BackgroundForm: React.FC<{
     );
 };
 
+// --- HELPER COMPONENT: CONFIG IMAGE UPLOAD ---
+const ConfigImageUpload: React.FC<{
+    label: string;
+    description: string;
+    currentUrl?: string;
+    onUpload: (file: File) => Promise<void>;
+    isUploading: boolean;
+}> = ({ label, description, currentUrl, onUpload, isUploading }) => {
+    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) onUpload(e.target.files[0]);
+    };
+
+    return (
+        <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">{label}</label>
+            <p className="text-xs text-gray-500 mb-4">{description}</p>
+            
+            <div className="flex items-start gap-6">
+                <div className="flex-shrink-0 w-32 h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden relative">
+                    {currentUrl ? (
+                        <img src={currentUrl} alt="Preview" className="w-full h-full object-contain p-2" />
+                    ) : (
+                        <span className="text-xs text-gray-400 text-center px-2">Chưa có ảnh</span>
+                    )}
+                    {isUploading && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                            <span className="text-xs font-bold text-blue-600 animate-pulse">Uploading...</span>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex-grow">
+                    <div className="relative inline-block">
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleFile}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            disabled={isUploading}
+                        />
+                        <button 
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${isUploading ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black'}`}
+                        >
+                            {isUploading ? 'Đang xử lý...' : 'Tải ảnh mới'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- ADMIN PAGE ---
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -457,8 +509,8 @@ const AdminPage: React.FC = () => {
     const [filterStatus, setFilterStatus] = useState<string>('all');
 
     // Configuration State
-    const [configLogo, setConfigLogo] = useState<string>('');
-    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+    const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
+    const [uploadingField, setUploadingField] = useState<string | null>(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -498,7 +550,7 @@ const AdminPage: React.FC = () => {
     const fetchBackgrounds = async () => { const data = await getAllBackgrounds(); setBackgrounds(data); };
     const fetchConfig = async () => {
         const cfg = await getStoreConfig();
-        if (cfg && cfg.logoUrl) setConfigLogo(cfg.logoUrl);
+        if (cfg) setStoreConfig(cfg);
     }
     
     const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
@@ -525,25 +577,23 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setIsUploadingLogo(true);
-            try {
-                const url = await uploadToCloudinary(file);
-                if (url) {
-                    setConfigLogo(url);
-                    await updateStoreConfig({ logoUrl: url });
-                    alert("Đã cập nhật logo thành công!");
-                } else {
-                    alert("Lỗi upload logo.");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Lỗi upload logo.");
-            } finally {
-                setIsUploadingLogo(false);
+    // Handle specific config upload
+    const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
+        setUploadingField(field);
+        try {
+            const url = await uploadToCloudinary(file);
+            if (url) {
+                await updateStoreConfig({ [field]: url });
+                setStoreConfig(prev => ({ ...prev, [field]: url }));
+                alert(`Đã cập nhật thành công!`);
+            } else {
+                alert("Lỗi upload.");
             }
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi upload.");
+        } finally {
+            setUploadingField(null);
         }
     };
 
@@ -1535,48 +1585,45 @@ const AdminPage: React.FC = () => {
                 )}
 
                 {activeTab === 'settings' && role === 'admin' && (
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm max-w-2xl mx-auto animate-fade-in p-8">
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm max-w-3xl mx-auto animate-fade-in p-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Cấu hình Website</h2>
                         
-                        <div className="space-y-6">
-                            {/* Logo Upload Section */}
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Logo & Favicon</label>
-                                <p className="text-xs text-gray-500 mb-4">Hình ảnh này sẽ được sử dụng làm Logo trên đầu trang và Favicon của trình duyệt.</p>
-                                
-                                <div className="flex items-start gap-6">
-                                    <div className="flex-shrink-0 w-32 h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden relative">
-                                        {configLogo ? (
-                                            <img src={configLogo} alt="Logo Preview" className="w-full h-full object-contain p-2" />
-                                        ) : (
-                                            <span className="text-xs text-gray-400">Chưa có logo</span>
-                                        )}
-                                        {isUploadingLogo && (
-                                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                                                <span className="text-xs font-bold text-blue-600 animate-pulse">Uploading...</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    <div className="flex-grow">
-                                        <div className="relative">
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                onChange={handleLogoUpload}
-                                                className="hidden" 
-                                                id="logo-upload"
-                                                disabled={isUploadingLogo}
-                                            />
-                                            <label 
-                                                htmlFor="logo-upload"
-                                                className={`inline-block px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-colors ${isUploadingLogo ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black'}`}
-                                            >
-                                                {isUploadingLogo ? 'Đang xử lý...' : 'Tải ảnh mới'}
-                                            </label>
-                                        </div>
-                                        <p className="text-xs text-gray-400 mt-2">Khuyên dùng ảnh PNG nền trong suốt.</p>
-                                    </div>
+                        <div className="space-y-8">
+                            <ConfigImageUpload 
+                                label="Logo (Thanh điều hướng)" 
+                                description="Hiển thị ở góc trái thanh menu (Header). Khuyên dùng ảnh PNG trong suốt, chiều cao tối thiểu 100px."
+                                currentUrl={storeConfig.logoUrl}
+                                onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
+                                isUploading={uploadingField === 'logoUrl'}
+                            />
+
+                            <div className="border-t border-gray-100 pt-6">
+                                <ConfigImageUpload 
+                                    label="Favicon (Icon trình duyệt)" 
+                                    description="Icon nhỏ hiển thị trên tab trình duyệt. Khuyên dùng ảnh vuông 64x64px hoặc 128x128px."
+                                    currentUrl={storeConfig.faviconUrl}
+                                    onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
+                                    isUploading={uploadingField === 'faviconUrl'}
+                                />
+                            </div>
+
+                            <div className="border-t border-gray-100 pt-6">
+                                <h3 className="text-lg font-bold text-gray-800 mb-4">Hình ảnh Trang chủ</h3>
+                                <div className="grid gap-8">
+                                    <ConfigImageUpload 
+                                        label="Banner Chính (Hero Image)" 
+                                        description="Ảnh lớn đầu trang chủ. Kích thước khuyên dùng: 1920x1080px."
+                                        currentUrl={storeConfig.heroImageUrl}
+                                        onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
+                                        isUploading={uploadingField === 'heroImageUrl'}
+                                    />
+                                    <ConfigImageUpload 
+                                        label="Ảnh Cảm hứng (Inspire Section)" 
+                                        description="Ảnh nền cho phần sản phẩm nổi bật. Kích thước khuyên dùng: 1000x1000px hoặc 1200x1600px."
+                                        currentUrl={storeConfig.inspireImageUrl}
+                                        onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
+                                        isUploading={uploadingField === 'inspireImageUrl'}
+                                    />
                                 </div>
                             </div>
                         </div>
