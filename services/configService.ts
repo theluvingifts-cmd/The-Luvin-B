@@ -1,16 +1,11 @@
 
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import type { StoreConfig } from '../types';
 
 const CONFIG_DOC_ID = 'general';
 
-export interface StoreConfig {
-    logoUrl?: string;
-    faviconUrl?: string;
-    siteName?: string;
-    heroImageUrl?: string;
-    inspireImageUrl?: string;
-}
+export { StoreConfig };
 
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {
     try {
@@ -32,6 +27,7 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
 
 export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
     try {
+        // Use setDoc with merge: true to allow deep merging of objects like contact and bank
         await setDoc(doc(db, 'config', CONFIG_DOC_ID), config, { merge: true });
         return true;
     } catch (error) {
