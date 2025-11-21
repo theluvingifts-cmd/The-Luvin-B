@@ -153,28 +153,3 @@ export interface FeedbackItem {
     text: string;
     imageUrl: string;
 }
-
-// --- CONFIG TYPES ---
-export interface ContactInfo {
-    phone: string;
-    email: string;
-    address: string;
-}
-
-export interface BankInfo {
-    bankName: string;
-    accountNumber: string;
-    accountName: string;
-    qrTemplate?: string; // e.g., 'compact2'
-}
-
-export interface StoreConfig {
-    logoUrl?: string;
-    faviconUrl?: string;
-    siteName?: string;
-    heroImageUrl?: string;
-    inspireImageUrl?: string;
-    
-    contact?: ContactInfo;
-    bank?: BankInfo;
-}

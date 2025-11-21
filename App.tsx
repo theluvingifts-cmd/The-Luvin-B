@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem } from './types';
-import { StoreConfig } from './types';
 import { 
     FRAME_OPTIONS, 
     LEGO_PARTS, 
@@ -28,7 +27,7 @@ import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
 declare var html2canvas: any;
 
-const DEFAULT_LOGO_URL = "https://placehold.co/150x50?text=The+Luvin"; 
+const DEFAULT_LOGO_URL = "https://i.imgur.com/7gDkS1Q.png"; 
 
 const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
   if (amount === 0 && context === 'price') return 'Miễn phí';
@@ -370,7 +369,7 @@ const PartButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
-                {!imgError && part.imageUrl ? (
+                {!imgError ? (
                     <img 
                         src={part.imageUrl} 
                         alt={part.name} 
@@ -378,7 +377,7 @@ const PartButton: React.FC<{
                         onError={() => setImgError(true)}
                     />
                 ) : (
-                    <div className="text-[10px] text-gray-400 text-center p-1 flex items-center justify-center h-full w-full">{part.name.substring(0,2)}</div>
+                    <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
                 )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
@@ -814,7 +813,7 @@ const FacebookIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
 )
 
-const Footer: React.FC<{ navigateTo: (page: Page) => void; storeConfig: StoreConfig }> = ({ navigateTo, storeConfig }) => {
+const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) => {
   return (
     <footer className="bg-white text-gray-800 mt-auto font-body text-sm">
         <div className="bg-gray-100 py-2">
@@ -832,9 +831,9 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void; storeConfig: StoreCon
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
                     <h3 className="font-bold text-base mb-3">THE LUVIN - KHUNG ẢNH LEGO THIẾT KẾ</h3>
-                    <p className="text-gray-600">Địa chỉ: {storeConfig.contact?.address || 'Khu 6, Thư Lâm, Hà Nội'}</p>
-                    <p className="text-gray-600">Hotline: {storeConfig.contact?.phone || '0964 393 115'}</p>
-                    <p className="text-gray-600">Email: {storeConfig.contact?.email || 'theluvin.gifts@gmail.com'}</p>
+                    <p className="text-gray-600">Địa chỉ: Khu 6, Thư Lâm, Hà Nội</p>
+                    <p className="text-gray-600">Hotline: 0964 393 115</p>
+                    <p className="text-gray-600">Email: theluvin.gifts@gmail.com</p>
                 </div>
                 <div>
                     <h3 className="font-bold text-base mb-3">MORE ABOUT US</h3>
@@ -897,7 +896,7 @@ const HomePage: React.FC<{
     <div>
       <div className="flex flex-col min-h-[calc(100vh-80px)]">
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
-          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${finalHero})`, backgroundColor: '#f9f4ef'}}></div>
+          <div className="hidden md:block bg-cover bg-center" style={{backgroundImage: `url(${finalHero})`}}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
              <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
              <p className="font-script text-3xl my-4 text-gray-600">self love, self care</p>
@@ -913,18 +912,16 @@ const HomePage: React.FC<{
 
       <div className="container mx-auto my-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
-          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${finalInspire})`, backgroundColor: '#f9f4ef'}}></div>
+          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={{backgroundImage: `url(${finalInspire})`}}></div>
           <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative">
               <div className="relative w-full max-w-xs aspect-square">
                   {sliderProducts.map((product, index) => (
-                      product.imageUrl && (
-                          <img 
-                              key={product.id} 
-                              src={product.imageUrl} 
-                              alt={product.name}
-                              className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${activeSlide === index ? 'opacity-100' : 'opacity-0'}`}
-                          />
-                      )
+                      <img 
+                          key={product.id} 
+                          src={product.imageUrl} 
+                          alt={product.name}
+                          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${activeSlide === index ? 'opacity-100' : 'opacity-0'}`}
+                      />
                   ))}
               </div>
                <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&larr;</button>
@@ -953,11 +950,11 @@ const HomePage: React.FC<{
           <div className="w-full overflow-hidden relative">
             <div className="flex animate-marquee whitespace-nowrap">
                 {/* Duplicate to create loop effect */}
-                {displayFeedbacks.length > 0 && [...displayFeedbacks, ...displayFeedbacks].map((feedback, index) => (
+                {[...displayFeedbacks, ...displayFeedbacks].map((feedback, index) => (
                    <div key={index} className="flex-shrink-0 w-60 sm:w-72 bg-luvin-cream p-4 rounded-xl flex flex-col items-center mx-4">
                      <h3 className="font-script text-3xl text-luvin-pink mb-3">Feedback</h3>
-                     <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-100">
-                       {feedback.imageUrl && <img src={feedback.imageUrl} alt={feedback.name} className="w-full h-full object-cover"/>}
+                     <div className="w-full aspect-square rounded-lg overflow-hidden">
+                       <img src={feedback.imageUrl} alt={feedback.name} className="w-full h-full object-cover"/>
                      </div>
                      <div className="mt-4 text-center whitespace-normal">
                         <p className="text-sm font-semibold text-gray-800">{feedback.name}</p>
@@ -1386,7 +1383,7 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
           {displayTemplates.map((template, index) => ( 
             <div key={template.id || index} className="bg-white rounded-lg shadow-lg overflow-hidden group">
               <div className="relative">
-                {template.imageUrl ? <img src={template.imageUrl} alt={template.name} className="w-full h-72 object-cover" /> : <div className="w-full h-72 bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>}
+                <img src={template.imageUrl} alt={template.name} className="w-full h-72 object-cover" />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
                   <button onClick={() => handleCustomize(template.config)} className="bg-white/80 text-luvin-pink font-bold py-2 px-4 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-body">
                     Tùy chỉnh mẫu này
@@ -1732,7 +1729,7 @@ const CheckoutPage: React.FC<{
 
             <div className="bg-gray-50 p-4 rounded-lg border">
                  <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
-                    {GENERAL_ASSETS.giftbox ? <img src={GENERAL_ASSETS.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/> : <div className="w-12 h-12 bg-gray-200 mr-4 flex items-center justify-center text-xs">Gift Box</div>}
+                    <img src={GENERAL_ASSETS.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
                     <div className="flex-grow">
                         <span className="font-semibold text-gray-800">Thêm hộp quà</span>
                         <p className="text-xs text-gray-500">Hộp quà cao cấp & thiệp viết tay.</p>
@@ -1801,7 +1798,7 @@ const CheckoutPage: React.FC<{
   );
 };
 
-const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void, storeConfig: StoreConfig }> = ({ order, navigateTo, onZoomImage, storeConfig }) => {
+const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void }> = ({ order, navigateTo, onZoomImage }) => {
     useEffect(() => {
         if (!order) {
             navigateTo('home');
@@ -1813,13 +1810,13 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
     const amountRemaining = order.totalPrice - order.amountToPay;
     
     const getVietQR = (order: Order) => {
-        const BANK_ID = storeConfig.bank?.bankName || '970407'; // Default Techcombank
-        const ACCOUNT_NO = storeConfig.bank?.accountNumber || '65838666666';
-        const TEMPLATE = storeConfig.bank?.qrTemplate || 'compact2';
+        const BANK_ID = '970407'; // Techcombank
+        const ACCOUNT_NO = '65838666666';
+        const TEMPLATE = 'compact2';
         const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
         const amount = order.amountToPay;
         
-        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=${encodeURIComponent(storeConfig.bank?.accountName || 'TheLuvin')}`;
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
     };
 
     return (
@@ -1840,11 +1837,6 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                         <div className="mt-4 bg-white p-3 rounded-lg border">
                            <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
                            <p className="font-bold text-gray-800 tracking-wider">{order.id}</p>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-500">
-                            Ngân hàng: {storeConfig.bank?.bankName || 'Techcombank'} <br/>
-                            STK: {storeConfig.bank?.accountNumber || '65838666666'} <br/>
-                            Chủ TK: {storeConfig.bank?.accountName || 'TheLuvin'}
                         </div>
                     </div>
 
@@ -2085,19 +2077,26 @@ const App: React.FC = () => {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   
+  // STATE MỚI: Lưu danh sách sản phẩm động từ DB
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
-  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
+  // STATE MỚI: Lưu background động từ DB
+  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([
+      ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: bg.name, type: 'square' as const })),
+      ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: bg.name, type: 'rectangle' as const }))
+  ]); 
   
+  // NEW STATE FOR DYNAMIC CONTENT
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  // Store Config State
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
+  const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_URL);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
 
   // Fetch all dynamic data on mount
   useEffect(() => {
       const fetchData = async () => {
-          const [parts, bgs, configData, tpls, fbs] = await Promise.all([
+          const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
               getAllParts(), 
               getAllBackgrounds(), 
               getStoreConfig(),
@@ -2118,17 +2117,19 @@ const App: React.FC = () => {
               setFeedbacks(fbs);
           }
 
-          if (configData) {
-              setStoreConfig(configData);
+          if (storeConfig) {
+              if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
+              if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
+              if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
               
-              if (configData.faviconUrl) {
+              if (storeConfig.faviconUrl) {
                   const link = document.querySelector("link[rel~='icon']");
                   if (link instanceof HTMLLinkElement) {
-                      link.href = configData.faviconUrl;
+                      link.href = storeConfig.faviconUrl;
                   } else {
                       const newLink = document.createElement('link');
                       newLink.rel = 'icon';
-                      newLink.href = configData.faviconUrl;
+                      newLink.href = storeConfig.faviconUrl;
                       document.head.appendChild(newLink);
                   }
               }
@@ -2185,11 +2186,11 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col font-sans text-gray-900">
          {currentPage !== 'admin' && (
-             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={storeConfig.logoUrl || DEFAULT_LOGO_URL} />
+             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={logoUrl} />
         )}
         
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={storeConfig.heroImageUrl} inspireImage={storeConfig.inspireImageUrl} feedbacks={feedbacks} />}
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} />}
             {currentPage === 'builder' && (
                 <BuilderPage 
                     config={config} 
@@ -2204,12 +2205,12 @@ const App: React.FC = () => {
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
             {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
             {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
-            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} storeConfig={storeConfig} />}
+            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'admin' && <AdminPage />}
         </main>
 
-        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} storeConfig={storeConfig} />}
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
 
         <CartPanel 
             isOpen={isCartOpen} 
