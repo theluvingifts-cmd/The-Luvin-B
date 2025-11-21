@@ -24,6 +24,8 @@ import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
 declare var html2canvas: any;
 
+const LOGO_URL = "https://i.imgur.com/7gDkS1Q.png"; // Using giftbox as temporary logo placeholder or replace with your actual logo URL
+
 const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
   if (amount === 0 && context === 'price') return 'Miễn phí';
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -740,7 +742,9 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
     <>
       <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="text-4xl font-heading text-luvin-pink cursor-pointer" onClick={() => handleNav('home')}>The Luvin</div>
+          <div className="cursor-pointer" onClick={() => handleNav('home')}>
+              <img src={LOGO_URL} alt="The Luvin" className="h-12 object-contain" />
+          </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => (
               <button key={item.page} onClick={() => handleNav(item.page)} className="text-gray-800 hover:text-luvin-pink transition-colors font-semibold text-sm">

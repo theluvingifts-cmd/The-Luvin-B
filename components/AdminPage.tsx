@@ -1,5 +1,4 @@
 
-// components/AdminPage.tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
@@ -7,12 +6,14 @@ import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, s
 import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
-import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground } from '../types';
+import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../constants';
 
 // --- CONSTANTS & HELPERS ---
 
 const CHARACTER_BASE_PRICE = 10000;
+
+const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
 const getStartOfDay = (date: Date) => {
     const newDate = new Date(date);
@@ -112,10 +113,14 @@ const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1
+        id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: []
     });
     const [isUploading, setIsUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // State for managing colors
+    const [colors, setColors] = useState<OutfitColor[]>(initialData?.colors || []);
+    const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '' });
+    const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -131,20 +136,56 @@ const ProductForm: React.FC<{
                 if (url) {
                     setFormData(prev => ({ ...prev, imageUrl: url }));
                 } else {
-                    alert("Lỗi: Không thể tải ảnh lên Cloudinary. Vui lòng kiểm tra lại 'Cloud Name' và 'Upload Preset' đã chính xác chưa.");
+                    alert("Lỗi upload ảnh.");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Đã xảy ra lỗi khi tải ảnh.");
+                alert("Lỗi upload ảnh.");
             } finally {
                 setIsUploading(false);
             }
         }
     };
 
+    // Color Management Handlers
+    const handleColorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setIsUploadingColorImg(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    setNewColor(prev => ({ ...prev, imageUrl: url }));
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsUploadingColorImg(false);
+            }
+        }
+    };
+
+    const addColor = () => {
+        if (!newColor.name || !newColor.imageUrl) {
+            alert("Vui lòng nhập tên màu và tải ảnh cho màu đó.");
+            return;
+        }
+        setColors([...colors, newColor]);
+        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '' }); // Reset
+    };
+
+    const removeColor = (index: number) => {
+        setColors(colors.filter((_, i) => i !== index));
+    };
+
+    const handleSave = () => {
+        // Include colors in the saved data
+        onSave({ ...formData, colors: colors });
+    };
+
     return (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
-            <div className="bg-white p-8 rounded-xl shadow-2xl w-[500px] max-h-[90vh] overflow-y-auto border border-gray-100">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-y-auto border border-gray-100">
                 <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{initialData ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h3>
                 <div className="space-y-5">
                     <div className="grid grid-cols-2 gap-4">
@@ -159,48 +200,28 @@ const ProductForm: React.FC<{
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá (VNĐ)</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá cơ bản (VNĐ)</label>
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
                         </div>
                         
-                        {/* --- PHẦN UPLOAD ẢNH --- */}
+                        {/* Main Image Upload */}
                         <div className="col-span-2">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh</label>
-                            
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh mặc định</label>
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    onChange={handleFileChange} 
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                    disabled={isUploading}
-                                />
-                                
+                                <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
                                 {isUploading ? (
-                                    <div className="flex flex-col items-center justify-center py-4">
-                                        <svg className="animate-spin h-6 w-6 text-gray-600 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span className="text-xs text-gray-500">Đang tải ảnh lên...</span>
-                                    </div>
+                                    <span className="text-xs text-gray-500">Đang tải ảnh lên...</span>
                                 ) : formData.imageUrl ? (
                                     <div className="relative flex items-center justify-center">
                                         <img src={formData.imageUrl} alt="Preview" className="max-h-32 object-contain rounded shadow-sm" />
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded">
-                                            <span className="text-white text-xs font-bold border border-white px-2 py-1 rounded">Thay đổi</span>
-                                        </div>
                                     </div>
                                 ) : (
                                     <div className="py-4 text-gray-400">
-                                        <svg className="mx-auto h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <span className="text-xs">Bấm để chọn ảnh từ máy</span>
+                                        <span className="text-xs">Bấm để chọn ảnh</span>
                                     </div>
                                 )}
                             </div>
-                            <input name="imageUrl" value={formData.imageUrl} readOnly className="w-full mt-2 p-1.5 border-none text-gray-400 bg-transparent text-[10px] focus:ring-0 text-center" placeholder="URL ảnh sẽ hiện ở đây sau khi upload" />
                         </div>
-                        {/* --- HẾT PHẦN UPLOAD ẢNH --- */}
 
                         <div>
                              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rộng (cm)</label>
@@ -211,10 +232,86 @@ const ProductForm: React.FC<{
                              <input type="number" name="heightCm" value={formData.heightCm} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" step="0.1" />
                         </div>
                     </div>
+
+                    {/* --- COLOR VARIANTS SECTION --- */}
+                    {(formData.type === 'shirt' || formData.type === 'pants') && (
+                        <div className="border-t border-gray-200 pt-4 mt-4">
+                            <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Tùy chọn)</h4>
+                            
+                            {/* List of existing colors */}
+                            <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+                                {colors.map((color, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: color.hex }}></div>
+                                            <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
+                                            <div>
+                                                <p className="text-xs font-bold">{color.name}</p>
+                                                <p className="text-[10px] text-gray-500">+{formatCurrency(color.price)}</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                ))}
+                                {colors.length === 0 && <p className="text-xs text-gray-400 italic">Chưa có màu nào được thêm.</p>}
+                            </div>
+
+                            {/* Add new color inputs */}
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <p className="text-xs font-bold text-blue-800 mb-2">Thêm màu mới</p>
+                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                    <input 
+                                        placeholder="Tên màu (VD: Đỏ)" 
+                                        className="p-1.5 text-xs border rounded"
+                                        value={newColor.name}
+                                        onChange={e => setNewColor({...newColor, name: e.target.value})}
+                                    />
+                                    <input 
+                                        type="number"
+                                        placeholder="Giá thêm (VNĐ)" 
+                                        className="p-1.5 text-xs border rounded"
+                                        value={newColor.price}
+                                        onChange={e => setNewColor({...newColor, price: Number(e.target.value)})}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">Mã màu:</span>
+                                        <input 
+                                            type="color" 
+                                            className="w-8 h-8 border rounded cursor-pointer"
+                                            value={newColor.hex}
+                                            onChange={e => setNewColor({...newColor, hex: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleColorFileChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            disabled={isUploadingColorImg}
+                                        />
+                                        <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
+                                            {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={addColor} 
+                                    disabled={isUploadingColorImg}
+                                    className="w-full bg-blue-600 text-white text-xs font-bold py-1.5 rounded hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    + Thêm biến thể
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
                 <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
                     <button onClick={onCancel} className="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">Hủy bỏ</button>
-                    <button onClick={() => onSave(formData)} disabled={isUploading} className="px-5 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded transition-colors shadow-sm disabled:opacity-50">Lưu thay đổi</button>
+                    <button onClick={handleSave} disabled={isUploading} className="px-5 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded transition-colors shadow-sm disabled:opacity-50">Lưu thay đổi</button>
                 </div>
             </div>
         </div>
@@ -617,7 +714,6 @@ const AdminPage: React.FC = () => {
     };
 
     // --- DISPLAY HELPERS ---
-    const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
     const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString('vi-VN');
 
