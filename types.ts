@@ -138,3 +138,18 @@ export interface Order {
   packedBy?: string;      // Email người đóng gói
   packedAt?: string;      // Thời gian đóng gói ISO string
 }
+
+// NEW INTERFACES FOR DYNAMIC CONTENT
+export interface CollectionTemplate {
+    id: string;
+    name: string;
+    imageUrl: string;
+    config: FrameConfig;
+}
+
+export interface FeedbackItem {
+    id: string;
+    name: string;
+    text: string;
+    imageUrl: string;
+}

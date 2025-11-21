@@ -1,0 +1,68 @@
+
+import { db } from '../config/firebase';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { COLLECTION_TEMPLATES } from '../constants';
+import type { CollectionTemplate } from '../types';
+
+const COLLECTION_NAME = "templates";
+
+export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
+    try {
+        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const templates: CollectionTemplate[] = [];
+        querySnapshot.forEach((doc) => {
+            templates.push(doc.data() as CollectionTemplate);
+        });
+        return templates;
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            console.warn("Firestore: Permission denied for templates.");
+            return [];
+        }
+        console.error("Error fetching templates:", error);
+        return [];
+    }
+};
+
+export const addTemplate = async (template: CollectionTemplate) => {
+    try {
+        await setDoc(doc(db, COLLECTION_NAME, template.id), template);
+        return true;
+    } catch (error) {
+        console.error("Error adding template:", error);
+        return false;
+    }
+};
+
+export const updateTemplate = async (id: string, updates: Partial<CollectionTemplate>) => {
+    try {
+        await updateDoc(doc(db, COLLECTION_NAME, id), updates);
+        return true;
+    } catch (error) {
+        console.error("Error updating template:", error);
+        return false;
+    }
+};
+
+export const deleteTemplate = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, COLLECTION_NAME, id));
+        return true;
+    } catch (error) {
+        console.error("Error deleting template:", error);
+        return false;
+    }
+};
+
+export const seedTemplates = async () => {
+    try {
+        for (const t of COLLECTION_TEMPLATES) {
+            const id = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            await setDoc(doc(db, COLLECTION_NAME, id), { ...t, id });
+        }
+        return true;
+    } catch (error) {
+        console.error("Seed templates error:", error);
+        return false;
+    }
+};

@@ -3,12 +3,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
 import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds } from '../services/backgroundService';
+import { getAllTemplates, addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../services/templateService';
+import { getAllFeedbacks, addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../services/feedbackService';
 import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
 import { updateStoreConfig, getStoreConfig, StoreConfig } from '../services/configService'; // Import config service
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
-import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS } from '../constants';
+import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor, CollectionTemplate, FeedbackItem } from '../types';
+import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../constants';
 
 // --- CONSTANTS & HELPERS ---
 
@@ -398,6 +400,144 @@ const BackgroundForm: React.FC<{
     );
 };
 
+// --- COMPONENT: FORM TEMPLATE ---
+const TemplateForm: React.FC<{
+    initialData?: CollectionTemplate | null;
+    onSave: (tpl: CollectionTemplate) => void;
+    onCancel: () => void;
+}> = ({ initialData, onSave, onCancel }) => {
+    const [formData, setFormData] = useState<CollectionTemplate>(initialData || {
+        id: `tpl_${Date.now()}`, name: '', imageUrl: '', config: INITIAL_FRAME_CONFIG
+    });
+    const [isUploading, setIsUploading] = useState(false);
+    const [configJson, setConfigJson] = useState(JSON.stringify(initialData?.config || INITIAL_FRAME_CONFIG, null, 2));
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setIsUploading(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) setFormData(prev => ({ ...prev, imageUrl: url }));
+                else alert("Lỗi tải ảnh");
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    const handleSave = () => {
+        try {
+            const parsedConfig = JSON.parse(configJson);
+            onSave({ ...formData, config: parsedConfig });
+        } catch (e) {
+            alert("Lỗi định dạng JSON trong cấu hình!");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-y-auto border border-gray-100">
+                <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{initialData ? 'Sửa Mẫu' : 'Thêm Mẫu Mới'}</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tên mẫu</label>
+                        <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 relative">
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
+                            {isUploading ? <span className="text-xs">Uploading...</span> : formData.imageUrl ? <img src={formData.imageUrl} className="max-h-32 mx-auto" /> : <span className="text-xs text-gray-400">Chọn ảnh</span>}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cấu hình (JSON)</label>
+                        <textarea 
+                            value={configJson} 
+                            onChange={(e) => setConfigJson(e.target.value)} 
+                            className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-xs font-mono h-40"
+                            placeholder="Paste frame config JSON here..." 
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Dành cho admin: Copy config từ console khi thiết kế xong.</p>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                    <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded">Hủy</button>
+                    <button onClick={handleSave} disabled={isUploading || !formData.imageUrl} className="px-4 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded disabled:opacity-50">Lưu</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- COMPONENT: FORM FEEDBACK ---
+const FeedbackForm: React.FC<{
+    initialData?: FeedbackItem | null;
+    onSave: (fb: FeedbackItem) => void;
+    onCancel: () => void;
+}> = ({ initialData, onSave, onCancel }) => {
+    const [formData, setFormData] = useState<FeedbackItem>(initialData || {
+        id: `fb_${Date.now()}`, name: '', text: '', imageUrl: ''
+    });
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setIsUploading(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) setFormData(prev => ({ ...prev, imageUrl: url }));
+                else alert("Lỗi tải ảnh");
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-[450px] border border-gray-100">
+                <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{initialData ? 'Sửa Feedback' : 'Thêm Feedback'}</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tên khách hàng</label>
+                        <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nội dung</label>
+                        <textarea name="text" value={formData.text} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" rows={3} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 relative">
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
+                            {isUploading ? <span className="text-xs">Uploading...</span> : formData.imageUrl ? <img src={formData.imageUrl} className="max-h-32 mx-auto" /> : <span className="text-xs text-gray-400">Chọn ảnh</span>}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                    <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded">Hủy</button>
+                    <button onClick={() => onSave(formData)} disabled={isUploading || !formData.imageUrl} className="px-4 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded disabled:opacity-50">Lưu</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- HELPER COMPONENT: CONFIG IMAGE UPLOAD ---
 const ConfigImageUpload: React.FC<{
     label: string;
@@ -460,6 +600,9 @@ const AdminPage: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
+    const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
+    const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+    
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(false);
     
@@ -481,7 +624,7 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds' | 'settings'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds' | 'templates' | 'feedbacks' | 'settings'>('dashboard');
 
     // Time Filters
     const [filterType, setFilterType] = useState<'period' | 'month'>('period');
@@ -502,6 +645,12 @@ const AdminPage: React.FC = () => {
     const [bgTypeFilter, setBgTypeFilter] = useState<'all' | 'square' | 'rectangle'>('all');
     const [bgCategoryFilter, setBgCategoryFilter] = useState<string>('all');
 
+    // Inputs for Templates & Feedbacks
+    const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<CollectionTemplate | null>(null);
+    const [isEditingFeedback, setIsEditingFeedback] = useState(false);
+    const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
+
     // Order Details Inputs
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
@@ -519,6 +668,8 @@ const AdminPage: React.FC = () => {
                 fetchOrders();
                 fetchProducts();
                 fetchBackgrounds();
+                fetchTemplates();
+                fetchFeedbacks();
                 fetchConfig();
             } else {
                 setCurrentUser(null);
@@ -548,6 +699,8 @@ const AdminPage: React.FC = () => {
     const fetchOrders = async () => { const data = await getAllOrders(); setOrders(data); };
     const fetchProducts = async () => { const data = await getAllParts(); setProducts(data); };
     const fetchBackgrounds = async () => { const data = await getAllBackgrounds(); setBackgrounds(data); };
+    const fetchTemplates = async () => { const data = await getAllTemplates(); setTemplates(data); };
+    const fetchFeedbacks = async () => { const data = await getAllFeedbacks(); setFeedbacks(data); };
     const fetchConfig = async () => {
         const cfg = await getStoreConfig();
         if (cfg) setStoreConfig(cfg);
@@ -555,12 +708,20 @@ const AdminPage: React.FC = () => {
     
     const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
     const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); fetchBackgrounds(); } };
+    const handleSeedTemplates = async () => { if (confirm("Reset templates về mặc định?")) { setLoading(true); await seedTemplates(); setLoading(false); fetchTemplates(); } };
+    const handleSeedFeedbacks = async () => { if (confirm("Reset feedbacks về mặc định?")) { setLoading(true); await seedFeedbacks(); setLoading(false); fetchFeedbacks(); } };
     
     const handleSaveProduct = async (part: LegoPart) => { setIsEditingProduct(false); if (editingPart) await updatePart(part.id, part); else await addPart(part); fetchProducts(); setEditingPart(null); };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); fetchProducts(); } };
     
     const handleSaveBackground = async (bg: PresetBackground) => { setIsEditingBackground(false); if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); fetchBackgrounds(); setEditingBg(null); };
     const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); fetchBackgrounds(); } };
+
+    const handleSaveTemplate = async (tpl: CollectionTemplate) => { setIsEditingTemplate(false); if (editingTemplate) await updateTemplate(tpl.id, tpl); else await addTemplate(tpl); fetchTemplates(); setEditingTemplate(null); };
+    const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); fetchTemplates(); } };
+
+    const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); fetchFeedbacks(); setEditingFeedback(null); };
+    const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); fetchFeedbacks(); } };
 
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
@@ -1054,6 +1215,8 @@ const AdminPage: React.FC = () => {
                                 <>
                                     <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
                                     <button onClick={() => setActiveTab('backgrounds')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'backgrounds' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Hình nền</button>
+                                    <button onClick={() => setActiveTab('templates')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'templates' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Mẫu</button>
+                                    <button onClick={() => setActiveTab('feedbacks')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'feedbacks' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Feedback</button>
                                     <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'settings' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Cấu hình</button>
                                 </>
                             )}
@@ -1072,6 +1235,8 @@ const AdminPage: React.FC = () => {
                             <>
                                 <button onClick={() => {setActiveTab('products'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Sản phẩm</button>
                                 <button onClick={() => {setActiveTab('backgrounds'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Hình nền</button>
+                                <button onClick={() => {setActiveTab('templates'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Mẫu</button>
+                                <button onClick={() => {setActiveTab('feedbacks'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Feedback</button>
                                 <button onClick={() => {setActiveTab('settings'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Cấu hình</button>
                             </>
                         )}
@@ -1546,16 +1711,12 @@ const AdminPage: React.FC = () => {
                                     {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(bg => (
                                         <tr key={bg.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="p-3 border-b border-gray-100">
-                                                <div className="w-16 h-20 bg-gray-100 rounded overflow-hidden border border-gray-200">
-                                                    <img src={bg.url} alt="" className="w-full h-full object-cover" />
+                                                <div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden">
+                                                    <img src={bg.url} alt="" className="w-full h-full object-contain" />
                                                 </div>
                                             </td>
                                             <td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{bg.name}</td>
-                                            <td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${bg.type === 'square' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
-                                                    {bg.type === 'square' ? 'Vuông' : 'Chữ nhật'}
-                                                </span>
-                                            </td>
+                                            <td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{bg.type}</td>
                                             <td className="p-3 border-b border-gray-100 text-sm text-gray-500">{bg.category}</td>
                                             <td className="p-3 border-b border-gray-100 text-right">
                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1566,17 +1727,7 @@ const AdminPage: React.FC = () => {
                                         </tr>
                                     )) : (
                                         backgrounds.length > 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy hình nền nào.</td></tr>) :
-                                        (<tr>
-                                            <td colSpan={5} className="p-12 text-center">
-                                                <div className="flex flex-col items-center justify-center text-gray-400">
-                                                     <span className="text-4xl mb-2">🖼️</span>
-                                                     <p className="text-sm mb-4">Chưa có hình nền nào trong Database.</p>
-                                                     <button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
-                                                         Đồng bộ hình nền mẫu
-                                                     </button>
-                                                </div>
-                                            </td>
-                                        </tr>)
+                                        (<tr><td colSpan={5} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🖼️</span><p className="text-sm mb-4">Kho hình nền đang trống.</p><button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button></div></td></tr>)
                                     )}
                                 </tbody>
                             </table>
@@ -1584,56 +1735,130 @@ const AdminPage: React.FC = () => {
                     </div>
                 )}
 
-                {activeTab === 'settings' && role === 'admin' && (
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm max-w-3xl mx-auto animate-fade-in p-8">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Cấu hình Website</h2>
-                        
-                        <div className="space-y-8">
-                            <ConfigImageUpload 
-                                label="Logo (Thanh điều hướng)" 
-                                description="Hiển thị ở góc trái thanh menu (Header). Khuyên dùng ảnh PNG trong suốt, chiều cao tối thiểu 100px."
-                                currentUrl={storeConfig.logoUrl}
-                                onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
-                                isUploading={uploadingField === 'logoUrl'}
-                            />
-
-                            <div className="border-t border-gray-100 pt-6">
-                                <ConfigImageUpload 
-                                    label="Favicon (Icon trình duyệt)" 
-                                    description="Icon nhỏ hiển thị trên tab trình duyệt. Khuyên dùng ảnh vuông 64x64px hoặc 128x128px."
-                                    currentUrl={storeConfig.faviconUrl}
-                                    onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
-                                    isUploading={uploadingField === 'faviconUrl'}
-                                />
+                {activeTab === 'templates' && role === 'admin' && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                            <h2 className="text-lg font-bold text-gray-900">Mẫu Bộ Sưu Tập</h2>
+                            <div className="flex gap-3">
+                                <button onClick={() => { setEditingTemplate(null); setIsEditingTemplate(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
                             </div>
-
-                            <div className="border-t border-gray-100 pt-6">
-                                <h3 className="text-lg font-bold text-gray-800 mb-4">Hình ảnh Trang chủ</h3>
-                                <div className="grid gap-8">
-                                    <ConfigImageUpload 
-                                        label="Banner Chính (Hero Image)" 
-                                        description="Ảnh lớn đầu trang chủ. Kích thước khuyên dùng: 1920x1080px."
-                                        currentUrl={storeConfig.heroImageUrl}
-                                        onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
-                                        isUploading={uploadingField === 'heroImageUrl'}
-                                    />
-                                    <ConfigImageUpload 
-                                        label="Ảnh Cảm hứng (Inspire Section)" 
-                                        description="Ảnh nền cho phần sản phẩm nổi bật. Kích thước khuyên dùng: 1000x1000px hoặc 1200x1600px."
-                                        currentUrl={storeConfig.inspireImageUrl}
-                                        onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
-                                        isUploading={uploadingField === 'inspireImageUrl'}
-                                    />
-                                </div>
+                        </div>
+                        <div className="flex-grow overflow-auto p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {templates.length > 0 ? templates.map(tpl => (
+                                    <div key={tpl.id} className="border rounded-lg overflow-hidden group relative">
+                                        <div className="aspect-video bg-gray-100 relative">
+                                            <img src={tpl.imageUrl} alt={tpl.name} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <button onClick={() => { setEditingTemplate(tpl); setConfigJson(JSON.stringify(tpl.config, null, 2)); setIsEditingTemplate(true); }} className="bg-white text-gray-900 px-3 py-1.5 rounded text-xs font-bold">Sửa</button>
+                                                <button onClick={() => handleDeleteTemplate(tpl.id)} className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold">Xóa</button>
+                                            </div>
+                                        </div>
+                                        <div className="p-3">
+                                            <h3 className="font-bold text-gray-800">{tpl.name}</h3>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="col-span-3 text-center py-12 text-gray-400">
+                                        <p className="mb-4">Chưa có mẫu nào.</p>
+                                        <button onClick={handleSeedTemplates} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
 
-                {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => setIsEditingProduct(false)} />}
-                {isEditingBackground && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={() => setIsEditingBackground(false)} />}
-                {loading && <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50"><div className="text-gray-900 font-bold">Đang xử lý...</div></div>}
+                {activeTab === 'feedbacks' && role === 'admin' && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                            <h2 className="text-lg font-bold text-gray-900">Feedback Khách Hàng</h2>
+                            <div className="flex gap-3">
+                                <button onClick={() => { setEditingFeedback(null); setIsEditingFeedback(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
+                            </div>
+                        </div>
+                        <div className="flex-grow overflow-auto p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {feedbacks.length > 0 ? feedbacks.map(fb => (
+                                    <div key={fb.id} className="border rounded-lg p-4 relative group bg-white">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                                                <img src={fb.imageUrl} alt={fb.name} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-sm text-gray-900">{fb.name}</h4>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-600 italic mb-3 line-clamp-3">"{fb.text}"</p>
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                            <button onClick={() => { setEditingFeedback(fb); setIsEditingFeedback(true); }} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                                            <button onClick={() => handleDeleteFeedback(fb.id)} className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="col-span-3 text-center py-12 text-gray-400">
+                                        <p className="mb-4">Chưa có feedback nào.</p>
+                                        <button onClick={handleSeedFeedbacks} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'settings' && role === 'admin' && (
+                    <div className="max-w-2xl mx-auto animate-fade-in">
+                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
+                            <div className="p-6 border-b border-gray-100">
+                                <h2 className="text-xl font-bold text-gray-900">Cấu hình Cửa hàng</h2>
+                                <p className="text-sm text-gray-500">Thay đổi logo, banner và hình ảnh thương hiệu.</p>
+                            </div>
+                            <div className="p-6 space-y-8">
+                                <ConfigImageUpload 
+                                    label="Logo Shop" 
+                                    description="Hiển thị trên header (Khuyên dùng: PNG trong suốt, cao 50px)."
+                                    currentUrl={storeConfig.logoUrl}
+                                    onUpload={(file) => handleConfigUpload(file, 'logoUrl')}
+                                    isUploading={uploadingField === 'logoUrl'}
+                                />
+                                <ConfigImageUpload 
+                                    label="Favicon" 
+                                    description="Icon trên tab trình duyệt (Khuyên dùng: PNG/ICO vuông 32x32)."
+                                    currentUrl={storeConfig.faviconUrl}
+                                    onUpload={(file) => handleConfigUpload(file, 'faviconUrl')}
+                                    isUploading={uploadingField === 'faviconUrl'}
+                                />
+                                <ConfigImageUpload 
+                                    label="Hero Banner (Trang chủ)" 
+                                    description="Ảnh lớn đầu trang chủ (Khuyên dùng: 1920x1080)."
+                                    currentUrl={storeConfig.heroImageUrl}
+                                    onUpload={(file) => handleConfigUpload(file, 'heroImageUrl')}
+                                    isUploading={uploadingField === 'heroImageUrl'}
+                                />
+                                <ConfigImageUpload 
+                                    label="Inspire Banner" 
+                                    description="Ảnh phần 'Truyền cảm hứng' (Khuyên dùng: 800x800)."
+                                    currentUrl={storeConfig.inspireImageUrl}
+                                    onUpload={(file) => handleConfigUpload(file, 'inspireImageUrl')}
+                                    isUploading={uploadingField === 'inspireImageUrl'}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
+
+            {/* MODALS */}
+            {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} />}
+            {isEditingBackground && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} />}
+            {isEditingTemplate && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={() => { setIsEditingTemplate(false); setEditingTemplate(null); }} />}
+            {isEditingFeedback && <FeedbackForm initialData={editingFeedback} onSave={handleSaveFeedback} onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }} />}
+
+            {loading && (
+                <div className="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+            )}
         </div>
     );
 };

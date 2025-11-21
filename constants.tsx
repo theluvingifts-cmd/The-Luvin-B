@@ -152,8 +152,9 @@ const initialTextConfig = {
     textAlign: 'center' as const,
 };
 
-export const COLLECTION_TEMPLATES: { name: string; imageUrl: string; config: FrameConfig }[] = [
+export const COLLECTION_TEMPLATES: { id: string; name: string; imageUrl: string; config: FrameConfig }[] = [
     {
+        id: 'tpl_wedding',
         name: 'Wedding Day',
         imageUrl: 'https://i.imgur.com/8aQp57m.jpg',
         config: {
@@ -168,6 +169,7 @@ export const COLLECTION_TEMPLATES: { name: string; imageUrl: string; config: Fra
         }
     },
     {
+        id: 'tpl_grad',
         name: 'Graduation',
         imageUrl: 'https://i.imgur.com/pBf1gV2.jpg',
         config: {
@@ -181,6 +183,7 @@ export const COLLECTION_TEMPLATES: { name: string; imageUrl: string; config: Fra
         }
     },
     {
+        id: 'tpl_bday',
         name: 'Birthday Fun',
         imageUrl: 'https://i.imgur.com/kY8P8eH.jpg',
         config: {
@@ -196,10 +199,10 @@ export const COLLECTION_TEMPLATES: { name: string; imageUrl: string; config: Fra
 ];
 
 export const FEEDBACK_ITEMS = [
-    { name: 'Minh & Anh', text: 'Món quà kỷ niệm cưới tuyệt vời, chồng mình rất thích!', imageUrl: 'https://i.imgur.com/rQ8aY2w.jpg' },
-    { name: 'Gia đình bé Bắp', text: 'Bé nhà mình rất hào hứng khi thấy cả nhà trong khung hình LEGO.', imageUrl: 'https://i.imgur.com/sC03b30.jpg' },
-    { name: 'Hoàng Long', text: 'Shop tư vấn nhiệt tình, giao hàng nhanh. Sẽ ủng hộ lần tới!', imageUrl: 'https://i.imgur.com/w2Y3gbS.jpg' },
-    { name: 'Thùy Chi', text: 'Chất lượng sản phẩm rất tốt, chi tiết sắc nét.', imageUrl: 'https://i.imgur.com/pBf1gV2.jpg' },
+    { id: 'fb_1', name: 'Minh & Anh', text: 'Món quà kỷ niệm cưới tuyệt vời, chồng mình rất thích!', imageUrl: 'https://i.imgur.com/rQ8aY2w.jpg' },
+    { id: 'fb_2', name: 'Gia đình bé Bắp', text: 'Bé nhà mình rất hào hứng khi thấy cả nhà trong khung hình LEGO.', imageUrl: 'https://i.imgur.com/sC03b30.jpg' },
+    { id: 'fb_3', name: 'Hoàng Long', text: 'Shop tư vấn nhiệt tình, giao hàng nhanh. Sẽ ủng hộ lần tới!', imageUrl: 'https://i.imgur.com/w2Y3gbS.jpg' },
+    { id: 'fb_4', name: 'Thùy Chi', text: 'Chất lượng sản phẩm rất tốt, chi tiết sắc nét.', imageUrl: 'https://i.imgur.com/pBf1gV2.jpg' },
 ];
 
 export const MOCK_ORDERS: Record<string, Order> = {

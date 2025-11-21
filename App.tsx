@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground } from './types';
+import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem } from './types';
 import { 
     FRAME_OPTIONS, 
     LEGO_PARTS, 
@@ -20,6 +20,8 @@ import { createOrder, getOrderById } from './services/orderService'; // Kết n�
 import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
 import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
 import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
+import { getAllTemplates } from './services/templateService'; // Lấy mẫu
+import { getAllFeedbacks } from './services/feedbackService'; // Lấy feedback
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
@@ -858,7 +860,8 @@ const HomePage: React.FC<{
     navigateTo: (page: Page) => void;
     heroImage?: string;
     inspireImage?: string;
-}> = ({ navigateTo, heroImage, inspireImage }) => {
+    feedbacks?: FeedbackItem[]; // Changed to prop
+}> = ({ navigateTo, heroImage, inspireImage, feedbacks }) => {
   const BowIcon = () => (
     <svg className="w-6 h-6 text-luvin-pink opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -885,6 +888,9 @@ const HomePage: React.FC<{
 
   const finalHero = heroImage || GENERAL_ASSETS.hero;
   const finalInspire = inspireImage || GENERAL_ASSETS.inspire;
+  
+  // Use dynamic feedbacks if available, else fallback to constant
+  const displayFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
 
   return (
     <div>
@@ -943,11 +949,16 @@ const HomePage: React.FC<{
           <h2 className="text-2xl font-bold font-body text-center mb-8">Our feedbacks</h2>
           <div className="w-full overflow-hidden relative">
             <div className="flex animate-marquee whitespace-nowrap">
-                {[...FEEDBACK_ITEMS, ...FEEDBACK_ITEMS].map((feedback, index) => (
+                {/* Duplicate to create loop effect */}
+                {[...displayFeedbacks, ...displayFeedbacks].map((feedback, index) => (
                    <div key={index} className="flex-shrink-0 w-60 sm:w-72 bg-luvin-cream p-4 rounded-xl flex flex-col items-center mx-4">
                      <h3 className="font-script text-3xl text-luvin-pink mb-3">Feedback</h3>
                      <div className="w-full aspect-square rounded-lg overflow-hidden">
                        <img src={feedback.imageUrl} alt={feedback.name} className="w-full h-full object-cover"/>
+                     </div>
+                     <div className="mt-4 text-center whitespace-normal">
+                        <p className="text-sm font-semibold text-gray-800">{feedback.name}</p>
+                        <p className="text-xs text-gray-600 italic mt-1">"{feedback.text}"</p>
                      </div>
                      <div className="mt-4">
                        <BowIcon />
@@ -1360,9 +1371,33 @@ const BuilderPage: React.FC<{
   );
 };
 
-const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>> }> = ({ navigateTo, setConfig }) => {
+const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>, templates?: CollectionTemplate[] }> = ({ navigateTo, setConfig, templates }) => {
+    const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
+    
     const handleCustomize = (config: FrameConfig) => { setConfig(config); navigateTo('builder'); };
-    return ( <div className="container mx-auto px-6 py-8"><h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">Bộ sưu tập The Luvin</h1><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{COLLECTION_TEMPLATES.map((template, index) => ( <div key={index} className="bg-white rounded-lg shadow-lg overflow-hidden group"><div className="relative"><img src={template.imageUrl} alt={template.name} className="w-full h-72 object-cover" /><div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center"><button onClick={() => handleCustomize(template.config)} className="bg-white/80 text-luvin-pink font-bold py-2 px-4 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-body">Tùy chỉnh mẫu này</button></div></div><div className="p-6"><h3 className="text-2xl font-bold font-body text-luvin-pink">{template.name}</h3></div></div> ))}</div></div> );
+    
+    return ( 
+      <div className="container mx-auto px-6 py-8">
+        <h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">Bộ sưu tập The Luvin</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {displayTemplates.map((template, index) => ( 
+            <div key={template.id || index} className="bg-white rounded-lg shadow-lg overflow-hidden group">
+              <div className="relative">
+                <img src={template.imageUrl} alt={template.name} className="w-full h-72 object-cover" />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
+                  <button onClick={() => handleCustomize(template.config)} className="bg-white/80 text-luvin-pink font-bold py-2 px-4 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-body">
+                    Tùy chỉnh mẫu này
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <h3 className="text-2xl font-bold font-body text-luvin-pink">{template.name}</h3>
+              </div>
+            </div> 
+          ))}
+        </div>
+      </div> 
+    );
 }
 
 const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: number) => void; allParts: Record<string, LegoPart>; navigateTo: (page: Page) => void;}> = ({ cartItems, onRemoveItem, allParts, navigateTo }) => {
@@ -2048,17 +2083,26 @@ const App: React.FC = () => {
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([
       ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: bg.name, type: 'square' as const })),
       ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: bg.name, type: 'rectangle' as const }))
-  ]); // Fallback với type chính xác
+  ]); 
+  
+  // NEW STATE FOR DYNAMIC CONTENT
+  const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_URL);
-  // New states for dynamic home content
   const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
   const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
 
-  // Fetch products, backgrounds, and config on mount
+  // Fetch all dynamic data on mount
   useEffect(() => {
       const fetchData = async () => {
-          const [parts, bgs, storeConfig] = await Promise.all([getAllParts(), getAllBackgrounds(), getStoreConfig()]);
+          const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+              getAllParts(), 
+              getAllBackgrounds(), 
+              getStoreConfig(),
+              getAllTemplates(),
+              getAllFeedbacks()
+          ]);
           
           if (parts && parts.length > 0) {
               setLegoParts(categorizeParts(parts));
@@ -2066,13 +2110,19 @@ const App: React.FC = () => {
           if (bgs && bgs.length > 0) {
               setBackgrounds(bgs);
           }
+          if (tpls && tpls.length > 0) {
+              setTemplates(tpls);
+          }
+          if (fbs && fbs.length > 0) {
+              setFeedbacks(fbs);
+          }
+
           if (storeConfig) {
               if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
               if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
               if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
               
               if (storeConfig.faviconUrl) {
-                  // Update favicon dynamically
                   const link = document.querySelector("link[rel~='icon']");
                   if (link instanceof HTMLLinkElement) {
                       link.href = storeConfig.faviconUrl;
@@ -2088,7 +2138,6 @@ const App: React.FC = () => {
       fetchData();
   }, []);
 
-  // Tính toán allParts dựa trên legoParts động thay vì hằng số tĩnh
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
@@ -2096,18 +2145,13 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  // --- ADDED HASH LISTENER FOR ADMIN ROUTING ---
   useEffect(() => {
       const checkHash = () => {
           if (window.location.hash === '#/admin') {
               setCurrentPage('admin');
           }
       };
-      
-      // Check on initial load
       checkHash();
-
-      // Listen for hash changes (e.g. user manually changing URL)
       window.addEventListener('hashchange', checkHash);
       return () => window.removeEventListener('hashchange', checkHash);
   }, []);
@@ -2146,7 +2190,7 @@ const App: React.FC = () => {
         )}
         
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} />}
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} />}
             {currentPage === 'builder' && (
                 <BuilderPage 
                     config={config} 
@@ -2158,7 +2202,7 @@ const App: React.FC = () => {
                     backgrounds={backgrounds}
                 />
             )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} />}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
             {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
             {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
