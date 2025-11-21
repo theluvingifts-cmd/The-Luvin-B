@@ -4,6 +4,7 @@ import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
 import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds } from '../services/backgroundService';
 import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
+import { updateStoreConfig, getStoreConfig } from '../services/configService'; // Import config service
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor } from '../types';
@@ -428,7 +429,7 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'backgrounds' | 'settings'>('dashboard');
 
     // Time Filters
     const [filterType, setFilterType] = useState<'period' | 'month'>('period');
@@ -455,6 +456,9 @@ const AdminPage: React.FC = () => {
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     const [filterStatus, setFilterStatus] = useState<string>('all');
 
+    // Configuration State
+    const [configLogo, setConfigLogo] = useState<string>('');
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -463,6 +467,7 @@ const AdminPage: React.FC = () => {
                 fetchOrders();
                 fetchProducts();
                 fetchBackgrounds();
+                fetchConfig();
             } else {
                 setCurrentUser(null);
             }
@@ -491,6 +496,10 @@ const AdminPage: React.FC = () => {
     const fetchOrders = async () => { const data = await getAllOrders(); setOrders(data); };
     const fetchProducts = async () => { const data = await getAllParts(); setProducts(data); };
     const fetchBackgrounds = async () => { const data = await getAllBackgrounds(); setBackgrounds(data); };
+    const fetchConfig = async () => {
+        const cfg = await getStoreConfig();
+        if (cfg && cfg.logoUrl) setConfigLogo(cfg.logoUrl);
+    }
     
     const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); fetchProducts(); } };
     const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); fetchBackgrounds(); } };
@@ -515,6 +524,58 @@ const AdminPage: React.FC = () => {
             alert('Đã xoá đơn hàng.');
         }
     };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setIsUploadingLogo(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    setConfigLogo(url);
+                    await updateStoreConfig({ logoUrl: url });
+                    alert("Đã cập nhật logo thành công!");
+                } else {
+                    alert("Lỗi upload logo.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi upload logo.");
+            } finally {
+                setIsUploadingLogo(false);
+            }
+        }
+    };
+
+    // DRAG SCROLL IMPLEMENTATION
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollContainerRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+        setScrollLeft(scrollContainerRef.current.scrollLeft);
+    };
+
+    const handleMouseLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !scrollContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 1.5; // Scroll speed multiplier
+        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
 
     // --- PRICE CALCULATION LOGIC ---
     const calculateOrderPrice = (order: Order, allParts: LegoPart[]) => {
@@ -943,6 +1004,7 @@ const AdminPage: React.FC = () => {
                                 <>
                                     <button onClick={() => setActiveTab('products')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Sản phẩm</button>
                                     <button onClick={() => setActiveTab('backgrounds')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'backgrounds' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Hình nền</button>
+                                    <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'settings' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>Cấu hình</button>
                                 </>
                             )}
                         </nav>
@@ -960,6 +1022,7 @@ const AdminPage: React.FC = () => {
                             <>
                                 <button onClick={() => {setActiveTab('products'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Sản phẩm</button>
                                 <button onClick={() => {setActiveTab('backgrounds'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Hình nền</button>
+                                <button onClick={() => {setActiveTab('settings'); setIsMobileMenuOpen(false)}} className="block w-full text-left px-4 py-2 rounded hover:bg-gray-50 font-medium">Cấu hình</button>
                             </>
                         )}
                     </div>
@@ -1083,10 +1146,18 @@ const AdminPage: React.FC = () => {
                                     <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
                                     <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
                                 </div>
-                                <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+                                {/* Added Drag to Scroll Ref and Events */}
+                                <div 
+                                    className="flex gap-1 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing"
+                                    ref={scrollContainerRef}
+                                    onMouseDown={handleMouseDown}
+                                    onMouseLeave={handleMouseLeave}
+                                    onMouseUp={handleMouseUp}
+                                    onMouseMove={handleMouseMove}
+                                >
                                     <button 
                                         onClick={() => setFilterStatus('all')}
-                                        className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}
+                                        className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}
                                     >
                                         Tất cả
                                     </button>
@@ -1094,7 +1165,7 @@ const AdminPage: React.FC = () => {
                                         <button
                                             key={status.label}
                                             onClick={() => setFilterStatus(status.label)}
-                                            className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors ${filterStatus === status.label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}
+                                            className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === status.label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}
                                         >
                                             {status.label}
                                         </button>
@@ -1459,6 +1530,55 @@ const AdminPage: React.FC = () => {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'settings' && role === 'admin' && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm max-w-2xl mx-auto animate-fade-in p-8">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Cấu hình Website</h2>
+                        
+                        <div className="space-y-6">
+                            {/* Logo Upload Section */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Logo & Favicon</label>
+                                <p className="text-xs text-gray-500 mb-4">Hình ảnh này sẽ được sử dụng làm Logo trên đầu trang và Favicon của trình duyệt.</p>
+                                
+                                <div className="flex items-start gap-6">
+                                    <div className="flex-shrink-0 w-32 h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden relative">
+                                        {configLogo ? (
+                                            <img src={configLogo} alt="Logo Preview" className="w-full h-full object-contain p-2" />
+                                        ) : (
+                                            <span className="text-xs text-gray-400">Chưa có logo</span>
+                                        )}
+                                        {isUploadingLogo && (
+                                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                                <span className="text-xs font-bold text-blue-600 animate-pulse">Uploading...</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="flex-grow">
+                                        <div className="relative">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={handleLogoUpload}
+                                                className="hidden" 
+                                                id="logo-upload"
+                                                disabled={isUploadingLogo}
+                                            />
+                                            <label 
+                                                htmlFor="logo-upload"
+                                                className={`inline-block px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-colors ${isUploadingLogo ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black'}`}
+                                            >
+                                                {isUploadingLogo ? 'Đang xử lý...' : 'Tải ảnh mới'}
+                                            </label>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-2">Khuyên dùng ảnh PNG nền trong suốt.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

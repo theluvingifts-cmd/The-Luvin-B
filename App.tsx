@@ -19,12 +19,13 @@ import FramePreview from './components/FramePreview';
 import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
 import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
 import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
+import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
 declare var html2canvas: any;
 
-const LOGO_URL = "https://i.imgur.com/7gDkS1Q.png"; // Using giftbox as temporary logo placeholder or replace with your actual logo URL
+const DEFAULT_LOGO_URL = "https://i.imgur.com/7gDkS1Q.png"; 
 
 const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
   if (amount === 0 && context === 'price') return 'Miễn phí';
@@ -718,7 +719,7 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
   );
 };
 
-const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; onCartClick: () => void; }> = ({ navigateTo, cartCount, onCartClick }) => {
+const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; onCartClick: () => void; logoUrl: string; }> = ({ navigateTo, cartCount, onCartClick, logoUrl }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -743,7 +744,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
       <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="cursor-pointer" onClick={() => handleNav('home')}>
-              <img src={LOGO_URL} alt="The Luvin" className="h-12 object-contain" />
+              <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" />
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => (
@@ -2042,16 +2043,31 @@ const App: React.FC = () => {
       ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: bg.name, type: 'rectangle' as const }))
   ]); // Fallback với type chính xác
 
+  const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_URL);
 
-  // Fetch products & backgrounds on mount
+  // Fetch products, backgrounds, and config on mount
   useEffect(() => {
       const fetchData = async () => {
-          const [parts, bgs] = await Promise.all([getAllParts(), getAllBackgrounds()]);
+          const [parts, bgs, storeConfig] = await Promise.all([getAllParts(), getAllBackgrounds(), getStoreConfig()]);
+          
           if (parts && parts.length > 0) {
               setLegoParts(categorizeParts(parts));
           }
           if (bgs && bgs.length > 0) {
               setBackgrounds(bgs);
+          }
+          if (storeConfig && storeConfig.logoUrl) {
+              setLogoUrl(storeConfig.logoUrl);
+              // Update favicon dynamically
+              const link = document.querySelector("link[rel~='icon']");
+              if (link instanceof HTMLLinkElement) {
+                  link.href = storeConfig.logoUrl;
+              } else {
+                  const newLink = document.createElement('link');
+                  newLink.rel = 'icon';
+                  newLink.href = storeConfig.logoUrl;
+                  document.head.appendChild(newLink);
+              }
           }
       };
       fetchData();
@@ -2111,7 +2127,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col font-sans text-gray-900">
          {currentPage !== 'admin' && (
-             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} />
+             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={logoUrl} />
         )}
         
         <main className="flex-grow">

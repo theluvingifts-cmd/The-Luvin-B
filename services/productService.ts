@@ -1,3 +1,4 @@
+
 // services/productService.ts
 import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -16,7 +17,11 @@ export const getAllParts = async (): Promise<LegoPart[]> => {
             parts.push(doc.data() as LegoPart);
         });
         return parts;
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+             console.warn("Firestore: Không có quyền đọc 'lego_parts'. Dùng dữ liệu mẫu.");
+             return [];
+        }
         console.error("Lỗi lấy danh sách sản phẩm:", error);
         return [];
     }
