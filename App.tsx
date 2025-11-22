@@ -360,7 +360,7 @@ const PartButton: React.FC<{
                     : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
         >
-            <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+            <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
                 {!imgError && part.imageUrl ? (
                     <img 
                         src={part.imageUrl} 
@@ -370,6 +370,12 @@ const PartButton: React.FC<{
                     />
                 ) : (
                     <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
+                )}
+                {/* STOCK BADGE if low but > 0 */}
+                {part.stock !== undefined && part.stock < 10 && part.stock > 0 && (
+                    <div className="absolute top-0 right-0 bg-orange-500 text-white text-[8px] px-1 py-0.5 rounded-bl">
+                        Còn {part.stock}
+                    </div>
                 )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
@@ -510,7 +516,8 @@ const Step3Characters: React.FC<{
         { key: 'hat', label: 'Mũ' },
     ];
 
-    const currentPartList = legoParts[activePartType] || [];
+    // FILTER STOCK HERE: Only show parts where stock is undefined (infinite) or > 0
+    const currentPartList = (legoParts[activePartType] || []).filter(p => p.stock === undefined || p.stock > 0);
 
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
@@ -606,7 +613,9 @@ const Step3Characters: React.FC<{
                                 onClick={() => handlePartSelect(part)} 
                             />
                         )) : (
-                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">Đang tải hoặc chưa có dữ liệu...</div>
+                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
+                                {legoParts[activePartType]?.length > 0 ? "Đã hết hàng mẫu này." : "Đang tải hoặc chưa có dữ liệu..."}
+                            </div>
                         )}
                     </div>
 
@@ -648,7 +657,7 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM PHỤ KIỆN</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {legoParts.accessory.map(part => (
+                    {legoParts.accessory.filter(p => p.stock === undefined || p.stock > 0).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -657,7 +666,7 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {legoParts.pet.map(part => (
+                    {legoParts.pet.filter(p => p.stock === undefined || p.stock > 0).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -2051,6 +2060,19 @@ const categorizeParts = (parts: LegoPart[]) => {
 };
 
 const App: React.FC = () => {
+  // LAZY INITIALIZATION TO PREVENT FOUC
+  // Read from localStorage only once during initial render
+  const [storeConfig] = useState(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached) : {};
+      } catch (e) { return {}; }
+  });
+
+  const [logoUrl, setLogoUrl] = useState<string>(storeConfig.logoUrl || ""); 
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(storeConfig.heroImageUrl);
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(storeConfig.inspireImageUrl);
+
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
   const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
@@ -2064,38 +2086,25 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  // Load cached config from localStorage immediately
-  const loadCachedConfig = () => {
-      try {
-          const cached = localStorage.getItem('app_config');
-          return cached ? JSON.parse(cached) : null;
-      } catch (e) { return null; }
-  };
-  const cachedConfig = loadCachedConfig();
-
-  const [logoUrl, setLogoUrl] = useState<string>(cachedConfig?.logoUrl || ""); 
-  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(cachedConfig?.heroImageUrl);
-  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(cachedConfig?.inspireImageUrl);
-
   // Use effect to apply favicon if cached
   useEffect(() => {
-      if (cachedConfig?.faviconUrl) {
+      if (storeConfig.faviconUrl) {
           const link = document.querySelector("link[rel~='icon']");
           if (link instanceof HTMLLinkElement) {
-              link.href = cachedConfig.faviconUrl;
+              link.href = storeConfig.faviconUrl;
           } else {
               const newLink = document.createElement('link');
               newLink.rel = 'icon';
-              newLink.href = cachedConfig.faviconUrl;
+              newLink.href = storeConfig.faviconUrl;
               document.head.appendChild(newLink);
           }
       }
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   useEffect(() => {
       const fetchData = async () => {
           try {
-            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+            const [parts, bgs, remoteConfig, tpls, fbs] = await Promise.all([
                 getAllParts(), 
                 getAllBackgrounds(), 
                 getStoreConfig(),
@@ -2116,22 +2125,22 @@ const App: React.FC = () => {
                 setFeedbacks(fbs);
             }
 
-            if (storeConfig) {
+            if (remoteConfig) {
                 // Save to cache
-                localStorage.setItem('app_config', JSON.stringify(storeConfig));
+                localStorage.setItem('app_config', JSON.stringify(remoteConfig));
 
-                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
-                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
-                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+                if (remoteConfig.logoUrl) setLogoUrl(remoteConfig.logoUrl);
+                if (remoteConfig.heroImageUrl) setHeroImageUrl(remoteConfig.heroImageUrl);
+                if (remoteConfig.inspireImageUrl) setInspireImageUrl(remoteConfig.inspireImageUrl);
                 
-                if (storeConfig.faviconUrl) {
+                if (remoteConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");
                     if (link instanceof HTMLLinkElement) {
-                        link.href = storeConfig.faviconUrl;
+                        link.href = remoteConfig.faviconUrl;
                     } else {
                         const newLink = document.createElement('link');
                         newLink.rel = 'icon';
-                        newLink.href = storeConfig.faviconUrl;
+                        newLink.href = remoteConfig.faviconUrl;
                         document.head.appendChild(newLink);
                     }
                 }
@@ -2190,9 +2199,9 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Even if fetching, show what we have from cache if possible
-  // Only show loading screen if we truly have nothing to show
-  if (isAppLoading && !logoUrl) {
+  // If app is loading and we don't have cached logo, show loading screen
+  // Otherwise show content immediately (lazy loaded config handles the visuals)
+  if (isAppLoading && !logoUrl && Object.keys(storeConfig).length === 0) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
               <div className="animate-pulse flex flex-col items-center">
