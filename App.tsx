@@ -350,50 +350,32 @@ const PartButton: React.FC<{
     onClick: () => void;
 }> = ({ part, isSelected, onClick }) => {
     const [imgError, setImgError] = useState(false);
-    const isOutOfStock = part.stock !== undefined && part.stock <= 0;
     
     return (
         <button
             onClick={onClick}
-            disabled={isOutOfStock}
-            className={`
-                relative border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1 transition-all duration-200 text-center w-full
-                ${isSelected 
-                    ? 'border-luvin-pink border-2 bg-pink-50 transform scale-105 shadow-sm z-10' 
-                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-                }
-                ${isOutOfStock ? 'opacity-50 grayscale cursor-not-allowed' : ''}
-            `}
+            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1 transition-all text-center w-full ${
+                isSelected
+                    ? 'border-luvin-pink bg-pink-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
         >
-            <div className="w-full aspect-square rounded-md bg-gray-50 overflow-hidden flex items-center justify-center relative">
+            <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
                 {!imgError && part.imageUrl ? (
                     <img 
                         src={part.imageUrl} 
                         alt={part.name} 
-                        className="w-full h-full object-contain transition-transform duration-300" 
+                        className="w-full h-full object-contain" 
                         onError={() => setImgError(true)}
                     />
                 ) : (
                     <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
                 )}
-                {isOutOfStock && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
-                        <span className="text-[10px] font-bold text-red-600 border border-red-600 px-1 py-0.5 rounded bg-white transform -rotate-12">HẾT HÀNG</span>
-                    </div>
-                )}
             </div>
-            <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight w-full">
-                <span className="text-[11px] font-semibold text-gray-800 line-clamp-2">{part.name}</span>
+            <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
+                <span className="text-[11px] font-semibold text-gray-800">{part.name}</span>
                 <span className="text-[11px] font-bold text-luvin-pink">{formatCurrency(part.price)}</span>
             </div>
-            
-            {isSelected && (
-                <div className="absolute -top-2 -right-2 bg-luvin-pink text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm ring-2 ring-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                </div>
-            )}
         </button>
     );
 };
@@ -440,9 +422,6 @@ const Step3Characters: React.FC<{
     
     const handlePartSelect = (part: LegoPart | undefined) => {
         if (!activeCharId || !part) return;
-        // Prevent selecting out of stock items via code too
-        if (part.stock !== undefined && part.stock <= 0) return;
-
         setConfig(prev => ({
             ...prev,
             characters: prev.characters.map(c => {
@@ -497,8 +476,6 @@ const Step3Characters: React.FC<{
     
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet') return;
-        if (part.stock !== undefined && part.stock <= 0) return;
-
         const newItem: DraggableItem = {
             id: Date.now(), partId: part.id, type: part.type, x: 50 + (Math.random() - 0.5) * 20, y: 50 + (Math.random() - 0.5) * 20, rotation: 0, scale: 1,
         };
@@ -533,8 +510,12 @@ const Step3Characters: React.FC<{
         { key: 'hat', label: 'Mũ' },
     ];
 
-    // Show all parts, even if out of stock (PartButton handles disabled state)
-    const currentPartList = legoParts[activePartType] || [];
+    // Helper to filter out items with 0 stock
+    const getAvailableParts = (list: LegoPart[]) => {
+        return list.filter(p => p.stock === undefined || p.stock > 0);
+    };
+
+    const currentPartList = getAvailableParts(legoParts[activePartType] || []);
 
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
@@ -631,7 +612,7 @@ const Step3Characters: React.FC<{
                             />
                         )) : (
                             <div className="col-span-4 text-center text-sm text-gray-400 py-4">
-                                Đang tải hoặc chưa có dữ liệu...
+                                {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
                             </div>
                         )}
                     </div>
@@ -674,7 +655,7 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM PHỤ KIỆN</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {legoParts.accessory.map(part => (
+                    {getAvailableParts(legoParts.accessory).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -683,7 +664,7 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {legoParts.pet.map(part => (
+                    {getAvailableParts(legoParts.pet).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -1652,7 +1633,7 @@ const CheckoutPage: React.FC<{
     } catch (error) {
         console.error("Order submission error:", error);
         setIsSubmitting(false);
-        alert("Đã có lỗi xảy ra khi đặt hàng hoặc sản phẩm đã hết hàng. Vui lòng thử lại.");
+        alert("Đã có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.");
     }
   };
 
@@ -1770,7 +1751,7 @@ const CheckoutPage: React.FC<{
                                 <ZoomIcon />
                             </div>
                         </div>
-                        <span>Khung {FRAME_OPTIONS.find(f => f.id === item.frameId)?.name}</span>
+                        <span>Khung tùy chỉnh</span>
                       </div>
                       <span>{formatCurrency(totalPrice)}</span>
                     </div>
@@ -1859,22 +1840,20 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                     <div className="mt-8 border-t pt-6">
                          <h2 className="font-bold text-lg mb-4">Tóm tắt đơn hàng</h2>
                          <div className="space-y-4">
-                            {order.items.map((item, idx) => (
-                                <div key={idx} className="bg-gray-50 rounded-lg border p-4 flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                                        <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <ZoomIcon />
-                                        </div>
+                            <div className="bg-gray-50 rounded-lg border p-4 flex justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-16 h-16 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => order.items[0].previewImageUrl && onZoomImage(order.items[0].previewImageUrl)}>
+                                    <img src={order.items[0].previewImageUrl} className="w-full h-full object-contain" alt="preview" />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <ZoomIcon />
                                     </div>
-                                    <div>
-                                        <p className="font-semibold">Khung {FRAME_OPTIONS.find(f => f.id === item.frameId)?.name || item.frameId} x 1</p>
-                                    </div>
-                                    </div>
-                                    <p className="font-semibold">{formatCurrency(calculatePrice(item, {}).totalPrice)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold">Khung tùy chỉnh x 1</p>
+                                  </div>
                                 </div>
-                            ))}
+                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
+                            </div>
 
                             <div className="text-sm space-y-2">
                                 <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</span></div>
@@ -2048,7 +2027,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                                     {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-semibold">Khung {FRAME_OPTIONS.find(f => f.id === item.frameId)?.name || item.frameId}</p>
+                                                    <p className="text-sm font-semibold">Khung thiết kế</p>
                                                     <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
                                                 </div>
                                             </div>
@@ -2225,7 +2204,7 @@ const App: React.FC = () => {
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
     } else {
-        alert(res.error?.message || "Lỗi đặt hàng. Vui lòng thử lại.");
+        alert("Lỗi đặt hàng. Vui lòng thử lại.");
     }
   };
 

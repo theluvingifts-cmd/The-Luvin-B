@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
@@ -108,13 +109,14 @@ const StatusDropdown: React.FC<{
     );
 };
 
+// --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
     onSave: (part: LegoPart) => void; 
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '',KP: 0, price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: []
+        id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: []
     });
     const [isUploading, setIsUploading] = useState(false);
     
@@ -1481,10 +1483,7 @@ const AdminPage: React.FC = () => {
                                         <div>
                                             <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                             <div className="grid grid-cols-1 gap-4">
-                                                {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
-                                                    const frame = FRAME_OPTIONS.find(f => f.id === item.frameId);
-                                                    const frameName = frame ? `Khung ${frame.name}` : `Khung ${item.frameId}`;
-                                                    return (
+                                                {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => (
                                                     <div key={idx} className="flex gap-4 border border-gray-100 rounded-lg p-4 items-start bg-white flex-col md:flex-row">
                                                         <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
                                                             {item.previewImageUrl ? <img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No img</span>}
@@ -1492,7 +1491,7 @@ const AdminPage: React.FC = () => {
                                                         <div className="flex-grow w-full">
                                                             {/* Frame & Basic Info */}
                                                             <div className="mb-3 pb-3 border-b border-gray-100">
-                                                                <p className="font-bold text-gray-800 mb-1">{frameName}</p>
+                                                                <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
                                                                 <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
                                                             </div>
 
@@ -1560,209 +1559,162 @@ const AdminPage: React.FC = () => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                )})}
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2 justify-end items-center">
                                         {role === 'warehouse' && !selectedOrder.packedBy && selectedOrder.status !== 'Đã giao hàng' && (
-                                            <button onClick={handleMarkAsPacked} className="bg-purple-600 text-white font-bold px-4 py-2 rounded hover:bg-purple-700 shadow-sm text-sm">
-                                                Đã đóng gói xong
-                                            </button>
+                                            <button onClick={handleMarkAsPacked} className="mr-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md transition-colors flex items-center gap-2"><span>✓</span>Xác nhận đã đóng gói</button>
                                         )}
-                                        <StatusDropdown currentStatus={selectedOrder.status} onStatusChange={(s) => handleUpdate(selectedOrder.id, { status: s })} onDelete={handleDeleteOrder} isAdmin={role === 'admin'} />
+                                        <StatusDropdown currentStatus={selectedOrder.status} onStatusChange={(st) => handleUpdate(selectedOrder.id, { status: st })} onDelete={handleDeleteOrder} isAdmin={role === 'admin'} />
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-center h-full text-gray-400 text-sm">Chọn một đơn hàng để xem chi tiết</div>
+                                <div className="flex items-center justify-center h-full text-gray-400 flex-col gap-2"><span className="text-4xl opacity-20">📦</span><span>Chọn đơn hàng để xem chi tiết</span></div>
                             )}
                         </div>
                     </div>
                 )}
 
-                {/* --- PRODUCTS TAB (Admin Only) --- */}
+                {/* --- PRODUCTS TAB (GROUPED) --- */}
                 {activeTab === 'products' && role === 'admin' && (
-                    <div className="animate-fade-in">
-                        <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm border">
-                            <div className="flex gap-4">
-                                <button onClick={() => setActiveProductSubTab('parts')} className={`font-bold text-sm pb-1 border-b-2 transition-colors ${activeProductSubTab === 'parts' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Linh kiện LEGO</button>
-                                <button onClick={() => setActiveProductSubTab('backgrounds')} className={`font-bold text-sm pb-1 border-b-2 transition-colors ${activeProductSubTab === 'backgrounds' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Mẫu Nền (Backgrounds)</button>
-                            </div>
-                            <div className="flex gap-2">
-                                {activeProductSubTab === 'parts' && <button onClick={handleSeedData} className="text-xs font-bold text-red-500 border border-red-200 bg-red-50 px-3 py-2 rounded hover:bg-red-100">Reset Data Mặc định</button>}
-                                {activeProductSubTab === 'backgrounds' && <button onClick={handleSeedBackgrounds} className="text-xs font-bold text-red-500 border border-red-200 bg-red-50 px-3 py-2 rounded hover:bg-red-100">Reset BG Mặc định</button>}
-                                <button onClick={() => activeProductSubTab === 'parts' ? setIsEditingProduct(true) : setIsEditingBackground(true)} className="bg-gray-900 text-white font-bold px-4 py-2 rounded text-sm hover:bg-black">+ Thêm Mới</button>
-                            </div>
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+                        {/* Sub Navigation */}
+                        <div className="p-2 border-b border-gray-100 bg-gray-50 flex gap-2">
+                            <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeProductSubTab === 'parts' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>
+                                Nhân vật & Phụ kiện
+                            </button>
+                            <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeProductSubTab === 'backgrounds' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>
+                                Hình nền (Backgrounds)
+                            </button>
                         </div>
 
-                        {activeProductSubTab === 'parts' ? (
+                        {activeProductSubTab === 'parts' && (
                             <>
-                                <div className="flex gap-4 mb-6">
-                                    <input placeholder="Tìm kiếm linh kiện..." className="p-2 border rounded w-64 text-sm" value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-                                    <select className="p-2 border rounded text-sm" value={productCategory} onChange={e => setProductCategory(e.target.value)}>
-                                        <option value="all">Tất cả loại</option>
-                                        <option value="hair">Tóc</option><option value="face">Mặt</option><option value="shirt">Áo</option><option value="pants">Quần</option><option value="hat">Mũ</option><option value="accessory">Phụ kiện</option><option value="pet">Thú cưng</option>
-                                    </select>
+                                <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                                    <div className="flex items-center gap-2"><h2 className="text-lg font-bold text-gray-900">Kho LEGO Parts</h2><span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-600">{products.length}</span></div>
+                                    <div className="flex flex-grow md:flex-grow-0 gap-3 w-full md:w-auto">
+                                        <input type="text" placeholder="Tìm kiếm..." className="p-2 border border-gray-300 rounded text-sm w-full md:w-64 focus:border-gray-900 focus:ring-0 outline-none" value={productSearch} onChange={e => setProductSearch(e.target.value)} />
+                                        <select className="p-2 border border-gray-300 rounded text-sm focus:border-gray-900 focus:ring-0 outline-none" value={productCategory} onChange={e => setProductCategory(e.target.value)}><option value="all">Tất cả danh mục</option><option value="hair">Tóc</option><option value="face">Mặt</option><option value="shirt">Áo</option><option value="pants">Quần</option><option value="accessory">Phụ kiện</option><option value="pet">Thú cưng</option></select>
+                                        <button onClick={() => { setEditingPart(null); setIsEditingProduct(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                    {filteredProducts.map(p => (
-                                        <div key={p.id} className="bg-white p-3 rounded border shadow-sm relative group">
-                                            <div className="aspect-square bg-gray-50 rounded mb-2 flex items-center justify-center p-2">
-                                                <img src={p.imageUrl} className="max-w-full max-h-full object-contain" />
-                                            </div>
-                                            <p className="font-bold text-sm truncate">{p.name}</p>
-                                            <p className="text-xs text-gray-500">{formatCurrency(p.price)}</p>
-                                            <p className="text-[10px] text-gray-400 mt-1">Stock: {p.stock === undefined ? '∞' : p.stock}</p>
-                                            <div className="absolute inset-0 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <button onClick={() => { setEditingPart(p); setIsEditingProduct(true); }} className="bg-white text-gray-900 px-2 py-1 rounded text-xs font-bold">Sửa</button>
-                                                <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">Xóa</button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="flex-grow overflow-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-20">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên sản phẩm</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Giá</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tồn kho</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {filteredProducts.length > 0 ? filteredProducts.map(part => (<tr key={part.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={part.imageUrl} alt="" className="w-full h-full object-contain" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{part.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{part.type}</td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{formatCurrency(part.price)}</td>
+                                            <td className={`p-3 border-b border-gray-100 text-sm font-bold ${part.stock === undefined ? 'text-gray-400' : part.stock === 0 ? 'text-red-600' : part.stock < 10 ? 'text-orange-500' : 'text-green-600'}`}>
+                                                {part.stock === undefined ? '∞' : part.stock === 0 ? 'Hết hàng' : part.stock}
+                                            </td>
+                                            <td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteProduct(part.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (
+                                                products.length > 0 ? (<tr><td colSpan={6} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy sản phẩm nào.</td></tr>) : (<tr><td colSpan={6} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🧩</span><p className="text-sm mb-4">Kho sản phẩm đang trống.</p><button onClick={handleSeedData} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ dữ liệu mẫu</button></div></td></tr>)
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </>
-                        ) : (
+                        )}
+
+                        {activeProductSubTab === 'backgrounds' && (
                             <>
-                                <div className="flex gap-4 mb-6">
-                                    <input placeholder="Tìm kiếm nền..." className="p-2 border rounded w-64 text-sm" value={bgSearch} onChange={e => setBgSearch(e.target.value)} />
-                                    <select className="p-2 border rounded text-sm" value={bgCategoryFilter} onChange={e => setBgCategoryFilter(e.target.value)}>
-                                        <option value="all">Tất cả danh mục</option>
-                                        {bgCategories.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <select className="p-2 border rounded text-sm" value={bgTypeFilter} onChange={e => setBgTypeFilter(e.target.value as any)}>
-                                        <option value="all">Tất cả loại khung</option>
-                                        <option value="square">Vuông</option>
-                                        <option value="rectangle">Chữ nhật</option>
-                                    </select>
+                                <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                                    <div className="flex items-center gap-2"><h2 className="text-lg font-bold text-gray-900">Kho Hình nền</h2><span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-600">{backgrounds.length}</span></div>
+                                    <div className="flex flex-grow md:flex-grow-0 gap-3 w-full md:w-auto">
+                                        <input type="text" placeholder="Tìm kiếm..." className="p-2 border border-gray-300 rounded text-sm w-full md:w-48 focus:border-gray-900 focus:ring-0 outline-none" value={bgSearch} onChange={e => setBgSearch(e.target.value)} />
+                                        <select className="p-2 border border-gray-300 rounded text-sm focus:border-gray-900 focus:ring-0 outline-none" value={bgTypeFilter} onChange={e => setBgTypeFilter(e.target.value as any)}><option value="all">Tất cả kích thước</option><option value="square">Vuông (15x15 / 23x23)</option><option value="rectangle">Chữ nhật (A5)</option></select>
+                                        <select className="p-2 border border-gray-300 rounded text-sm focus:border-gray-900 focus:ring-0 outline-none max-w-[150px]" value={bgCategoryFilter} onChange={e => setBgCategoryFilter(e.target.value)}><option value="all">Tất cả dịp</option>{bgCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}</select>
+                                        <button onClick={() => { setEditingBg(null); setIsEditingBackground(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                    {filteredBackgrounds.map(bg => (
-                                        <div key={bg.id} className="bg-white p-3 rounded border shadow-sm relative group">
-                                            <div className="aspect-[3/4] bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden">
-                                                <img src={bg.url} className="w-full h-full object-cover" />
-                                            </div>
-                                            <p className="font-bold text-xs truncate">{bg.name}</p>
-                                            <p className="text-[10px] text-gray-500">{bg.category} • {bg.type}</p>
-                                            <div className="absolute inset-0 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="bg-white text-gray-900 px-2 py-1 rounded text-xs font-bold">Sửa</button>
-                                                <button onClick={() => handleDeleteBackground(bg.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">Xóa</button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="flex-grow overflow-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-24">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên Background</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Danh mục</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại khung</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(bg => (<tr key={bg.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={bg.url} alt="" className="w-full h-full object-cover" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{bg.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500"><span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{bg.category}</span></td><td className="p-3 border-b border-gray-100 text-sm text-gray-500">{bg.type === 'square' ? 'Vuông' : 'Chữ nhật'}</td><td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteBackground(bg.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (
+                                                backgrounds.length > 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy background nào.</td></tr>) : (<tr><td colSpan={5} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🖼️</span><p className="text-sm mb-4">Kho background đang trống.</p><button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button></div></td></tr>)
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </>
                         )}
                     </div>
                 )}
 
-                {/* --- CONFIG TAB (Admin Only) --- */}
+                {/* --- CONFIG TAB --- */}
                 {activeTab === 'config' && role === 'admin' && (
-                    <div className="animate-fade-in">
-                        <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm border">
-                             <div className="flex gap-4">
-                                <button onClick={() => setActiveConfigSubTab('general')} className={`font-bold text-sm pb-1 border-b-2 transition-colors ${activeConfigSubTab === 'general' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Cấu hình chung</button>
-                                <button onClick={() => setActiveConfigSubTab('templates')} className={`font-bold text-sm pb-1 border-b-2 transition-colors ${activeConfigSubTab === 'templates' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Bộ sưu tập (Templates)</button>
-                                <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`font-bold text-sm pb-1 border-b-2 transition-colors ${activeConfigSubTab === 'feedbacks' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Feedback Khách hàng</button>
-                            </div>
-                            <div className="flex gap-2">
-                                {activeConfigSubTab === 'templates' && (
-                                    <>
-                                        <button onClick={handleSeedTemplates} className="text-xs font-bold text-red-500 border border-red-200 bg-red-50 px-3 py-2 rounded hover:bg-red-100">Reset Templates</button>
-                                        <button onClick={() => setIsEditingTemplate(true)} className="bg-gray-900 text-white font-bold px-4 py-2 rounded text-sm hover:bg-black">+ Thêm Mẫu</button>
-                                    </>
-                                )}
-                                {activeConfigSubTab === 'feedbacks' && (
-                                    <>
-                                        <button onClick={handleSeedFeedbacks} className="text-xs font-bold text-red-500 border border-red-200 bg-red-50 px-3 py-2 rounded hover:bg-red-100">Reset Feedbacks</button>
-                                        <button onClick={() => setIsEditingFeedback(true)} className="bg-gray-900 text-white font-bold px-4 py-2 rounded text-sm hover:bg-black">+ Thêm Feedback</button>
-                                    </>
-                                )}
-                            </div>
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+                        {/* Sub Navigation */}
+                        <div className="p-2 border-b border-gray-100 bg-gray-50 flex gap-2 overflow-x-auto">
+                            <button onClick={() => setActiveConfigSubTab('general')} className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'general' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>Chung</button>
+                            <button onClick={() => setActiveConfigSubTab('templates')} className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'templates' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>Bộ sưu tập mẫu</button>
+                            <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'feedbacks' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>Feedbacks</button>
                         </div>
 
-                        {activeConfigSubTab === 'general' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-8 rounded-lg shadow-sm border">
-                                <div className="space-y-8">
-                                    <h3 className="text-lg font-bold border-b pb-2">Hình ảnh trang chủ</h3>
-                                    <ConfigImageUpload 
-                                        label="Logo Website" 
-                                        description="Hiển thị ở Header. Định dạng PNG trong suốt."
-                                        currentUrl={storeConfig.logoUrl}
-                                        onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
-                                        isUploading={uploadingField === 'logoUrl'}
-                                    />
-                                     <ConfigImageUpload 
-                                        label="Favicon" 
-                                        description="Icon trên tab trình duyệt (32x32)."
-                                        currentUrl={storeConfig.faviconUrl}
-                                        onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
-                                        isUploading={uploadingField === 'faviconUrl'}
-                                    />
+                        <div className="flex-grow overflow-auto p-6">
+                            {activeConfigSubTab === 'general' && (
+                                <div className="max-w-2xl mx-auto space-y-8">
+                                    <ConfigImageUpload label="Logo Website" description="Hiển thị ở header. Định dạng PNG trong suốt." currentUrl={storeConfig.logoUrl} onUpload={(f) => handleConfigUpload(f, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
+                                    <ConfigImageUpload label="Favicon" description="Icon nhỏ trên tab trình duyệt." currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
+                                    <ConfigImageUpload label="Hero Image (Trang chủ)" description="Ảnh banner lớn bên trái trang chủ." currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
+                                    <ConfigImageUpload label="Inspiration Image (Trang chủ)" description="Ảnh nền phần 'Featured' bên trái." currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
                                 </div>
-                                <div className="space-y-8">
-                                    <h3 className="text-lg font-bold border-b pb-2">Banner & Cảm hứng</h3>
-                                    <ConfigImageUpload 
-                                        label="Banner Chính (Hero)" 
-                                        description="Ảnh lớn đầu trang chủ."
-                                        currentUrl={storeConfig.heroImageUrl}
-                                        onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
-                                        isUploading={uploadingField === 'heroImageUrl'}
-                                    />
-                                    <ConfigImageUpload 
-                                        label="Ảnh Cảm Hứng (Inspire)" 
-                                        description="Ảnh bên cạnh slider sản phẩm nổi bật."
-                                        currentUrl={storeConfig.inspireImageUrl}
-                                        onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
-                                        isUploading={uploadingField === 'inspireImageUrl'}
-                                    />
-                                </div>
-                            </div>
-                        )}
+                            )}
 
-                        {activeConfigSubTab === 'templates' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {templates.map(tpl => (
-                                    <div key={tpl.id} className="bg-white rounded-lg border overflow-hidden group relative shadow-sm">
-                                        <div className="aspect-video bg-gray-100 relative">
-                                            <img src={tpl.imageUrl} className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <button onClick={() => { setEditingTemplate(tpl); setIsEditingTemplate(true); }} className="bg-white text-gray-900 px-3 py-1.5 rounded font-bold text-xs">Sửa</button>
-                                                <button onClick={() => handleDeleteTemplate(tpl.id)} className="bg-red-600 text-white px-3 py-1.5 rounded font-bold text-xs">Xóa</button>
-                                            </div>
-                                        </div>
-                                        <div className="p-4">
-                                            <h4 className="font-bold">{tpl.name}</h4>
-                                            <p className="text-xs text-gray-500 mt-1 font-mono truncate">{tpl.id}</p>
+                            {activeConfigSubTab === 'templates' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Danh sách mẫu thiết kế</h3>
+                                        <div className="flex gap-2">
+                                            {templates.length === 0 && <button onClick={handleSeedTemplates} className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200">Reset Mẫu</button>}
+                                            <button onClick={() => { setEditingTemplate(null); setIsEditingTemplate(true); }} className="text-xs font-bold bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-black">+ Thêm Mẫu</button>
                                         </div>
                                     </div>
-                                ))}
-                                {templates.length === 0 && <p className="col-span-3 text-center py-10 text-gray-400">Chưa có mẫu nào.</p>}
-                            </div>
-                        )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {templates.map(tpl => (
+                                            <div key={tpl.id} className="border rounded-lg p-3 relative group">
+                                                <img src={tpl.imageUrl} className="w-full h-32 object-cover rounded bg-gray-50 mb-2" />
+                                                <p className="font-bold text-sm truncate">{tpl.name}</p>
+                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingTemplate(tpl); setIsEditingTemplate(true); }} className="bg-white p-1 rounded shadow text-blue-600 text-xs font-bold">Sửa</button>
+                                                    <button onClick={() => handleDeleteTemplate(tpl.id)} className="bg-white p-1 rounded shadow text-red-600 text-xs font-bold">Xóa</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                        {activeConfigSubTab === 'feedbacks' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {feedbacks.map(fb => (
-                                    <div key={fb.id} className="bg-white rounded-lg border p-4 shadow-sm group relative">
-                                        <div className="flex items-start gap-4">
-                                            <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
-                                                <img src={fb.imageUrl} className="w-full h-full object-cover" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-sm">{fb.name}</h4>
-                                                <p className="text-xs text-gray-600 mt-1 italic">"{fb.text}"</p>
-                                            </div>
-                                        </div>
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                            <button onClick={() => { setEditingFeedback(fb); setIsEditingFeedback(true); }} className="p-1 bg-gray-100 rounded hover:bg-gray-200 text-xs">✏️</button>
-                                            <button onClick={() => handleDeleteFeedback(fb.id)} className="p-1 bg-red-100 rounded hover:bg-red-200 text-xs">🗑️</button>
+                            {activeConfigSubTab === 'feedbacks' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Danh sách Feedback</h3>
+                                        <div className="flex gap-2">
+                                            {feedbacks.length === 0 && <button onClick={handleSeedFeedbacks} className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200">Reset FB</button>}
+                                            <button onClick={() => { setEditingFeedback(null); setIsEditingFeedback(true); }} className="text-xs font-bold bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-black">+ Thêm FB</button>
                                         </div>
                                     </div>
-                                ))}
-                                {feedbacks.length === 0 && <p className="col-span-3 text-center py-10 text-gray-400">Chưa có feedback nào.</p>}
-                            </div>
-                        )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {feedbacks.map(fb => (
+                                            <div key={fb.id} className="border rounded-lg p-3 relative group bg-pink-50/30">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <img src={fb.imageUrl} className="w-10 h-10 rounded-full object-cover bg-white" />
+                                                    <p className="font-bold text-sm">{fb.name}</p>
+                                                </div>
+                                                <p className="text-xs text-gray-600 italic line-clamp-3">"{fb.text}"</p>
+                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingFeedback(fb); setIsEditingFeedback(true); }} className="bg-white p-1 rounded shadow text-blue-600 text-xs font-bold">Sửa</button>
+                                                    <button onClick={() => handleDeleteFeedback(fb.id)} className="bg-white p-1 rounded shadow text-red-600 text-xs font-bold">Xóa</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </main>
@@ -1772,13 +1724,10 @@ const AdminPage: React.FC = () => {
             {isEditingBackground && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} />}
             {isEditingTemplate && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={() => { setIsEditingTemplate(false); setEditingTemplate(null); }} />}
             {isEditingFeedback && <FeedbackForm initialData={editingFeedback} onSave={handleSaveFeedback} onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }} />}
-            
+
             {loading && (
-                <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
-                        <p className="font-bold">Đang xử lý...</p>
-                    </div>
+                <div className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                 </div>
             )}
         </div>
