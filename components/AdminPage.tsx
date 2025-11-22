@@ -82,7 +82,7 @@ const ShippingControl: React.FC<{
                     shippingDetails: res.data,
                     status: 'Gửi hàng đi' 
                 });
-                alert(`Đã tạo vận đơn ${carrier} thành công!`);
+                alert(`Đã tạo vận đơn ${carrier} thành công!\nMã: ${res.data.trackingCode}`);
             } else {
                 alert(`Lỗi tạo vận đơn: ${res.error}`);
             }
@@ -95,14 +95,22 @@ const ShippingControl: React.FC<{
 
     const handleCancelShipment = async () => {
         if (!order.shippingDetails) return;
-        if (!confirm("Bạn chắc chắn muốn hủy vận đơn này bên hãng vận chuyển?")) return;
+        if (!confirm("Bạn chắc chắn muốn hủy vận đơn này?")) return;
         
         setLoading(true);
-        await cancelShippingOrder(order.shippingDetails.carrier, order.shippingDetails.trackingCode);
-        // Xóa thông tin vận chuyển trong DB
-        onUpdateOrder({ shippingDetails: undefined, status: 'Đang đóng hàng' }); // Revert status
+        const result = await cancelShippingOrder(order.shippingDetails.carrier, order.shippingDetails.trackingCode);
+        
+        if (result.success) {
+            // Xóa thông tin vận chuyển trong DB
+            onUpdateOrder({ shippingDetails: undefined, status: 'Đang đóng hàng' });
+            alert("Đã hủy vận đơn thành công.");
+        } else {
+            // Nếu API lỗi, hỏi user có muốn xóa data cục bộ không
+            if (confirm(`Lỗi từ hãng vận chuyển: "${result.error}".\n\nBạn có muốn XÓA THÔNG TIN vận đơn trên hệ thống nội bộ để tạo lại không?`)) {
+                onUpdateOrder({ shippingDetails: undefined, status: 'Đang đóng hàng' });
+            }
+        }
         setLoading(false);
-        alert("Đã hủy vận đơn.");
     };
 
     if (order.shippingDetails) {
@@ -157,10 +165,10 @@ const ShippingControl: React.FC<{
                     <button 
                         onClick={handleCancelShipment} 
                         disabled={loading}
-                        className="px-3 py-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50"
+                        className="px-3 py-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 font-bold"
                         title="Hủy vận đơn"
                     >
-                        {loading ? '...' : '✕'}
+                        {loading ? '...' : 'Hủy đơn'}
                     </button>
                 </div>
             </div>
@@ -202,14 +210,14 @@ const ShippingControl: React.FC<{
                     disabled={loading}
                     className="flex-1 bg-red-600 text-white py-2.5 rounded font-bold text-sm hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                    {loading ? 'Đang xử lý...' : 'Đẩy qua Viettel Post'}
+                    {loading ? '...' : 'Viettel Post'}
                 </button>
                 <button 
                     onClick={() => handleCreateShipment('SPX')} 
                     disabled={loading}
                     className="flex-1 bg-orange-500 text-white py-2.5 rounded font-bold text-sm hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                    {loading ? 'Đang xử lý...' : 'Đẩy qua SPX'}
+                    {loading ? '...' : 'Shopee Express'}
                 </button>
             </div>
         </div>
@@ -281,11 +289,6 @@ const StatusDropdown: React.FC<{
         </div>
     );
 };
-
-// ... [Keep ProductForm, BackgroundForm, TemplateForm, FeedbackForm, ConfigImageUpload components exactly as they are] ...
-// (Assuming they are unchanged, I will omit them here for brevity but in a real file update they must exist. 
-// For the XML output, I need to include the full content or the relevant parts. 
-// To be safe and follow instructions, I will include the full file content below.)
 
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
