@@ -36,7 +36,6 @@ export interface LegoPart {
   slices?: boolean; 
   dx?: number; 
   dy?: number; 
-  stock?: number; // MỚI: Số lượng tồn kho. Undefined = Vô cực.
 }
 
 // Interface mới cho Background
