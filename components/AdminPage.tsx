@@ -110,7 +110,6 @@ const StatusDropdown: React.FC<{
 };
 
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
-// ... (Keep ProductForm component as is) ...
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
     onSave: (part: LegoPart) => void; 
@@ -128,7 +127,13 @@ const ProductForm: React.FC<{
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'widthCm' || name === 'heightCm' ? Number(value) : value }));
+        if (name === 'stock') {
+            // If value is empty string, set stock to undefined (unlimited)
+            const stockVal = value === '' ? undefined : Number(value);
+            setFormData(prev => ({ ...prev, stock: stockVal }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'widthCm' || name === 'heightCm' ? Number(value) : value }));
+        }
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,6 +240,10 @@ const ProductForm: React.FC<{
                              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cao (cm)</label>
                              <input type="number" name="heightCm" value={formData.heightCm} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" step="0.1" />
                         </div>
+                        <div className="col-span-2">
+                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Số lượng tồn kho (Để trống = Vô hạn)</label>
+                             <input type="number" name="stock" value={formData.stock === undefined ? '' : formData.stock} onChange={handleChange} placeholder="Vô hạn" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
+                        </div>
                     </div>
 
                     {/* --- COLOR VARIANTS SECTION --- */}
@@ -322,7 +331,6 @@ const ProductForm: React.FC<{
     );
 };
 
-// ... (Keep BackgroundForm, TemplateForm, FeedbackForm, ConfigImageUpload as is) ...
 const BackgroundForm: React.FC<{
     initialData?: PresetBackground | null;
     onSave: (bg: PresetBackground) => void;
@@ -595,7 +603,7 @@ type ConfigSubTab = 'general' | 'templates' | 'feedbacks';
 // --- ADMIN PAGE ---
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const [isAuthChecking, setIsAuthChecking] = useState(true); // Prevent flash
+    const [isAuthChecking, setIsAuthChecking] = useState(true); 
     const [email, setEmail] = useState('');
     const [loginPass, setLoginPass] = useState('');
     const [loginError, setLoginError] = useState('');
@@ -626,10 +634,12 @@ const AdminPage: React.FC = () => {
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('general');
 
-    const [filterType, setFilterType] = useState<'period' | 'month'>('period');
+    const [filterType, setFilterType] = useState<'period' | 'month' | 'custom'>('period');
     const [period, setPeriod] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
     const [month, setMonth] = useState<number>(new Date().getMonth()); 
     const [year, setYear] = useState<number>(new Date().getFullYear());
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
 
     const [isEditingProduct, setIsEditingProduct] = useState(false);
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
@@ -997,6 +1007,15 @@ const AdminPage: React.FC = () => {
             end = new Date(year, month + 1, 0, 23, 59, 59, 999);
             prevStart = new Date(year, month - 1, 1);
             prevEnd = new Date(year, month, 0, 23, 59, 59, 999);
+        } else if (filterType === 'custom') {
+            dateLabel = 'Tùy chỉnh';
+            start = customStartDate ? new Date(customStartDate) : new Date(0);
+            end = customEndDate ? new Date(customEndDate) : new Date();
+            end.setHours(23, 59, 59, 999);
+            // Compare with same duration before start date
+            const duration = end.getTime() - start.getTime();
+            prevEnd = new Date(start.getTime() - 1);
+            prevStart = new Date(prevEnd.getTime() - duration);
         } else {
             const now = new Date();
             start = getStartOfDay(now);
@@ -1040,9 +1059,14 @@ const AdminPage: React.FC = () => {
 
         const inventory = { 
             frames: {} as Record<string, number>, 
-            charms: {} as Record<string, number>, 
+            hair: {} as Record<string, number>,
+            face: {} as Record<string, number>,
+            shirt: {} as Record<string, number>,
+            pants: {} as Record<string, number>,
+            hat: {} as Record<string, number>,
+            accessory: {} as Record<string, number>,
+            pet: {} as Record<string, number>,
             totalCharms: 0,
-            parts: { hair: 0, face: 0, shirt: 0, pants: 0, hat: 0 } 
         };
         const packerStats: Record<string, number> = {};
 
@@ -1054,31 +1078,24 @@ const AdminPage: React.FC = () => {
                 inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
                 
                 item.draggableItems.forEach(di => {
-                    let itemName = '';
                     if (di.type === 'charm') {
-                        itemName = 'Charm Upload (Ảnh)';
                         inventory.totalCharms++;
                     } else {
                         const part = allKnownParts[di.partId];
                         if (part) {
-                             itemName = `${part.name} (${part.type})`;
-                             if (di.type === 'accessory' || di.type === 'pet') inventory.totalCharms++;
-                        } else {
-                            itemName = `Unknown Item (${di.partId})`;
+                             if (di.type === 'accessory') inventory.accessory[part.name] = (inventory.accessory[part.name] || 0) + 1;
+                             if (di.type === 'pet') inventory.pet[part.name] = (inventory.pet[part.name] || 0) + 1;
+                             inventory.totalCharms++;
                         }
-                    }
-                    
-                    if (itemName) {
-                        inventory.charms[itemName] = (inventory.charms[itemName] || 0) + 1;
                     }
                 });
 
                 item.characters.forEach(char => {
-                    if (char.hair) inventory.parts.hair++;
-                    if (char.face) inventory.parts.face++;
-                    if (char.shirt) inventory.parts.shirt++;
-                    if (char.pants) inventory.parts.pants++;
-                    if (char.hat) inventory.parts.hat++;
+                    if (char.hair) inventory.hair[char.hair.name] = (inventory.hair[char.hair.name] || 0) + 1;
+                    if (char.face) inventory.face[char.face.name] = (inventory.face[char.face.name] || 0) + 1;
+                    if (char.shirt) inventory.shirt[char.shirt.name] = (inventory.shirt[char.shirt.name] || 0) + 1;
+                    if (char.pants) inventory.pants[char.pants.name] = (inventory.pants[char.pants.name] || 0) + 1;
+                    if (char.hat) inventory.hat[char.hat.name] = (inventory.hat[char.hat.name] || 0) + 1;
                 });
             });
         });
@@ -1086,7 +1103,7 @@ const AdminPage: React.FC = () => {
         const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
 
         return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel };
-    }, [orders, filterType, period, month, year, allKnownParts]); 
+    }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts]); 
 
     const filteredProducts = useMemo(() => 
         products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), 
@@ -1143,10 +1160,40 @@ const AdminPage: React.FC = () => {
         return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
     };
 
+    const TopItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full">
+            <h4 className="font-bold text-sm text-gray-700 mb-3 uppercase tracking-wider">{title}</h4>
+            {Object.keys(data).length > 0 ? (
+                <div className="space-y-2 overflow-y-auto flex-grow max-h-40 custom-scrollbar">
+                    {Object.entries(data)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 5)
+                        .map(([name, count], idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <span className="text-gray-400 font-mono w-4 flex-shrink-0">{idx + 1}.</span>
+                                    <span className="font-medium text-gray-700 truncate" title={name}>{name}</span>
+                                </div>
+                                <span className="font-bold w-6 text-right flex-shrink-0">{count}</span>
+                            </div>
+                        ))
+                    }
+                </div>
+            ) : (
+                <div className="text-center py-4 text-gray-300 text-xs italic border border-dashed rounded">
+                    Chưa có dữ liệu
+                </div>
+            )}
+        </div>
+    );
+
     if (isAuthChecking) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-500 text-sm">Đang tải...</p>
+                </div>
             </div>
         );
     }
@@ -1211,23 +1258,32 @@ const AdminPage: React.FC = () => {
                 {/* --- DASHBOARD TAB --- */}
                 {activeTab === 'dashboard' && (
                     <div className="space-y-8 animate-fade-in">
-                        <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
-                            <h2 className="text-xl font-bold text-gray-800">Tổng quan {analytics.dateLabel}</h2>
-                            <div className="flex gap-4 items-center">
+                        <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm gap-4">
+                            <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">Tổng quan {analytics.dateLabel}</h2>
+                            <div className="flex flex-wrap gap-4 items-center justify-end">
                                 <div className="flex bg-gray-100 p-1 rounded-md">
                                     <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Nhanh</button>
                                     <button onClick={() => setFilterType('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
+                                    <button onClick={() => setFilterType('custom')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tùy chỉnh</button>
                                 </div>
-                                {filterType === 'period' ? (
+                                {filterType === 'period' && (
                                     <div className="flex gap-2">
                                         {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
                                             <button key={t} onClick={() => setPeriod(t)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors border ${period === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày' : '30 ngày'}</button>
                                         ))}
                                     </div>
-                                ) : (
+                                )} 
+                                {filterType === 'month' && (
                                     <div className="flex gap-2 items-center">
                                         <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>Tháng {i + 1}</option>))}</select>
                                         <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option></select>
+                                    </div>
+                                )}
+                                {filterType === 'custom' && (
+                                    <div className="flex gap-2 items-center">
+                                        <input type="date" className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
+                                        <span className="text-gray-400">-</span>
+                                        <input type="date" className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
                                     </div>
                                 )}
                             </div>
@@ -1252,7 +1308,19 @@ const AdminPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Detailed Breakdown Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <TopItemsCard title="Khung Ảnh" data={analytics.inventory.frames} />
+                            <TopItemsCard title="Tóc" data={analytics.inventory.hair} />
+                            <TopItemsCard title="Khuôn mặt" data={analytics.inventory.face} />
+                            <TopItemsCard title="Áo" data={analytics.inventory.shirt} />
+                            <TopItemsCard title="Quần" data={analytics.inventory.pants} />
+                            <TopItemsCard title="Mũ" data={analytics.inventory.hat} />
+                            <TopItemsCard title="Phụ kiện" data={analytics.inventory.accessory} />
+                            <TopItemsCard title="Thú cưng" data={analytics.inventory.pet} />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6">
                             {/* Packer Leaderboard */}
                             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
                                 <h3 className="font-bold text-gray-800 mb-4">Bảng Xếp Hạng Đóng Gói</h3>
@@ -1283,41 +1351,7 @@ const AdminPage: React.FC = () => {
                                     </div>
                                 ) : (
                                     <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
-                                        Chưa có dữ liệu đóng gói
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Top Selling Frames */}
-                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                                <h3 className="font-bold text-gray-800 mb-4">Khung Bán Chạy Nhất</h3>
-                                {Object.keys(analytics.inventory.frames).length > 0 ? (
-                                    <div className="space-y-3">
-                                        {Object.entries(analytics.inventory.frames)
-                                            .sort(([, a], [, b]) => b - a)
-                                            .slice(0, 5)
-                                            .map(([frame, count], idx) => (
-                                                <div key={idx} className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-gray-400 text-sm font-mono w-4">{idx + 1}.</span>
-                                                        <span className="font-medium text-gray-700">{frame}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                            <div 
-                                                                className="h-full bg-blue-500 rounded-full" 
-                                                                style={{ width: `${(count / Math.max(...Object.values(analytics.inventory.frames))) * 100}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <span className="text-sm font-bold w-8 text-right">{count}</span>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        }
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
-                                        Chưa có dữ liệu bán hàng
+                                        Chưa có dữ liệu đóng gói trong khoảng thời gian này
                                     </div>
                                 )}
                             </div>
@@ -1569,10 +1603,14 @@ const AdminPage: React.FC = () => {
                                 </div>
                                 <div className="flex-grow overflow-auto">
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-20">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên sản phẩm</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Giá</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
+                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-20">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên sản phẩm</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Giá</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tồn kho</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {filteredProducts.length > 0 ? filteredProducts.map(part => (<tr key={part.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={part.imageUrl} alt="" className="w-full h-full object-contain" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{part.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{part.type}</td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{formatCurrency(part.price)}</td><td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteProduct(part.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (
-                                                products.length > 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy sản phẩm nào.</td></tr>) : (<tr><td colSpan={5} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🧩</span><p className="text-sm mb-4">Kho sản phẩm đang trống.</p><button onClick={handleSeedData} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ dữ liệu mẫu</button></div></td></tr>)
+                                            {filteredProducts.length > 0 ? filteredProducts.map(part => (<tr key={part.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={part.imageUrl} alt="" className="w-full h-full object-contain" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{part.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{part.type}</td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{formatCurrency(part.price)}</td>
+                                            <td className={`p-3 border-b border-gray-100 text-sm font-bold ${part.stock === undefined ? 'text-gray-400' : part.stock === 0 ? 'text-red-600' : part.stock < 10 ? 'text-orange-500' : 'text-green-600'}`}>
+                                                {part.stock === undefined ? '∞' : part.stock === 0 ? 'Hết hàng' : part.stock}
+                                            </td>
+                                            <td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteProduct(part.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (
+                                                products.length > 0 ? (<tr><td colSpan={6} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy sản phẩm nào.</td></tr>) : (<tr><td colSpan={6} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🧩</span><p className="text-sm mb-4">Kho sản phẩm đang trống.</p><button onClick={handleSeedData} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ dữ liệu mẫu</button></div></td></tr>)
                                             )}
                                         </tbody>
                                     </table>
@@ -1593,12 +1631,10 @@ const AdminPage: React.FC = () => {
                                 </div>
                                 <div className="flex-grow overflow-auto">
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-24">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Danh mục</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
+                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 w-24">Hình ảnh</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Tên Background</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Danh mục</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">Loại khung</th><th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 text-right">Thao tác</th></tr></thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(bg => (
-                                                <tr key={bg.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-10 h-10 bg-white rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={bg.url} alt="" className="w-full h-full object-contain" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{bg.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500 capitalize">{bg.type}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500">{bg.category}</td><td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteBackground(bg.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>
-                                            )) : (
-                                                backgrounds.length > 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy hình nền nào.</td></tr>) : (<tr><td colSpan={5} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🖼️</span><p className="text-sm mb-4">Kho hình nền đang trống.</p><button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button></div></td></tr>)
+                                            {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(bg => (<tr key={bg.id} className="hover:bg-gray-50 transition-colors group"><td className="p-3 border-b border-gray-100"><div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden"><img src={bg.url} alt="" className="w-full h-full object-cover" /></div></td><td className="p-3 border-b border-gray-100 text-sm font-medium text-gray-900">{bg.name}</td><td className="p-3 border-b border-gray-100 text-sm text-gray-500"><span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{bg.category}</span></td><td className="p-3 border-b border-gray-100 text-sm text-gray-500">{bg.type === 'square' ? 'Vuông' : 'Chữ nhật'}</td><td className="p-3 border-b border-gray-100 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded">Sửa</button><button onClick={() => handleDeleteBackground(bg.id)} className="text-xs font-bold text-red-600 hover:underline bg-red-50 px-2 py-1 rounded">Xóa</button></div></td></tr>)) : (
+                                                backgrounds.length > 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm">Không tìm thấy background nào.</td></tr>) : (<tr><td colSpan={5} className="p-12 text-center"><div className="flex flex-col items-center justify-center text-gray-400"><span className="text-4xl mb-2">🖼️</span><p className="text-sm mb-4">Kho background đang trống.</p><button onClick={handleSeedBackgrounds} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button></div></td></tr>)
                                             )}
                                         </tbody>
                                     </table>
@@ -1608,130 +1644,90 @@ const AdminPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- CONFIG TAB (GROUPED) --- */}
+                {/* --- CONFIG TAB --- */}
                 {activeTab === 'config' && role === 'admin' && (
-                    <div className="animate-fade-in">
-                        <div className="mb-6 bg-white p-2 rounded-lg border border-gray-200 shadow-sm flex gap-2 w-fit">
-                            <button onClick={() => setActiveConfigSubTab('general')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'general' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}>Thông tin Chung</button>
-                            <button onClick={() => setActiveConfigSubTab('templates')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'templates' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}>Bộ sưu tập (Templates)</button>
-                            <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'feedbacks' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}>Feedback</button>
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+                        {/* Sub Navigation */}
+                        <div className="p-2 border-b border-gray-100 bg-gray-50 flex gap-2 overflow-x-auto">
+                            <button onClick={() => setActiveConfigSubTab('general')} className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'general' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>Chung</button>
+                            <button onClick={() => setActiveConfigSubTab('templates')} className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'templates' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>Bộ sưu tập mẫu</button>
+                            <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-md transition-all ${activeConfigSubTab === 'feedbacks' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>Feedbacks</button>
                         </div>
 
-                        {activeConfigSubTab === 'general' && (
-                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden max-w-3xl">
-                                <div className="p-6 border-b border-gray-100">
-                                    <h2 className="text-xl font-bold text-gray-900">Cấu hình Giao diện & Thương hiệu</h2>
-                                    <p className="text-sm text-gray-500">Cập nhật hình ảnh hiển thị trên trang chủ và header.</p>
+                        <div className="flex-grow overflow-auto p-6">
+                            {activeConfigSubTab === 'general' && (
+                                <div className="max-w-2xl mx-auto space-y-8">
+                                    <ConfigImageUpload label="Logo Website" description="Hiển thị ở header. Định dạng PNG trong suốt." currentUrl={storeConfig.logoUrl} onUpload={(f) => handleConfigUpload(f, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
+                                    <ConfigImageUpload label="Favicon" description="Icon nhỏ trên tab trình duyệt." currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
+                                    <ConfigImageUpload label="Hero Image (Trang chủ)" description="Ảnh banner lớn bên trái trang chủ." currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
+                                    <ConfigImageUpload label="Inspiration Image (Trang chủ)" description="Ảnh nền phần 'Featured' bên trái." currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
                                 </div>
-                                <div className="p-6 space-y-8">
-                                    <ConfigImageUpload label="Logo Shop" description="Hiển thị trên header (Khuyên dùng: PNG trong suốt, cao 50px)." currentUrl={storeConfig.logoUrl} onUpload={(file) => handleConfigUpload(file, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
-                                    <ConfigImageUpload label="Favicon" description="Icon trên tab trình duyệt (Khuyên dùng: PNG/ICO vuông 32x32)." currentUrl={storeConfig.faviconUrl} onUpload={(file) => handleConfigUpload(file, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
-                                    <ConfigImageUpload label="Hero Banner (Trang chủ)" description="Ảnh lớn đầu trang chủ (Khuyên dùng: 1920x1080)." currentUrl={storeConfig.heroImageUrl} onUpload={(file) => handleConfigUpload(file, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
-                                    <ConfigImageUpload label="Inspire Banner" description="Ảnh phần 'Truyền cảm hứng' (Khuyên dùng: 800x800)." currentUrl={storeConfig.inspireImageUrl} onUpload={(file) => handleConfigUpload(file, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
-                                </div>
-                            </div>
-                        )}
+                            )}
 
-                        {activeConfigSubTab === 'templates' && (
-                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-200px)]">
-                                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                                    <h2 className="text-lg font-bold text-gray-900">Quản lý Mẫu thiết kế</h2>
-                                    <button onClick={() => { setEditingTemplate(null); setIsEditingTemplate(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
-                                </div>
-                                <div className="flex-grow overflow-auto p-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {templates.length > 0 ? templates.map(tpl => (
-                                            <div key={tpl.id} className="border rounded-lg overflow-hidden group relative">
-                                                <div className="aspect-video bg-gray-100 relative">
-                                                    <img src={tpl.imageUrl} alt={tpl.name} className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                        <button onClick={() => { setEditingTemplate(tpl); setIsEditingTemplate(true); }} className="bg-white text-gray-900 px-3 py-1.5 rounded text-xs font-bold">Sửa</button>
-                                                        <button onClick={() => handleDeleteTemplate(tpl.id)} className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold">Xóa</button>
-                                                    </div>
-                                                </div>
-                                                <div className="p-3"><h3 className="font-bold text-gray-800">{tpl.name}</h3></div>
-                                            </div>
-                                        )) : (
-                                            <div className="col-span-3 text-center py-12 text-gray-400"><p className="mb-4">Chưa có mẫu nào.</p><button onClick={handleSeedTemplates} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button></div>
-                                        )}
+                            {activeConfigSubTab === 'templates' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Danh sách mẫu thiết kế</h3>
+                                        <div className="flex gap-2">
+                                            {templates.length === 0 && <button onClick={handleSeedTemplates} className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200">Reset Mẫu</button>}
+                                            <button onClick={() => { setEditingTemplate(null); setIsEditingTemplate(true); }} className="text-xs font-bold bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-black">+ Thêm Mẫu</button>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeConfigSubTab === 'feedbacks' && (
-                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-[calc(100vh-200px)]">
-                                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                                    <h2 className="text-lg font-bold text-gray-900">Feedback Khách hàng</h2>
-                                    <button onClick={() => { setEditingFeedback(null); setIsEditingFeedback(true); }} className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black whitespace-nowrap shadow-sm">Thêm mới</button>
-                                </div>
-                                <div className="flex-grow overflow-auto p-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {feedbacks.length > 0 ? feedbacks.map(fb => (
-                                            <div key={fb.id} className="border rounded-lg p-4 relative group bg-white">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0"><img src={fb.imageUrl} alt={fb.name} className="w-full h-full object-cover" /></div>
-                                                    <div><h4 className="font-bold text-sm text-gray-900">{fb.name}</h4></div>
-                                                </div>
-                                                <p className="text-xs text-gray-600 italic mb-3 line-clamp-3">"{fb.text}"</p>
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                                    <button onClick={() => { setEditingFeedback(fb); setIsEditingFeedback(true); }} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
-                                                    <button onClick={() => handleDeleteFeedback(fb.id)} className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100">
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {templates.map(tpl => (
+                                            <div key={tpl.id} className="border rounded-lg p-3 relative group">
+                                                <img src={tpl.imageUrl} className="w-full h-32 object-cover rounded bg-gray-50 mb-2" />
+                                                <p className="font-bold text-sm truncate">{tpl.name}</p>
+                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingTemplate(tpl); setIsEditingTemplate(true); }} className="bg-white p-1 rounded shadow text-blue-600 text-xs font-bold">Sửa</button>
+                                                    <button onClick={() => handleDeleteTemplate(tpl.id)} className="bg-white p-1 rounded shadow text-red-600 text-xs font-bold">Xóa</button>
                                                 </div>
                                             </div>
-                                        )) : (
-                                            <div className="col-span-3 text-center py-12 text-gray-400"><p className="mb-4">Chưa có feedback nào.</p><button onClick={handleSeedFeedbacks} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ feedback</button></div>
-                                        )}
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+
+                            {activeConfigSubTab === 'feedbacks' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Danh sách Feedback</h3>
+                                        <div className="flex gap-2">
+                                            {feedbacks.length === 0 && <button onClick={handleSeedFeedbacks} className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200">Reset FB</button>}
+                                            <button onClick={() => { setEditingFeedback(null); setIsEditingFeedback(true); }} className="text-xs font-bold bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-black">+ Thêm FB</button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {feedbacks.map(fb => (
+                                            <div key={fb.id} className="border rounded-lg p-3 relative group bg-pink-50/30">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <img src={fb.imageUrl} className="w-10 h-10 rounded-full object-cover bg-white" />
+                                                    <p className="font-bold text-sm">{fb.name}</p>
+                                                </div>
+                                                <p className="text-xs text-gray-600 italic line-clamp-3">"{fb.text}"</p>
+                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingFeedback(fb); setIsEditingFeedback(true); }} className="bg-white p-1 rounded shadow text-blue-600 text-xs font-bold">Sửa</button>
+                                                    <button onClick={() => handleDeleteFeedback(fb.id)} className="bg-white p-1 rounded shadow text-red-600 text-xs font-bold">Xóa</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </main>
 
-            {isEditingProduct && (
-                <ProductForm 
-                    initialData={editingPart} 
-                    onSave={handleSaveProduct} 
-                    onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} 
-                />
-            )}
-
-            {isEditingBackground && (
-                <BackgroundForm
-                    initialData={editingBg}
-                    onSave={handleSaveBackground}
-                    onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }}
-                />
-            )}
-
-            {isEditingTemplate && (
-                <TemplateForm
-                    initialData={editingTemplate}
-                    onSave={handleSaveTemplate}
-                    onCancel={() => { setIsEditingTemplate(false); setEditingTemplate(null); }}
-                />
-            )}
-
-            {isEditingFeedback && (
-                <FeedbackForm
-                    initialData={editingFeedback}
-                    onSave={handleSaveFeedback}
-                    onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }}
-                />
-            )}
+            {/* MODALS */}
+            {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} />}
+            {isEditingBackground && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} />}
+            {isEditingTemplate && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={() => { setIsEditingTemplate(false); setEditingTemplate(null); }} />}
+            {isEditingFeedback && <FeedbackForm initialData={editingFeedback} onSave={handleSaveFeedback} onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }} />}
 
             {loading && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-                    <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                        <span className="font-medium">Đang xử lý...</span>
-                    </div>
+                <div className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                 </div>
             )}
         </div>
@@ -1739,4 +1735,3 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
-    

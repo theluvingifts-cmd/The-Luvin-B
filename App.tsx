@@ -510,7 +510,12 @@ const Step3Characters: React.FC<{
         { key: 'hat', label: 'Mũ' },
     ];
 
-    const currentPartList = legoParts[activePartType] || [];
+    // Helper to filter out items with 0 stock
+    const getAvailableParts = (list: LegoPart[]) => {
+        return list.filter(p => p.stock === undefined || p.stock > 0);
+    };
+
+    const currentPartList = getAvailableParts(legoParts[activePartType] || []);
 
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
@@ -606,7 +611,9 @@ const Step3Characters: React.FC<{
                                 onClick={() => handlePartSelect(part)} 
                             />
                         )) : (
-                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">Đang tải hoặc chưa có dữ liệu...</div>
+                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
+                                {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
+                            </div>
                         )}
                     </div>
 
@@ -648,7 +655,7 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM PHỤ KIỆN</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {legoParts.accessory.map(part => (
+                    {getAvailableParts(legoParts.accessory).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -657,7 +664,7 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {legoParts.pet.map(part => (
+                    {getAvailableParts(legoParts.pet).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -788,6 +795,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
 };
 
 // ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage, CartPanel, ZoomIcon, CheckoutPage, OrderConfirmationPage, OrderLookupPage components as is) ...
+// ... skipping redundant parts for brevity ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 )
@@ -1365,6 +1373,7 @@ const BuilderPage: React.FC<{
 };
 
 // ... (Keep CollectionPage, CartPage, CartPanel, CheckoutPage, OrderConfirmationPage, OrderLookupPage, categorizeParts as is) ...
+// ... skipping redundant parts for brevity ...
 const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>, templates?: CollectionTemplate[] }> = ({ navigateTo, setConfig, templates }) => {
     const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
@@ -2064,32 +2073,47 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  // Load cached config from localStorage immediately
-  const loadCachedConfig = () => {
+  // Lazy initialization for logoUrl to prevent FOUC and sync issues
+  const [logoUrl, setLogoUrl] = useState<string>(() => {
       try {
           const cached = localStorage.getItem('app_config');
-          return cached ? JSON.parse(cached) : null;
-      } catch (e) { return null; }
-  };
-  const cachedConfig = loadCachedConfig();
+          return cached ? JSON.parse(cached).logoUrl || "" : "";
+      } catch (e) { return ""; }
+  });
+  
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).heroImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
 
-  const [logoUrl, setLogoUrl] = useState<string>(cachedConfig?.logoUrl || ""); 
-  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(cachedConfig?.heroImageUrl);
-  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(cachedConfig?.inspireImageUrl);
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).inspireImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
 
   // Use effect to apply favicon if cached
   useEffect(() => {
-      if (cachedConfig?.faviconUrl) {
-          const link = document.querySelector("link[rel~='icon']");
-          if (link instanceof HTMLLinkElement) {
-              link.href = cachedConfig.faviconUrl;
-          } else {
-              const newLink = document.createElement('link');
-              newLink.rel = 'icon';
-              newLink.href = cachedConfig.faviconUrl;
-              document.head.appendChild(newLink);
+      try {
+          const cached = localStorage.getItem('app_config');
+          if (cached) {
+              const config = JSON.parse(cached);
+              if (config.faviconUrl) {
+                  const link = document.querySelector("link[rel~='icon']");
+                  if (link instanceof HTMLLinkElement) {
+                      link.href = config.faviconUrl;
+                  } else {
+                      const newLink = document.createElement('link');
+                      newLink.rel = 'icon';
+                      newLink.href = config.faviconUrl;
+                      document.head.appendChild(newLink);
+                  }
+              }
           }
-      }
+      } catch(e) {}
   }, []);
 
   useEffect(() => {

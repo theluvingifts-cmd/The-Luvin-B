@@ -36,6 +36,7 @@ export interface LegoPart {
   slices?: boolean; 
   dx?: number; 
   dy?: number; 
+  stock?: number; // undefined = unlimited, 0 = out of stock
 }
 
 // Interface mới cho Background
