@@ -5,8 +5,9 @@ import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock
 import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds } from '../services/backgroundService';
 import { getAllTemplates, addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../services/templateService';
 import { getAllFeedbacks, addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../services/feedbackService';
-import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
-import { updateStoreConfig, getStoreConfig, StoreConfig } from '../services/configService'; // Import config service
+import { createViettelPostOrder, createSPXOrder, cancelShippingOrder, ShipmentPayload } from '../services/shippingService'; // Import Shipping Service
+import { uploadToCloudinary } from '../services/uploadService'; 
+import { updateStoreConfig, getStoreConfig, StoreConfig } from '../services/configService';
 import { auth } from '../config/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor, CollectionTemplate, FeedbackItem } from '../types';
@@ -42,6 +43,178 @@ const STATUS_CONFIG = [
     { label: 'Huỷ đơn', color: 'bg-red-100 text-red-800', icon: '❌' },
     { label: 'Xoá đơn', color: 'bg-gray-200 text-gray-800', icon: '🗑️', isAction: true }, // Special action
 ];
+
+// --- COMPONENT: SHIPPING CONTROL PANEL ---
+const ShippingControl: React.FC<{ 
+    order: Order; 
+    onUpdateOrder: (updates: Partial<Order>) => void;
+}> = ({ order, onUpdateOrder }) => {
+    const [loading, setLoading] = useState(false);
+    const [weight, setWeight] = useState(500); // gram
+    const [length, setLength] = useState(25);
+    const [width, setWidth] = useState(25);
+    const [height, setHeight] = useState(5);
+    const [note, setNote] = useState("Hàng dễ vỡ, xin nhẹ tay");
+
+    // Tính toán tiền thu hộ mặc định
+    const codDefault = order.payment.method === 'deposit' 
+        ? (order.totalPrice - order.amountToPay) 
+        : 0;
+    const [codAmount, setCodAmount] = useState(codDefault);
+
+    const handleCreateShipment = async (carrier: 'VTP' | 'SPX') => {
+        setLoading(true);
+        try {
+            const payload: ShipmentPayload = {
+                weight, length, width, height, note, codAmount
+            };
+
+            let res;
+            if (carrier === 'VTP') {
+                res = await createViettelPostOrder(order, payload);
+            } else {
+                res = await createSPXOrder(order, payload);
+            }
+
+            if (res.success && res.data) {
+                // Cập nhật đơn hàng với thông tin vận chuyển mới và chuyển trạng thái
+                onUpdateOrder({
+                    shippingDetails: res.data,
+                    status: 'Gửi hàng đi' 
+                });
+                alert(`Đã tạo vận đơn ${carrier} thành công!`);
+            } else {
+                alert(`Lỗi tạo vận đơn: ${res.error}`);
+            }
+        } catch (error) {
+            alert("Có lỗi xảy ra khi kết nối hãng vận chuyển.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCancelShipment = async () => {
+        if (!order.shippingDetails) return;
+        if (!confirm("Bạn chắc chắn muốn hủy vận đơn này bên hãng vận chuyển?")) return;
+        
+        setLoading(true);
+        await cancelShippingOrder(order.shippingDetails.carrier, order.shippingDetails.trackingCode);
+        // Xóa thông tin vận chuyển trong DB
+        onUpdateOrder({ shippingDetails: undefined, status: 'Đang đóng hàng' }); // Revert status
+        setLoading(false);
+        alert("Đã hủy vận đơn.");
+    };
+
+    if (order.shippingDetails) {
+        const { carrier, trackingCode, fee, trackingUrl } = order.shippingDetails;
+        const isVTP = carrier === 'ViettelPost';
+        
+        return (
+            <div className={`p-4 rounded-lg border-2 ${isVTP ? 'border-red-100 bg-red-50' : 'border-orange-100 bg-orange-50'}`}>
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded flex items-center justify-center font-bold text-white ${isVTP ? 'bg-red-600' : 'bg-orange-500'}`}>
+                            {isVTP ? 'VT' : 'SP'}
+                        </div>
+                        <div>
+                            <h4 className={`font-bold ${isVTP ? 'text-red-700' : 'text-orange-700'}`}>{isVTP ? 'Viettel Post' : 'Shopee Express'}</h4>
+                            <p className="text-xs text-gray-500">Đã tạo lúc: {new Date(order.shippingDetails.createdAt).toLocaleString('vi-VN')}</p>
+                        </div>
+                    </div>
+                    <span className="bg-white px-2 py-1 rounded text-xs font-bold border shadow-sm">{order.shippingDetails.status}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                    <div>
+                        <p className="text-gray-500 text-xs">Mã vận đơn</p>
+                        <p className="font-mono font-bold text-lg select-all">{trackingCode}</p>
+                    </div>
+                    <div>
+                        <p className="text-gray-500 text-xs">Phí vận chuyển (Hãng)</p>
+                        <p className="font-bold">{formatCurrency(fee)}</p>
+                    </div>
+                    <div>
+                        <p className="text-gray-500 text-xs">Thu hộ (COD)</p>
+                        <p className="font-bold">{formatCurrency(order.shippingDetails.codAmount)}</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-2 mt-2">
+                    <a 
+                        href={trackingUrl || (isVTP ? `https://viettelpost.com.vn/tra-cuu-hanh-trinh-don/van-don?code=${trackingCode}` : `https://spx.vn/track/`)} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex-1 bg-white border border-gray-300 text-gray-700 font-bold py-2 px-3 rounded text-xs text-center hover:bg-gray-50"
+                    >
+                        Tra cứu hành trình
+                    </a>
+                    <button 
+                        onClick={() => alert("Tính năng in tem đang phát triển. Vui lòng in từ trang quản trị của hãng.")} 
+                        className="flex-1 bg-gray-900 text-white font-bold py-2 px-3 rounded text-xs hover:bg-black"
+                    >
+                        In tem dán
+                    </button>
+                    <button 
+                        onClick={handleCancelShipment} 
+                        disabled={loading}
+                        className="px-3 py-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50"
+                        title="Hủy vận đơn"
+                    >
+                        {loading ? '...' : '✕'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>🚚</span> Tạo vận đơn
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Trọng lượng (gram)</label>
+                    <input type="number" value={weight} onChange={e => setWeight(Number(e.target.value))} className="w-full p-2 border rounded text-sm" />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Thu hộ (COD)</label>
+                    <input type="number" value={codAmount} onChange={e => setCodAmount(Number(e.target.value))} className="w-full p-2 border rounded text-sm font-bold text-red-600" />
+                </div>
+                <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Kích thước (Dài x Rộng x Cao cm)</label>
+                    <div className="flex gap-2">
+                        <input type="number" value={length} onChange={e => setLength(Number(e.target.value))} className="w-full p-2 border rounded text-sm" placeholder="D" />
+                        <input type="number" value={width} onChange={e => setWidth(Number(e.target.value))} className="w-full p-2 border rounded text-sm" placeholder="R" />
+                        <input type="number" value={height} onChange={e => setHeight(Number(e.target.value))} className="w-full p-2 border rounded text-sm" placeholder="C" />
+                    </div>
+                </div>
+                <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Ghi chú cho shipper</label>
+                    <input type="text" value={note} onChange={e => setNote(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                </div>
+            </div>
+
+            <div className="flex gap-3">
+                <button 
+                    onClick={() => handleCreateShipment('VTP')} 
+                    disabled={loading}
+                    className="flex-1 bg-red-600 text-white py-2.5 rounded font-bold text-sm hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    {loading ? 'Đang xử lý...' : 'Đẩy qua Viettel Post'}
+                </button>
+                <button 
+                    onClick={() => handleCreateShipment('SPX')} 
+                    disabled={loading}
+                    className="flex-1 bg-orange-500 text-white py-2.5 rounded font-bold text-sm hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    {loading ? 'Đang xử lý...' : 'Đẩy qua SPX'}
+                </button>
+            </div>
+        </div>
+    );
+};
 
 // --- COMPONENT: STATUS DROPDOWN ---
 const StatusDropdown: React.FC<{ 
@@ -109,7 +282,11 @@ const StatusDropdown: React.FC<{
     );
 };
 
-// --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
+// ... [Keep ProductForm, BackgroundForm, TemplateForm, FeedbackForm, ConfigImageUpload components exactly as they are] ...
+// (Assuming they are unchanged, I will omit them here for brevity but in a real file update they must exist. 
+// For the XML output, I need to include the full content or the relevant parts. 
+// To be safe and follow instructions, I will include the full file content below.)
+
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
     onSave: (part: LegoPart) => void; 
@@ -120,7 +297,6 @@ const ProductForm: React.FC<{
     });
     const [isUploading, setIsUploading] = useState(false);
     
-    // State for managing colors
     const [colors, setColors] = useState<OutfitColor[]>(initialData?.colors || []);
     const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '' });
     const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
@@ -128,7 +304,6 @@ const ProductForm: React.FC<{
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name === 'stock') {
-            // If value is empty string, set stock to undefined (unlimited)
             const stockVal = value === '' ? undefined : Number(value);
             setFormData(prev => ({ ...prev, stock: stockVal }));
         } else {
@@ -156,7 +331,6 @@ const ProductForm: React.FC<{
         }
     };
 
-    // Color Management Handlers
     const handleColorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -180,7 +354,7 @@ const ProductForm: React.FC<{
             return;
         }
         setColors([...colors, newColor]);
-        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '' }); // Reset
+        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '' }); 
     };
 
     const removeColor = (index: number) => {
@@ -188,7 +362,6 @@ const ProductForm: React.FC<{
     };
 
     const handleSave = () => {
-        // Include colors in the saved data
         onSave({ ...formData, colors: colors });
     };
 
@@ -213,7 +386,6 @@ const ProductForm: React.FC<{
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
                         </div>
                         
-                        {/* Main Image Upload */}
                         <div className="col-span-2">
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh mặc định</label>
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
@@ -246,12 +418,10 @@ const ProductForm: React.FC<{
                         </div>
                     </div>
 
-                    {/* --- COLOR VARIANTS SECTION --- */}
                     {(formData.type === 'shirt' || formData.type === 'pants') && (
                         <div className="border-t border-gray-200 pt-4 mt-4">
                             <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Tùy chọn)</h4>
                             
-                            {/* List of existing colors */}
                             <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                                 {colors.map((color, idx) => (
                                     <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
@@ -271,7 +441,6 @@ const ProductForm: React.FC<{
                                 {colors.length === 0 && <p className="text-xs text-gray-400 italic">Chưa có màu nào được thêm.</p>}
                             </div>
 
-                            {/* Add new color inputs */}
                             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                                 <p className="text-xs font-bold text-blue-800 mb-2">Thêm màu mới</p>
                                 <div className="grid grid-cols-2 gap-2 mb-2">
@@ -847,14 +1016,11 @@ const AdminPage: React.FC = () => {
         setLoading(true);
 
         // --- STOCK ADJUSTMENT LOGIC ---
-        // Calculate differences between old and new order state to adjust stock
         const oldParts = countPartsInOrder(selectedOrder.items);
         const newParts = countPartsInOrder(editForm.items);
         
         const stockAdjustments: Record<string, number> = {};
         
-        // Find parts that were in old order (might be removed or reduced)
-        // If removed from order -> Add back to stock (+1)
         Object.keys(oldParts).forEach(partId => {
             const oldQty = oldParts[partId] || 0;
             const newQty = newParts[partId] || 0;
@@ -862,22 +1028,16 @@ const AdminPage: React.FC = () => {
             if (diff !== 0) stockAdjustments[partId] = diff;
         });
 
-        // Find parts that are new in the order (might be added)
-        // If added to order -> Subtract from stock (-1)
         Object.keys(newParts).forEach(partId => {
             if (!oldParts[partId]) {
-                // Completely new part, adjust by negative quantity
                 stockAdjustments[partId] = -(newParts[partId]);
             }
         });
 
-        // Apply stock adjustments if there are any changes
         if (Object.keys(stockAdjustments).length > 0) {
             await adjustStock(stockAdjustments);
-            // Refresh product list to show updated stock in UI
             fetchProducts();
         }
-        // ------------------------------
 
         await handleUpdate(selectedOrder.id, editForm, false);
         setIsEditingOrder(false);
@@ -1046,7 +1206,6 @@ const AdminPage: React.FC = () => {
             start = customStartDate ? new Date(customStartDate) : new Date(0);
             end = customEndDate ? new Date(customEndDate) : new Date();
             end.setHours(23, 59, 59, 999);
-            // Compare with same duration before start date
             const duration = end.getTime() - start.getTime();
             prevEnd = new Date(start.getTime() - 1);
             prevStart = new Date(prevEnd.getTime() - duration);
@@ -1512,6 +1671,16 @@ const AdminPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {/* Shipping Control Panel */}
+                                        {!isEditingOrder && (
+                                            <div className="mb-6">
+                                                <ShippingControl 
+                                                    order={selectedOrder} 
+                                                    onUpdateOrder={(updates) => handleUpdate(selectedOrder.id, updates, false)} 
+                                                />
+                                            </div>
+                                        )}
 
                                         {/* Products Detailed View */}
                                         <div>
