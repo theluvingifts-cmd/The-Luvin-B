@@ -105,18 +105,6 @@ export interface FrameConfig {
   previewImageUrl?: string;
 }
 
-// --- NEW INTERFACE FOR LOGISTICS ---
-export interface ShippingDetails {
-    carrier: 'ViettelPost' | 'ShopeeExpress';
-    trackingCode: string;
-    status: string; // e.g., 'ReadyToPick', 'Picking', 'Delivering'
-    expectedDelivery?: string;
-    codAmount: number;
-    fee: number;
-    createdAt: string; // ISO Date
-    trackingUrl?: string; // Direct link to carrier
-}
-
 export interface Order {
   id: string;
   createdAt: number; // Timestamp chính xác khi tạo đơn
@@ -136,6 +124,8 @@ export interface Order {
   shipping: {
     method: 'standard' | 'express' | 'bookship';
     fee: number;
+    carrier?: string; // VTP, SPX, etc.
+    trackingCode?: string; // Mã vận đơn
   };
   payment: {
     method: 'deposit' | 'full';
@@ -151,9 +141,6 @@ export interface Order {
   // --- Warehouse Fields ---
   packedBy?: string;      // Email người đóng gói
   packedAt?: string;      // Thời gian đóng gói ISO string
-  
-  // --- 3rd Party Logistics ---
-  shippingDetails?: ShippingDetails;
 }
 
 // NEW INTERFACES FOR DYNAMIC CONTENT
