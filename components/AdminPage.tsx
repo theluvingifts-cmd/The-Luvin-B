@@ -907,8 +907,6 @@ const AdminPage: React.FC = () => {
                 newOrder.customer = { ...newOrder.customer, [nestedField]: value };
             } else if (field === 'delivery' && nestedField) {
                 newOrder.delivery = { ...newOrder.delivery, [nestedField]: value };
-            } else if (field === 'shipping' && nestedField) {
-                newOrder.shipping = { ...newOrder.shipping, [nestedField]: value };
             } else {
                 (newOrder as any)[field] = value;
             }
@@ -1496,40 +1494,11 @@ const AdminPage: React.FC = () => {
                                                             <>
                                                                 <div className="flex items-center gap-2 mb-2"><span className="w-24 text-gray-500">Tổng đơn:</span> <input type="number" className="border rounded p-1 w-32 font-bold" value={editForm.totalPrice} onChange={e => handleEditFormChange('totalPrice', Number(e.target.value))} /></div>
                                                                 <div className="flex items-center gap-2"><span className="w-24 text-gray-500">Cần thu:</span> <input type="number" className="border rounded p-1 w-32 font-bold text-red-600" value={editForm.amountToPay} onChange={e => handleEditFormChange('amountToPay', Number(e.target.value))} /></div>
-                                                                <div className="mt-2 pt-2 border-t border-dashed">
-                                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Thông tin gửi hàng</label>
-                                                                    <div className="flex gap-2 mb-2">
-                                                                        <select 
-                                                                            className="border rounded p-1 text-xs w-1/3" 
-                                                                            value={editForm.shipping.carrier || ''} 
-                                                                            onChange={e => handleEditFormChange('shipping', e.target.value, 'carrier')}
-                                                                        >
-                                                                            <option value="">Hãng VC...</option>
-                                                                            <option value="VTP">Viettel Post</option>
-                                                                            <option value="SPX">SPX (Shopee)</option>
-                                                                            <option value="GHTK">GHTK</option>
-                                                                            <option value="GHN">GHN</option>
-                                                                            <option value="OTHER">Khác</option>
-                                                                        </select>
-                                                                        <input 
-                                                                            className="border rounded p-1 text-xs w-2/3" 
-                                                                            placeholder="Mã vận đơn" 
-                                                                            value={editForm.shipping.trackingCode || ''} 
-                                                                            onChange={e => handleEditFormChange('shipping', e.target.value, 'trackingCode')}
-                                                                        />
-                                                                    </div>
-                                                                </div>
                                                             </>
                                                         ) : (
                                                             <>
                                                                 <p><span className="text-gray-500 w-24 inline-block">Tổng đơn:</span> <span className="font-bold">{formatCurrency(selectedOrder.totalPrice)}</span></p>
                                                                 <p><span className="text-gray-500 w-24 inline-block">Cần thu:</span> <span className="font-bold text-red-600">{formatCurrency(selectedOrder.amountToPay)}</span></p>
-                                                                {selectedOrder.shipping.trackingCode && (
-                                                                    <div className="mt-2 pt-2 border-t border-dashed text-xs">
-                                                                        <p><span className="text-gray-500 w-24 inline-block">Hãng VC:</span> <strong>{selectedOrder.shipping.carrier || '---'}</strong></p>
-                                                                        <p><span className="text-gray-500 w-24 inline-block">Mã VĐ:</span> <span className="font-mono bg-gray-100 px-1 rounded">{selectedOrder.shipping.trackingCode}</span></p>
-                                                                    </div>
-                                                                )}
                                                             </>
                                                         )}
                                                     </div>

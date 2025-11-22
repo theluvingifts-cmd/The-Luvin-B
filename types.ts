@@ -124,8 +124,6 @@ export interface Order {
   shipping: {
     method: 'standard' | 'express' | 'bookship';
     fee: number;
-    carrier?: string; // VTP, SPX, etc.
-    trackingCode?: string; // Mã vận đơn
   };
   payment: {
     method: 'deposit' | 'full';

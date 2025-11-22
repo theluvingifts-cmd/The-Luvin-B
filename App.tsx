@@ -74,6 +74,7 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
+// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters, Step4Summary components as is) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
@@ -803,6 +804,8 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   );
 };
 
+// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage, CartPanel, ZoomIcon, CheckoutPage, OrderConfirmationPage, OrderLookupPage components as is) ...
+// ... skipping redundant parts for brevity ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 )
@@ -1395,6 +1398,8 @@ const BuilderPage: React.FC<{
   );
 };
 
+// ... (Keep CollectionPage, CartPage, CartPanel, CheckoutPage, OrderConfirmationPage, OrderLookupPage, categorizeParts as is) ...
+// ... skipping redundant parts for brevity ...
 const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>, templates?: CollectionTemplate[] }> = ({ navigateTo, setConfig, templates }) => {
     const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
@@ -1938,15 +1943,6 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         }
     };
 
-    const getTrackingLink = (carrier: string, code: string) => {
-        if (!carrier || !code) return '#';
-        if (carrier === 'VTP') return `https://viettelpost.com.vn/tra-cuu-hanh-trinh-don?code=${code}`;
-        if (carrier === 'SPX') return `https://spx.vn/track/${code}`;
-        if (carrier === 'GHTK') return `https://i.ghtk.vn/${code}`;
-        if (carrier === 'GHN') return `https://ghn.vn/blogs/trang-thai-don-hang?order_code=${code}`;
-        return '#';
-    };
-
     const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
         const getStepIndex = (status: string) => {
             switch(status) {
@@ -2041,29 +2037,6 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
 
                             <StatusTracker currentStatus={foundOrder.status} />
 
-                            {/* Tracking Info Block - Only show if tracking code exists and status is advanced */}
-                            {foundOrder.shipping.trackingCode && 
-                             ['Chờ chuyển hàng', 'Gửi hàng đi', 'Đang giao hàng', 'Đã giao hàng'].includes(foundOrder.status) && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                    <div>
-                                        <p className="text-sm font-bold text-blue-800 mb-1">Thông tin vận chuyển</p>
-                                        <div className="text-sm text-blue-900">
-                                            <span className="font-semibold mr-2">{foundOrder.shipping.carrier}:</span>
-                                            <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-100 select-all">{foundOrder.shipping.trackingCode}</span>
-                                        </div>
-                                    </div>
-                                    <a 
-                                        href={getTrackingLink(foundOrder.shipping.carrier || '', foundOrder.shipping.trackingCode)} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-2"
-                                    >
-                                        <span>Tra cứu hành trình</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                    </a>
-                                </div>
-                            )}
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div>
                                     <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Thông tin nhận hàng</h3>
@@ -2072,28 +2045,24 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                     <p><span className="font-semibold">Địa chỉ:</span> {foundOrder.customer.address}</p>
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Thanh toán</h3>
-                                    <p><span className="font-semibold">Tổng tiền:</span> {formatCurrency(foundOrder.totalPrice)}</p>
-                                    <p><span className="font-semibold">Phương thức:</span> {foundOrder.payment.method === 'deposit' ? 'Cọc 70%' : 'Toàn bộ'}</p>
-                                    <p className="text-red-600 font-bold"><span className="font-semibold text-gray-800">Cần thu:</span> {formatCurrency(foundOrder.amountToPay)}</p>
+                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Đơn hàng</h3>
+                                    <div className="space-y-2">
+                                        {foundOrder.items.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-gray-100 rounded border overflow-hidden cursor-pointer" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                                                    {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold">Khung thiết kế</p>
+                                                    <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div className="mt-8 pt-6 border-t border-gray-200">
-                                <h3 className="font-bold text-gray-800 mb-4">Sản phẩm ({foundOrder.items.length})</h3>
-                                <div className="space-y-4">
-                                    {foundOrder.items.map((item, idx) => (
-                                        <div key={idx} className="flex gap-4 items-center bg-gray-50 p-2 rounded-lg border">
-                                            <div className="w-16 h-16 bg-white rounded border flex-shrink-0 overflow-hidden cursor-pointer" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                                                {item.previewImageUrl ? <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" /> : <span className="text-xs text-gray-400 flex items-center justify-center h-full">No img</span>}
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-sm">Khung LEGO thiết kế</p>
-                                                <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                             <div className="mt-6 pt-4 border-t text-right">
+                                <p className="text-lg">Tổng tiền: <span className="font-bold text-luvin-pink">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(foundOrder.totalPrice)}</span></p>
                             </div>
                         </div>
                     )}
@@ -2103,164 +2072,240 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
     );
 };
 
+// Helper to categorize parts
+const categorizeParts = (parts: LegoPart[]) => {
+    const categories: typeof LEGO_PARTS = {
+        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: []
+    };
+    parts.forEach(p => {
+        if (p.type in categories) {
+            categories[p.type as keyof typeof LEGO_PARTS].push(p);
+        }
+    });
+    return categories;
+};
+
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [currentConfig, setCurrentConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
-  const [cart, setCart] = useState<FrameConfig[]>([]);
+  const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
+  const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+  const [isAppLoading, setIsAppLoading] = useState(true); 
   
-  const [products, setProducts] = useState<LegoPart[]>([]);
-  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
-  const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-  const [storeConfig, setStoreConfig] = useState<any>({});
+  const [legoParts, setLegoParts] = useState(LEGO_PARTS);
+  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
+  const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  const [lastOrder, setLastOrder] = useState<Order | null>(null);
-  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  // Lazy initialization for logoUrl to prevent FOUC and sync issues
+  const [logoUrl, setLogoUrl] = useState<string>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).logoUrl || "" : "";
+      } catch (e) { return ""; }
+  });
+  
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).heroImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
+
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).inspireImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
+
+  // Use effect to apply favicon if cached
+  useEffect(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          if (cached) {
+              const config = JSON.parse(cached);
+              if (config.faviconUrl) {
+                  const link = document.querySelector("link[rel~='icon']");
+                  if (link instanceof HTMLLinkElement) {
+                      link.href = config.faviconUrl;
+                  } else {
+                      const newLink = document.createElement('link');
+                      newLink.rel = 'icon';
+                      newLink.href = config.faviconUrl;
+                      document.head.appendChild(newLink);
+                  }
+              }
+          }
+      } catch(e) {}
+  }, []);
 
   useEffect(() => {
       const fetchData = async () => {
-          const parts = await getAllParts();
-          setProducts(parts);
-          const bgs = await getAllBackgrounds();
-          setBackgrounds(bgs);
-          const tpls = await getAllTemplates();
-          setTemplates(tpls);
-          const fbs = await getAllFeedbacks();
-          setFeedbacks(fbs);
-          const cfg = await getStoreConfig();
-          if(cfg) setStoreConfig(cfg);
+          try {
+            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+                getAllParts(), 
+                getAllBackgrounds(), 
+                getStoreConfig(),
+                getAllTemplates(),
+                getAllFeedbacks()
+            ]);
+            
+            if (parts && parts.length > 0) {
+                setLegoParts(categorizeParts(parts));
+            }
+            if (bgs && bgs.length > 0) {
+                setBackgrounds(bgs);
+            }
+            if (tpls && tpls.length > 0) {
+                setTemplates(tpls);
+            }
+            if (fbs && fbs.length > 0) {
+                setFeedbacks(fbs);
+            }
+
+            if (storeConfig) {
+                // Save to cache
+                localStorage.setItem('app_config', JSON.stringify(storeConfig));
+
+                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
+                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
+                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+                
+                if (storeConfig.faviconUrl) {
+                    const link = document.querySelector("link[rel~='icon']");
+                    if (link instanceof HTMLLinkElement) {
+                        link.href = storeConfig.faviconUrl;
+                    } else {
+                        const newLink = document.createElement('link');
+                        newLink.rel = 'icon';
+                        newLink.href = storeConfig.faviconUrl;
+                        document.head.appendChild(newLink);
+                    }
+                }
+            }
+          } catch (error) {
+              console.error("Initial fetch error:", error);
+          } finally {
+              setIsAppLoading(false);
+          }
       };
       fetchData();
   }, []);
 
+  const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
+  const navigateTo = (page: Page) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+
   useEffect(() => {
-      const handleHashChange = () => {
-          if (window.location.hash === '#admin') {
+      const checkHash = () => {
+          if (window.location.hash === '#/admin') {
               setCurrentPage('admin');
           }
       };
-      window.addEventListener('hashchange', handleHashChange);
-      if (window.location.hash === '#admin') setCurrentPage('admin');
-      return () => window.removeEventListener('hashchange', handleHashChange);
+      checkHash();
+      window.addEventListener('hashchange', checkHash);
+      return () => window.removeEventListener('hashchange', checkHash);
   }, []);
 
+  const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
+    setCartItems(prev => [...prev, newConfig]);
+    if (openCart) setIsCartOpen(true);
+  };
+
+  const handleRemoveCartItem = (index: number) => {
+    setCartItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
+    const res = await createOrder(orderData);
+    if (res.success && res.data) {
+        setCurrentOrder(res.data);
+        setCartItems([]); 
+        navigateTo('order-confirmation');
+        sendOrderEmail(res.data);
+    } else {
+        alert("Lỗi đặt hàng. Vui lòng thử lại.");
+    }
+  };
+
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error') => {
-      setToast({message, type});
-      setTimeout(() => setToast(null), 3000);
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const categorizedParts = useMemo(() => {
-      const cats = JSON.parse(JSON.stringify(LEGO_PARTS)); 
-      // Reset arrays
-      for(const key in cats) cats[key] = [];
-      
-      products.forEach(p => {
-          if(cats[p.type]) {
-              cats[p.type].push(p);
-          }
-      });
-      return cats;
-  }, [products]);
-
-  const allPartsMap = useMemo(() => {
-       return products.reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>);
-  }, [products]);
-
-  const handleAddToCart = (config: FrameConfig, openCart: boolean = true) => {
-      setCart([...cart, config]);
-      if (openCart) setIsCartOpen(true);
-      showToast("Đã thêm vào giỏ hàng!", 'success');
-  };
-
-  const handleRemoveFromCart = (index: number) => {
-      setCart(cart.filter((_, i) => i !== index));
-  };
-  
-  const handlePlaceOrder = async (orderData: any) => {
-      const res = await createOrder(orderData);
-      if(res.success && res.data) {
-          setLastOrder(res.data as Order);
-          setCart([]);
-          setCurrentPage('order-confirmation');
-          await sendOrderEmail(res.data as Order);
-      } else {
-          showToast("Đặt hàng thất bại", 'error');
-      }
-  };
-
-  const renderPage = () => {
-      if (currentPage === 'admin') return <AdminPage />;
-
-      switch(currentPage) {
-          case 'home':
-              return <HomePage navigateTo={setCurrentPage} heroImage={storeConfig.heroImageUrl} inspireImage={storeConfig.inspireImageUrl} feedbacks={feedbacks} templates={templates} />;
-          case 'builder':
-              return <BuilderPage 
-                  config={currentConfig} 
-                  setConfig={setCurrentConfig} 
-                  navigateTo={setCurrentPage} 
-                  onAddToCart={handleAddToCart}
-                  showToast={showToast}
-                  legoParts={categorizedParts}
-                  backgrounds={backgrounds}
-              />;
-          case 'collection':
-              return <CollectionPage navigateTo={setCurrentPage} setConfig={setCurrentConfig} templates={templates} />;
-          case 'cart':
-              return <CartPage cartItems={cart} onRemoveItem={handleRemoveFromCart} allParts={allPartsMap} navigateTo={setCurrentPage} />;
-          case 'checkout':
-              return <CheckoutPage cartItems={cart} allParts={allPartsMap} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImage} />;
-          case 'order-confirmation':
-              return <OrderConfirmationPage order={lastOrder} navigateTo={setCurrentPage} onZoomImage={setZoomedImage} />;
-          case 'order-lookup':
-              return <OrderLookupPage onZoomImage={setZoomedImage} />;
-          default:
-              return <HomePage navigateTo={setCurrentPage} />;
-      }
-  };
+  // Even if fetching, show what we have from cache if possible
+  // Only show loading screen if we truly have nothing to show
+  if (isAppLoading && !logoUrl) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
+              <div className="animate-pulse flex flex-col items-center">
+                  <svg className="w-16 h-16 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 22.5C12 22.5 12 18.5 9 15.5C6 12.5 1.5 12 1.5 12C1.5 12 6 11.5 9 8.5C12 5.5 12 1.5 12 1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="font-heading text-2xl tracking-wider">The Luvin</span>
+              </div>
+          </div>
+      )
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900 relative">
-      {toast && (
-          <div className={`fixed top-4 right-4 z-[60] px-6 py-3 rounded-lg shadow-lg text-white font-bold transform transition-all duration-500 ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-              {toast.message}
-          </div>
-      )}
-      
-      {zoomedImage && (
-          <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
-              <img src={zoomedImage} className="max-w-full max-h-full object-contain" />
-              <button className="absolute top-4 right-4 text-white text-4xl">&times;</button>
-          </div>
-      )}
+    <div className="min-h-screen flex flex-col font-sans text-gray-900">
+         {currentPage !== 'admin' && (
+             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={logoUrl} />
+        )}
+        
+        <main className="flex-grow">
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} templates={templates} />}
+            {currentPage === 'builder' && (
+                <BuilderPage 
+                    config={config} 
+                    setConfig={setConfig} 
+                    navigateTo={navigateTo} 
+                    onAddToCart={handleAddToCart} 
+                    showToast={showToast}
+                    legoParts={legoParts}
+                    backgrounds={backgrounds}
+                />
+            )}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
+            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
+            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'admin' && <AdminPage />}
+        </main>
 
-      {currentPage !== 'admin' && (
-          <Header 
-              navigateTo={setCurrentPage} 
-              cartCount={cart.length} 
-              onCartClick={() => setIsCartOpen(true)} 
-              logoUrl={storeConfig.logoUrl || ''}
-          />
-      )}
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
 
-      <main className="flex-grow">
-          {renderPage()}
-      </main>
-      
-      {currentPage !== 'admin' && currentPage !== 'builder' && (
-          <Footer navigateTo={setCurrentPage} />
-      )}
+        <CartPanel 
+            isOpen={isCartOpen} 
+            onClose={() => setIsCartOpen(false)} 
+            cartItems={cartItems} 
+            onRemoveItem={handleRemoveCartItem}
+            allParts={allParts}
+            navigateTo={navigateTo}
+        />
+        
+         {zoomedImageUrl && (
+            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
+                <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain rounded-lg" />
+                <button className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80">&times;</button>
+            </div>
+        )}
 
-      <CartPanel 
-          isOpen={isCartOpen} 
-          onClose={() => setIsCartOpen(false)} 
-          cartItems={cart} 
-          onRemoveItem={handleRemoveFromCart} 
-          allParts={allPartsMap} 
-          navigateTo={setCurrentPage} 
-      />
+        {toast && (
+            <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-bold z-50 ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                {toast.message}
+            </div>
+        )}
     </div>
   );
 };
