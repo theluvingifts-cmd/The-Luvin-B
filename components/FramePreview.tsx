@@ -1,4 +1,3 @@
-
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig } from '../types';
@@ -18,6 +17,7 @@ interface FramePreviewProps {
   onItemTransform: (id: string, newTransform: Transform) => void;
   onItemRemove: (id: string) => void;
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
+  onItemFlip?: (id: string) => void;
   className?: string;
   isInteractive?: boolean;
   selectedItemId: string | null;
@@ -189,7 +189,7 @@ const Transformable: React.FC<{
     id: string;
     initialTransform: Transform;
     onTransform: (id: string, transform: Transform) => void;
-    onRemove: (id: string) => void;
+    isFlipped?: boolean;
     parentRef: React.RefObject<HTMLDivElement>;
     isSelected: boolean;
     onSelect: (id: string) => void;
@@ -200,7 +200,7 @@ const Transformable: React.FC<{
     style?: React.CSSProperties;
     isTextItem?: boolean;
     containerSize?: { width: number; height: number; };
-}> = ({ children, id, initialTransform, onTransform, onRemove, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, zIndex, style, isTextItem, containerSize }) => {
+}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, zIndex, style, isTextItem, containerSize }) => {
     
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
       if ('touches' in e && e.touches.length > 0) {
@@ -347,6 +347,9 @@ const Transformable: React.FC<{
         window.addEventListener('touchend', handleEnd);
     };
 
+    // Calculate inverse scale for handles to keep them visually consistent size
+    const handleScale = 1 / (initialTransform.scale || 1);
+    
     return (
         <div
             onMouseDown={handleDragStart}
@@ -356,7 +359,7 @@ const Transformable: React.FC<{
                 ...style,
                 left: `${initialTransform.x}%`,
                 top: `${initialTransform.y}%`,
-                transform: `translate(-50%, -50%) rotate(${initialTransform.rotation}deg) scale(${initialTransform.scale})`,
+                transform: `translate(-50%, -50%) rotate(${initialTransform.rotation}deg) scale(${initialTransform.scale}) scaleX(${isFlipped ? -1 : 1})`,
                 touchAction: 'none',
                 cursor: isDraggable ? (isSelected ? 'move' : 'pointer') : 'default',
                 outline: isSelected && isDraggable ? '2px dashed #efa3b5' : 'none',
@@ -367,20 +370,38 @@ const Transformable: React.FC<{
             {children}
             {isSelected && isDraggable && (
                 <>
-                  <div
-                    onMouseDown={(e) => { e.stopPropagation(); onRemove(id); }}
-                    onTouchStart={(e) => { e.stopPropagation(); onRemove(id); }}
-                    className="transform-handle absolute -top-2 -left-2 cursor-pointer bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold border-2 border-white"
-                    title="Remove Item"
-                  >
-                    &times;
-                  </div>
                   {isTextItem ? (
-                      <div onMouseDown={handleResizeWidthStart} onTouchStart={handleResizeWidthStart} className="transform-handle absolute top-1/2 -right-1.5 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-2 h-6 rounded-sm border-2 border-white" title="Resize Width"></div>
+                      <div 
+                        onMouseDown={handleResizeWidthStart} 
+                        onTouchStart={handleResizeWidthStart} 
+                        className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-4 h-8 rounded-md border-2 border-white shadow-sm" 
+                        title="Resize Width"
+                        style={{ transform: `translateY(-50%) scale(${handleScale})` }}
+                      ></div>
                   ) : (
                     <>
-                      {isRotatable && <div onMouseDown={handleRotateStart} onTouchStart={handleRotateStart} className="transform-handle absolute -top-6 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full h-4 w-4" title="Rotate"></div>}
-                      {isResizable && <div onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} className="transform-handle absolute -bottom-2 -right-2 cursor-nwse-resize bg-luvin-pink w-3 h-3 rounded-full border-2 border-white" title="Resize"></div>}
+                      {isRotatable && (
+                          <div 
+                            onMouseDown={handleRotateStart} 
+                            onTouchStart={handleRotateStart} 
+                            className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-sm" 
+                            title="Rotate"
+                            style={{ transform: `translateX(-50%) scale(${handleScale})` }}
+                          >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                          </div>
+                      )}
+                      {isResizable && (
+                          <div 
+                            onMouseDown={handleResizeStart} 
+                            onTouchStart={handleResizeStart} 
+                            className="transform-handle absolute -bottom-3 -right-3 cursor-nwse-resize bg-luvin-pink w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
+                            title="Resize"
+                            style={{ transform: `scale(${handleScale})` }}
+                          >
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 20h16m0 0V4" /></svg>
+                          </div>
+                      )}
                     </>
                   )}
                 </>
@@ -390,27 +411,19 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemFlip, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
-  // --- START OF FIX: Proportional Scaling Logic ---
-  // 1. Find the largest dimension (width or height) across all available frames.
   const maxDimensionCm = useMemo(() => 
     Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm)))
   , []);
 
-  // 2. Create a consistent scaling factor (pixels per cm) based on the container width and the max dimension.
   const pxPerCm = containerWidth / maxDimensionCm;
-
-  // 3. Calculate the total dimensions of the current frame in pixels.
   const frameWidth = frameOption.frameWidthCm * pxPerCm;
   const frameHeight = frameOption.frameHeightCm * pxPerCm;
-
-  // 4. Calculate the background dimensions in pixels.
   const backgroundWidth = frameOption.backgroundWidthCm * pxPerCm;
   const backgroundHeight = frameOption.backgroundHeightCm * pxPerCm;
-  // --- END OF FIX ---
 
   const backgroundStyle: React.CSSProperties =
     config.background.type === 'color'
@@ -422,19 +435,39 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
   }, [propAllParts]);
 
+  // --- Context Toolbar Logic ---
+  const selectedItemDetails = useMemo(() => {
+      if (!selectedItemId) return null;
+      const [type, idStr] = selectedItemId.split('-');
+      const id = parseInt(idStr);
+      
+      if (type === 'item') {
+          const item = config.draggableItems.find(i => i.id === id);
+          return { type: 'item', data: item, canFlip: item && (item.type === 'accessory' || item.type === 'pet') };
+      } else if (type === 'text') {
+          const item = config.texts.find(t => t.id === id);
+          return { type: 'text', data: item, canFlip: false };
+      } else if (type === 'character') {
+          const item = config.characters.find(c => c.id === id);
+          return { type: 'character', data: item, canFlip: false };
+      }
+      return null;
+  }, [selectedItemId, config]);
+
+  const handleToolbarDelete = () => {
+      if (selectedItemId) onItemRemove(selectedItemId);
+  };
+
+  const handleToolbarFlip = () => {
+      if (selectedItemId && onItemFlip) onItemFlip(selectedItemId);
+  };
+
   return (
-    // This outer div now correctly scales the entire component proportionally.
     <div ref={ref} className={`flex items-center justify-center ${className}`} style={{ width: frameWidth, height: frameHeight }}>
-        {/* This div represents the white frame itself. */}
         <div 
           className="relative bg-white"
-          style={{
-            width: '100%',
-            height: '100%',
-            boxShadow: `0 4px 12px #d8d8d8`,
-          }}
+          style={{ width: '100%', height: '100%', boxShadow: `0 4px 12px #d8d8d8` }}
         >
-            {/* This inner div is the background area where items are placed. */}
             <div
                 ref={previewContainerRef}
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
@@ -454,10 +487,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const id = `character-${char.id}`;
                     return (
                         <Transformable 
-                            key={id} id={id} initialTransform={char} onTransform={onItemTransform} onRemove={onItemRemove}
+                            key={id} id={id} initialTransform={char} onTransform={onItemTransform} 
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
                             isResizable={false} isRotatable={false} isDraggable={isInteractive}
-                            zIndex={5} // Base z-index for characters
+                            zIndex={5}
                         >
                            <LegoCharacter character={char} pxPerCm={pxPerCm} />
                         </Transformable>
@@ -477,22 +510,19 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const id = `item-${item.id}`;
                     return (
                         <Transformable 
-                            key={id} id={id} initialTransform={item} onTransform={onItemTransform} onRemove={onItemRemove}
+                            key={id} id={id} initialTransform={item} onTransform={onItemTransform}
+                            isFlipped={item.isFlipped}
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
                             isResizable={false} 
                             isRotatable={isInteractive} 
                             isDraggable={isInteractive}
-                            zIndex={10} // Accessories are on top of characters
+                            zIndex={10}
                         >
                             <SafeImage 
                               src={imageUrl} 
                               alt={name} 
                               className="pointer-events-none"
-                              style={{
-                                  width: widthCm * pxPerCm,
-                                  height: heightCm * pxPerCm,
-                                  objectFit: 'contain'
-                              }}
+                              style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain' }}
                             />
                         </Transformable>
                     );
@@ -505,12 +535,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={id} id={id} 
                             initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
                             onTransform={onItemTransform} 
-                            onRemove={onItemRemove}
                             parentRef={previewContainerRef} 
                             isSelected={selectedItemId === id} 
                             onSelect={setSelectedItemId}
                             isDraggable={isInteractive}
-                            zIndex={15} // Text is on top of everything
+                            zIndex={15}
                             isTextItem={true}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                             style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
@@ -524,6 +553,24 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         </Transformable>
                     );
                 })}
+
+                {/* --- Floating Mobile Action Toolbar --- */}
+                {isInteractive && selectedItemId && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-xl rounded-full px-4 py-2 animate-fade-in transform-handle">
+                        {selectedItemDetails?.canFlip && (
+                            <button onClick={handleToolbarFlip} className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            </button>
+                        )}
+                        <button onClick={handleToolbarDelete} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                        <button onClick={() => setSelectedItemId(null)} className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Xong">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                        </button>
+                    </div>
+                )}
 
             </div>
         </div>

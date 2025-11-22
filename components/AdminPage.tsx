@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
-import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
+import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
+import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock } from '../services/productService';
 import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds } from '../services/backgroundService';
 import { getAllTemplates, addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../services/templateService';
 import { getAllFeedbacks, addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../services/feedbackService';
@@ -845,6 +845,40 @@ const AdminPage: React.FC = () => {
         if (!editForm || !selectedOrder) return;
         
         setLoading(true);
+
+        // --- STOCK ADJUSTMENT LOGIC ---
+        // Calculate differences between old and new order state to adjust stock
+        const oldParts = countPartsInOrder(selectedOrder.items);
+        const newParts = countPartsInOrder(editForm.items);
+        
+        const stockAdjustments: Record<string, number> = {};
+        
+        // Find parts that were in old order (might be removed or reduced)
+        // If removed from order -> Add back to stock (+1)
+        Object.keys(oldParts).forEach(partId => {
+            const oldQty = oldParts[partId] || 0;
+            const newQty = newParts[partId] || 0;
+            const diff = oldQty - newQty;
+            if (diff !== 0) stockAdjustments[partId] = diff;
+        });
+
+        // Find parts that are new in the order (might be added)
+        // If added to order -> Subtract from stock (-1)
+        Object.keys(newParts).forEach(partId => {
+            if (!oldParts[partId]) {
+                // Completely new part, adjust by negative quantity
+                stockAdjustments[partId] = -(newParts[partId]);
+            }
+        });
+
+        // Apply stock adjustments if there are any changes
+        if (Object.keys(stockAdjustments).length > 0) {
+            await adjustStock(stockAdjustments);
+            // Refresh product list to show updated stock in UI
+            fetchProducts();
+        }
+        // ------------------------------
+
         await handleUpdate(selectedOrder.id, editForm, false);
         setIsEditingOrder(false);
         setEditForm(null);

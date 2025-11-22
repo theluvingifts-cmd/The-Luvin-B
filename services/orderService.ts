@@ -4,16 +4,42 @@ import { db } from '../config/firebase';
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
 import type { Order } from '../types';
 import { uploadToCloudinary } from './uploadService';
+import { adjustStock } from './productService';
+
+// Helper: Đếm số lượng từng part trong đơn hàng
+export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
+    const counts: Record<string, number> = {};
+
+    const increment = (id?: string) => {
+        if (!id) return;
+        counts[id] = (counts[id] || 0) + 1;
+    };
+
+    orderItems.forEach(item => {
+        item.characters.forEach(char => {
+            increment(char.hair?.id);
+            increment(char.face?.id);
+            increment(char.shirt?.id);
+            increment(char.pants?.id);
+            increment(char.hat?.id);
+        });
+        item.draggableItems.forEach(di => {
+            if (di.type !== 'charm') {
+                increment(di.partId);
+            }
+        });
+    });
+
+    return counts;
+};
 
 // 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
         // Xử lý ảnh: Upload ảnh preview lên Cloudinary nếu là chuỗi base64
-        // Điều này giúp giảm kích thước document Firestore tránh lỗi QuotaExceeded
         const itemsWithImages = await Promise.all(order.items.map(async (item) => {
             if (item.previewImageUrl && item.previewImageUrl.startsWith('data:')) {
                 const cloudUrl = await uploadToCloudinary(item.previewImageUrl);
-                // Nếu upload thành công thì dùng link mới, nếu lỗi thì giữ nguyên base64 (fallback)
                 return { ...item, previewImageUrl: cloudUrl || item.previewImageUrl };
             }
             return item; 
@@ -23,15 +49,26 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         const finalOrder: Order = {
             ...order,
             items: itemsWithImages,
-            createdAt: timestamp, // Thêm timestamp thực
+            createdAt: timestamp,
             status: "Chờ thanh toán",
             internalNotes: "",
             isUrgent: false,
             adminDeadline: ""
         };
 
-        // Lưu đơn hàng vào Firestore
+        // 1. Lưu đơn hàng vào Firestore
         await setDoc(doc(db, "orders", order.id), finalOrder);
+
+        // 2. Trừ tồn kho
+        const partsUsage = countPartsInOrder(finalOrder.items);
+        // Chuyển số lượng thành số âm để trừ
+        const stockAdjustments: Record<string, number> = {};
+        for (const [partId, qty] of Object.entries(partsUsage)) {
+            stockAdjustments[partId] = -qty;
+        }
+        
+        // Gọi hàm cập nhật kho (không await để không chặn UI, chạy ngầm)
+        adjustStock(stockAdjustments);
 
         return { success: true, data: finalOrder };
     } catch (error) {
@@ -55,7 +92,6 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 // 3. Hàm lấy toàn bộ danh sách đơn hàng (cho trang Admin)
 export const getAllOrders = async (): Promise<Order[]> => {
     try {
-        // Sắp xếp theo createdAt mới nhất
         const q = query(collection(db, "orders"), orderBy("createdAt", "desc")); 
         const querySnapshot = await getDocs(q);
         

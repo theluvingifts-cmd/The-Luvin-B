@@ -88,6 +88,7 @@ export interface DraggableItem {
     y: number; 
     rotation: number; 
     scale: number; 
+    isFlipped?: boolean; // Added for flip functionality
 }
 
 export interface BackgroundConfig {

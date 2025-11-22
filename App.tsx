@@ -350,16 +350,26 @@ const PartButton: React.FC<{
     onClick: () => void;
 }> = ({ part, isSelected, onClick }) => {
     const [imgError, setImgError] = useState(false);
+    const [isClicked, setIsClicked] = useState(false);
+
+    const handleClick = () => {
+        setIsClicked(true);
+        onClick();
+        setTimeout(() => setIsClicked(false), 300); // Reset click effect after 300ms
+    };
     
     return (
         <button
-            onClick={onClick}
-            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1 transition-all text-center w-full ${
+            onClick={handleClick}
+            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1 transition-all text-center w-full relative overflow-hidden ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
+            } ${isClicked ? 'ring-2 ring-luvin-pink ring-opacity-50 scale-95' : ''}`}
         >
+            {isClicked && (
+                <div className="absolute inset-0 bg-luvin-pink opacity-20 z-10 animate-ping rounded-lg"></div>
+            )}
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
                 {!imgError && part.imageUrl ? (
                     <img 
@@ -477,7 +487,7 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet') return;
         const newItem: DraggableItem = {
-            id: Date.now(), partId: part.id, type: part.type, x: 50 + (Math.random() - 0.5) * 20, y: 50 + (Math.random() - 0.5) * 20, rotation: 0, scale: 1,
+            id: Date.now(), partId: part.id, type: part.type, x: 50 + (Math.random() - 0.5) * 20, y: 50 + (Math.random() - 0.5) * 20, rotation: 0, scale: 1, isFlipped: false
         };
         setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
     }
@@ -1133,6 +1143,21 @@ const BuilderPage: React.FC<{
       });
   }, [setConfig]);
 
+  const handleItemFlip = useCallback((id: string) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      if (type === 'item') {
+          const itemId = parseInt(rawId);
+          setConfig(prev => ({
+              ...prev,
+              draggableItems: prev.draggableItems.map(item => 
+                  item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
+              )
+          }));
+      }
+  }, [setConfig]);
+
   const handleItemRemoveCompletely = useCallback((id: string) => {
     const [type, ...rest] = id.split('-');
     const rawId = rest.join('-');
@@ -1279,6 +1304,7 @@ const BuilderPage: React.FC<{
                         onItemTransform={handleItemTransform} 
                         onItemRemove={handleItemRemoveCompletely}
                         onTextUpdate={handleTextUpdate}
+                        onItemFlip={handleItemFlip}
                         className="w-full h-full"
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
@@ -1425,7 +1451,7 @@ const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: numbe
                                       {item.previewImageUrl ? (
                                         <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                                       ) : (
-                                        <FramePreview config={item} containerWidth={144} onItemTransform={() => {}} onTextUpdate={() => {}} selectedItemId={null} setSelectedItemId={() => {}} isInteractive={false} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
+                                        <FramePreview config={item} containerWidth={144} onItemTransform={() => {}} onTextUpdate={() => {}} onItemFlip={() => {}} selectedItemId={null} setSelectedItemId={() => {}} isInteractive={false} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                                       )}
                                     </div>
                                     <div className="flex-grow text-center sm:text-left">
@@ -1498,7 +1524,7 @@ const CartPanel: React.FC<{
                      {item.previewImageUrl ? (
                         <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                       ) : (
-                        <FramePreview config={item} containerWidth={72} isInteractive={false} onItemTransform={()=>{}} onTextUpdate={()=>{}} selectedItemId={null} setSelectedItemId={()=>{}} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
+                        <FramePreview config={item} containerWidth={72} isInteractive={false} onItemTransform={()=>{}} onTextUpdate={()=>{}} onItemFlip={()=>{}} selectedItemId={null} setSelectedItemId={()=>{}} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                       )}
                   </div>
                   <div className="flex-grow">
