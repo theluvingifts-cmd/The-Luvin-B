@@ -74,13 +74,13 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
+// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters, Step4Summary components as is) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
   return (
     <div className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2">
       <div className="flex justify-between md:justify-start md:gap-4 items-center relative md:w-max">
-        {/* Connecting Line Background */}
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 transform -translate-y-1/2 hidden sm:block"></div>
         
         {steps.map((label, index) => {
@@ -109,7 +109,6 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
                         }
                         sm:w-auto sm:h-auto sm:px-4 sm:py-1.5 sm:gap-2
                     `}>
-                        {/* Circle Number/Icon */}
                         <div className={`
                             w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors
                             ${isActive 
@@ -121,8 +120,6 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
                         `}>
                             {isCompleted ? '✓' : stepNumber}
                         </div>
-
-                        {/* Label Text */}
                         <span className={`
                             text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-300
                             ${isActive 
@@ -236,7 +233,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   const availableBackgrounds = useMemo(() => {
-    // Check if the selected frame is square ('sm' or 'lg') or rectangle ('md')
     const isSquare = config.frameId === 'sm' || config.frameId === 'lg';
     const typeNeeded = isSquare ? 'square' : 'rectangle';
     return backgrounds.filter(bg => bg.type === typeNeeded);
@@ -254,7 +250,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   }, [selectedCategory, availableBackgrounds]);
 
   useEffect(() => {
-    // Reset category if it's no longer available for the selected frame size
     if (!categories.includes(selectedCategory)) {
         setSelectedCategory('Tất cả');
     }
@@ -404,7 +399,6 @@ const Step3Characters: React.FC<{
 
     const handleAddChar = () => {
         const newId = Date.now();
-        // Use the first available part from dynamic props, fallbacks to empty object if unavailable
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
             shirt: legoParts.shirt[0], 
@@ -433,7 +427,6 @@ const Step3Characters: React.FC<{
             characters: prev.characters.map(c => {
                 if (c.id === activeCharId) {
                     const newChar = { ...c, [part.type]: part };
-                    // Logic to fallback if colors are missing but part type implies they should exist (Plain clothes)
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
@@ -448,12 +441,10 @@ const Step3Characters: React.FC<{
                     if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     
-                    // When selecting hair, remove hat and clear previousHair
                     if (part.type === 'hair') {
                         newChar.hat = undefined;
                         newChar.previousHair = undefined;
                     }
-                    // When selecting a hat, store the current hair and remove it
                     if (part.type === 'hat') {
                         newChar.previousHair = c.hair;
                         newChar.hair = undefined;
@@ -472,7 +463,6 @@ const Step3Characters: React.FC<{
         characters: prev.characters.map(c => {
             if (c.id === activeCharId) {
                 const updatedChar = { ...c, [partType]: undefined };
-                // If we are deselecting a hat, restore the previous hair
                 if (partType === 'hat' && c.previousHair) {
                     updatedChar.hair = c.previousHair;
                     updatedChar.previousHair = undefined;
@@ -520,17 +510,13 @@ const Step3Characters: React.FC<{
         { key: 'hat', label: 'Mũ' },
     ];
 
-    // Use dynamic legoParts
     const currentPartList = legoParts[activePartType] || [];
 
-    // --- FALLBACK COLOR LOGIC ---
-    // Determine colors for active part. Use fallback if database object is missing 'colors' array but matches ID or name
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
         if (activePartType === 'shirt') {
             const part = activeCharacter.shirt;
             if (part?.colors && part.colors.length > 0) return part.colors;
-            // Fallback check - Enhanced keywords
             if (part) {
                 const nameLower = part.name.toLowerCase();
                 if (part.id === 'shirt1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
@@ -541,7 +527,6 @@ const Step3Characters: React.FC<{
         if (activePartType === 'pants') {
             const part = activeCharacter.pants;
             if (part?.colors && part.colors.length > 0) return part.colors;
-            // Fallback check - Enhanced keywords
             if (part) {
                 const nameLower = part.name.toLowerCase();
                 if (part.id === 'pants1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
@@ -769,7 +754,6 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
         </nav>
       </header>
 
-      {/* FIX: Mobile menu is now outside the sticky header to prevent stacking context issues */}
       <div 
         className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         aria-hidden={!isMenuOpen}
@@ -803,6 +787,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   );
 };
 
+// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage, CartPanel, ZoomIcon, CheckoutPage, OrderConfirmationPage, OrderLookupPage components as is) ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 )
@@ -960,7 +945,6 @@ const HomePage: React.FC<{
           <div className="w-full overflow-hidden relative">
             {displayFeedbacks.length > 0 ? (
                 <div className="flex animate-marquee whitespace-nowrap">
-                    {/* Duplicate to create loop effect */}
                     {[...displayFeedbacks, ...displayFeedbacks].map((feedback, index) => (
                     <div key={index} className="flex-shrink-0 w-60 sm:w-72 bg-luvin-cream p-4 rounded-xl flex flex-col items-center mx-4">
                         <h3 className="font-script text-3xl text-luvin-pink mb-3">Feedback</h3>
@@ -1080,7 +1064,6 @@ const BuilderPage: React.FC<{
   useEffect(() => {
     const controlNavbar = () => {
       const currentScrollY = window.scrollY;
-      // Hide if scrolling down and past a certain point, show if scrolling up
       if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
         setIsBottomBarVisible(false);
       } else {
@@ -1114,7 +1097,6 @@ const BuilderPage: React.FC<{
     };
   }, []);
   
-  // Use legoParts from props to generate allParts
   const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts), [config, allParts]);
@@ -1167,13 +1149,11 @@ const BuilderPage: React.FC<{
     
     if (type === 'text') {
         const idToUpdate = parseInt(rawId, 10);
-        // As requested, this only clears the text content, doesn't remove the item.
         setConfig(prev => ({
             ...prev,
             texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
         }));
     } else {
-        // For other items, the delete key will remove them completely.
         handleItemRemoveCompletely(id);
     }
   }, [setConfig, handleItemRemoveCompletely]);
@@ -1181,7 +1161,6 @@ const BuilderPage: React.FC<{
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isEditingText) {
-            // Prevent browser back navigation on backspace
             if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
                 e.preventDefault();
             }
@@ -1214,14 +1193,14 @@ const BuilderPage: React.FC<{
   const captureFrameAsImage = async (): Promise<string> => {
     return new Promise((resolve) => {
       const originalSelectedId = selectedItemId;
-      setSelectedItemId(null); // Deselect to hide controls
+      setSelectedItemId(null);
 
       setTimeout(async () => {
         const element = frameCaptureRef.current;
         if (element && typeof html2canvas !== 'undefined') {
           try {
             const canvas = await html2canvas(element, {
-              backgroundColor: null, // Transparent background
+              backgroundColor: null,
               logging: false,
               useCORS: true,
               ignoreElements: (el) => el.classList.contains('transform-handle'),
@@ -1231,13 +1210,13 @@ const BuilderPage: React.FC<{
             console.error('Error capturing frame:', error);
             resolve('');
           } finally {
-            setSelectedItemId(originalSelectedId); // Reselect item
+            setSelectedItemId(originalSelectedId);
           }
         } else {
           resolve('');
-          setSelectedItemId(originalSelectedId); // Reselect item
+          setSelectedItemId(originalSelectedId);
         }
-      }, 50); // Small delay to allow DOM to update
+      }, 50);
     });
   };
 
@@ -1288,7 +1267,7 @@ const BuilderPage: React.FC<{
                     <FramePreview 
                         ref={frameCaptureRef}
                         config={config} 
-                        containerWidth={previewWidth - 32} // Account for padding
+                        containerWidth={previewWidth - 32} 
                         onItemTransform={handleItemTransform} 
                         onItemRemove={handleItemRemoveCompletely}
                         onTextUpdate={handleTextUpdate}
@@ -1296,7 +1275,7 @@ const BuilderPage: React.FC<{
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
                         setIsEditingText={setIsEditingText}
-                        allParts={allParts} // PASS DYNAMIC PARTS DATA HERE
+                        allParts={allParts}
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
@@ -1385,6 +1364,7 @@ const BuilderPage: React.FC<{
   );
 };
 
+// ... (Keep CollectionPage, CartPage, CartPanel, CheckoutPage, OrderConfirmationPage, OrderLookupPage, categorizeParts as is) ...
 const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>, templates?: CollectionTemplate[] }> = ({ navigateTo, setConfig, templates }) => {
     const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
@@ -1613,13 +1593,11 @@ const CheckoutPage: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return; // Prevent double clicking
+    if (isSubmitting) return; 
 
-    // Strict Phone validation
     const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(phone)) {
         setPhoneError("Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0");
-        // Scroll to error or focus input could be added here
         return;
     }
 
@@ -1643,7 +1621,6 @@ const CheckoutPage: React.FC<{
           totalPrice,
           amountToPay,
         });
-        // If successful, onPlaceOrder will navigate away, so no need to reset state immediately.
     } catch (error) {
         console.error("Order submission error:", error);
         setIsSubmitting(false);
@@ -1662,11 +1639,9 @@ const CheckoutPage: React.FC<{
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <div className="lg:col-span-7 space-y-6">
             
-            {/* MERGED SECTION START */}
             <div className="bg-gray-50 p-6 rounded-lg border shadow-sm">
               <h2 className="font-bold text-xl text-gray-800 mb-6 pb-2 border-b border-gray-200">Thông tin giao hàng</h2>
               
-              {/* Recipient Sub-section */}
               <div className="mb-6 border-b border-gray-200 pb-6">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">1. Người nhận</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1686,7 +1661,6 @@ const CheckoutPage: React.FC<{
                   </div>
               </div>
 
-              {/* Address Sub-section */}
               <div className="mb-6 border-b border-gray-200 pb-6">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">2. Địa chỉ & Vận chuyển</h3>
                   <div className="space-y-4">
@@ -1735,13 +1709,11 @@ const CheckoutPage: React.FC<{
                   </div>
               </div>
 
-              {/* Notes Sub-section (Merged) */}
               <div>
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">3. Ghi chú đơn hàng</h3>
                   <textarea placeholder="Ví dụ: Giao hàng trong giờ hành chính,..." value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none"></textarea>
               </div>
             </div>
-            {/* MERGED SECTION END */}
 
             <div className="bg-gray-50 p-4 rounded-lg border">
                  <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
@@ -1916,10 +1888,8 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         setFoundOrder(null);
         
         try {
-            // 1. Tìm trên Firebase trước
             let order = await getOrderById(codeToSearch);
 
-            // 2. Nếu không thấy trên Firebase, tìm trong MOCK_ORDERS
             if (!order) {
                 order = MOCK_ORDERS[codeToSearch] || null;
             }
@@ -1927,11 +1897,9 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
             setFoundOrder(order || 'not_found');
         } catch (error: any) {
             console.error("Lỗi tra cứu đơn hàng:", error);
-            // 3. Xử lý lỗi đặc biệt (ví dụ: không có quyền truy cập)
             if (error.code === 'permission-denied') {
                 setFoundOrder('permission_error');
             } else {
-                // Với các lỗi khác, vẫn thử fallback về mock data
                 const mockOrder = MOCK_ORDERS[codeToSearch];
                 setFoundOrder(mockOrder || 'not_found');
             }
@@ -1941,23 +1909,20 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
     };
 
     const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
-        // Mapping logic: Internal statuses -> Public steps
         const getStepIndex = (status: string) => {
             switch(status) {
                 case 'Chờ thanh toán': return 0;
                 case 'Đã xác nhận': return 1;
-                // Group processing statuses
                 case 'Ưu tiên xuất đơn':
                 case 'Đang đóng hàng':
                 case 'Chờ chuyển hàng':
                 case 'Đang xử lý': 
                     return 2;
-                // Group shipping statuses
                 case 'Gửi hàng đi':
                 case 'Đang giao hàng': 
                     return 3;
                 case 'Đã giao hàng': return 4;
-                default: return -1; // Huỷ đơn or unknown
+                default: return -1; 
             }
         };
 
@@ -2092,22 +2057,41 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-  const [isAppLoading, setIsAppLoading] = useState(true); // Loading state to prevent FOUC
+  const [isAppLoading, setIsAppLoading] = useState(true); 
   
-  // STATE MỚI: Lưu danh sách sản phẩm động từ DB
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
-  // STATE MỚI: Lưu background động từ DB
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
-  
-  // NEW STATE FOR DYNAMIC CONTENT
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  const [logoUrl, setLogoUrl] = useState<string>(""); 
-  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
-  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
+  // Load cached config from localStorage immediately
+  const loadCachedConfig = () => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached) : null;
+      } catch (e) { return null; }
+  };
+  const cachedConfig = loadCachedConfig();
 
-  // Fetch all dynamic data on mount
+  const [logoUrl, setLogoUrl] = useState<string>(cachedConfig?.logoUrl || ""); 
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(cachedConfig?.heroImageUrl);
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(cachedConfig?.inspireImageUrl);
+
+  // Use effect to apply favicon if cached
+  useEffect(() => {
+      if (cachedConfig?.faviconUrl) {
+          const link = document.querySelector("link[rel~='icon']");
+          if (link instanceof HTMLLinkElement) {
+              link.href = cachedConfig.faviconUrl;
+          } else {
+              const newLink = document.createElement('link');
+              newLink.rel = 'icon';
+              newLink.href = cachedConfig.faviconUrl;
+              document.head.appendChild(newLink);
+          }
+      }
+  }, []);
+
   useEffect(() => {
       const fetchData = async () => {
           try {
@@ -2133,6 +2117,9 @@ const App: React.FC = () => {
             }
 
             if (storeConfig) {
+                // Save to cache
+                localStorage.setItem('app_config', JSON.stringify(storeConfig));
+
                 if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
                 if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
                 if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
@@ -2152,7 +2139,6 @@ const App: React.FC = () => {
           } catch (error) {
               console.error("Initial fetch error:", error);
           } finally {
-              // Only show app after fetching attempt is done
               setIsAppLoading(false);
           }
       };
@@ -2190,7 +2176,7 @@ const App: React.FC = () => {
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
-        setCartItems([]); // Clear cart
+        setCartItems([]); 
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
     } else {
@@ -2204,7 +2190,9 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  if (isAppLoading) {
+  // Even if fetching, show what we have from cache if possible
+  // Only show loading screen if we truly have nothing to show
+  if (isAppLoading && !logoUrl) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
               <div className="animate-pulse flex flex-col items-center">
@@ -2213,7 +2201,6 @@ const App: React.FC = () => {
                     <path d="M12 22.5C12 22.5 12 18.5 9 15.5C6 12.5 1.5 12 1.5 12C1.5 12 6 11.5 9 8.5C12 5.5 12 1.5 12 1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   <span className="font-heading text-2xl tracking-wider">The Luvin</span>
-                  <span className="text-xs font-body text-gray-400 mt-2">Loading magic...</span>
               </div>
           </div>
       )

@@ -110,6 +110,7 @@ const StatusDropdown: React.FC<{
 };
 
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
+// ... (Keep ProductForm component as is) ...
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
     onSave: (part: LegoPart) => void; 
@@ -321,7 +322,7 @@ const ProductForm: React.FC<{
     );
 };
 
-// --- COMPONENT: FORM BACKGROUND (MODAL) ---
+// ... (Keep BackgroundForm, TemplateForm, FeedbackForm, ConfigImageUpload as is) ...
 const BackgroundForm: React.FC<{
     initialData?: PresetBackground | null;
     onSave: (bg: PresetBackground) => void;
@@ -400,7 +401,6 @@ const BackgroundForm: React.FC<{
     );
 };
 
-// --- COMPONENT: FORM TEMPLATE ---
 const TemplateForm: React.FC<{
     initialData?: CollectionTemplate | null;
     onSave: (tpl: CollectionTemplate) => void;
@@ -477,7 +477,6 @@ const TemplateForm: React.FC<{
     );
 };
 
-// --- COMPONENT: FORM FEEDBACK ---
 const FeedbackForm: React.FC<{
     initialData?: FeedbackItem | null;
     onSave: (fb: FeedbackItem) => void;
@@ -538,7 +537,6 @@ const FeedbackForm: React.FC<{
     );
 };
 
-// --- HELPER COMPONENT: CONFIG IMAGE UPLOAD ---
 const ConfigImageUpload: React.FC<{
     label: string;
     description: string;
@@ -597,6 +595,7 @@ type ConfigSubTab = 'general' | 'templates' | 'feedbacks';
 // --- ADMIN PAGE ---
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [isAuthChecking, setIsAuthChecking] = useState(true); // Prevent flash
     const [email, setEmail] = useState('');
     const [loginPass, setLoginPass] = useState('');
     const [loginError, setLoginError] = useState('');
@@ -610,12 +609,10 @@ const AdminPage: React.FC = () => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(false);
     
-    // Edit Mode State
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
     const [addingAccessoryToItemIndex, setAddingAccessoryToItemIndex] = useState<number | null>(null);
 
-    // Role Check
     const role = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
         const ADMIN_EMAILS = ['jinbduong@gmail.com']; 
@@ -625,48 +622,42 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
-    // Navigation State
     const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('general');
 
-    // Time Filters
     const [filterType, setFilterType] = useState<'period' | 'month'>('period');
     const [period, setPeriod] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
-    const [month, setMonth] = useState<number>(new Date().getMonth()); // 0-11
+    const [month, setMonth] = useState<number>(new Date().getMonth()); 
     const [year, setYear] = useState<number>(new Date().getFullYear());
 
-    // Inputs & Search for PRODUCTS
     const [isEditingProduct, setIsEditingProduct] = useState(false);
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
 
-    // Inputs & Search for BACKGROUNDS
     const [isEditingBackground, setIsEditingBackground] = useState(false);
     const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
     const [bgSearch, setBgSearch] = useState('');
     const [bgTypeFilter, setBgTypeFilter] = useState<'all' | 'square' | 'rectangle'>('all');
     const [bgCategoryFilter, setBgCategoryFilter] = useState<string>('all');
 
-    // Inputs for Templates & Feedbacks
     const [isEditingTemplate, setIsEditingTemplate] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<CollectionTemplate | null>(null);
     const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
 
-    // Order Details Inputs
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     const [filterStatus, setFilterStatus] = useState<string>('all');
 
-    // Configuration State
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setIsAuthChecking(false); // Auth check done
             if (user) {
                 setCurrentUser(user);
                 fetchOrders();
@@ -742,7 +733,6 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    // Handle specific config upload
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
         setUploadingField(field);
         try {
@@ -762,7 +752,6 @@ const AdminPage: React.FC = () => {
         }
     };
 
-    // DRAG SCROLL IMPLEMENTATION
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
@@ -787,12 +776,11 @@ const AdminPage: React.FC = () => {
         if (!isDragging || !scrollContainerRef.current) return;
         e.preventDefault();
         const x = e.pageX - scrollContainerRef.current.offsetLeft;
-        const walk = (x - startX) * 1.5; // Scroll speed multiplier
+        const walk = (x - startX) * 1.5; 
         scrollContainerRef.current.scrollLeft = scrollLeft - walk;
     };
 
 
-    // --- PRICE CALCULATION LOGIC ---
     const calculateOrderPrice = (order: Order, allParts: LegoPart[]) => {
         let subtotal = 0;
         const partLookup = allParts.reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>);
@@ -801,7 +789,6 @@ const AdminPage: React.FC = () => {
             const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
             subtotal += frame.price;
             
-            // Characters
             subtotal += item.characters.length * CHARACTER_BASE_PRICE;
             item.characters.forEach(char => {
                 if (char.customPrintPrice) subtotal += char.customPrintPrice;
@@ -813,7 +800,6 @@ const AdminPage: React.FC = () => {
                 if (char.selectedPantsColor?.price) subtotal += char.selectedPantsColor.price;
             });
 
-            // Accessories/Pets
             item.draggableItems.forEach(di => {
                 if (di.type !== 'charm' && partLookup[di.partId]) {
                      subtotal += partLookup[di.partId].price;
@@ -825,7 +811,6 @@ const AdminPage: React.FC = () => {
         const shippingFee = order.shipping.fee || 0;
         const totalPrice = subtotal + giftBoxFee + shippingFee;
         
-        // Recalculate amount to pay based on payment method
         let amountToPay = totalPrice;
         if (order.payment.method === 'deposit') {
             amountToPay = Math.round(totalPrice * 0.7);
@@ -834,10 +819,9 @@ const AdminPage: React.FC = () => {
         return { totalPrice, amountToPay };
     };
 
-    // --- EDIT ORDER LOGIC EXTENDED ---
     const startEditingOrder = () => {
         if (!selectedOrder) return;
-        setEditForm(JSON.parse(JSON.stringify(selectedOrder))); // Deep copy to avoid ref issues
+        setEditForm(JSON.parse(JSON.stringify(selectedOrder))); 
         setIsEditingOrder(true);
     };
 
@@ -874,13 +858,12 @@ const AdminPage: React.FC = () => {
                  const newItems = [...newOrder.items];
                  newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
                  newOrder.items = newItems;
-                 newOrder = updateEditFormWithPrice(newOrder); // Recalculate price
+                 newOrder = updateEditFormWithPrice(newOrder); 
             } else if (nestedField && field === 'customer') {
                 newOrder.customer = { ...newOrder.customer, [nestedField]: value };
             } else if (field === 'delivery' && nestedField) {
                 newOrder.delivery = { ...newOrder.delivery, [nestedField]: value };
             } else {
-                // Direct field update (e.g., manual price override)
                 (newOrder as any)[field] = value;
             }
             return newOrder;
@@ -1004,7 +987,6 @@ const AdminPage: React.FC = () => {
     }, [products]);
 
 
-    // --- ANALYTICS LOGIC ---
     const analytics = useMemo(() => {
         let start: Date, end: Date, prevStart: Date, prevEnd: Date;
         let dateLabel = '';
@@ -1106,7 +1088,6 @@ const AdminPage: React.FC = () => {
         return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel };
     }, [orders, filterType, period, month, year, allKnownParts]); 
 
-    // --- FILTERING LOGIC ---
     const filteredProducts = useMemo(() => 
         products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), 
     [products, productSearch, productCategory]);
@@ -1162,6 +1143,13 @@ const AdminPage: React.FC = () => {
         return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
     };
 
+    if (isAuthChecking) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+        );
+    }
 
     if (!currentUser) {
         return (
@@ -1223,23 +1211,26 @@ const AdminPage: React.FC = () => {
                 {/* --- DASHBOARD TAB --- */}
                 {activeTab === 'dashboard' && (
                     <div className="space-y-8 animate-fade-in">
-                        <div className="flex flex-col sm:flex-row justify-end items-center space-y-2 sm:space-y-0 sm:space-x-4 bg-white p-3 rounded-lg border shadow-sm w-fit ml-auto">
-                            <div className="flex bg-gray-100 p-1 rounded-md">
-                                <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Nhanh</button>
-                                <button onClick={() => setFilterType('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
+                            <h2 className="text-xl font-bold text-gray-800">Tổng quan {analytics.dateLabel}</h2>
+                            <div className="flex gap-4 items-center">
+                                <div className="flex bg-gray-100 p-1 rounded-md">
+                                    <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Nhanh</button>
+                                    <button onClick={() => setFilterType('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
+                                </div>
+                                {filterType === 'period' ? (
+                                    <div className="flex gap-2">
+                                        {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
+                                            <button key={t} onClick={() => setPeriod(t)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors border ${period === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày' : '30 ngày'}</button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2 items-center">
+                                        <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>Tháng {i + 1}</option>))}</select>
+                                        <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option></select>
+                                    </div>
+                                )}
                             </div>
-                            {filterType === 'period' ? (
-                                <div className="flex gap-2">
-                                    {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
-                                        <button key={t} onClick={() => setPeriod(t)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors border ${period === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày' : '30 ngày'}</button>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex gap-2 items-center">
-                                    <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>Tháng {i + 1}</option>))}</select>
-                                    <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option></select>
-                                </div>
-                            )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1257,7 +1248,78 @@ const AdminPage: React.FC = () => {
                             </div>
                              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hiệu suất kho</p>
-                                <div className="flex items-end gap-2"><p className="text-3xl font-light text-gray-900">{analytics.packers.length > 0 ? analytics.packers[0].count : 0}</p><p className="text-sm font-medium text-gray-600 mb-1 truncate w-24">{analytics.packers.length > 0 ? analytics.packers[0].email.split('@')[0] : 'N/A'}</p></div>
+                                <div className="flex items-end gap-2"><p className="text-3xl font-light text-gray-900">{analytics.packers.length > 0 ? analytics.packers[0].count : 0}</p><p className="text-sm font-medium text-gray-600 mb-1 truncate w-24">Top 1</p></div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Packer Leaderboard */}
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+                                <h3 className="font-bold text-gray-800 mb-4">Bảng Xếp Hạng Đóng Gói</h3>
+                                {analytics.packers.length > 0 ? (
+                                    <div className="overflow-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50 text-gray-500 border-b">
+                                                <tr>
+                                                    <th className="py-2 px-3 text-left font-semibold">Hạng</th>
+                                                    <th className="py-2 px-3 text-left font-semibold">Nhân viên</th>
+                                                    <th className="py-2 px-3 text-right font-semibold">Số đơn</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {analytics.packers.map((packer, idx) => (
+                                                    <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
+                                                        <td className="py-3 px-3">
+                                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : idx === 1 ? 'bg-gray-200 text-gray-700' : idx === 2 ? 'bg-orange-100 text-orange-700' : 'text-gray-500'}`}>
+                                                                {idx + 1}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-3 font-medium text-gray-800">{packer.email}</td>
+                                                        <td className="py-3 px-3 text-right font-bold">{packer.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
+                                        Chưa có dữ liệu đóng gói
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Top Selling Frames */}
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+                                <h3 className="font-bold text-gray-800 mb-4">Khung Bán Chạy Nhất</h3>
+                                {Object.keys(analytics.inventory.frames).length > 0 ? (
+                                    <div className="space-y-3">
+                                        {Object.entries(analytics.inventory.frames)
+                                            .sort(([, a], [, b]) => b - a)
+                                            .slice(0, 5)
+                                            .map(([frame, count], idx) => (
+                                                <div key={idx} className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-gray-400 text-sm font-mono w-4">{idx + 1}.</span>
+                                                        <span className="font-medium text-gray-700">{frame}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div 
+                                                                className="h-full bg-blue-500 rounded-full" 
+                                                                style={{ width: `${(count / Math.max(...Object.values(analytics.inventory.frames))) * 100}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-sm font-bold w-8 text-right">{count}</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
+                                        Chưa có dữ liệu bán hàng
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1639,7 +1701,7 @@ const AdminPage: React.FC = () => {
                     onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} 
                 />
             )}
-            
+
             {isEditingBackground && (
                 <BackgroundForm
                     initialData={editingBg}
@@ -1663,8 +1725,18 @@ const AdminPage: React.FC = () => {
                     onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }}
                 />
             )}
+
+            {loading && (
+                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+                    <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                        <span className="font-medium">Đang xử lý...</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default AdminPage;
+    
