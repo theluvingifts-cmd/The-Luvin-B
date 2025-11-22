@@ -105,6 +105,18 @@ export interface FrameConfig {
   previewImageUrl?: string;
 }
 
+// Thông tin vận đơn từ bên thứ 3
+export interface ShippingDetails {
+    carrier: 'VTP' | 'SPX' | 'OTHER'; // Viettel Post, Shopee Express, Khác
+    trackingCode: string; // Mã vận đơn
+    status: string; // Trạng thái bên ĐVVC
+    codAmount: number; // Tiền thu hộ
+    fee: number; // Phí ship thực tế
+    weight?: number; // Gram
+    dimensions?: { l: number, w: number, h: number }; // cm
+    createdAt: string;
+}
+
 export interface Order {
   id: string;
   createdAt: number; // Timestamp chính xác khi tạo đơn
@@ -139,6 +151,9 @@ export interface Order {
   // --- Warehouse Fields ---
   packedBy?: string;      // Email người đóng gói
   packedAt?: string;      // Thời gian đóng gói ISO string
+  
+  // --- 3rd Party Shipping ---
+  shippingDetails?: ShippingDetails;
 }
 
 // NEW INTERFACES FOR DYNAMIC CONTENT
