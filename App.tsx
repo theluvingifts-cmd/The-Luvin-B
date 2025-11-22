@@ -2105,50 +2105,80 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  const [logoUrl, setLogoUrl] = useState<string>(""); // Start empty to avoid flash
-  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
-  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
+  // Load initial state from localStorage to prevent flashing
+  const [logoUrl, setLogoUrl] = useState<string>(() => {
+      try { return localStorage.getItem('app_logoUrl') || ""; } catch { return ""; }
+  });
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(() => {
+      try { return localStorage.getItem('app_heroImageUrl') || undefined; } catch { return undefined; }
+  });
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(() => {
+      try { return localStorage.getItem('app_inspireImageUrl') || undefined; } catch { return undefined; }
+  });
 
   // Fetch all dynamic data on mount
   useEffect(() => {
-      const fetchData = async () => {
-          const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
-              getAllParts(), 
-              getAllBackgrounds(), 
-              getStoreConfig(),
-              getAllTemplates(),
-              getAllFeedbacks()
-          ]);
-          
-          if (parts && parts.length > 0) {
-              setLegoParts(categorizeParts(parts));
+      // Apply cached favicon immediately
+      try {
+          const cachedFavicon = localStorage.getItem('app_faviconUrl');
+          if (cachedFavicon) {
+              const link = document.querySelector("link[rel~='icon']");
+              if (link instanceof HTMLLinkElement) link.href = cachedFavicon;
           }
-          if (bgs && bgs.length > 0) {
-              setBackgrounds(bgs);
-          }
-          if (tpls && tpls.length > 0) {
-              setTemplates(tpls);
-          }
-          if (fbs && fbs.length > 0) {
-              setFeedbacks(fbs);
-          }
+      } catch (e) { console.error(e); }
 
-          if (storeConfig) {
-              if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
-              if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
-              if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
-              
-              if (storeConfig.faviconUrl) {
-                  const link = document.querySelector("link[rel~='icon']");
-                  if (link instanceof HTMLLinkElement) {
-                      link.href = storeConfig.faviconUrl;
-                  } else {
-                      const newLink = document.createElement('link');
-                      newLink.rel = 'icon';
-                      newLink.href = storeConfig.faviconUrl;
-                      document.head.appendChild(newLink);
-                  }
-              }
+      const fetchData = async () => {
+          try {
+            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+                getAllParts(), 
+                getAllBackgrounds(), 
+                getStoreConfig(),
+                getAllTemplates(),
+                getAllFeedbacks()
+            ]);
+            
+            if (parts && parts.length > 0) {
+                setLegoParts(categorizeParts(parts));
+            }
+            if (bgs && bgs.length > 0) {
+                setBackgrounds(bgs);
+            }
+            if (tpls && tpls.length > 0) {
+                setTemplates(tpls);
+            }
+            if (fbs && fbs.length > 0) {
+                setFeedbacks(fbs);
+            }
+
+            if (storeConfig) {
+                if (storeConfig.logoUrl) {
+                    setLogoUrl(storeConfig.logoUrl);
+                    try { localStorage.setItem('app_logoUrl', storeConfig.logoUrl); } catch {}
+                }
+                if (storeConfig.heroImageUrl) {
+                    setHeroImageUrl(storeConfig.heroImageUrl);
+                    try { localStorage.setItem('app_heroImageUrl', storeConfig.heroImageUrl); } catch {}
+                }
+                if (storeConfig.inspireImageUrl) {
+                    setInspireImageUrl(storeConfig.inspireImageUrl);
+                    try { localStorage.setItem('app_inspireImageUrl', storeConfig.inspireImageUrl); } catch {}
+                }
+                
+                if (storeConfig.faviconUrl) {
+                    const link = document.querySelector("link[rel~='icon']");
+                    if (link instanceof HTMLLinkElement) {
+                        link.href = storeConfig.faviconUrl;
+                    } else {
+                        const newLink = document.createElement('link');
+                        newLink.rel = 'icon';
+                        newLink.href = storeConfig.faviconUrl;
+                        document.head.appendChild(newLink);
+                    }
+                    try { localStorage.setItem('app_faviconUrl', storeConfig.faviconUrl); } catch {}
+                }
+            }
+          } catch (e) {
+              console.error("Failed to load initial data", e);
           }
       };
       fetchData();
