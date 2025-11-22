@@ -20,7 +20,17 @@ export const defaultPantsColors: OutfitColor[] = [
     { name: 'Xám', hex: '#A0AEC0', imageUrl: '', price: 10000 },
 ];
 
-// Dữ liệu LEGO Parts cơ bản (Fallback rỗng để tránh load ảnh cũ)
+
+// Standardized dimensions based on the new specification
+const HEAD_W_CM = 1.0;
+const HEAD_H_CM = 1.0;
+const TORSO_W_CM = 2.5;
+const TORSO_H_CM = 1.3;
+const LEGS_W_CM = 1.5;
+const LEGS_H_CM = 1.6;
+const HAT_H_CM = 0.8; // A reasonable height for hats
+
+// Dữ liệu LEGO Parts cơ bản (Fallback nếu DB trống)
 export const LEGO_PARTS: {
   hair: LegoPart[];
   face: LegoPart[];
@@ -41,7 +51,7 @@ export const LEGO_PARTS: {
 
 
 // ===================================================================================
-// BACKGROUNDS (Rỗng - Load từ DB)
+// BACKGROUNDS (Fallback - Khuyến khích dùng DB)
 // ===================================================================================
 
 export const PRESET_BACKGROUNDS_SQUARE: { name: string; url: string; category: string; }[] = [];
@@ -56,17 +66,32 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
   draggableItems: [],
 };
 
+const initialTextConfig = {
+    id: 1,
+    content: 'Our Special Day',
+    font: 'Anniversary',
+    size: 50,
+    color: '#333333',
+    x: 50,
+    y: 20,
+    rotation: -5,
+    scale: 1.2,
+    background: true,
+    textAlign: 'center' as const,
+};
+
 export const COLLECTION_TEMPLATES: { id: string; name: string; imageUrl: string; config: FrameConfig }[] = [];
 
 export const FEEDBACK_ITEMS = [];
 
 export const MOCK_ORDERS: Record<string, Order> = {};
 
+
 export const PRODUCT_HIGHLIGHTS = []
 
 export const GENERAL_ASSETS = {
   hero: '',
   inspire: '',
-  giftbox: 'https://cdn-icons-png.flaticon.com/512/4530/4530625.png', // Icon hộp quà nhẹ
+  giftbox: '',
   vietqr: ''
 }

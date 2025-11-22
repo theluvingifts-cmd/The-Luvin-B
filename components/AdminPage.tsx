@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase } from '../services/productService';
@@ -1243,10 +1242,12 @@ const AdminPage: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                                <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
-                                <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue)}</p>
-                            </div>
+                            {role === 'admin' && (
+                                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
+                                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue)}</p>
+                                </div>
+                            )}
                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                                 <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
                                 <p className="text-3xl font-light text-gray-900">{analytics.orderCount}</p>
@@ -1622,7 +1623,7 @@ const AdminPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         )) : (
-                                            <div className="col-span-3 text-center py-12 text-gray-400"><p className="mb-4">Chưa có feedback nào.</p><button onClick={handleSeedFeedbacks} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ feedback</button></div>
+                                            <div className="col-span-3 text-center py-12 text-gray-400"><p className="mb-4">Chưa có feedback nào.</p><button onClick={handleSeedFeedbacks} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">Đồng bộ mẫu</button></div>
                                         )}
                                     </div>
                                 </div>
@@ -1630,39 +1631,41 @@ const AdminPage: React.FC = () => {
                         )}
                     </div>
                 )}
+
+                {/* --- MODALS --- */}
+                {isEditingProduct && (
+                    <ProductForm 
+                        initialData={editingPart} 
+                        onSave={handleSaveProduct} 
+                        onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} 
+                    />
+                )}
+
+                {isEditingBackground && (
+                    <BackgroundForm 
+                        initialData={editingBg} 
+                        onSave={handleSaveBackground} 
+                        onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} 
+                    />
+                )}
+
+                {isEditingTemplate && (
+                    <TemplateForm 
+                        initialData={editingTemplate} 
+                        onSave={handleSaveTemplate} 
+                        onCancel={() => { setIsEditingTemplate(false); setEditingTemplate(null); }} 
+                    />
+                )}
+
+                {isEditingFeedback && (
+                    <FeedbackForm 
+                        initialData={editingFeedback} 
+                        onSave={handleSaveFeedback} 
+                        onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }} 
+                    />
+                )}
+
             </main>
-
-            {isEditingProduct && (
-                <ProductForm 
-                    initialData={editingPart} 
-                    onSave={handleSaveProduct} 
-                    onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} 
-                />
-            )}
-            
-            {isEditingBackground && (
-                <BackgroundForm
-                    initialData={editingBg}
-                    onSave={handleSaveBackground}
-                    onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }}
-                />
-            )}
-
-            {isEditingTemplate && (
-                <TemplateForm
-                    initialData={editingTemplate}
-                    onSave={handleSaveTemplate}
-                    onCancel={() => { setIsEditingTemplate(false); setEditingTemplate(null); }}
-                />
-            )}
-
-            {isEditingFeedback && (
-                <FeedbackForm
-                    initialData={editingFeedback}
-                    onSave={handleSaveFeedback}
-                    onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }}
-                />
-            )}
         </div>
     );
 };

@@ -2092,68 +2092,63 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-  const [isAppLoading, setIsAppLoading] = useState(true); // Loading state to prevent FOUC
   
   // STATE MỚI: Lưu danh sách sản phẩm động từ DB
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
   // STATE MỚI: Lưu background động từ DB
-  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
+  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([
+      ...PRESET_BACKGROUNDS_SQUARE.map(bg => ({ ...bg, id: bg.name, type: 'square' as const })),
+      ...PRESET_BACKGROUNDS_RECTANGLE.map(bg => ({ ...bg, id: bg.name, type: 'rectangle' as const }))
+  ]); 
   
   // NEW STATE FOR DYNAMIC CONTENT
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
-  const [logoUrl, setLogoUrl] = useState<string>(""); 
+  const [logoUrl, setLogoUrl] = useState<string>(""); // Start empty to avoid flash
   const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
   const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
 
   // Fetch all dynamic data on mount
   useEffect(() => {
       const fetchData = async () => {
-          try {
-            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
-                getAllParts(), 
-                getAllBackgrounds(), 
-                getStoreConfig(),
-                getAllTemplates(),
-                getAllFeedbacks()
-            ]);
-            
-            if (parts && parts.length > 0) {
-                setLegoParts(categorizeParts(parts));
-            }
-            if (bgs && bgs.length > 0) {
-                setBackgrounds(bgs);
-            }
-            if (tpls && tpls.length > 0) {
-                setTemplates(tpls);
-            }
-            if (fbs && fbs.length > 0) {
-                setFeedbacks(fbs);
-            }
+          const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+              getAllParts(), 
+              getAllBackgrounds(), 
+              getStoreConfig(),
+              getAllTemplates(),
+              getAllFeedbacks()
+          ]);
+          
+          if (parts && parts.length > 0) {
+              setLegoParts(categorizeParts(parts));
+          }
+          if (bgs && bgs.length > 0) {
+              setBackgrounds(bgs);
+          }
+          if (tpls && tpls.length > 0) {
+              setTemplates(tpls);
+          }
+          if (fbs && fbs.length > 0) {
+              setFeedbacks(fbs);
+          }
 
-            if (storeConfig) {
-                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
-                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
-                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
-                
-                if (storeConfig.faviconUrl) {
-                    const link = document.querySelector("link[rel~='icon']");
-                    if (link instanceof HTMLLinkElement) {
-                        link.href = storeConfig.faviconUrl;
-                    } else {
-                        const newLink = document.createElement('link');
-                        newLink.rel = 'icon';
-                        newLink.href = storeConfig.faviconUrl;
-                        document.head.appendChild(newLink);
-                    }
-                }
-            }
-          } catch (error) {
-              console.error("Initial fetch error:", error);
-          } finally {
-              // Only show app after fetching attempt is done
-              setIsAppLoading(false);
+          if (storeConfig) {
+              if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
+              if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
+              if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+              
+              if (storeConfig.faviconUrl) {
+                  const link = document.querySelector("link[rel~='icon']");
+                  if (link instanceof HTMLLinkElement) {
+                      link.href = storeConfig.faviconUrl;
+                  } else {
+                      const newLink = document.createElement('link');
+                      newLink.rel = 'icon';
+                      newLink.href = storeConfig.faviconUrl;
+                      document.head.appendChild(newLink);
+                  }
+              }
           }
       };
       fetchData();
@@ -2203,21 +2198,6 @@ const App: React.FC = () => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
-
-  if (isAppLoading) {
-      return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
-              <div className="animate-pulse flex flex-col items-center">
-                  <svg className="w-16 h-16 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 22.5C12 22.5 12 18.5 9 15.5C6 12.5 1.5 12 1.5 12C1.5 12 6 11.5 9 8.5C12 5.5 12 1.5 12 1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="font-heading text-2xl tracking-wider">The Luvin</span>
-                  <span className="text-xs font-body text-gray-400 mt-2">Loading magic...</span>
-              </div>
-          </div>
-      )
-  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-gray-900">
