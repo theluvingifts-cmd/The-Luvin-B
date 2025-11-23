@@ -10,26 +10,17 @@ import { adjustStock } from './productService';
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
     const counts: Record<string, number> = {};
 
-    const increment = (id?: string, colorName?: string) => {
+    const increment = (id?: string) => {
         if (!id) return;
-        
-        // If a color is specified, track it specifically (format: "partId:color:ColorName")
-        // This allows productService to know exactly which color variant to deduct
-        if (colorName) {
-            const variantKey = `${id}:color:${colorName}`;
-            counts[variantKey] = (counts[variantKey] || 0) + 1;
-        } else {
-            // Fallback to main part ID if no specific color
-            counts[id] = (counts[id] || 0) + 1;
-        }
+        counts[id] = (counts[id] || 0) + 1;
     };
 
     orderItems.forEach(item => {
         item.characters.forEach(char => {
             increment(char.hair?.id);
             increment(char.face?.id);
-            increment(char.shirt?.id, char.selectedShirtColor?.name);
-            increment(char.pants?.id, char.selectedPantsColor?.name);
+            increment(char.shirt?.id);
+            increment(char.pants?.id);
             increment(char.hat?.id);
         });
         item.draggableItems.forEach(di => {
@@ -72,8 +63,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         const partsUsage = countPartsInOrder(finalOrder.items);
         // Chuyển số lượng thành số âm để trừ
         const stockAdjustments: Record<string, number> = {};
-        for (const [key, qty] of Object.entries(partsUsage)) {
-            stockAdjustments[key] = -qty;
+        for (const [partId, qty] of Object.entries(partsUsage)) {
+            stockAdjustments[partId] = -qty;
         }
         
         // Gọi hàm cập nhật kho (không await để không chặn UI, chạy ngầm)

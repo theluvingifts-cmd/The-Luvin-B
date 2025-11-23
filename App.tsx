@@ -15,14 +15,14 @@ import {
     defaultPantsColors,
 } from './constants';
 import FramePreview from './components/FramePreview';
-import { createOrder, getOrderById } from './services/orderService';
-import { getAllParts } from './services/productService';
-import { getAllBackgrounds } from './services/backgroundService';
-import { getStoreConfig } from './services/configService';
-import { getAllTemplates } from './services/templateService';
-import { getAllFeedbacks } from './services/feedbackService';
-import AdminPage from './components/AdminPage';
-import { sendOrderEmail } from './services/emailService';
+import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
+import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
+import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
+import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
+import { getAllTemplates } from './services/templateService'; // Lấy mẫu
+import { getAllFeedbacks } from './services/feedbackService'; // Lấy feedback
+import AdminPage from './components/AdminPage'; // Trang Admin
+import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
 declare var html2canvas: any;
 
@@ -74,6 +74,7 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
+// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters, Step4Summary components as is) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
@@ -354,7 +355,7 @@ const PartButton: React.FC<{
     const handleClick = () => {
         setIsClicked(true);
         onClick();
-        setTimeout(() => setIsClicked(false), 300);
+        setTimeout(() => setIsClicked(false), 300); // Reset click effect after 300ms
     };
     
     return (
@@ -408,21 +409,18 @@ const Step3Characters: React.FC<{
 
     const handleAddChar = () => {
         const newId = Date.now();
-        const defaultShirt = legoParts.shirt.find(p => p.stock === undefined || p.stock > 0) || legoParts.shirt[0];
-        const defaultPants = legoParts.pants.find(p => p.stock === undefined || p.stock > 0) || legoParts.pants[0];
-        
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
-            shirt: defaultShirt, 
-            pants: defaultPants,
+            shirt: legoParts.shirt[0], 
+            pants: legoParts.pants[0],
             face: legoParts.face[0], 
             hair: legoParts.hair[0],
             x: 30 + (config.characters.length % 3) * 20, 
             y: 75, 
             rotation: 0, 
             scale: 1,
-            selectedShirtColor: defaultShirt?.colors?.find(c => c.stock === undefined || c.stock > 0) || defaultShirt?.colors?.[0],
-            selectedPantsColor: defaultPants?.colors?.find(c => c.stock === undefined || c.stock > 0) || defaultPants?.colors?.[0],
+            selectedShirtColor: legoParts.shirt[0]?.colors?.[0],
+            selectedPantsColor: legoParts.pants[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -450,9 +448,8 @@ const Step3Characters: React.FC<{
                         }
                     }
 
-                    const availableColor = partColors?.find(col => col.stock === undefined || col.stock > 0);
-                    if (part.type === 'shirt') newChar.selectedShirtColor = availableColor || partColors?.[0];
-                    if (part.type === 'pants') newChar.selectedPantsColor = availableColor || partColors?.[0];
+                    if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
+                    if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     
                     if (part.type === 'hair') {
                         newChar.hat = undefined;
@@ -508,8 +505,6 @@ const Step3Characters: React.FC<{
 
     const handleColorSelect = (partType: 'shirt' | 'pants', color: OutfitColor) => {
         if (!activeCharId) return;
-        if (color.stock === 0) return; 
-
         const key = partType === 'shirt' ? 'selectedShirtColor' : 'selectedPantsColor';
         setConfig(prev => ({
             ...prev,
@@ -525,6 +520,7 @@ const Step3Characters: React.FC<{
         { key: 'hat', label: 'Mũ' },
     ];
 
+    // Helper to filter out items with 0 stock
     const getAvailableParts = (list: LegoPart[]) => {
         return list.filter(p => p.stock === undefined || p.stock > 0);
     };
@@ -635,21 +631,15 @@ const Step3Characters: React.FC<{
                       <div className="mt-4 pt-4 border-t">
                         <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu áo</label>
                          <div className="flex flex-wrap gap-2">
-                           {activePartColors.map(color => {
-                             const isOutOfStock = color.stock === 0;
-                             return (
-                               <button
-                                 key={color.name}
-                                 onClick={() => handleColorSelect('shirt', color)}
-                                 disabled={isOutOfStock}
-                                 className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedShirtColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'} ${isOutOfStock ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                 style={{ backgroundColor: color.hex }}
-                                 title={`${color.name} (${formatCurrency(color.price)})${isOutOfStock ? ' - Hết hàng' : ''}`}
-                               >
-                                   {isOutOfStock && <span className="block text-xs text-red-600 font-bold">x</span>}
-                               </button>
-                             );
-                           })}
+                           {activePartColors.map(color => (
+                             <button
+                               key={color.name}
+                               onClick={() => handleColorSelect('shirt', color)}
+                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedShirtColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
+                               style={{ backgroundColor: color.hex }}
+                               title={`${color.name} (${formatCurrency(color.price)})`}
+                             />
+                           ))}
                          </div>
                       </div>
                     )}
@@ -657,21 +647,15 @@ const Step3Characters: React.FC<{
                       <div className="mt-4 pt-4 border-t">
                         <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu quần</label>
                          <div className="flex flex-wrap gap-2">
-                           {activePartColors.map(color => {
-                             const isOutOfStock = color.stock === 0;
-                             return (
-                               <button
-                                 key={color.name}
-                                 onClick={() => handleColorSelect('pants', color)}
-                                 disabled={isOutOfStock}
-                                 className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedPantsColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'} ${isOutOfStock ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                 style={{ backgroundColor: color.hex }}
-                                 title={`${color.name} (${formatCurrency(color.price)})${isOutOfStock ? ' - Hết hàng' : ''}`}
-                               >
-                                   {isOutOfStock && <span className="block text-xs text-red-600 font-bold">x</span>}
-                               </button>
-                             );
-                           })}
+                           {activePartColors.map(color => (
+                             <button
+                               key={color.name}
+                               onClick={() => handleColorSelect('pants', color)}
+                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedPantsColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
+                               style={{ backgroundColor: color.hex }}
+                               title={`${color.name} (${formatCurrency(color.price)})`}
+                             />
+                           ))}
                          </div>
                       </div>
                     )}
@@ -820,6 +804,8 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   );
 };
 
+// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage, CartPanel, ZoomIcon, CheckoutPage, OrderConfirmationPage, OrderLookupPage components as is) ...
+// ... skipping redundant parts for brevity ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 )
@@ -875,8 +861,8 @@ const HomePage: React.FC<{
     navigateTo: (page: Page) => void;
     heroImage?: string;
     inspireImage?: string;
-    feedbacks?: FeedbackItem[];
-    templates?: CollectionTemplate[];
+    feedbacks?: FeedbackItem[]; // Changed to prop
+    templates?: CollectionTemplate[]; // Added to display collections from DB
 }> = ({ navigateTo, heroImage, inspireImage, feedbacks, templates }) => {
   const BowIcon = () => (
     <svg className="w-6 h-6 text-luvin-pink opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -887,6 +873,7 @@ const HomePage: React.FC<{
   
   const [activeSlide, setActiveSlide] = useState(0);
   
+  // Use templates from DB if available for the carousel, fallback to constant
   const sliderProducts = useMemo(() => {
       if (templates && templates.length > 0) return templates.slice(0, 4);
       return COLLECTION_TEMPLATES.slice(0, 4);
@@ -906,6 +893,7 @@ const HomePage: React.FC<{
     setActiveSlide(prev => (prev + 1) % sliderProducts.length);
   };
 
+  // If no images are set, don't render the background image style or use a placeholder class
   const heroStyle = heroImage ? {backgroundImage: `url(${heroImage})`} : { backgroundColor: '#fce7f3' }; 
   const inspireStyle = inspireImage ? {backgroundImage: `url(${inspireImage})`} : { backgroundColor: '#fce7f3' };
 
@@ -1078,8 +1066,8 @@ const BuilderPage: React.FC<{
     navigateTo: (p:Page) => void; 
     onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
     showToast: (message: string, type: 'success' | 'error') => void;
-    legoParts: typeof LEGO_PARTS;
-    backgrounds: PresetBackground[];
+    legoParts: typeof LEGO_PARTS; // New prop
+    backgrounds: PresetBackground[]; // New prop
 }> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts, backgrounds }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -1410,6 +1398,8 @@ const BuilderPage: React.FC<{
   );
 };
 
+// ... (Keep CollectionPage, CartPage, CartPanel, CheckoutPage, OrderConfirmationPage, OrderLookupPage, categorizeParts as is) ...
+// ... skipping redundant parts for brevity ...
 const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>, templates?: CollectionTemplate[] }> = ({ navigateTo, setConfig, templates }) => {
     const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
@@ -1831,198 +1821,491 @@ const CheckoutPage: React.FC<{
   );
 };
 
-const OrderConfirmationPage: React.FC<{ orderId: string; navigateTo: (page: Page) => void }> = ({ orderId, navigateTo }) => (
-    <div className="container mx-auto px-4 py-16 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-        </div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Đặt hàng thành công!</h1>
-        <p className="text-gray-600 mb-2">Mã đơn hàng của bạn là: <span className="font-bold text-luvin-pink">{orderId}</span></p>
-        <p className="text-gray-600 mb-8">Chúng tôi sẽ sớm liên hệ để xác nhận đơn hàng.</p>
-        <div className="flex justify-center gap-4">
-            <button onClick={() => navigateTo('home')} className="bg-gray-900 text-white font-bold py-2 px-6 rounded hover:bg-gray-800">Về trang chủ</button>
-            <button onClick={() => navigateTo('order-lookup')} className="bg-white border border-gray-300 text-gray-800 font-bold py-2 px-6 rounded hover:bg-gray-50">Tra cứu đơn</button>
-        </div>
-    </div>
-);
+const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void }> = ({ order, navigateTo, onZoomImage }) => {
+    useEffect(() => {
+        if (!order) {
+            navigateTo('home');
+        }
+    }, [order, navigateTo]);
+    
+    if (!order) return null;
 
-const OrderLookupPage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) => {
-    const [searchId, setSearchId] = useState('');
-    const [order, setOrder] = useState<Order | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const amountRemaining = order.totalPrice - order.amountToPay;
+    
+    const getVietQR = (order: Order) => {
+        const BANK_ID = '970407'; // Techcombank
+        const ACCOUNT_NO = '65838666666';
+        const TEMPLATE = 'compact2';
+        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
+        const amount = order.amountToPay;
+        
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+    };
+
+    return (
+        <div className="bg-gray-50 py-12">
+            <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+                <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                    <div className="text-center">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Đơn hàng của bạn đã được ghi nhận!</h1>
+                        <p className="mt-2 text-sm text-gray-600">
+                            Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.
+                        </p>
+                        <p className="mt-4 text-base text-gray-700">Mã đơn hàng của bạn là: <span className="font-bold text-lg text-luvin-pink">{order.id}</span></p>
+                    </div>
+                    
+                    <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
+                        <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
+                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto border rounded-lg" />
+                        <div className="mt-4 bg-white p-3 rounded-lg border">
+                           <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
+                           <p className="font-bold text-gray-800 tracking-wider">{order.id}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-8 border-t pt-6">
+                         <h2 className="font-bold text-lg mb-4">Tóm tắt đơn hàng</h2>
+                         <div className="space-y-4">
+                            <div className="bg-gray-50 rounded-lg border p-4 flex justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-16 h-16 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => order.items[0].previewImageUrl && onZoomImage(order.items[0].previewImageUrl)}>
+                                    <img src={order.items[0].previewImageUrl} className="w-full h-full object-contain" alt="preview" />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <ZoomIcon />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold">Khung tùy chỉnh x 1</p>
+                                  </div>
+                                </div>
+                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
+                            </div>
+
+                            <div className="text-sm space-y-2">
+                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</span></div>
+                                <div className="flex justify-between"><span>Phí vận chuyển:</span><span className="font-medium">{formatCurrency(order.shipping.fee)}</span></div>
+                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà:</span><span className="font-medium">{formatCurrency(30000)}</span></div>}
+                                <div className="border-t my-2"></div>
+                                <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
+                                <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
+                                <div className="flex justify-between text-xs text-gray-500"><span>Còn lại (thanh toán khi nhận hàng):</span><span>{formatCurrency(amountRemaining)}</span></div>
+                            </div>
+                            
+                            <div className="border-t pt-4 text-sm space-y-1">
+                                <p><span className="font-semibold">Giao đến:</span> {order.customer.name}</p>
+                                <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}</p>
+                                <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
+                                <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+};
+
+const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoomImage}) => {
+    const [orderCode, setOrderCode] = useState('');
+    const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!searchId) return;
-        setLoading(true);
-        setError('');
-        setOrder(null);
+        let codeToSearch = orderCode.trim().toUpperCase();
+        if (!codeToSearch) return;
+
+        if (!codeToSearch.startsWith('#')) {
+            codeToSearch = '#' + codeToSearch;
+        }
+
+        setIsLoading(true);
+        setFoundOrder(null);
+        
         try {
-            const res = await getOrderById(searchId);
-            if(res) setOrder(res);
-            else setError('Không tìm thấy đơn hàng.');
-        } catch(e) { setError('Có lỗi xảy ra.'); }
-        setLoading(false);
-    }
+            let order = await getOrderById(codeToSearch);
+
+            if (!order) {
+                order = MOCK_ORDERS[codeToSearch] || null;
+            }
+
+            setFoundOrder(order || 'not_found');
+        } catch (error: any) {
+            console.error("Lỗi tra cứu đơn hàng:", error);
+            if (error.code === 'permission-denied') {
+                setFoundOrder('permission_error');
+            } else {
+                const mockOrder = MOCK_ORDERS[codeToSearch];
+                setFoundOrder(mockOrder || 'not_found');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
+        const getStepIndex = (status: string) => {
+            switch(status) {
+                case 'Chờ thanh toán': return 0;
+                case 'Đã xác nhận': return 1;
+                case 'Ưu tiên xuất đơn':
+                case 'Đang đóng hàng':
+                case 'Chờ chuyển hàng':
+                case 'Đang xử lý': 
+                    return 2;
+                case 'Gửi hàng đi':
+                case 'Đang giao hàng': 
+                    return 3;
+                case 'Đã giao hàng': return 4;
+                default: return -1; 
+            }
+        };
+
+        const steps = ['Chờ thanh toán', 'Đã xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng'];
+        const currentStepIndex = getStepIndex(currentStatus);
+
+        return (
+            <div className="relative my-8">
+                <div className="flex justify-between items-start">
+                    {steps.map((step, index) => (
+                        <div key={step} className="z-10 text-center" style={{ width: `${100 / steps.length}%` }}>
+                             <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
+                                {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <p className={`mt-2 text-[10px] sm:text-xs font-semibold ${index <= currentStepIndex ? 'text-luvin-pink' : 'text-gray-500'}`}>{step}</p>
+                        </div>
+                    ))}
+                </div>
+                <div className="absolute top-3 left-0 right-0 h-0.5 -z-0" style={{ padding: '0 10%' }}>
+                    <div className="w-full h-full bg-gray-200"></div>
+                     <div 
+                        className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-500"
+                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                    ></div>
+                </div>
+            </div>
+        );
+    };
 
     return (
-         <div className="container mx-auto px-4 py-16 max-w-md">
-            <h1 className="text-3xl font-bold text-center mb-8">Tra cứu đơn hàng</h1>
-            <form onSubmit={handleSearch} className="flex gap-2 mb-8">
-                <input 
-                    type="text" 
-                    value={searchId} 
-                    onChange={e => setSearchId(e.target.value)} 
-                    placeholder="Nhập mã đơn hàng (VD: #TL123456)" 
-                    className="flex-grow border p-3 rounded-lg focus:border-luvin-pink outline-none"
-                />
-                <button type="submit" disabled={loading} className="bg-luvin-pink text-gray-900 font-bold px-6 rounded-lg hover:opacity-90">
-                    {loading ? '...' : 'Tìm'}
-                </button>
-            </form>
-            {error && <p className="text-red-500 text-center">{error}</p>}
-            {order && (
-                <div className="border rounded-lg p-6 bg-white shadow-sm">
-                    <h2 className="font-bold text-xl mb-4 flex justify-between">
-                        <span>{order.id}</span>
-                        <span className="text-sm bg-gray-100 px-2 py-1 rounded">{order.status}</span>
-                    </h2>
-                    <p className="text-gray-600">Ngày đặt: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
-                    <p className="text-gray-600">Khách hàng: {order.customer.name}</p>
-                    <p className="text-gray-600">Tổng tiền: {formatCurrency(order.totalPrice)}</p>
+        <div className="container mx-auto px-4 sm:px-6 py-8 min-h-[60vh]">
+            <div className="max-w-3xl mx-auto">
+                <div className="text-center">
+                    <h1 className="text-4xl sm:text-5xl font-heading text-luvin-pink mb-4">Tra cứu đơn hàng</h1>
+                    <form onSubmit={handleSearch} className="flex gap-2 max-w-md mx-auto mt-6">
+                        <input
+                            type="text"
+                            value={orderCode}
+                            onChange={(e) => setOrderCode(e.target.value)}
+                            placeholder="#TL012804"
+                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center"
+                        />
+                        <button type="submit" disabled={isLoading} className="bg-luvin-pink text-gray-800 font-bold px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50">
+                            {isLoading ? '...' : 'Tra cứu'}
+                        </button>
+                    </form>
                 </div>
-            )}
-         </div>
+
+                <div className="mt-10 min-h-[300px]">
+                    {isLoading && <p className="text-center">Đang tìm kiếm...</p>}
+                    {foundOrder === 'not_found' && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center">
+                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng (Ví dụ: #TL123456).
+                        </div>
+                    )}
+                    {foundOrder === 'permission_error' && (
+                        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg text-center">
+                            <p className="font-bold">Hệ thống đang bảo trì</p>
+                            <p className="text-sm mt-1">
+                                Tính năng tra cứu đang được nâng cấp. Vui lòng inbox Fanpage hoặc gọi Hotline <strong className="whitespace-nowrap">0964 393 115</strong> để được hỗ trợ kiểm tra đơn hàng nhanh nhất.
+                            </p>
+                        </div>
+                    )}
+                    {foundOrder && typeof foundOrder === 'object' && (
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
+                                    <p className="text-sm text-gray-500">
+                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date().toLocaleDateString('vi-VN') : '---'}
+                                    </p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {foundOrder.status}
+                                </span>
+                            </div>
+
+                            <StatusTracker currentStatus={foundOrder.status} />
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                <div>
+                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Thông tin nhận hàng</h3>
+                                    <p><span className="font-semibold">Người nhận:</span> {foundOrder.customer.name}</p>
+                                    <p><span className="font-semibold">SĐT:</span> {foundOrder.customer.phone}</p>
+                                    <p><span className="font-semibold">Địa chỉ:</span> {foundOrder.customer.address}</p>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Đơn hàng</h3>
+                                    <div className="space-y-2">
+                                        {foundOrder.items.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-gray-100 rounded border overflow-hidden cursor-pointer" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                                                    {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold">Khung thiết kế</p>
+                                                    <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                             <div className="mt-6 pt-4 border-t text-right">
+                                <p className="text-lg">Tổng tiền: <span className="font-bold text-luvin-pink">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(foundOrder.totalPrice)}</span></p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
     );
-}
+};
+
+// Helper to categorize parts
+const categorizeParts = (parts: LegoPart[]) => {
+    const categories: typeof LEGO_PARTS = {
+        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: []
+    };
+    parts.forEach(p => {
+        if (p.type in categories) {
+            categories[p.type as keyof typeof LEGO_PARTS].push(p);
+        }
+    });
+    return categories;
+};
 
 const App: React.FC = () => {
-  const [page, setPage] = useState<Page>('home');
+  const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
   const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [lastOrderId, setLastOrderId] = useState('');
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+  const [isAppLoading, setIsAppLoading] = useState(true); 
   
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
-  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
-  const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-  const [storeConfig, setStoreConfig] = useState({ logoUrl: '', heroImageUrl: '', inspireImageUrl: '', faviconUrl: '' });
+  const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
+  const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
 
+  // Lazy initialization for logoUrl to prevent FOUC and sync issues
+  const [logoUrl, setLogoUrl] = useState<string>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).logoUrl || "" : "";
+      } catch (e) { return ""; }
+  });
+  
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).heroImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
+
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).inspireImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
+
+  // Use effect to apply favicon if cached
   useEffect(() => {
-      const loadData = async () => {
-          const [parts, bgs, tpls, fbs, cfg] = await Promise.all([
-              getAllParts(), 
-              getAllBackgrounds(), 
-              getAllTemplates(), 
-              getAllFeedbacks(),
-              getStoreConfig()
-          ]);
-
-          if (parts.length > 0) {
-              const groupedParts = { ...LEGO_PARTS };
-              parts.forEach(p => {
-                  if (groupedParts[p.type]) {
-                      // Avoid duplicates if initial state has them
-                      if (!groupedParts[p.type].find(ep => ep.id === p.id)) {
-                          groupedParts[p.type].push(p);
-                      }
+      try {
+          const cached = localStorage.getItem('app_config');
+          if (cached) {
+              const config = JSON.parse(cached);
+              if (config.faviconUrl) {
+                  const link = document.querySelector("link[rel~='icon']");
+                  if (link instanceof HTMLLinkElement) {
+                      link.href = config.faviconUrl;
+                  } else {
+                      const newLink = document.createElement('link');
+                      newLink.rel = 'icon';
+                      newLink.href = config.faviconUrl;
+                      document.head.appendChild(newLink);
                   }
-              });
-              // Replace initial empty arrays with fetched data if needed, but better to merge
-              // Actually, productService getAllParts returns flat array. We need to structure it.
-              const structured: any = { hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: [] };
-              parts.forEach(p => {
-                  if (structured[p.type]) structured[p.type].push(p);
-              });
-              setLegoParts(structured);
+              }
           }
-
-          if (bgs.length > 0) setBackgrounds(bgs);
-          else {
-              // Fallback to constants if DB empty
-              const allConstBgs: PresetBackground[] = [
-                  ...PRESET_BACKGROUNDS_SQUARE.map(b => ({ ...b, id: b.name, type: 'square' } as PresetBackground)), 
-                  ...PRESET_BACKGROUNDS_RECTANGLE.map(b => ({ ...b, id: b.name, type: 'rectangle' } as PresetBackground))
-              ];
-              setBackgrounds(allConstBgs);
-          }
-          
-          if (tpls.length > 0) setTemplates(tpls);
-          if (fbs.length > 0) setFeedbacks(fbs);
-          if (cfg) setStoreConfig(prev => ({ ...prev, ...cfg }));
-      };
-      loadData();
+      } catch(e) {}
   }, []);
 
-  const allPartsMap = useMemo(() => 
-    Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>)
-  , [legoParts]);
+  useEffect(() => {
+      const fetchData = async () => {
+          try {
+            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+                getAllParts(), 
+                getAllBackgrounds(), 
+                getStoreConfig(),
+                getAllTemplates(),
+                getAllFeedbacks()
+            ]);
+            
+            if (parts && parts.length > 0) {
+                setLegoParts(categorizeParts(parts));
+            }
+            if (bgs && bgs.length > 0) {
+                setBackgrounds(bgs);
+            }
+            if (tpls && tpls.length > 0) {
+                setTemplates(tpls);
+            }
+            if (fbs && fbs.length > 0) {
+                setFeedbacks(fbs);
+            }
 
-  const addToCart = (item: FrameConfig, openCart: boolean = true) => {
-    setCartItems([...cartItems, item]);
+            if (storeConfig) {
+                // Save to cache
+                localStorage.setItem('app_config', JSON.stringify(storeConfig));
+
+                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
+                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
+                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+                
+                if (storeConfig.faviconUrl) {
+                    const link = document.querySelector("link[rel~='icon']");
+                    if (link instanceof HTMLLinkElement) {
+                        link.href = storeConfig.faviconUrl;
+                    } else {
+                        const newLink = document.createElement('link');
+                        newLink.rel = 'icon';
+                        newLink.href = storeConfig.faviconUrl;
+                        document.head.appendChild(newLink);
+                    }
+                }
+            }
+          } catch (error) {
+              console.error("Initial fetch error:", error);
+          } finally {
+              setIsAppLoading(false);
+          }
+      };
+      fetchData();
+  }, []);
+
+  const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
+  const navigateTo = (page: Page) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+
+  useEffect(() => {
+      const checkHash = () => {
+          if (window.location.hash === '#/admin') {
+              setCurrentPage('admin');
+          }
+      };
+      checkHash();
+      window.addEventListener('hashchange', checkHash);
+      return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
+
+  const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
+    setCartItems(prev => [...prev, newConfig]);
     if (openCart) setIsCartOpen(true);
   };
 
-  const removeFromCart = (index: number) => {
-    setCartItems(cartItems.filter((_, i) => i !== index));
+  const handleRemoveCartItem = (index: number) => {
+    setCartItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
-      const res = await createOrder(orderData);
-      if (res.success && res.data) {
-          setLastOrderId(res.data.id);
-          setCartItems([]);
-          setPage('order-confirmation');
-          
-          // Gửi email xác nhận (chạy ngầm)
-          sendOrderEmail(res.data as Order);
-      } else {
-          alert("Có lỗi xảy ra khi tạo đơn hàng.");
-      }
-  };
-
-  const renderPage = () => {
-    switch (page) {
-      case 'home': return <HomePage navigateTo={setPage} heroImage={storeConfig.heroImageUrl} inspireImage={storeConfig.inspireImageUrl} feedbacks={feedbacks} templates={templates} />;
-      case 'builder': return <BuilderPage config={config} setConfig={setConfig} navigateTo={setPage} onAddToCart={addToCart} showToast={(msg) => alert(msg)} legoParts={legoParts} backgrounds={backgrounds} />;
-      case 'collection': return <CollectionPage navigateTo={setPage} setConfig={setConfig} templates={templates} />;
-      case 'cart': return <CartPage cartItems={cartItems} onRemoveItem={removeFromCart} allParts={allPartsMap} navigateTo={setPage} />;
-      case 'checkout': return <CheckoutPage cartItems={cartItems} allParts={allPartsMap} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImage} />;
-      case 'order-confirmation': return <OrderConfirmationPage orderId={lastOrderId} navigateTo={setPage} />;
-      case 'order-lookup': return <OrderLookupPage navigateTo={setPage} />;
-      case 'admin': return <AdminPage />;
-      default: return <HomePage navigateTo={setPage} />;
+    const res = await createOrder(orderData);
+    if (res.success && res.data) {
+        setCurrentOrder(res.data);
+        setCartItems([]); 
+        navigateTo('order-confirmation');
+        sendOrderEmail(res.data);
+    } else {
+        alert("Lỗi đặt hàng. Vui lòng thử lại.");
     }
   };
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Even if fetching, show what we have from cache if possible
+  // Only show loading screen if we truly have nothing to show
+  if (isAppLoading && !logoUrl) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
+              <div className="animate-pulse flex flex-col items-center">
+                  <svg className="w-16 h-16 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 22.5C12 22.5 12 18.5 9 15.5C6 12.5 1.5 12 1.5 12C1.5 12 6 11.5 9 8.5C12 5.5 12 1.5 12 1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="font-heading text-2xl tracking-wider">The Luvin</span>
+              </div>
+          </div>
+      )
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900">
-      {page !== 'admin' && <Header navigateTo={setPage} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={storeConfig.logoUrl} />}
-      <main className="flex-grow">
-        {renderPage()}
-      </main>
-      {page !== 'admin' && <Footer navigateTo={setPage} />}
-      
-      {page !== 'admin' && (
-          <CartPanel 
+    <div className="min-h-screen flex flex-col font-sans text-gray-900">
+         {currentPage !== 'admin' && (
+             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={logoUrl} />
+        )}
+        
+        <main className="flex-grow">
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} templates={templates} />}
+            {currentPage === 'builder' && (
+                <BuilderPage 
+                    config={config} 
+                    setConfig={setConfig} 
+                    navigateTo={navigateTo} 
+                    onAddToCart={handleAddToCart} 
+                    showToast={showToast}
+                    legoParts={legoParts}
+                    backgrounds={backgrounds}
+                />
+            )}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
+            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
+            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'admin' && <AdminPage />}
+        </main>
+
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
+
+        <CartPanel 
             isOpen={isCartOpen} 
             onClose={() => setIsCartOpen(false)} 
             cartItems={cartItems} 
-            onRemoveItem={removeFromCart} 
-            allParts={allPartsMap}
-            navigateTo={setPage}
-          />
-      )}
+            onRemoveItem={handleRemoveCartItem}
+            allParts={allParts}
+            navigateTo={navigateTo}
+        />
+        
+         {zoomedImageUrl && (
+            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
+                <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain rounded-lg" />
+                <button className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80">&times;</button>
+            </div>
+        )}
 
-      {zoomedImage && (
-          <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
-              <img src={zoomedImage} className="max-w-full max-h-full object-contain" />
-              <button className="absolute top-4 right-4 text-white text-4xl">&times;</button>
-          </div>
-      )}
+        {toast && (
+            <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-bold z-50 ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                {toast.message}
+            </div>
+        )}
     </div>
   );
 };

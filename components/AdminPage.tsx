@@ -174,16 +174,6 @@ const ProductForm: React.FC<{
         }
     };
 
-    const handleNewColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        if (name === 'stock') {
-            const stockVal = value === '' ? undefined : Number(value);
-            setNewColor(prev => ({ ...prev, stock: stockVal }));
-        } else {
-            setNewColor(prev => ({ ...prev, [name]: name === 'price' ? Number(value) : value }));
-        }
-    };
-
     const addColor = () => {
         if (!newColor.name || !newColor.imageUrl) {
             alert("Vui lòng nhập tên màu và tải ảnh cho màu đó.");
@@ -195,16 +185,6 @@ const ProductForm: React.FC<{
 
     const removeColor = (index: number) => {
         setColors(colors.filter((_, i) => i !== index));
-    };
-
-    const moveColor = (index: number, direction: 'up' | 'down') => {
-        const newColors = [...colors];
-        if (direction === 'up' && index > 0) {
-            [newColors[index], newColors[index - 1]] = [newColors[index - 1], newColors[index]];
-        } else if (direction === 'down' && index < newColors.length - 1) {
-            [newColors[index], newColors[index + 1]] = [newColors[index + 1], newColors[index]];
-        }
-        setColors(newColors);
     };
 
     const handleSave = () => {
@@ -272,27 +252,15 @@ const ProductForm: React.FC<{
                             <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Tùy chọn)</h4>
                             
                             {/* List of existing colors */}
-                            <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                            <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                                 {colors.map((color, idx) => (
                                     <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
                                         <div className="flex items-center gap-2">
-                                            {/* Move Controls */}
-                                            <div className="flex flex-col">
-                                                <button onClick={() => moveColor(idx, 'up')} disabled={idx === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-20">▲</button>
-                                                <button onClick={() => moveColor(idx, 'down')} disabled={idx === colors.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-20">▼</button>
-                                            </div>
-                                            
                                             <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: color.hex }}></div>
                                             <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
                                             <div>
                                                 <p className="text-xs font-bold">{color.name}</p>
-                                                <div className="flex gap-2 text-[10px] text-gray-500">
-                                                    <span>+{formatCurrency(color.price)}</span>
-                                                    <span>|</span>
-                                                    <span className={color.stock === 0 ? 'text-red-500 font-bold' : ''}>
-                                                        Kho: {color.stock !== undefined ? color.stock : '∞'}
-                                                    </span>
-                                                </div>
+                                                <p className="text-[10px] text-gray-500">+{formatCurrency(color.price)}</p>
                                             </div>
                                         </div>
                                         <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded">
@@ -306,54 +274,41 @@ const ProductForm: React.FC<{
                             {/* Add new color inputs */}
                             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                                 <p className="text-xs font-bold text-blue-800 mb-2">Thêm màu mới</p>
-                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                <div className="grid grid-cols-2 gap-2 mb-2">
                                     <input 
-                                        name="name"
                                         placeholder="Tên màu (VD: Đỏ)" 
-                                        className="p-1.5 text-xs border rounded col-span-2"
+                                        className="p-1.5 text-xs border rounded"
                                         value={newColor.name}
-                                        onChange={handleNewColorChange}
+                                        onChange={e => setNewColor({...newColor, name: e.target.value})}
                                     />
                                     <input 
                                         type="number"
-                                        name="price"
-                                        placeholder="Giá thêm" 
+                                        placeholder="Giá thêm (VNĐ)" 
                                         className="p-1.5 text-xs border rounded"
                                         value={newColor.price}
-                                        onChange={handleNewColorChange}
+                                        onChange={e => setNewColor({...newColor, price: Number(e.target.value)})}
                                     />
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 mb-2">
-                                    <input 
-                                        type="number"
-                                        name="stock"
-                                        placeholder="Tồn kho (Trống=∞)" 
-                                        className="p-1.5 text-xs border rounded col-span-2"
-                                        value={newColor.stock === undefined ? '' : newColor.stock}
-                                        onChange={handleNewColorChange}
-                                    />
-                                    <div className="flex items-center justify-end gap-1">
-                                        <span className="text-[10px] text-gray-500">Mã:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">Mã màu:</span>
                                         <input 
                                             type="color" 
-                                            name="hex"
-                                            className="w-6 h-6 border rounded cursor-pointer"
+                                            className="w-8 h-8 border rounded cursor-pointer"
                                             value={newColor.hex}
-                                            onChange={handleNewColorChange}
+                                            onChange={e => setNewColor({...newColor, hex: e.target.value})}
                                         />
                                     </div>
-                                </div>
-                                <div className="relative mb-2">
-                                    <input 
-                                        type="file" 
-                                        accept="image/*" 
-                                        onChange={handleColorFileChange}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        disabled={isUploadingColorImg}
-                                    />
-                                    <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
-                                        {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
-                                    </button>
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleColorFileChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            disabled={isUploadingColorImg}
+                                        />
+                                        <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
+                                            {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
+                                        </button>
+                                    </div>
                                 </div>
                                 <button 
                                     onClick={addColor} 
@@ -900,19 +855,19 @@ const AdminPage: React.FC = () => {
         
         // Find parts that were in old order (might be removed or reduced)
         // If removed from order -> Add back to stock (+1)
-        Object.keys(oldParts).forEach(key => {
-            const oldQty = oldParts[key] || 0;
-            const newQty = newParts[key] || 0;
+        Object.keys(oldParts).forEach(partId => {
+            const oldQty = oldParts[partId] || 0;
+            const newQty = newParts[partId] || 0;
             const diff = oldQty - newQty;
-            if (diff !== 0) stockAdjustments[key] = diff;
+            if (diff !== 0) stockAdjustments[partId] = diff;
         });
 
         // Find parts that are new in the order (might be added)
         // If added to order -> Subtract from stock (-1)
-        Object.keys(newParts).forEach(key => {
-            if (!oldParts[key]) {
+        Object.keys(newParts).forEach(partId => {
+            if (!oldParts[partId]) {
                 // Completely new part, adjust by negative quantity
-                stockAdjustments[key] = -(newParts[key]);
+                stockAdjustments[partId] = -(newParts[partId]);
             }
         });
 
