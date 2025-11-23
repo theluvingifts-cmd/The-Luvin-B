@@ -187,20 +187,6 @@ const ProductForm: React.FC<{
         setColors(colors.filter((_, i) => i !== index));
     };
 
-    const moveColorUp = (index: number) => {
-        if (index === 0) return;
-        const newColors = [...colors];
-        [newColors[index - 1], newColors[index]] = [newColors[index], newColors[index - 1]];
-        setColors(newColors);
-    };
-
-    const moveColorDown = (index: number) => {
-        if (index === colors.length - 1) return;
-        const newColors = [...colors];
-        [newColors[index + 1], newColors[index]] = [newColors[index], newColors[index + 1]];
-        setColors(newColors);
-    };
-
     const handleSave = () => {
         // Include colors in the saved data
         onSave({ ...formData, colors: colors });
@@ -266,48 +252,23 @@ const ProductForm: React.FC<{
                             <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Tùy chọn)</h4>
                             
                             {/* List of existing colors */}
-                            <div className="space-y-2 mb-4 max-h-60 overflow-y-auto pr-1">
+                            <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                                 {colors.map((color, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border group hover:border-gray-300 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            {/* Reorder buttons */}
-                                            <div className="flex flex-col gap-0.5">
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => moveColorUp(idx)} 
-                                                    disabled={idx === 0}
-                                                    className="text-[10px] text-gray-400 hover:text-gray-800 disabled:opacity-20"
-                                                >
-                                                    ▲
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => moveColorDown(idx)} 
-                                                    disabled={idx === colors.length - 1}
-                                                    className="text-[10px] text-gray-400 hover:text-gray-800 disabled:opacity-20"
-                                                >
-                                                    ▼
-                                                </button>
-                                            </div>
-
-                                            <div className="w-6 h-6 rounded-full border shadow-sm" style={{ backgroundColor: color.hex }}></div>
+                                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: color.hex }}></div>
                                             <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
                                             <div>
-                                                <p className="text-xs font-bold text-gray-800">{color.name}</p>
-                                                <p className="text-[10px] text-gray-500 flex gap-2">
-                                                    <span>+{formatCurrency(color.price)}</span>
-                                                    <span className={color.stock === 0 ? "text-red-600 font-bold" : "text-green-600"}>
-                                                        Kho: {color.stock === undefined ? '∞' : color.stock}
-                                                    </span>
-                                                </p>
+                                                <p className="text-xs font-bold">{color.name}</p>
+                                                <p className="text-[10px] text-gray-500">+{formatCurrency(color.price)}</p>
                                             </div>
                                         </div>
-                                        <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1.5 rounded-full transition-colors">
+                                        <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
                                     </div>
                                 ))}
-                                {colors.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4 border border-dashed rounded">Chưa có màu nào được thêm.</p>}
+                                {colors.length === 0 && <p className="text-xs text-gray-400 italic">Chưa có màu nào được thêm.</p>}
                             </div>
 
                             {/* Add new color inputs */}
@@ -322,19 +283,12 @@ const ProductForm: React.FC<{
                                     />
                                     <input 
                                         type="number"
-                                        placeholder="Tồn kho (Trống=∞)" 
+                                        placeholder="Giá thêm (VNĐ)" 
                                         className="p-1.5 text-xs border rounded"
-                                        value={newColor.stock === undefined ? '' : newColor.stock}
-                                        onChange={e => setNewColor({...newColor, stock: e.target.value === '' ? undefined : Number(e.target.value)})}
+                                        value={newColor.price}
+                                        onChange={e => setNewColor({...newColor, price: Number(e.target.value)})}
                                     />
-                                    <div className="flex items-center gap-2 col-span-2">
-                                        <input 
-                                            type="number"
-                                            placeholder="Giá thêm (VNĐ)" 
-                                            className="p-1.5 text-xs border rounded flex-grow"
-                                            value={newColor.price}
-                                            onChange={e => setNewColor({...newColor, price: Number(e.target.value)})}
-                                        />
+                                    <div className="flex items-center gap-2">
                                         <span className="text-xs text-gray-500">Mã màu:</span>
                                         <input 
                                             type="color" 
@@ -343,7 +297,7 @@ const ProductForm: React.FC<{
                                             onChange={e => setNewColor({...newColor, hex: e.target.value})}
                                         />
                                     </div>
-                                    <div className="relative col-span-2">
+                                    <div className="relative">
                                         <input 
                                             type="file" 
                                             accept="image/*" 
@@ -351,15 +305,15 @@ const ProductForm: React.FC<{
                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                             disabled={isUploadingColorImg}
                                         />
-                                        <button className={`w-full p-2 text-xs border rounded bg-white text-center transition-colors hover:bg-gray-50 ${isUploadingColorImg ? 'text-gray-400' : newColor.imageUrl ? 'text-green-600 font-bold' : 'text-gray-600'}`}>
-                                            {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? '✓ Đã chọn ảnh' : 'Tải ảnh màu...'}
+                                        <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
+                                            {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
                                         </button>
                                     </div>
                                 </div>
                                 <button 
                                     onClick={addColor} 
-                                    disabled={isUploadingColorImg || !newColor.name || !newColor.imageUrl}
-                                    className="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                    disabled={isUploadingColorImg}
+                                    className="w-full bg-blue-600 text-white text-xs font-bold py-1.5 rounded hover:bg-blue-700 disabled:opacity-50"
                                 >
                                     + Thêm biến thể
                                 </button>
@@ -1009,15 +963,8 @@ const AdminPage: React.FC = () => {
                  newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
             } else if (selectedPart) {
                  newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
-                 if (partType === 'shirt') {
-                     // Try to find first color with stock
-                     const availableColor = selectedPart.colors?.find(c => c.stock === undefined || c.stock > 0) || selectedPart.colors?.[0];
-                     newCharacters[charIndex].selectedShirtColor = availableColor;
-                 }
-                 if (partType === 'pants') {
-                     const availableColor = selectedPart.colors?.find(c => c.stock === undefined || c.stock > 0) || selectedPart.colors?.[0];
-                     newCharacters[charIndex].selectedPantsColor = availableColor;
-                 }
+                 if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = selectedPart.colors?.[0];
+                 if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = selectedPart.colors?.[0];
             }
 
             newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
