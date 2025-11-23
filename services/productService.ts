@@ -63,43 +63,76 @@ export const deletePart = async (partId: string) => {
 };
 
 // 5. HÀM MỚI: Điều chỉnh tồn kho hàng loạt
-// usageMap: { partId: quantityChange }
+// usageMap: { key: quantityChange }
 // quantityChange < 0: Trừ kho (Khách mua)
 // quantityChange > 0: Cộng kho (Hoàn tác, hủy đơn)
+// Key có thể là "partId" hoặc "partId:color:ColorName"
 export const adjustStock = async (usageMap: Record<string, number>) => {
     try {
+        // 1. Identify unique part IDs involved
+        const partIds = new Set<string>();
+        Object.keys(usageMap).forEach(key => {
+            const [partId] = key.split(':color:');
+            partIds.add(partId);
+        });
+
+        if (partIds.size === 0) return true;
+
+        // 2. Fetch documents
+        const docsMap: Record<string, any> = {};
+        const docRefs: Record<string, any> = {};
+
+        await Promise.all(Array.from(partIds).map(async (pid) => {
+            const ref = doc(db, COLLECTION_NAME, pid);
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+                docsMap[pid] = snap.data();
+                docRefs[pid] = ref;
+            }
+        }));
+
         const batch = writeBatch(db);
         let hasUpdates = false;
 
-        for (const [partId, change] of Object.entries(usageMap)) {
+        // 3. Apply updates in memory
+        for (const [key, change] of Object.entries(usageMap)) {
             if (change === 0) continue;
-
-            const partRef = doc(db, COLLECTION_NAME, partId);
-            // Chúng ta cần kiểm tra xem sản phẩm có quản lý tồn kho không (stock != undefined)
-            // Tuy nhiên, Firestore `increment` hoạt động tốt, nếu field không tồn tại nó sẽ tạo mới.
-            // Để an toàn, ta nên chỉ update nếu sản phẩm tồn tại và có field stock.
-            // Nhưng để tối ưu hiệu năng batch, ta sẽ giả định admin đã setup đúng.
-            // Lưu ý: increment hoạt động atomic.
             
-            // Để tránh cập nhật các sản phẩm "Vô hạn" (stock = undefined hoặc null),
-            // Ta cần đọc trước hoặc chấp nhận rủi ro.
-            // Cách tốt nhất ở đây: Đọc document, kiểm tra, sau đó add vào batch.
-            // Nhưng đọc nhiều doc sẽ tốn quota read.
-            // Giải pháp: updateDoc chỉ update nếu doc tồn tại.
-            
-            // Tạm thời: Logic client (AdminPage/OrderService) đã lọc các part cần update.
-            // Ở đây chỉ thực hiện lệnh.
-            
-            // CHÚ Ý QUAN TRỌNG: Nếu stock đang là undefined (vô hạn), increment sẽ biến nó thành NaN hoặc số.
-            // Cần kiểm tra trước khi update. Do batch không cho đọc, ta sẽ đọc từng doc trước (chấp nhận tốn read 1 chút để an toàn).
-            
-            const partDoc = await getDoc(partRef);
-            if (partDoc.exists()) {
-                const data = partDoc.data();
-                if (typeof data.stock === 'number') {
-                    batch.update(partRef, { stock: increment(change) });
-                    hasUpdates = true;
+            if (key.includes(':color:')) {
+                // Handle Color Variant Stock
+                const [partId, colorName] = key.split(':color:');
+                const partData = docsMap[partId];
+                
+                if (partData && partData.colors && Array.isArray(partData.colors)) {
+                    const colorIdx = partData.colors.findIndex((c: any) => c.name === colorName);
+                    
+                    if (colorIdx !== -1) {
+                        const currentColor = partData.colors[colorIdx];
+                        // Only update if stock is a number (finite). If undefined, it's unlimited.
+                        if (typeof currentColor.stock === 'number') {
+                            partData.colors[colorIdx].stock += change;
+                            // Don't allow negative stock unless we want backorders? Let's allow negatives for tracking overselling.
+                        }
+                    }
                 }
+            } else {
+                // Handle Main Part Stock
+                const partId = key;
+                const partData = docsMap[partId];
+                if (partData && typeof partData.stock === 'number') {
+                    partData.stock += change;
+                }
+            }
+        }
+
+        // 4. Add updates to batch
+        // Since we modified the objects in `docsMap` directly (including nested arrays),
+        // we can just overwrite the document. `set` with `merge: false` replaces it, 
+        // or `update` works if doc exists. We know doc exists.
+        for (const partId of partIds) {
+            if (docsMap[partId] && docRefs[partId]) {
+                batch.set(docRefs[partId], docsMap[partId]); 
+                hasUpdates = true;
             }
         }
 

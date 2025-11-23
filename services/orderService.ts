@@ -10,17 +10,34 @@ import { adjustStock } from './productService';
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
     const counts: Record<string, number> = {};
 
-    const increment = (id?: string) => {
-        if (!id) return;
-        counts[id] = (counts[id] || 0) + 1;
+    const increment = (key?: string) => {
+        if (!key) return;
+        counts[key] = (counts[key] || 0) + 1;
     };
 
     orderItems.forEach(item => {
         item.characters.forEach(char => {
             increment(char.hair?.id);
             increment(char.face?.id);
-            increment(char.shirt?.id);
-            increment(char.pants?.id);
+            
+            // Handle Shirt stock (track specific color if selected)
+            if (char.shirt) {
+                if (char.selectedShirtColor) {
+                    increment(`${char.shirt.id}:color:${char.selectedShirtColor.name}`);
+                } else {
+                    increment(char.shirt.id);
+                }
+            }
+
+            // Handle Pants stock (track specific color if selected)
+            if (char.pants) {
+                if (char.selectedPantsColor) {
+                    increment(`${char.pants.id}:color:${char.selectedPantsColor.name}`);
+                } else {
+                    increment(char.pants.id);
+                }
+            }
+
             increment(char.hat?.id);
         });
         item.draggableItems.forEach(di => {
