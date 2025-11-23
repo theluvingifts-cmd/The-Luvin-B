@@ -63,50 +63,75 @@ export const deletePart = async (partId: string) => {
 };
 
 // 5. HÀM MỚI: Điều chỉnh tồn kho hàng loạt
-// usageMap: { partId: quantityChange }
+// usageMap: { key: quantityChange }
+// key can be "partId" OR "partId:color:ColorName"
 // quantityChange < 0: Trừ kho (Khách mua)
 // quantityChange > 0: Cộng kho (Hoàn tác, hủy đơn)
 export const adjustStock = async (usageMap: Record<string, number>) => {
     try {
+        // We cannot use a single batch for everything because updating a specific object in an array
+        // requires reading, modifying, and writing back the whole array (or document).
+        // Standard Firestore `increment` only works on top-level numeric fields or map values, not array elements.
+        
         const batch = writeBatch(db);
-        let hasUpdates = false;
+        let hasBatchUpdates = false;
 
-        for (const [partId, change] of Object.entries(usageMap)) {
+        for (const [key, change] of Object.entries(usageMap)) {
             if (change === 0) continue;
 
-            const partRef = doc(db, COLLECTION_NAME, partId);
-            // Chúng ta cần kiểm tra xem sản phẩm có quản lý tồn kho không (stock != undefined)
-            // Tuy nhiên, Firestore `increment` hoạt động tốt, nếu field không tồn tại nó sẽ tạo mới.
-            // Để an toàn, ta nên chỉ update nếu sản phẩm tồn tại và có field stock.
-            // Nhưng để tối ưu hiệu năng batch, ta sẽ giả định admin đã setup đúng.
-            // Lưu ý: increment hoạt động atomic.
-            
-            // Để tránh cập nhật các sản phẩm "Vô hạn" (stock = undefined hoặc null),
-            // Ta cần đọc trước hoặc chấp nhận rủi ro.
-            // Cách tốt nhất ở đây: Đọc document, kiểm tra, sau đó add vào batch.
-            // Nhưng đọc nhiều doc sẽ tốn quota read.
-            // Giải pháp: updateDoc chỉ update nếu doc tồn tại.
-            
-            // Tạm thời: Logic client (AdminPage/OrderService) đã lọc các part cần update.
-            // Ở đây chỉ thực hiện lệnh.
-            
-            // CHÚ Ý QUAN TRỌNG: Nếu stock đang là undefined (vô hạn), increment sẽ biến nó thành NaN hoặc số.
-            // Cần kiểm tra trước khi update. Do batch không cho đọc, ta sẽ đọc từng doc trước (chấp nhận tốn read 1 chút để an toàn).
-            
-            const partDoc = await getDoc(partRef);
-            if (partDoc.exists()) {
-                const data = partDoc.data();
-                if (typeof data.stock === 'number') {
-                    batch.update(partRef, { stock: increment(change) });
-                    hasUpdates = true;
+            // Check if key targets a specific color variant
+            if (key.includes(':color:')) {
+                const [partId, , colorName] = key.split(':');
+                const partRef = doc(db, COLLECTION_NAME, partId);
+                
+                // For array updates, we must read-modify-write. 
+                // NOTE: This is not atomic inside this loop if multiple users buy same item at exact same millisecond,
+                // but acceptable for this scale. For strict consistency, transactions are needed.
+                const partDoc = await getDoc(partRef);
+                if (partDoc.exists()) {
+                    const data = partDoc.data() as LegoPart;
+                    if (data.colors && data.colors.length > 0) {
+                        let colorUpdated = false;
+                        const newColors = data.colors.map(c => {
+                            if (c.name === colorName && typeof c.stock === 'number') {
+                                colorUpdated = true;
+                                return { ...c, stock: Math.max(0, c.stock + change) };
+                            }
+                            return c;
+                        });
+
+                        if (colorUpdated) {
+                            // We can't use batch for this read-dependent update mixed with others easily
+                            // So we just await the update here.
+                            await updateDoc(partRef, { colors: newColors });
+                        }
+                    }
+                }
+            } else {
+                // Standard Part ID update
+                const partRef = doc(db, COLLECTION_NAME, key);
+                
+                // Optimization: We assume document exists. increment handles non-existent fields safely (creates them).
+                // However, we should ideally check if 'stock' field exists to avoid creating it on items that shouldn't have it.
+                // For now, we trust the calling logic only passes keys for trackable items.
+                
+                // To prevent writing to undefined (unlimited stock) items, we'll read first.
+                // This sacrifices some performance for data integrity.
+                const partDoc = await getDoc(partRef);
+                if (partDoc.exists()) {
+                    const data = partDoc.data();
+                    if (typeof data.stock === 'number') {
+                        batch.update(partRef, { stock: increment(change) });
+                        hasBatchUpdates = true;
+                    }
                 }
             }
         }
 
-        if (hasUpdates) {
+        if (hasBatchUpdates) {
             await batch.commit();
-            console.log("Đã cập nhật tồn kho thành công.");
         }
+        console.log("Đã cập nhật tồn kho thành công.");
         return true;
     } catch (error) {
         console.error("Lỗi cập nhật tồn kho:", error);

@@ -21,6 +21,7 @@ export interface OutfitColor {
   hex: string;
   imageUrl: string;
   price: number; 
+  stock?: number; // Added stock for specific color variants
 }
 
 export interface LegoPart {
