@@ -1657,8 +1657,8 @@ const AdminPage: React.FC = () => {
                                                         onDelete={handleDeleteOrder}
                                                     />
                                                     
-                                                    {/* Confirm Packed Button for Warehouse */}
-                                                    {(role === 'warehouse' || role === 'admin') && selectedOrder.status === 'Đang đóng hàng' && (
+                                                    {/* Confirm Packed Button for Warehouse ONLY */}
+                                                    {role === 'warehouse' && selectedOrder.status === 'Đang đóng hàng' && (
                                                         <button 
                                                             onClick={handleMarkAsPacked} 
                                                             className="px-3 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
@@ -1668,8 +1668,8 @@ const AdminPage: React.FC = () => {
                                                         </button>
                                                     )}
 
-                                                    {/* Quick Confirm for New Orders */}
-                                                    {selectedOrder.status === 'Chờ thanh toán' && (
+                                                    {/* Quick Confirm for New Orders - Only for Admin */}
+                                                    {role === 'admin' && selectedOrder.status === 'Chờ thanh toán' && (
                                                         <button 
                                                             onClick={() => handleUpdate(selectedOrder.id, { status: 'Ưu tiên xuất đơn' })} 
                                                             className="px-3 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
