@@ -747,7 +747,7 @@ const AdminPage: React.FC = () => {
     // --- ROLE & PERMISSIONS LOGIC ---
     const role = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
-        const ADMIN_EMAILS = ['jinbduong@gmail.com']; 
+        const ADMIN_EMAILS = ['jinbduong@gmail.com', 'theluvin.admin@gmail.com']; 
         if (ADMIN_EMAILS.includes(currentUser.email) || currentUser.email.includes('admin')) {
             return 'admin';
         }
@@ -761,7 +761,7 @@ const AdminPage: React.FC = () => {
     const canViewDashboard = isAdmin;
     const canManageProducts = isAdmin;
     const canManageConfig = isAdmin;
-    const canEditOrder = true; // Both roles can edit order details
+    const canEditOrder = true; // BOTH Admin and Warehouse can edit order details
     const canCancelOrder = isAdmin; // Only admin can set "Huỷ đơn"
     const canDeleteOrder = isAdmin; // Only admin can Delete
     const canPackOrder = isWarehouse; // Only warehouse can see "Confirm Packed"
@@ -821,10 +821,10 @@ const AdminPage: React.FC = () => {
 
     // Force 'orders' tab for warehouse
     useEffect(() => {
-        if (role === 'warehouse' && activeTab !== 'orders') {
+        if (isWarehouse && activeTab !== 'orders') {
             setActiveTab('orders');
         }
-    }, [role, activeTab]);
+    }, [isWarehouse, activeTab]);
 
     useEffect(() => {
         if (selectedOrder) {
