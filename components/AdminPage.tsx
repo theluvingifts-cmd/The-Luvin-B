@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock } from '../services/productService';
@@ -27,6 +28,22 @@ const getEndOfDay = (date: Date) => {
     const newDate = new Date(date);
     newDate.setHours(23, 59, 59, 999);
     return newDate;
+};
+
+const getCountdownText = (dateString: string) => {
+    if (!dateString) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const delivery = new Date(dateString);
+    delivery.setHours(0, 0, 0, 0);
+    
+    const diffTime = delivery.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return <span className="text-red-600 font-bold text-[10px] block mt-0.5">Trễ {Math.abs(diffDays)} ngày</span>;
+    if (diffDays === 0) return <span className="text-orange-600 font-bold text-[10px] block mt-0.5">Hôm nay</span>;
+    if (diffDays === 1) return <span className="text-green-600 font-bold text-[10px] block mt-0.5">Ngày mai</span>;
+    return <span className="text-blue-600 font-medium text-[10px] block mt-0.5">Còn {diffDays} ngày</span>;
 };
 
 // --- STATUS CONFIGURATION ---
@@ -1091,6 +1108,27 @@ const AdminPage: React.FC = () => {
         });
     };
 
+    const handleCharacterColorChange = (itemIndex: number, charIndex: number, partType: 'shirt' | 'pants', colorHex: string) => {
+        if (!editForm) return;
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            const newCharacters = [...newItems[itemIndex].characters];
+            const char = newCharacters[charIndex];
+            
+            const part = partType === 'shirt' ? char.shirt : char.pants;
+            const selectedColor = part?.colors?.find(c => c.hex === colorHex);
+            
+            if (partType === 'shirt') newCharacters[charIndex] = { ...char, selectedShirtColor: selectedColor };
+            if (partType === 'pants') newCharacters[charIndex] = { ...char, selectedPantsColor: selectedColor };
+
+            newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
+            newOrder.items = newItems;
+            return updateEditFormWithPrice(newOrder);
+        });
+    };
+
     const handleRemoveDraggable = (itemIndex: number, dragIndex: number) => {
         if (!editForm) return;
         setEditForm(prev => {
@@ -1543,7 +1581,15 @@ const AdminPage: React.FC = () => {
                                     <div key={order.id} onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}>
                                         <div className="flex justify-between items-start mb-1"><span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id}</span><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span></div>
                                         <div className="flex justify-between items-center"><p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p><p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice)}</p></div>
-                                        <div className="flex justify-between items-center mt-1"><p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>{(order.adminDeadline || order.delivery.date) && (<p className="text-xs text-gray-500">{order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}</p>)}</div>
+                                        <div className="flex justify-between items-center mt-1">
+                                            <p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>
+                                            {(order.adminDeadline || order.delivery.date) && (
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-500">{order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}</p>
+                                                    {order.delivery.date && getCountdownText(order.delivery.date)}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1660,18 +1706,33 @@ const AdminPage: React.FC = () => {
                                                                         {isEditingOrder && editForm ? (
                                                                             <div className="space-y-1">
                                                                                 {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (
-                                                                                    <div key={partType} className="flex justify-between items-center">
-                                                                                        <span className="text-gray-500 capitalize w-16">{partType}</span>
-                                                                                        <select 
-                                                                                            className="border rounded p-1 text-xs flex-grow"
-                                                                                            value={char[partType]?.id || ''}
-                                                                                            onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}
-                                                                                        >
-                                                                                            <option value="">None</option>
-                                                                                            {partsByType[partType]?.map(part => (
-                                                                                                <option key={part.id} value={part.id}>{part.name}</option>
-                                                                                            ))}
-                                                                                        </select>
+                                                                                    <div key={partType} className="flex flex-col">
+                                                                                        <div className="flex justify-between items-center">
+                                                                                            <span className="text-gray-500 capitalize w-16">{partType}</span>
+                                                                                            <select 
+                                                                                                className="border rounded p-1 text-xs flex-grow"
+                                                                                                value={char[partType]?.id || ''}
+                                                                                                onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}
+                                                                                            >
+                                                                                                <option value="">None</option>
+                                                                                                {partsByType[partType]?.map(part => (
+                                                                                                    <option key={part.id} value={part.id}>{part.name}</option>
+                                                                                                ))}
+                                                                                            </select>
+                                                                                        </div>
+                                                                                        {['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (
+                                                                                            <div className="flex gap-1 mt-1 ml-16">
+                                                                                                {char[partType]!.colors!.map(c => (
+                                                                                                    <button 
+                                                                                                        key={c.hex}
+                                                                                                        onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)}
+                                                                                                        className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`}
+                                                                                                        style={{backgroundColor: c.hex}}
+                                                                                                        title={c.name}
+                                                                                                    />
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                 ))}
                                                                             </div>
