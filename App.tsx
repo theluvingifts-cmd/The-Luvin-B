@@ -1362,7 +1362,7 @@ const BuilderPage: React.FC<{
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Thiết kế & Mua hàng Khung LEGO</h1>
         <StepIndicator currentStep={step} setStep={setStep} />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
                 <h3 className="font-bold text-gray-800 mb-3 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
@@ -1393,11 +1393,11 @@ const BuilderPage: React.FC<{
                         <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
                     </div>
                 </div>
-                <div className="h-10 mt-4"></div>
+                <div className="h-10 mt-4 hidden lg:block"></div>
             </div>
           </div>
 
-          <div className="lg:col-span-5 mt-8 lg:mt-0">
+          <div className="lg:col-span-5 mt-4 lg:mt-0">
               <div className="bg-white p-4 rounded-xl border border-gray-200">
                   {selectedText ? (
                       <TextEditor 
