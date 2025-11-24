@@ -874,7 +874,16 @@ const AdminPage: React.FC = () => {
     const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); fetchFeedbacks(); setEditingFeedback(null); };
     const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); fetchFeedbacks(); } };
 
-    const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
+    const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { 
+        const success = await updateOrder(orderId, updates); 
+        if (success) { 
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); 
+            if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); 
+            if (showMsg) alert("Đã cập nhật!"); 
+        } else {
+            if (showMsg) alert("Lỗi cập nhật. Vui lòng thử lại.");
+        }
+    };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
     
     const handleDeleteOrder = async () => {
@@ -1182,13 +1191,34 @@ const AdminPage: React.FC = () => {
 
     const handleMarkAsPacked = async () => {
         if (!selectedOrder || !currentUser) return;
-        if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói đơn này?`)) {
-            const now = new Date().toISOString();
-            await handleUpdate(selectedOrder.id, { 
-                status: 'Chờ chuyển hàng', 
-                packedBy: currentUser.email,
-                packedAt: now
-            });
+        if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói xong đơn hàng này?`)) {
+            setLoading(true);
+            try {
+                const now = new Date().toISOString();
+                const updates = { 
+                    status: 'Chờ chuyển hàng', 
+                    packedBy: currentUser.email,
+                    packedAt: now
+                };
+
+                // Gọi API update
+                const success = await updateOrder(selectedOrder.id, updates);
+                
+                if (success) {
+                    // Cập nhật state ngay lập tức để UI phản hồi
+                    const updatedOrder = { ...selectedOrder, ...updates };
+                    setSelectedOrder(updatedOrder);
+                    setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o));
+                    alert("Đã xác nhận đóng gói thành công!");
+                } else {
+                    alert("Không thể cập nhật đơn hàng. Vui lòng kiểm tra kết nối hoặc quyền hạn.");
+                }
+            } catch (error) {
+                console.error("Lỗi đóng gói:", error);
+                alert("Đã có lỗi xảy ra. Có thể bạn không có quyền thực hiện thao tác này.");
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -1674,10 +1704,17 @@ const AdminPage: React.FC = () => {
                                                     {role === 'warehouse' && ['Ưu tiên xuất đơn', 'Đang đóng hàng'].includes(selectedOrder.status) && (
                                                         <button 
                                                             onClick={handleMarkAsPacked} 
-                                                            className="px-3 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+                                                            disabled={loading}
+                                                            className="px-3 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-wait"
                                                         >
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                            Xác nhận đóng gói xong
+                                                            {loading ? (
+                                                                <span>Đang xử lý...</span>
+                                                            ) : (
+                                                                <>
+                                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                                    Xác nhận đóng gói xong
+                                                                </>
+                                                            )}
                                                         </button>
                                                     )}
 
