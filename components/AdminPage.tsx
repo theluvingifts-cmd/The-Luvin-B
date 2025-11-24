@@ -1477,43 +1477,76 @@ const AdminPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
             <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
-                    <div className="flex items-center gap-8">
-                        <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400 text-base">| Quản lý</span></div>
-                        <nav className="hidden md:flex gap-6">
-                             {canViewDashboard && (
-                                <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                    Dashboard
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
+                    {/* Top Header Row */}
+                    <div className="h-16 flex justify-between items-center">
+                        <div className="flex items-center gap-4 lg:gap-8">
+                            <div className="text-xl font-bold tracking-tight whitespace-nowrap">The Luvin <span className="font-normal text-gray-400 text-sm sm:text-base hidden sm:inline">| Quản lý</span></div>
+                            
+                            {/* Desktop Navigation */}
+                            <nav className="hidden md:flex gap-6">
+                                 {canViewDashboard && (
+                                    <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                        Dashboard
+                                    </button>
+                                 )}
+                                <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                    Đơn hàng
                                 </button>
-                             )}
-                            <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                Đơn hàng
-                            </button>
-                            {canManageProducts && (
-                                <button onClick={() => setActiveTab('products')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                    Sản phẩm
-                                </button>
-                            )}
-                            {canManageConfig && (
-                                <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                    Cấu hình
-                                </button>
-                            )}
-                        </nav>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-end leading-tight">
-                            <span className="text-xs text-gray-500 font-medium hidden sm:block">{currentUser.email}</span>
-                            <span className={`text-[10px] font-bold uppercase ${role === 'admin' ? 'text-red-600' : 'text-blue-600'}`}>
-                                {role === 'admin' ? '(Admin)' : '(Kho/NV)'}
-                            </span>
+                                {canManageProducts && (
+                                    <button onClick={() => setActiveTab('products')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                        Sản phẩm
+                                    </button>
+                                )}
+                                {canManageConfig && (
+                                    <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                        Cấu hình
+                                    </button>
+                                )}
+                            </nav>
                         </div>
-                        <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors">Đăng xuất</button>
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="flex flex-col items-end leading-tight">
+                                <span className="text-xs text-gray-500 font-medium hidden sm:block">{currentUser.email}</span>
+                                <span className={`text-[10px] font-bold uppercase ${role === 'admin' ? 'text-red-600' : 'text-blue-600'}`}>
+                                    {role === 'admin' ? '(Admin)' : '(Kho/NV)'}
+                                </span>
+                            </div>
+                            <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors" title="Đăng xuất">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
+                </div>
+
+                {/* Mobile Navigation Row */}
+                <div className="md:hidden border-t border-gray-100 overflow-x-auto no-scrollbar bg-white">
+                    <nav className="flex px-4 gap-6 min-w-max">
+                         {canViewDashboard && (
+                            <button onClick={() => setActiveTab('dashboard')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                Dashboard
+                            </button>
+                         )}
+                        <button onClick={() => setActiveTab('orders')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                            Đơn hàng
+                        </button>
+                        {canManageProducts && (
+                            <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                Sản phẩm
+                            </button>
+                        )}
+                        {canManageConfig && (
+                            <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                Cấu hình
+                            </button>
+                        )}
+                    </nav>
                 </div>
             </header>
 
-            <main className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6">
+            <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-4 sm:px-6">
                 
                 {/* --- DASHBOARD TAB --- */}
                 {activeTab === 'dashboard' && canViewDashboard && (
@@ -1622,7 +1655,7 @@ const AdminPage: React.FC = () => {
 
                 {/* --- ORDERS TAB --- */}
                 {activeTab === 'orders' && (
-                     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-fade-in">
+                     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in">
                         <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                             <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
                                 <div className="flex gap-2 w-full">
@@ -1669,10 +1702,14 @@ const AdminPage: React.FC = () => {
                                 <div className="flex flex-col h-full relative">
                                     <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-white">
                                         <div className="flex items-start gap-2">
-                                            <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-500 mr-2">←</button>
+                                            <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-500 mr-2 p-1 hover:bg-gray-100 rounded">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                                                </svg>
+                                            </button>
                                             <div>
                                                 <div className="flex items-center gap-3 mb-1">
-                                                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2>
+                                                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2>
                                                     <StatusDropdown 
                                                         currentStatus={selectedOrder.status}
                                                         onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })}
@@ -1691,7 +1728,7 @@ const AdminPage: React.FC = () => {
                                                     onClick={handleMarkAsPacked}
                                                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"
                                                 >
-                                                    <span>✅</span> Xác nhận đã đóng gói
+                                                    <span>✅</span> <span className="hidden sm:inline">Xác nhận đã đóng gói</span><span className="sm:hidden">Đóng gói</span>
                                                 </button>
                                              )}
 
@@ -1928,10 +1965,10 @@ const AdminPage: React.FC = () => {
 
                         {activeProductSubTab === 'parts' && (
                             <>
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex gap-2">
-                                        <input placeholder="Tìm kiếm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-64" />
-                                        <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                        <input placeholder="Tìm kiếm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                                        <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
                                             <option value="all">Tất cả loại</option>
                                             <option value="hair">Tóc</option>
                                             <option value="face">Mặt</option>
@@ -1942,9 +1979,9 @@ const AdminPage: React.FC = () => {
                                             <option value="pet">Thú cưng</option>
                                         </select>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={handleSeedData} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Reset Data</button>
-                                        <button onClick={() => setIsEditingProduct(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700">+ Thêm linh kiện</button>
+                                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                        <button onClick={handleSeedData} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Data</button>
+                                        <button onClick={() => setIsEditingProduct(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -1967,18 +2004,18 @@ const AdminPage: React.FC = () => {
 
                         {activeProductSubTab === 'backgrounds' && (
                             <>
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex gap-2">
-                                        <input placeholder="Tìm background..." value={bgSearch} onChange={e => setBgSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-64" />
-                                        <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                        <input placeholder="Tìm background..." value={bgSearch} onChange={e => setBgSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                                        <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
                                             <option value="all">Tất cả loại</option>
                                             <option value="square">Vuông</option>
                                             <option value="rectangle">Chữ nhật</option>
                                         </select>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Reset BG</button>
-                                        <button onClick={() => setIsEditingBackground(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700">+ Thêm BG</button>
+                                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                        <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset BG</button>
+                                        <button onClick={() => setIsEditingBackground(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -2003,10 +2040,10 @@ const AdminPage: React.FC = () => {
 
                 {activeTab === 'config' && canManageConfig && (
                     <div className="animate-fade-in">
-                        <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4">
-                            <button onClick={() => setActiveConfigSubTab('general')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeConfigSubTab === 'general' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Chung</button>
-                            <button onClick={() => setActiveConfigSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeConfigSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Mẫu (Collection)</button>
-                            <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeConfigSubTab === 'feedbacks' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Feedbacks</button>
+                        <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4 overflow-x-auto no-scrollbar">
+                            <button onClick={() => setActiveConfigSubTab('general')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'general' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Chung</button>
+                            <button onClick={() => setActiveConfigSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Mẫu (Collection)</button>
+                            <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'feedbacks' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Feedbacks</button>
                         </div>
 
                         {activeConfigSubTab === 'general' && (
