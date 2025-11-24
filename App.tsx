@@ -890,10 +890,10 @@ const AboutPage: React.FC = () => {
                     <div>
                         <h2 className="text-2xl font-bold mb-4 text-gray-900">Khởi nguồn</h2>
                         <p className="text-gray-600 leading-relaxed mb-4">
-                            The Luvin ra đời từ mong muốn biến những kỷ niệm đẹp thành những món quà mang dấu ấn riêng. Chúng tôi tin rằng mỗi câu chuyện đều xứng đáng được lưu giữ theo cách đặc biệt nhất.
+                            The Luvin ra đời từ tình yêu với những mảnh ghép LEGO và mong muốn tạo ra những món quà cá nhân hóa thực sự ý nghĩa. Chúng tôi tin rằng mỗi mối quan hệ, mỗi kỷ niệm đều xứng đáng được lưu giữ một cách đặc biệt nhất.
                         </p>
                         <p className="text-gray-600 leading-relaxed">
-                            Thay vì những món quà làm sẵn, The Luvin cho phép bạn tự tay thiết kế từng chi tiết nhỏ và nhìn thấy thành phẩm theo thời gian thực. Mỗi khung quà vì thế không chỉ là sản phẩm — mà là một kỷ niệm được đóng lại bằng yêu thương.
+                            Thay vì những món quà công nghiệp hàng loạt, The Luvin cho phép bạn tự tay thiết kế từng chi tiết nhỏ: từ màu tóc, trang phục cho đến những phụ kiện nhỏ xinh đại diện cho sở thích của người thương.
                         </p>
                     </div>
                     <div className="rounded-lg overflow-hidden shadow-lg bg-gray-100 aspect-video flex items-center justify-center">
@@ -910,12 +910,12 @@ const AboutPage: React.FC = () => {
                     <div className="p-6 border border-gray-100 rounded-xl bg-gray-50 hover:shadow-md transition-shadow">
                         <div className="w-12 h-12 bg-luvin-pink text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl">💎</div>
                         <h3 className="font-bold text-lg mb-2">Chất lượng cao cấp</h3>
-                        <p className="text-sm text-gray-600">Hình ảnh sắc nét, khung bền đẹp, phụ kiện tinh tế và độ hoàn thiện cao — tất cả tạo nên một món quà sang trọng, nổi bật và lâu bền theo thời gian.</p>
+                        <p className="text-sm text-gray-600">Sử dụng mảnh ghép LEGO chính hãng/cao cấp và khung ảnh composite bền đẹp theo thời gian.</p>
                     </div>
                     <div className="p-6 border border-gray-100 rounded-xl bg-gray-50 hover:shadow-md transition-shadow">
                         <div className="w-12 h-12 bg-luvin-pink text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl">💌</div>
                         <h3 className="font-bold text-lg mb-2">Gói ghém tận tâm</h3>
-                        <p className="text-sm text-gray-600">Mỗi đơn hàng đều được đóng gói cẩn thận, chỉnh chu như một món quà dành tặng cho người thương. Không chỉ đẹp mắt — mà còn mang lại cảm giác trân trọng ngay từ giây phút mở hộp.</p>
+                        <p className="text-sm text-gray-600">Mỗi đơn hàng đều được đóng gói cẩn thận như một món quà gửi đến chính người thân của chúng tôi.</p>
                     </div>
                 </div>
             </div>
