@@ -1649,6 +1649,19 @@ const AdminPage: React.FC = () => {
                                             <div>
                                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2>
                                                 <p className="text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
+                                                
+                                                {/* Show Packed Info if available */}
+                                                {selectedOrder.packedBy && (
+                                                    <div className="mt-1 p-2 bg-indigo-50 border border-indigo-100 rounded text-xs text-indigo-800">
+                                                        <p className="font-bold flex items-center gap-1">
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                            Đã đóng gói
+                                                        </p>
+                                                        <p>Bởi: {selectedOrder.packedBy}</p>
+                                                        <p>Lúc: {selectedOrder.packedAt ? formatDateTime(new Date(selectedOrder.packedAt).getTime()) : '---'}</p>
+                                                    </div>
+                                                )}
+
                                                 <div className="mt-3 flex items-center gap-2 flex-wrap">
                                                     <StatusDropdown 
                                                         currentStatus={selectedOrder.status} 
@@ -1657,8 +1670,8 @@ const AdminPage: React.FC = () => {
                                                         onDelete={handleDeleteOrder}
                                                     />
                                                     
-                                                    {/* Confirm Packed Button for Warehouse ONLY */}
-                                                    {role === 'warehouse' && selectedOrder.status === 'Đang đóng hàng' && (
+                                                    {/* Confirm Packed Button for Warehouse ONLY - Updated Logic */}
+                                                    {role === 'warehouse' && ['Ưu tiên xuất đơn', 'Đang đóng hàng'].includes(selectedOrder.status) && (
                                                         <button 
                                                             onClick={handleMarkAsPacked} 
                                                             className="px-3 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
