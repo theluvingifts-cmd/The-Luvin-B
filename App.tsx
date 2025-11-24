@@ -1926,30 +1926,15 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
     const [orderCode, setOrderCode] = useState('');
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [savedOrders, setSavedOrders] = useState<{id: string, date: number}[]>([]);
 
-    useEffect(() => {
-        try {
-            const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
-            if (Array.isArray(saved)) {
-                setSavedOrders(saved);
-            }
-        } catch(e) {
-            // Ignore error
-        }
-    }, []);
-
-    const handleSearch = async (e?: React.FormEvent, codeOverride?: string) => {
-        if (e) e.preventDefault();
-        let codeToSearch = (codeOverride || orderCode).trim().toUpperCase();
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        let codeToSearch = orderCode.trim().toUpperCase();
         if (!codeToSearch) return;
 
         if (!codeToSearch.startsWith('#')) {
             codeToSearch = '#' + codeToSearch;
         }
-        
-        // Update input if searched via click
-        if (codeOverride) setOrderCode(codeToSearch);
 
         setIsLoading(true);
         setFoundOrder(null);
@@ -2030,34 +2015,12 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                             value={orderCode}
                             onChange={(e) => setOrderCode(e.target.value)}
                             placeholder="#TL012804"
-                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center uppercase"
+                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center"
                         />
                         <button type="submit" disabled={isLoading} className="bg-luvin-pink text-gray-800 font-bold px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50">
                             {isLoading ? '...' : 'Tra cứu'}
                         </button>
                     </form>
-                    
-                    {/* Display saved orders */}
-                    {savedOrders.length > 0 && !foundOrder && (
-                        <div className="mt-8 max-w-md mx-auto">
-                            <p className="text-sm text-gray-500 mb-3 font-medium">Đơn hàng của bạn (trên thiết bị này):</p>
-                            <div className="space-y-2">
-                                {savedOrders.map((item, idx) => (
-                                    <div 
-                                        key={idx} 
-                                        onClick={() => handleSearch(undefined, item.id)}
-                                        className="bg-white border border-gray-200 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors group"
-                                    >
-                                        <div className="text-left">
-                                            <p className="font-bold text-gray-800">{item.id}</p>
-                                            <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('vi-VN')}</p>
-                                        </div>
-                                        <span className="text-xs font-bold text-luvin-pink group-hover:underline">Xem ngay &rarr;</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <div className="mt-10 min-h-[300px]">
@@ -2280,18 +2243,6 @@ const App: React.FC = () => {
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
-        
-        // Save to local history for Order Lookup
-        try {
-            const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
-            const newEntry = { id: res.data.id, date: Date.now() };
-            // Add new entry to start, remove duplicates if any, keep max 5
-            const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
-            localStorage.setItem('my_orders', JSON.stringify(updated));
-        } catch (e) {
-            console.error("Failed to save local order history", e);
-        }
-
         setCartItems([]); 
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
