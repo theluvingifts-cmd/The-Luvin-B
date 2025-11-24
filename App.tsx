@@ -1060,61 +1060,6 @@ const TextEditor: React.FC<{
     );
 }
 
-const ItemColorEditor: React.FC<{
-    item: DraggableItem;
-    part: LegoPart;
-    onUpdate: (updates: Partial<DraggableItem>) => void;
-    onClose: () => void;
-}> = ({ item, part, onUpdate, onClose }) => {
-    return (
-        <div className="p-4 border border-gray-200 rounded-lg">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800">CHỌN MÀU: {part.name}</h3>
-                <button onClick={onClose} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
-                    Xong
-                </button>
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-                 {/* Default Option */}
-                 <button
-                    onClick={() => onUpdate({ selectedColor: undefined })}
-                    className={`aspect-square rounded-full border-2 flex items-center justify-center transition-all ${!item.selectedColor ? 'border-luvin-pink scale-110' : 'border-gray-200'}`}
-                    title="Mặc định"
-                >
-                    <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                         <span className="text-[10px] font-bold text-gray-500">Gốc</span>
-                    </div>
-                </button>
-
-                {part.colors?.map((color, idx) => (
-                    <button
-                        key={idx}
-                        onClick={() => onUpdate({ selectedColor: color })}
-                        className={`aspect-square rounded-full border-2 transition-all relative ${item.selectedColor?.hex === color.hex ? 'border-luvin-pink scale-110' : 'border-gray-200'}`}
-                        title={`${color.name} (+${formatCurrency(color.price)})`}
-                    >
-                        <div 
-                            className="w-full h-full rounded-full overflow-hidden" 
-                            style={{ backgroundColor: color.hex }}
-                        >
-                             {color.imageUrl && <img src={color.imageUrl} className="w-full h-full object-contain opacity-80" alt={color.name} />}
-                        </div>
-                        {item.selectedColor?.hex === color.hex && (
-                            <div className="absolute -bottom-1 -right-1 bg-luvin-pink text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">✓</div>
-                        )}
-                    </button>
-                ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
-                <p>Màu đang chọn: <span className="font-bold">{item.selectedColor ? item.selectedColor.name : 'Mặc định'}</span></p>
-                {item.selectedColor && item.selectedColor.price > 0 && (
-                    <p className="text-luvin-pink font-bold">+{formatCurrency(item.selectedColor.price)}</p>
-                )}
-            </div>
-        </div>
-    );
-};
-
 const BuilderPage: React.FC<{ 
     config: FrameConfig; 
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; 
@@ -1182,21 +1127,6 @@ const BuilderPage: React.FC<{
     return null;
   }, [selectedItemId, config.texts]);
 
-  const selectedDraggableItem = useMemo(() => {
-        if (selectedItemId?.startsWith('item-')) {
-            const id = parseInt(selectedItemId.split('-')[1], 10);
-            return config.draggableItems.find(i => i.id === id) || null;
-        }
-        return null;
-    }, [selectedItemId, config.draggableItems]);
-
-    const selectedPartForColor = useMemo(() => {
-        if (selectedDraggableItem && selectedDraggableItem.type !== 'charm') {
-            return allParts[selectedDraggableItem.partId];
-        }
-        return null;
-    }, [selectedDraggableItem, allParts]);
-
   const handleItemTransform = useCallback((id: string, newTransform: Transform) => {
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
@@ -1223,6 +1153,21 @@ const BuilderPage: React.FC<{
               ...prev,
               draggableItems: prev.draggableItems.map(item => 
                   item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
+              )
+          }));
+      }
+  }, [setConfig]);
+
+  const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      if (type === 'item') {
+          const itemId = parseInt(rawId);
+          setConfig(prev => ({
+              ...prev,
+              draggableItems: prev.draggableItems.map(item => 
+                  item.id === itemId ? { ...item, ...updates } : item
               )
           }));
       }
@@ -1366,7 +1311,8 @@ const BuilderPage: React.FC<{
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
                 <h3 className="font-bold text-gray-800 mb-3 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square overflow-hidden p-4">
+                {/* Removed overflow-hidden here to allow toolbar to overflow */}
+                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-12 lg:mb-0">
                     <FramePreview 
                         ref={frameCaptureRef}
                         config={config} 
@@ -1374,6 +1320,7 @@ const BuilderPage: React.FC<{
                         onItemTransform={handleItemTransform} 
                         onItemRemove={handleItemRemoveCompletely}
                         onTextUpdate={handleTextUpdate}
+                        onItemUpdate={handleItemUpdate}
                         onItemFlip={handleItemFlip}
                         className="w-full h-full"
                         selectedItemId={selectedItemId}
@@ -1407,18 +1354,6 @@ const BuilderPage: React.FC<{
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
                       />
-                  ) : selectedDraggableItem && selectedPartForColor && selectedPartForColor.colors && selectedPartForColor.colors.length > 0 ? (
-                      <ItemColorEditor
-                          item={selectedDraggableItem}
-                          part={selectedPartForColor}
-                          onUpdate={(updates) => {
-                              setConfig(prev => ({
-                                  ...prev,
-                                  draggableItems: prev.draggableItems.map(i => i.id === selectedDraggableItem.id ? { ...i, ...updates } : i)
-                              }));
-                          }}
-                          onClose={() => setSelectedItemId(null)}
-                      />
                   ) : (
                       <>
                           <div className="min-h-[400px]">
@@ -1428,7 +1363,7 @@ const BuilderPage: React.FC<{
                   )}
               </div>
               
-              {!selectedText && !(selectedDraggableItem && selectedPartForColor?.colors?.length) && (
+              {!selectedText && (
                 <>
                   <div className="mt-4 text-right font-bold text-lg text-gray-800">
                     Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
@@ -1991,15 +1926,30 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
     const [orderCode, setOrderCode] = useState('');
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [savedOrders, setSavedOrders] = useState<{id: string, date: number}[]>([]);
 
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        let codeToSearch = orderCode.trim().toUpperCase();
+    useEffect(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
+            if (Array.isArray(saved)) {
+                setSavedOrders(saved);
+            }
+        } catch(e) {
+            // Ignore error
+        }
+    }, []);
+
+    const handleSearch = async (e?: React.FormEvent, codeOverride?: string) => {
+        if (e) e.preventDefault();
+        let codeToSearch = (codeOverride || orderCode).trim().toUpperCase();
         if (!codeToSearch) return;
 
         if (!codeToSearch.startsWith('#')) {
             codeToSearch = '#' + codeToSearch;
         }
+        
+        // Update input if searched via click
+        if (codeOverride) setOrderCode(codeToSearch);
 
         setIsLoading(true);
         setFoundOrder(null);
@@ -2050,7 +2000,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
             <div className="relative my-8">
                 <div className="flex justify-between items-start">
                     {steps.map((step, index) => (
-                        <div key={step} className="z-10 text-center" style={{ width: `${100 / steps.length}%` }}>
+                        <div key={step} className="z-10 text-center" style={ { width: `${100 / steps.length}%` }}>
                              <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
                                 {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                             </div>
@@ -2080,12 +2030,34 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                             value={orderCode}
                             onChange={(e) => setOrderCode(e.target.value)}
                             placeholder="#TL012804"
-                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center"
+                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center uppercase"
                         />
                         <button type="submit" disabled={isLoading} className="bg-luvin-pink text-gray-800 font-bold px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50">
                             {isLoading ? '...' : 'Tra cứu'}
                         </button>
                     </form>
+                    
+                    {/* Display saved orders */}
+                    {savedOrders.length > 0 && !foundOrder && (
+                        <div className="mt-8 max-w-md mx-auto">
+                            <p className="text-sm text-gray-500 mb-3 font-medium">Đơn hàng của bạn (trên thiết bị này):</p>
+                            <div className="space-y-2">
+                                {savedOrders.map((item, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        onClick={() => handleSearch(undefined, item.id)}
+                                        className="bg-white border border-gray-200 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors group"
+                                    >
+                                        <div className="text-left">
+                                            <p className="font-bold text-gray-800">{item.id}</p>
+                                            <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('vi-VN')}</p>
+                                        </div>
+                                        <span className="text-xs font-bold text-luvin-pink group-hover:underline">Xem ngay &rarr;</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-10 min-h-[300px]">
@@ -2308,6 +2280,18 @@ const App: React.FC = () => {
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
+        
+        // Save to local history for Order Lookup
+        try {
+            const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
+            const newEntry = { id: res.data.id, date: Date.now() };
+            // Add new entry to start, remove duplicates if any, keep max 5
+            const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
+            localStorage.setItem('my_orders', JSON.stringify(updated));
+        } catch (e) {
+            console.error("Failed to save local order history", e);
+        }
+
         setCartItems([]); 
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
