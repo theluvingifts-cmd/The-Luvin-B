@@ -124,6 +124,8 @@ const ProductForm: React.FC<{
     const [colors, setColors] = useState<OutfitColor[]>(initialData?.colors || []);
     const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
     const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
+    const [editingColorIndex, setEditingColorIndex] = useState<number | null>(null);
+    const [draggedColorIndex, setDraggedColorIndex] = useState<number | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -174,17 +176,82 @@ const ProductForm: React.FC<{
         }
     };
 
-    const addColor = () => {
+    const handleSaveColor = () => {
         if (!newColor.name || !newColor.imageUrl) {
             alert("Vui lòng nhập tên màu và tải ảnh cho màu đó.");
             return;
         }
-        setColors([...colors, newColor]);
-        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined }); // Reset
+
+        if (editingColorIndex !== null) {
+            // Update existing color
+            const updatedColors = [...colors];
+            updatedColors[editingColorIndex] = newColor;
+            setColors(updatedColors);
+            setEditingColorIndex(null);
+        } else {
+            // Add new color
+            setColors([...colors, newColor]);
+        }
+        
+        // Reset inputs
+        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
+    };
+
+    const startEditColor = (index: number) => {
+        setEditingColorIndex(index);
+        setNewColor(colors[index]);
+    };
+
+    const cancelColorEdit = () => {
+        setEditingColorIndex(null);
+        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
     };
 
     const removeColor = (index: number) => {
-        setColors(colors.filter((_, i) => i !== index));
+        const updatedColors = colors.filter((_, i) => i !== index);
+        setColors(updatedColors);
+        if (editingColorIndex === index) {
+            cancelColorEdit();
+        } else if (editingColorIndex !== null && editingColorIndex > index) {
+            setEditingColorIndex(editingColorIndex - 1);
+        }
+    };
+
+    // Drag and Drop Handlers
+    const handleColorDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedColorIndex(index);
+        e.dataTransfer.effectAllowed = "move";
+        // Required for Firefox
+        e.dataTransfer.setData("text/plain", index.toString());
+    };
+
+    const handleColorDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleColorDrop = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        if (draggedColorIndex === null || draggedColorIndex === index) return;
+
+        const updatedColors = [...colors];
+        const [movedItem] = updatedColors.splice(draggedColorIndex, 1);
+        updatedColors.splice(index, 0, movedItem);
+
+        setColors(updatedColors);
+        
+        // Adjust editing index if needed
+        if (editingColorIndex === draggedColorIndex) {
+            setEditingColorIndex(index);
+        } else if (editingColorIndex !== null) {
+            if (draggedColorIndex < editingColorIndex && index >= editingColorIndex) {
+                setEditingColorIndex(editingColorIndex - 1);
+            } else if (draggedColorIndex > editingColorIndex && index <= editingColorIndex) {
+                setEditingColorIndex(editingColorIndex + 1);
+            }
+        }
+        
+        setDraggedColorIndex(null);
     };
 
     const handleSave = () => {
@@ -249,13 +316,27 @@ const ProductForm: React.FC<{
                     {/* --- COLOR VARIANTS SECTION --- */}
                     {(formData.type === 'shirt' || formData.type === 'pants') && (
                         <div className="border-t border-gray-200 pt-4 mt-4">
-                            <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Tùy chọn)</h4>
+                            <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Kéo thả để sắp xếp)</h4>
                             
                             {/* List of existing colors */}
                             <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                                 {colors.map((color, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
-                                        <div className="flex items-center gap-2">
+                                    <div 
+                                        key={idx} 
+                                        draggable
+                                        onDragStart={(e) => handleColorDragStart(e, idx)}
+                                        onDragOver={handleColorDragOver}
+                                        onDrop={(e) => handleColorDrop(e, idx)}
+                                        className={`flex items-center justify-between bg-gray-50 p-2 rounded border cursor-move transition-all ${
+                                            editingColorIndex === idx ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' : 'hover:bg-gray-100'
+                                        } ${draggedColorIndex === idx ? 'opacity-50' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="cursor-move text-gray-400 px-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                                </svg>
+                                            </div>
                                             <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: color.hex }}></div>
                                             <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
                                             <div>
@@ -268,17 +349,30 @@ const ProductForm: React.FC<{
                                                 </div>
                                             </div>
                                         </div>
-                                        <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                        </button>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => startEditColor(idx)} className="text-blue-600 hover:bg-blue-100 p-1.5 rounded text-xs font-bold">
+                                                Sửa
+                                            </button>
+                                            <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1.5 rounded">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                                 {colors.length === 0 && <p className="text-xs text-gray-400 italic">Chưa có màu nào được thêm.</p>}
                             </div>
 
-                            {/* Add new color inputs */}
-                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                <p className="text-xs font-bold text-blue-800 mb-2">Thêm màu mới</p>
+                            {/* Add/Edit color inputs */}
+                            <div className={`p-3 rounded-lg border transition-colors ${editingColorIndex !== null ? 'bg-yellow-50 border-yellow-300' : 'bg-blue-50 border-blue-100'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className={`text-xs font-bold ${editingColorIndex !== null ? 'text-yellow-800' : 'text-blue-800'}`}>
+                                        {editingColorIndex !== null ? `Đang sửa: ${colors[editingColorIndex].name}` : 'Thêm màu mới'}
+                                    </p>
+                                    {editingColorIndex !== null && (
+                                        <button onClick={cancelColorEdit} className="text-xs text-red-500 hover:underline font-semibold">Hủy sửa</button>
+                                    )}
+                                </div>
+                                
                                 <div className="grid grid-cols-3 gap-2 mb-2">
                                     <div className="col-span-3 sm:col-span-1">
                                         <input 
@@ -327,11 +421,11 @@ const ProductForm: React.FC<{
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={addColor} 
+                                    onClick={handleSaveColor} 
                                     disabled={isUploadingColorImg}
-                                    className="w-full bg-blue-600 text-white text-xs font-bold py-1.5 rounded hover:bg-blue-700 disabled:opacity-50"
+                                    className={`w-full text-white text-xs font-bold py-2 rounded transition-colors disabled:opacity-50 ${editingColorIndex !== null ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                                 >
-                                    + Thêm biến thể
+                                    {editingColorIndex !== null ? 'Lưu thay đổi' : '+ Thêm biến thể'}
                                 </button>
                             </div>
                         </div>
