@@ -1685,8 +1685,8 @@ const AdminPage: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
-                                             {/* BUTTON XÁC NHẬN ĐÓNG GÓI - SỬA LỖI Ở ĐÂY */}
-                                             {(selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (
+                                             {/* BUTTON XÁC NHẬN ĐÓNG GÓI - Chỉ hiện cho kho (Warehouse), Admin không thấy */}
+                                             {role === 'warehouse' && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (
                                                 <button 
                                                     onClick={handleMarkAsPacked}
                                                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"
@@ -1710,6 +1710,23 @@ const AdminPage: React.FC = () => {
                                     </div>
 
                                     <div className="flex-grow overflow-y-auto p-6 space-y-8">
+                                        {/* Display Packed Info if available */}
+                                        {selectedOrder.packedAt && (
+                                            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shadow-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">🎁</div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-purple-900">Đã đóng gói xong</p>
+                                                        <p className="text-xs text-purple-700">Nhân viên: <span className="font-semibold">{selectedOrder.packedBy || 'N/A'}</span></p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right pl-12 sm:pl-0">
+                                                    <p className="text-[10px] text-purple-500 uppercase font-bold tracking-wider">Thời gian hoàn thành</p>
+                                                    <p className="text-sm font-mono text-purple-900 font-bold">{formatDateTime(new Date(selectedOrder.packedAt).getTime())}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* ... (Phần chi tiết đơn hàng giữ nguyên) ... */}
                                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ghi chú nội bộ</label><textarea className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" rows={2} placeholder="Ghi chú cho admin..." value={noteInput} onChange={(e) => setNoteInput(e.target.value)} /></div>
