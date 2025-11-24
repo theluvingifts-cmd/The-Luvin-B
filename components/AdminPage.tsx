@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock } from '../services/productService';
@@ -193,8 +192,9 @@ const ProductForm: React.FC<{
     };
 
     const handleSaveColor = () => {
-        if (!newColor.name || !newColor.imageUrl) {
-            alert("Vui lòng nhập tên màu và tải ảnh cho màu đó.");
+        // FIX: Removed strict requirement for imageUrl. Only name is mandatory.
+        if (!newColor.name) {
+            alert("Vui lòng nhập tên màu.");
             return;
         }
 
@@ -357,7 +357,11 @@ const ProductForm: React.FC<{
                                                 </svg>
                                             </div>
                                             <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: color.hex }}></div>
-                                            <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
+                                            {color.imageUrl ? (
+                                                <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
+                                            ) : (
+                                                <div className="w-8 h-8 bg-gray-100 rounded border flex items-center justify-center text-[8px] text-gray-400">No IMG</div>
+                                            )}
                                             <div>
                                                 <p className="text-xs font-bold">{color.name}</p>
                                                 <div className="flex gap-2 text-[10px] text-gray-500">
@@ -434,7 +438,7 @@ const ProductForm: React.FC<{
                                                 disabled={isUploadingColorImg}
                                             />
                                             <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
-                                                {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
+                                                {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu (Tùy chọn)'}
                                             </button>
                                         </div>
                                     </div>
