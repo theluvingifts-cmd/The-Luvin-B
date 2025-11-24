@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock } from '../services/productService';
@@ -63,8 +64,9 @@ const StatusDropdown: React.FC<{
     currentStatus: string; 
     onStatusChange: (status: string) => void;
     onDelete?: () => void;
-    isAdmin: boolean;
-}> = ({ currentStatus, onStatusChange, onDelete, isAdmin }) => {
+    canCancel: boolean; // Changed from isAdmin to specific permission
+    canDelete: boolean;
+}> = ({ currentStatus, onStatusChange, onDelete, canCancel, canDelete }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -81,23 +83,23 @@ const StatusDropdown: React.FC<{
     const currentConfig = STATUS_CONFIG.find(s => s.label === currentStatus) || STATUS_CONFIG[0];
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative inline-block" ref={dropdownRef}>
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:bg-gray-50`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border shadow-sm ${currentConfig.color} bg-white border-gray-200 hover:brightness-95`}
             >
-                {/* Minimal Icon */}
                 <span>{currentConfig.icon}</span>
                 <span>{currentStatus}</span>
                 <span className={`text-xs transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
 
             {isOpen && (
-                <div className="absolute bottom-full mb-2 left-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                    <div className="p-1">
+                <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                    <div className="p-1 max-h-80 overflow-y-auto">
                         {STATUS_CONFIG.map((status) => {
-                            // Hide 'Delete' from list if not admin or for standard flow
-                            if (status.isAction && !isAdmin) return null;
+                            // Warehouse restrictions
+                            if (status.label === 'Huỷ đơn' && !canCancel) return null;
+                            if (status.label === 'Xoá đơn' && !canDelete) return null;
 
                             return (
                                 <button
@@ -768,6 +770,13 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
+    // --- PERMISSION FLAGS ---
+    const canViewDashboard = role === 'admin';
+    const canManageProducts = role === 'admin';
+    const canManageConfig = role === 'admin';
+    const canCancelOrder = role === 'admin';
+    const canDeleteOrder = role === 'admin';
+
     const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('general');
@@ -822,7 +831,7 @@ const AdminPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (role === 'warehouse' && activeTab === 'dashboard') {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -877,6 +886,10 @@ const AdminPage: React.FC = () => {
     
     const handleDeleteOrder = async () => {
         if (!selectedOrder) return;
+        if (!canDeleteOrder) {
+            alert("Bạn không có quyền xóa đơn hàng.");
+            return;
+        }
         if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không? Hành động này không thể hoàn tác.`)) {
             setLoading(true);
             await deleteOrder(selectedOrder.id);
@@ -1442,7 +1455,7 @@ const AdminPage: React.FC = () => {
                     <div className="flex items-center gap-8">
                         <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400 text-base">| Quản lý</span></div>
                         <nav className="hidden md:flex gap-6">
-                             {role === 'admin' && (
+                             {canViewDashboard && (
                                 <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
                                     Dashboard
                                 </button>
@@ -1450,15 +1463,15 @@ const AdminPage: React.FC = () => {
                             <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
                                 Đơn hàng
                             </button>
-                            {role === 'admin' && (
-                                <>
-                                    <button onClick={() => setActiveTab('products')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                        Sản phẩm
-                                    </button>
-                                    <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                        Cấu hình
-                                    </button>
-                                </>
+                            {canManageProducts && (
+                                <button onClick={() => setActiveTab('products')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                    Sản phẩm
+                                </button>
+                            )}
+                            {canManageConfig && (
+                                <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                    Cấu hình
+                                </button>
                             )}
                         </nav>
                     </div>
@@ -1472,7 +1485,7 @@ const AdminPage: React.FC = () => {
             <main className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6">
                 
                 {/* --- DASHBOARD TAB --- */}
-                {activeTab === 'dashboard' && role === 'admin' && (
+                {activeTab === 'dashboard' && canViewDashboard && (
                     <div className="space-y-8 animate-fade-in">
                         <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm gap-4">
                             <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">Tổng quan {analytics.dateLabel}</h2>
@@ -1626,14 +1639,33 @@ const AdminPage: React.FC = () => {
                                         <div className="flex items-start gap-2">
                                             <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-500 mr-2">←</button>
                                             <div>
-                                                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2>
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2>
+                                                    <StatusDropdown 
+                                                        currentStatus={selectedOrder.status}
+                                                        onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })}
+                                                        onDelete={handleDeleteOrder}
+                                                        canCancel={canCancelOrder}
+                                                        canDelete={canDeleteOrder}
+                                                    />
+                                                </div>
                                                 <p className="text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
-                                             <div className="flex gap-2">
+                                             {/* BUTTON XÁC NHẬN ĐÓNG GÓI */}
+                                             {(selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn') && (
+                                                <button 
+                                                    onClick={handleMarkAsPacked}
+                                                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                                >
+                                                    <span>✅</span> Xác nhận đã đóng gói
+                                                </button>
+                                             )}
+
+                                             <div className="flex gap-2 mt-2">
                                                 {!isEditingOrder ? (
-                                                    <button onClick={startEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Sửa</button>
+                                                    <button onClick={startEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Sửa chi tiết</button>
                                                 ) : (
                                                     <div className="flex gap-2">
                                                         <button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button>
@@ -1836,7 +1868,7 @@ const AdminPage: React.FC = () => {
                      </div>
                 )}
 
-                {activeTab === 'products' && (
+                {activeTab === 'products' && canManageProducts && (
                     <div className="animate-fade-in">
                         <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4">
                             <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Linh kiện LEGO</button>
@@ -1918,7 +1950,7 @@ const AdminPage: React.FC = () => {
                     </div>
                 )}
 
-                {activeTab === 'config' && (
+                {activeTab === 'config' && canManageConfig && (
                     <div className="animate-fade-in">
                         <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4">
                             <button onClick={() => setActiveConfigSubTab('general')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeConfigSubTab === 'general' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Chung</button>
