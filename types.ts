@@ -21,6 +21,7 @@ export interface OutfitColor {
   hex: string;
   imageUrl: string;
   price: number; 
+  stock?: number; // undefined = unlimited, 0 = out of stock
 }
 
 export interface LegoPart {

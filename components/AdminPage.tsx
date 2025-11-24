@@ -122,7 +122,7 @@ const ProductForm: React.FC<{
     
     // State for managing colors
     const [colors, setColors] = useState<OutfitColor[]>(initialData?.colors || []);
-    const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '' });
+    const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
     const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -180,7 +180,7 @@ const ProductForm: React.FC<{
             return;
         }
         setColors([...colors, newColor]);
-        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '' }); // Reset
+        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined }); // Reset
     };
 
     const removeColor = (index: number) => {
@@ -260,7 +260,12 @@ const ProductForm: React.FC<{
                                             <img src={color.imageUrl} alt="" className="w-8 h-8 object-contain bg-white rounded border" />
                                             <div>
                                                 <p className="text-xs font-bold">{color.name}</p>
-                                                <p className="text-[10px] text-gray-500">+{formatCurrency(color.price)}</p>
+                                                <div className="flex gap-2 text-[10px] text-gray-500">
+                                                    <span>+{formatCurrency(color.price)}</span>
+                                                    <span className={color.stock === 0 ? 'text-red-500 font-bold' : 'text-gray-500'}>
+                                                        Kho: {color.stock === undefined || color.stock === null ? '∞' : color.stock}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         <button onClick={() => removeColor(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded">
@@ -274,13 +279,15 @@ const ProductForm: React.FC<{
                             {/* Add new color inputs */}
                             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                                 <p className="text-xs font-bold text-blue-800 mb-2">Thêm màu mới</p>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <input 
-                                        placeholder="Tên màu (VD: Đỏ)" 
-                                        className="p-1.5 text-xs border rounded"
-                                        value={newColor.name}
-                                        onChange={e => setNewColor({...newColor, name: e.target.value})}
-                                    />
+                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                    <div className="col-span-3 sm:col-span-1">
+                                        <input 
+                                            placeholder="Tên màu (VD: Đỏ)" 
+                                            className="w-full p-1.5 text-xs border rounded"
+                                            value={newColor.name}
+                                            onChange={e => setNewColor({...newColor, name: e.target.value})}
+                                        />
+                                    </div>
                                     <input 
                                         type="number"
                                         placeholder="Giá thêm (VNĐ)" 
@@ -288,26 +295,35 @@ const ProductForm: React.FC<{
                                         value={newColor.price}
                                         onChange={e => setNewColor({...newColor, price: Number(e.target.value)})}
                                     />
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500">Mã màu:</span>
-                                        <input 
-                                            type="color" 
-                                            className="w-8 h-8 border rounded cursor-pointer"
-                                            value={newColor.hex}
-                                            onChange={e => setNewColor({...newColor, hex: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="relative">
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            onChange={handleColorFileChange}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                            disabled={isUploadingColorImg}
-                                        />
-                                        <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
-                                            {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
-                                        </button>
+                                    <input 
+                                        type="number"
+                                        placeholder="SL (Trống=∞)" 
+                                        className="p-1.5 text-xs border rounded"
+                                        value={newColor.stock === undefined ? '' : newColor.stock}
+                                        onChange={e => setNewColor({...newColor, stock: e.target.value === '' ? undefined : Number(e.target.value)})}
+                                    />
+                                    <div className="col-span-3 flex gap-2">
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <span className="text-xs text-gray-500">Mã màu:</span>
+                                            <input 
+                                                type="color" 
+                                                className="w-8 h-8 border rounded cursor-pointer"
+                                                value={newColor.hex}
+                                                onChange={e => setNewColor({...newColor, hex: e.target.value})}
+                                            />
+                                        </div>
+                                        <div className="relative flex-grow">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={handleColorFileChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                disabled={isUploadingColorImg}
+                                            />
+                                            <button className={`w-full p-1.5 text-xs border rounded bg-white text-left truncate ${isUploadingColorImg ? 'text-gray-400' : ''}`}>
+                                                {isUploadingColorImg ? 'Đang tải...' : newColor.imageUrl ? 'Đã chọn ảnh ✓' : 'Tải ảnh màu...'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <button 
