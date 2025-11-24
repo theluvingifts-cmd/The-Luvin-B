@@ -111,10 +111,10 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>) => {
     try {
         const orderRef = doc(db, "orders", orderId);
         await updateDoc(orderRef, updates);
-        return { success: true };
-    } catch (error: any) {
+        return true;
+    } catch (error) {
         console.error("Lỗi cập nhật đơn hàng:", error);
-        return { success: false, error };
+        return false;
     }
 };
 

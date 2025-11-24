@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock } from '../services/productService';
@@ -94,8 +93,8 @@ const StatusDropdown: React.FC<{
             </button>
 
             {isOpen && (
-                <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                    <div className="p-1 max-h-60 overflow-y-auto">
+                <div className="absolute bottom-full mb-2 left-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                    <div className="p-1">
                         {STATUS_CONFIG.map((status) => {
                             // Hide 'Delete' from list if not admin or for standard flow
                             if (status.isAction && !isAdmin) return null;
@@ -800,7 +799,6 @@ const AdminPage: React.FC = () => {
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     const [filterStatus, setFilterStatus] = useState<string>('all');
-    const [searchTerm, setSearchTerm] = useState(''); // Added Search Term
 
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -874,18 +872,7 @@ const AdminPage: React.FC = () => {
     const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); fetchFeedbacks(); setEditingFeedback(null); };
     const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); fetchFeedbacks(); } };
 
-    const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { 
-        const res = await updateOrder(orderId, updates); 
-        if (res.success) { 
-            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); 
-            if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); 
-            if (showMsg) alert("Đã cập nhật!"); 
-            return true;
-        } else {
-            if (showMsg) alert("Lỗi cập nhật. Vui lòng thử lại.");
-            return false;
-        }
-    };
+    const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { const success = await updateOrder(orderId, updates); if (success) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); if (showMsg) alert("Đã cập nhật!"); } };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
     
     const handleDeleteOrder = async () => {
@@ -1037,15 +1024,11 @@ const AdminPage: React.FC = () => {
         }
         // ------------------------------
 
-        const success = await handleUpdate(selectedOrder.id, editForm, false);
-        if (success) {
-            setIsEditingOrder(false);
-            setEditForm(null);
-            setLoading(false);
-            alert("Đã lưu thay đổi!");
-        } else {
-            setLoading(false);
-        }
+        await handleUpdate(selectedOrder.id, editForm, false);
+        setIsEditingOrder(false);
+        setEditForm(null);
+        setLoading(false);
+        alert("Đã lưu thay đổi!");
     };
 
     const updateEditFormWithPrice = (newOrder: Order) => {
@@ -1197,49 +1180,13 @@ const AdminPage: React.FC = () => {
 
     const handleMarkAsPacked = async () => {
         if (!selectedOrder || !currentUser) return;
-        if (confirm(`Xác nhận đã đóng gói xong đơn ${selectedOrder.id}?`)) {
-            // OPTIMISTIC UPDATE START
+        if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói đơn này?`)) {
             const now = new Date().toISOString();
-            const updates = { 
+            await handleUpdate(selectedOrder.id, { 
                 status: 'Chờ chuyển hàng', 
                 packedBy: currentUser.email,
                 packedAt: now
-            };
-            
-            const prevOrder = selectedOrder;
-            const prevOrders = [...orders];
-
-            // Apply to UI immediately
-            const optimisticOrder = { ...selectedOrder, ...updates };
-            setSelectedOrder(optimisticOrder);
-            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? optimisticOrder : o));
-            // OPTIMISTIC UPDATE END
-
-            // Background Server Sync
-            try {
-                const res = await updateOrder(selectedOrder.id, updates);
-                
-                if (!res.success) {
-                    // If permission denied on extra fields, try only status
-                    if (res.error?.code === 'permission-denied') {
-                        console.log("Falling back to status-only update");
-                        const resRetry = await updateOrder(selectedOrder.id, { status: 'Chờ chuyển hàng' });
-                        if (!resRetry.success) {
-                            throw resRetry.error;
-                        }
-                        // If success, we keep the optimistic UI (user sees packedBy) even if server only got status.
-                    } else {
-                        throw res.error;
-                    }
-                }
-                // Silent success
-            } catch (error) {
-                console.error("Lỗi đóng gói:", error);
-                alert("Lỗi: Không thể cập nhật đơn hàng. Đang hoàn tác...");
-                // Rollback
-                setSelectedOrder(prevOrder);
-                setOrders(prevOrders);
-            }
+            });
         }
     };
 
@@ -1377,23 +1324,10 @@ const AdminPage: React.FC = () => {
     
     const sortedOrders = useMemo(() => {
         let result = [...orders];
-        
-        // 1. Filter by Status
         if (filterStatus !== 'all') {
             result = result.filter(o => o.status === filterStatus);
         }
 
-        // 2. Filter by Search Term
-        if (searchTerm) {
-            const lowerTerm = searchTerm.toLowerCase();
-            result = result.filter(o => 
-                o.id.toLowerCase().includes(lowerTerm) || 
-                o.customer.phone.includes(lowerTerm) ||
-                o.customer.name.toLowerCase().includes(lowerTerm)
-            );
-        }
-
-        // 3. Sort
         if (sortMode === 'urgent') {
             result.sort((a, b) => {
                 // 1. Absolute Priority: isUrgent flag
@@ -1420,7 +1354,7 @@ const AdminPage: React.FC = () => {
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
-    }, [orders, sortMode, filterStatus, searchTerm]);
+    }, [orders, sortMode, filterStatus]);
 
     const partsByType = useMemo(() => {
         const types: Record<string, LegoPart[]> = {};
@@ -1646,12 +1580,6 @@ const AdminPage: React.FC = () => {
                      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-fade-in">
                         <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                             <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
-                                <input 
-                                    placeholder="Tìm mã đơn, SĐT, tên..." 
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                                />
                                 <div className="flex gap-2 w-full">
                                     <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
                                     <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
@@ -1700,56 +1628,6 @@ const AdminPage: React.FC = () => {
                                             <div>
                                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2>
                                                 <p className="text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
-                                                
-                                                {/* Show Packed Info if available */}
-                                                {selectedOrder.packedBy && (
-                                                    <div className="mt-1 p-2 bg-indigo-50 border border-indigo-100 rounded text-xs text-indigo-800">
-                                                        <p className="font-bold flex items-center gap-1">
-                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                            Đã đóng gói
-                                                        </p>
-                                                        <p>Bởi: {selectedOrder.packedBy}</p>
-                                                        <p>Lúc: {selectedOrder.packedAt ? formatDateTime(new Date(selectedOrder.packedAt).getTime()) : '---'}</p>
-                                                    </div>
-                                                )}
-
-                                                <div className="mt-3 flex items-center gap-2 flex-wrap">
-                                                    <StatusDropdown 
-                                                        currentStatus={selectedOrder.status} 
-                                                        onStatusChange={(s) => handleUpdate(selectedOrder.id, { status: s })} 
-                                                        isAdmin={role === 'admin'}
-                                                        onDelete={handleDeleteOrder}
-                                                    />
-                                                    
-                                                    {/* Confirm Packed Button for Warehouse ONLY - Updated Logic */}
-                                                    {role === 'warehouse' && ['Ưu tiên xuất đơn', 'Đang đóng hàng'].includes(selectedOrder.status) && (
-                                                        <button 
-                                                            onClick={handleMarkAsPacked} 
-                                                            disabled={loading}
-                                                            className="px-3 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-wait"
-                                                        >
-                                                            {loading ? (
-                                                                <span>Đang xử lý...</span>
-                                                            ) : (
-                                                                <>
-                                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                                    Xác nhận đóng gói xong
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    )}
-
-                                                    {/* Quick Confirm for New Orders - Only for Admin */}
-                                                    {role === 'admin' && selectedOrder.status === 'Chờ thanh toán' && (
-                                                        <button 
-                                                            onClick={() => handleUpdate(selectedOrder.id, { status: 'Ưu tiên xuất đơn' })} 
-                                                            className="px-3 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                            Xác nhận đơn ngay
-                                                        </button>
-                                                    )}
-                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
