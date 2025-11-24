@@ -126,8 +126,6 @@ const StatusDropdown: React.FC<{
 };
 
 // --- COMPONENT: FORM SẢN PHẨM (MODAL) ---
-// ... (ProductForm, BackgroundForm, TemplateForm, FeedbackForm, ConfigImageUpload components remain unchanged)
-// ... skipping for brevity ... 
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
     onSave: (part: LegoPart) => void; 
@@ -148,6 +146,7 @@ const ProductForm: React.FC<{
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name === 'stock') {
+            // If value is empty string, set stock to undefined (unlimited)
             const stockVal = value === '' ? undefined : Number(value);
             setFormData(prev => ({ ...prev, stock: stockVal }));
         } else {
@@ -175,6 +174,7 @@ const ProductForm: React.FC<{
         }
     };
 
+    // Color Management Handlers
     const handleColorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -193,19 +193,24 @@ const ProductForm: React.FC<{
     };
 
     const handleSaveColor = () => {
+        // FIX: Removed strict requirement for imageUrl. Only name is mandatory.
         if (!newColor.name) {
             alert("Vui lòng nhập tên màu.");
             return;
         }
 
         if (editingColorIndex !== null) {
+            // Update existing color
             const updatedColors = [...colors];
             updatedColors[editingColorIndex] = newColor;
             setColors(updatedColors);
             setEditingColorIndex(null);
         } else {
+            // Add new color
             setColors([...colors, newColor]);
         }
+        
+        // Reset inputs
         setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
     };
 
@@ -229,9 +234,11 @@ const ProductForm: React.FC<{
         }
     };
 
+    // Drag and Drop Handlers
     const handleColorDragStart = (e: React.DragEvent, index: number) => {
         setDraggedColorIndex(index);
         e.dataTransfer.effectAllowed = "move";
+        // Required for Firefox
         e.dataTransfer.setData("text/plain", index.toString());
     };
 
@@ -250,6 +257,7 @@ const ProductForm: React.FC<{
 
         setColors(updatedColors);
         
+        // Adjust editing index if needed
         if (editingColorIndex === draggedColorIndex) {
             setEditingColorIndex(index);
         } else if (editingColorIndex !== null) {
@@ -259,15 +267,21 @@ const ProductForm: React.FC<{
                 setEditingColorIndex(editingColorIndex + 1);
             }
         }
+        
         setDraggedColorIndex(null);
     };
 
     const handleSave = () => {
+        // Include colors in the saved data
+        // FIX: Firebase throws error on 'undefined' values. 
+        // JSON.parse(JSON.stringify(...)) removes keys with undefined values.
+        // This effectively treats undefined as "field missing", which matches our optional stock logic.
         const dataToSave = { ...formData, colors: colors };
         const cleanData = JSON.parse(JSON.stringify(dataToSave));
         onSave(cleanData);
     };
 
+    // Allow colors for almost all types now including hair and hat
     const canHaveColors = ['shirt', 'pants', 'accessory', 'pet', 'hair', 'hat'].includes(formData.type);
 
     return (
@@ -291,6 +305,7 @@ const ProductForm: React.FC<{
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
                         </div>
                         
+                        {/* Main Image Upload */}
                         <div className="col-span-2">
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh mặc định</label>
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
@@ -323,10 +338,12 @@ const ProductForm: React.FC<{
                         </div>
                     </div>
 
+                    {/* --- COLOR VARIANTS SECTION --- */}
                     {canHaveColors && (
                         <div className="border-t border-gray-200 pt-4 mt-4">
                             <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Kéo thả để sắp xếp)</h4>
                             
+                            {/* List of existing colors */}
                             <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                                 {colors.map((color, idx) => (
                                     <div 
@@ -374,6 +391,7 @@ const ProductForm: React.FC<{
                                 {colors.length === 0 && <p className="text-xs text-gray-400 italic">Chưa có màu nào được thêm.</p>}
                             </div>
 
+                            {/* Add/Edit color inputs */}
                             <div className={`p-3 rounded-lg border transition-colors ${editingColorIndex !== null ? 'bg-yellow-50 border-yellow-300' : 'bg-blue-50 border-blue-100'}`}>
                                 <div className="flex justify-between items-center mb-2">
                                     <p className={`text-xs font-bold ${editingColorIndex !== null ? 'text-yellow-800' : 'text-blue-800'}`}>
@@ -862,8 +880,10 @@ const AdminPage: React.FC = () => {
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); 
             if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); 
             if (showMsg) alert("Đã cập nhật!"); 
+            return true;
         } else {
-            if (showMsg) alert(`Lỗi cập nhật: ${res.error?.message || 'Không xác định'}`);
+            if (showMsg) alert("Lỗi cập nhật. Vui lòng thử lại.");
+            return false;
         }
     };
     const handleSaveAdminInfo = () => { if (selectedOrder) { handleUpdate(selectedOrder.id, { internalNotes: noteInput, adminDeadline: adminDeadlineInput }); } };
@@ -985,11 +1005,14 @@ const AdminPage: React.FC = () => {
         setLoading(true);
 
         // --- STOCK ADJUSTMENT LOGIC ---
+        // Calculate differences between old and new order state to adjust stock
         const oldParts = countPartsInOrder(selectedOrder.items);
         const newParts = countPartsInOrder(editForm.items);
         
         const stockAdjustments: Record<string, number> = {};
         
+        // Find parts that were in old order (might be removed or reduced)
+        // If removed from order -> Add back to stock (+1)
         Object.keys(oldParts).forEach(partId => {
             const oldQty = oldParts[partId] || 0;
             const newQty = newParts[partId] || 0;
@@ -997,23 +1020,32 @@ const AdminPage: React.FC = () => {
             if (diff !== 0) stockAdjustments[partId] = diff;
         });
 
+        // Find parts that are new in the order (might be added)
+        // If added to order -> Subtract from stock (-1)
         Object.keys(newParts).forEach(partId => {
             if (!oldParts[partId]) {
+                // Completely new part, adjust by negative quantity
                 stockAdjustments[partId] = -(newParts[partId]);
             }
         });
 
+        // Apply stock adjustments if there are any changes
         if (Object.keys(stockAdjustments).length > 0) {
             await adjustStock(stockAdjustments);
+            // Refresh product list to show updated stock in UI
             fetchProducts();
         }
         // ------------------------------
 
-        await handleUpdate(selectedOrder.id, editForm, false);
-        setIsEditingOrder(false);
-        setEditForm(null);
-        setLoading(false);
-        alert("Đã lưu thay đổi!");
+        const success = await handleUpdate(selectedOrder.id, editForm, false);
+        if (success) {
+            setIsEditingOrder(false);
+            setEditForm(null);
+            setLoading(false);
+            alert("Đã lưu thay đổi!");
+        } else {
+            setLoading(false);
+        }
     };
 
     const updateEditFormWithPrice = (newOrder: Order) => {
@@ -1163,46 +1195,50 @@ const AdminPage: React.FC = () => {
     const formatDate = (dateString: string) => (!dateString) ? '---' : new Date(dateString).toLocaleDateString('vi-VN');
     const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString('vi-VN');
 
-    // FIX: Handle Pack logic with optimistic update and better error handling
     const handleMarkAsPacked = async () => {
         if (!selectedOrder || !currentUser) return;
-        
-        if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói xong đơn hàng này?`)) {
-            
-            // 1. OPTIMISTIC UPDATE (Cập nhật UI ngay lập tức)
+        if (confirm(`Xác nhận đã đóng gói xong đơn ${selectedOrder.id}?`)) {
+            // OPTIMISTIC UPDATE START
             const now = new Date().toISOString();
             const updates = { 
                 status: 'Chờ chuyển hàng', 
-                packedBy: currentUser.email || 'Warehouse',
+                packedBy: currentUser.email,
                 packedAt: now
             };
             
-            const previousOrder = { ...selectedOrder };
-            const updatedOrder = { ...selectedOrder, ...updates };
-            
-            // Apply to UI immediately
-            setSelectedOrder(updatedOrder);
-            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o));
-            
-            // 2. Gửi request lên server
-            setLoading(true);
-            const res = await updateOrder(selectedOrder.id, updates);
-            setLoading(false);
+            const prevOrder = selectedOrder;
+            const prevOrders = [...orders];
 
-            if (res.success) {
-                // Success: Do nothing (UI is already updated)
-            } else {
-                // Failure: Revert UI
-                setSelectedOrder(previousOrder);
-                setOrders(prev => prev.map(o => o.id === selectedOrder.id ? previousOrder : o));
+            // Apply to UI immediately
+            const optimisticOrder = { ...selectedOrder, ...updates };
+            setSelectedOrder(optimisticOrder);
+            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? optimisticOrder : o));
+            // OPTIMISTIC UPDATE END
+
+            // Background Server Sync
+            try {
+                const res = await updateOrder(selectedOrder.id, updates);
                 
-                // Show specific error
-                console.error("Packed update failed:", res.error);
-                if (res.error?.code === 'permission-denied') {
-                    alert(`Lỗi: Tài khoản ${currentUser.email} không có quyền cập nhật đơn hàng này (Permission Denied). Vui lòng liên hệ Admin.`);
-                } else {
-                    alert(`Lỗi cập nhật: ${res.error?.message || 'Unknown error'}`);
+                if (!res.success) {
+                    // If permission denied on extra fields, try only status
+                    if (res.error?.code === 'permission-denied') {
+                        console.log("Falling back to status-only update");
+                        const resRetry = await updateOrder(selectedOrder.id, { status: 'Chờ chuyển hàng' });
+                        if (!resRetry.success) {
+                            throw resRetry.error;
+                        }
+                        // If success, we keep the optimistic UI (user sees packedBy) even if server only got status.
+                    } else {
+                        throw res.error;
+                    }
                 }
+                // Silent success
+            } catch (error) {
+                console.error("Lỗi đóng gói:", error);
+                alert("Lỗi: Không thể cập nhật đơn hàng. Đang hoàn tác...");
+                // Rollback
+                setSelectedOrder(prevOrder);
+                setOrders(prevOrders);
             }
         }
     };
@@ -1326,6 +1362,10 @@ const AdminPage: React.FC = () => {
         products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), 
     [products, productSearch, productCategory]);
 
+    const bgCategories = useMemo(() => {
+        return ['all', ...Array.from(new Set(backgrounds.map(bg => bg.category)))];
+    }, [backgrounds]);
+
     const filteredBackgrounds = useMemo(() => 
         backgrounds.filter(bg => {
             const matchType = bgTypeFilter === 'all' || bg.type === bgTypeFilter;
@@ -1338,10 +1378,12 @@ const AdminPage: React.FC = () => {
     const sortedOrders = useMemo(() => {
         let result = [...orders];
         
+        // 1. Filter by Status
         if (filterStatus !== 'all') {
             result = result.filter(o => o.status === filterStatus);
         }
 
+        // 2. Filter by Search Term
         if (searchTerm) {
             const lowerTerm = searchTerm.toLowerCase();
             result = result.filter(o => 
@@ -1351,20 +1393,30 @@ const AdminPage: React.FC = () => {
             );
         }
 
+        // 3. Sort
         if (sortMode === 'urgent') {
             result.sort((a, b) => {
+                // 1. Absolute Priority: isUrgent flag
                 if (a.isUrgent !== b.isUrgent) return a.isUrgent ? -1 : 1;
+
+                // 2. Time Sensitivity: Compare effective deadlines
+                // Effective deadline = Admin Deadline (Internal) -> Customer Requested Date -> Far Future
                 const getTargetTime = (o: Order) => {
                     if (o.adminDeadline) return new Date(o.adminDeadline).getTime();
                     if (o.delivery.date) return new Date(o.delivery.date).getTime();
-                    return 9999999999999;
+                    return 9999999999999; // No deadline = last
                 };
+
                 const timeA = getTargetTime(a);
                 const timeB = getTargetTime(b);
-                if (timeA !== timeB) return timeA - timeB;
+
+                if (timeA !== timeB) return timeA - timeB; // Earliest deadline first
+
+                // 3. Fallback: Creation date (Oldest first for FIFO within same priority)
                 return (a.createdAt || 0) - (b.createdAt || 0);
             });
         } else {
+            // Default: Newest created first
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
@@ -1669,8 +1721,8 @@ const AdminPage: React.FC = () => {
                                                         onDelete={handleDeleteOrder}
                                                     />
                                                     
-                                                    {/* Confirm Packed Button - Visible to Warehouse and Admin for testing */}
-                                                    {['Ưu tiên xuất đơn', 'Đang đóng hàng'].includes(selectedOrder.status) && (
+                                                    {/* Confirm Packed Button for Warehouse ONLY - Updated Logic */}
+                                                    {role === 'warehouse' && ['Ưu tiên xuất đơn', 'Đang đóng hàng'].includes(selectedOrder.status) && (
                                                         <button 
                                                             onClick={handleMarkAsPacked} 
                                                             disabled={loading}
