@@ -58,6 +58,8 @@ export interface LegoCharacterConfig {
   hat?: LegoPart;
   selectedShirtColor?: OutfitColor; 
   selectedPantsColor?: OutfitColor;
+  selectedHairColor?: OutfitColor; // Added
+  selectedHatColor?: OutfitColor;  // Added
   customPrintPrice?: number;
   x: number; 
   y: number; 
