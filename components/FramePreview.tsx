@@ -1,7 +1,7 @@
 
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem } from '../types';
+import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../constants';
 
 type Transform = {
@@ -18,7 +18,6 @@ interface FramePreviewProps {
   onItemTransform: (id: string, newTransform: Transform) => void;
   onItemRemove: (id: string) => void;
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
-  onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void; // Added for color updates
   onItemFlip?: (id: string) => void;
   className?: string;
   isInteractive?: boolean;
@@ -413,7 +412,7 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onItemFlip, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemFlip, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -445,8 +444,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       
       if (type === 'item') {
           const item = config.draggableItems.find(i => i.id === id);
-          const part = item ? allParts[item.partId] : null;
-          return { type: 'item', data: item, part: part, canFlip: item && (item.type === 'accessory' || item.type === 'pet') };
+          return { type: 'item', data: item, canFlip: item && (item.type === 'accessory' || item.type === 'pet') };
       } else if (type === 'text') {
           const item = config.texts.find(t => t.id === id);
           return { type: 'text', data: item, canFlip: false };
@@ -455,7 +453,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
           return { type: 'character', data: item, canFlip: false };
       }
       return null;
-  }, [selectedItemId, config, allParts]);
+  }, [selectedItemId, config]);
 
   const handleToolbarDelete = () => {
       if (selectedItemId) onItemRemove(selectedItemId);
@@ -463,12 +461,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
   const handleToolbarFlip = () => {
       if (selectedItemId && onItemFlip) onItemFlip(selectedItemId);
-  };
-
-  const handleColorSelect = (color: any) => {
-      if (selectedItemId && onItemUpdate) {
-          onItemUpdate(selectedItemId, { selectedColor: color });
-      }
   };
 
   return (
@@ -568,39 +560,19 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
         {/* --- Floating Mobile Action Toolbar (Moved outside the frame content area) --- */}
         {isInteractive && selectedItemId && (
-            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-fade-in transform-handle">
-                {/* Color Selection Row */}
-                {selectedItemDetails?.part?.colors && selectedItemDetails.part.colors.length > 0 && (
-                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-2 overflow-x-auto max-w-[90vw] no-scrollbar">
-                        {selectedItemDetails.part.colors.map((color, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => handleColorSelect(color)}
-                                className={`w-6 h-6 rounded-full border relative flex-shrink-0 ${(selectedItemDetails.data as DraggableItem)?.selectedColor?.hex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
-                                style={{ backgroundColor: color.hex }}
-                                title={`${color.name}`}
-                            >
-                                {color.imageUrl && <img src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
-                            </button>
-                        ))}
-                    </div>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5 animate-fade-in transform-handle">
+                {selectedItemDetails?.canFlip && (
+                    <button onClick={handleToolbarFlip} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    </button>
                 )}
-
-                {/* Action Buttons Row */}
-                <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
-                    {selectedItemDetails?.canFlip && (
-                        <button onClick={handleToolbarFlip} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                        </button>
-                    )}
-                    <button onClick={handleToolbarDelete} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                    <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Xong">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                    </button>
-                </div>
+                <button onClick={handleToolbarDelete} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+                <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Xong">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                </button>
             </div>
         )}
     </div>
