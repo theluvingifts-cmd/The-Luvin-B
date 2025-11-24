@@ -1,3 +1,4 @@
+
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig } from '../types';
@@ -500,8 +501,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 {config.draggableItems.map(item => {
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
-                    const imageUrl = isCharm ? item.partId : part?.imageUrl;
-                    const name = isCharm ? 'charm' : part?.name;
+                    // Use selected color image if available, else fallback to part image
+                    const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
+                    const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
                     const widthCm = isCharm ? 2 : (part?.widthCm || 1);
                     const heightCm = isCharm ? 2 : (part?.heightCm || 1);
 

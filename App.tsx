@@ -62,10 +62,10 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
     const pantsPrice = config.characters.reduce((acc, char) => acc + (char.pants?.price || 0) + (char.selectedPantsColor?.price || 0), 0);
     if(pantsPrice > 0) { total += pantsPrice; breakdown.push({ label: 'Quần & Màu', value: pantsPrice }); }
 
-    const accessoryPrice = config.draggableItems.filter(i => i.type === 'accessory').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0), 0);
+    const accessoryPrice = config.draggableItems.filter(i => i.type === 'accessory').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0) + (item.selectedColor?.price || 0), 0);
     if(accessoryPrice > 0) { total += accessoryPrice; breakdown.push({ label: 'Phụ kiện', value: accessoryPrice }); }
     
-    const petPrice = config.draggableItems.filter(i => i.type === 'pet').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0), 0);
+    const petPrice = config.draggableItems.filter(i => i.type === 'pet').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0) + (item.selectedColor?.price || 0), 0);
     if(petPrice > 0) { total += petPrice; breakdown.push({ label: 'Thú cưng', value: petPrice }); }
 
     return { totalPrice: total, priceBreakdown: breakdown };
@@ -487,7 +487,7 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet') return;
         const newItem: DraggableItem = {
-            id: Date.now(), partId: part.id, type: part.type, x: 50 + (Math.random() - 0.5) * 20, y: 50 + (Math.random() - 0.5) * 20, rotation: 0, scale: 1, isFlipped: false
+            id: Date.now(), partId: part.id, type: part.type, x: 50 + (Math.random() - 0.5) * 20, y: 50 + (Math.random() - 0.5) * 20, rotation: 0, scale: 1, isFlipped: false, selectedColor: part.colors?.[0]
         };
         setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
     }
@@ -1060,6 +1060,61 @@ const TextEditor: React.FC<{
     );
 }
 
+const ItemColorEditor: React.FC<{
+    item: DraggableItem;
+    part: LegoPart;
+    onUpdate: (updates: Partial<DraggableItem>) => void;
+    onClose: () => void;
+}> = ({ item, part, onUpdate, onClose }) => {
+    return (
+        <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800">CHỌN MÀU: {part.name}</h3>
+                <button onClick={onClose} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
+                    Xong
+                </button>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+                 {/* Default Option */}
+                 <button
+                    onClick={() => onUpdate({ selectedColor: undefined })}
+                    className={`aspect-square rounded-full border-2 flex items-center justify-center transition-all ${!item.selectedColor ? 'border-luvin-pink scale-110' : 'border-gray-200'}`}
+                    title="Mặc định"
+                >
+                    <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                         <span className="text-[10px] font-bold text-gray-500">Gốc</span>
+                    </div>
+                </button>
+
+                {part.colors?.map((color, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => onUpdate({ selectedColor: color })}
+                        className={`aspect-square rounded-full border-2 transition-all relative ${item.selectedColor?.hex === color.hex ? 'border-luvin-pink scale-110' : 'border-gray-200'}`}
+                        title={`${color.name} (+${formatCurrency(color.price)})`}
+                    >
+                        <div 
+                            className="w-full h-full rounded-full overflow-hidden" 
+                            style={{ backgroundColor: color.hex }}
+                        >
+                             {color.imageUrl && <img src={color.imageUrl} className="w-full h-full object-contain opacity-80" alt={color.name} />}
+                        </div>
+                        {item.selectedColor?.hex === color.hex && (
+                            <div className="absolute -bottom-1 -right-1 bg-luvin-pink text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">✓</div>
+                        )}
+                    </button>
+                ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                <p>Màu đang chọn: <span className="font-bold">{item.selectedColor ? item.selectedColor.name : 'Mặc định'}</span></p>
+                {item.selectedColor && item.selectedColor.price > 0 && (
+                    <p className="text-luvin-pink font-bold">+{formatCurrency(item.selectedColor.price)}</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const BuilderPage: React.FC<{ 
     config: FrameConfig; 
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; 
@@ -1126,6 +1181,21 @@ const BuilderPage: React.FC<{
     }
     return null;
   }, [selectedItemId, config.texts]);
+
+  const selectedDraggableItem = useMemo(() => {
+        if (selectedItemId?.startsWith('item-')) {
+            const id = parseInt(selectedItemId.split('-')[1], 10);
+            return config.draggableItems.find(i => i.id === id) || null;
+        }
+        return null;
+    }, [selectedItemId, config.draggableItems]);
+
+    const selectedPartForColor = useMemo(() => {
+        if (selectedDraggableItem && selectedDraggableItem.type !== 'charm') {
+            return allParts[selectedDraggableItem.partId];
+        }
+        return null;
+    }, [selectedDraggableItem, allParts]);
 
   const handleItemTransform = useCallback((id: string, newTransform: Transform) => {
       const [type, ...rest] = id.split('-');
@@ -1337,6 +1407,18 @@ const BuilderPage: React.FC<{
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
                       />
+                  ) : selectedDraggableItem && selectedPartForColor && selectedPartForColor.colors && selectedPartForColor.colors.length > 0 ? (
+                      <ItemColorEditor
+                          item={selectedDraggableItem}
+                          part={selectedPartForColor}
+                          onUpdate={(updates) => {
+                              setConfig(prev => ({
+                                  ...prev,
+                                  draggableItems: prev.draggableItems.map(i => i.id === selectedDraggableItem.id ? { ...i, ...updates } : i)
+                              }));
+                          }}
+                          onClose={() => setSelectedItemId(null)}
+                      />
                   ) : (
                       <>
                           <div className="min-h-[400px]">
@@ -1346,7 +1428,7 @@ const BuilderPage: React.FC<{
                   )}
               </div>
               
-              {!selectedText && (
+              {!selectedText && !(selectedDraggableItem && selectedPartForColor?.colors?.length) && (
                 <>
                   <div className="mt-4 text-right font-bold text-lg text-gray-800">
                     Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>

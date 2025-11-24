@@ -90,6 +90,7 @@ export interface DraggableItem {
     rotation: number; 
     scale: number; 
     isFlipped?: boolean; // Added for flip functionality
+    selectedColor?: OutfitColor; // Added for accessory color variants
 }
 
 export interface BackgroundConfig {
