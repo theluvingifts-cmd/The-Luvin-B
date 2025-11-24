@@ -50,11 +50,11 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
         }
     });
 
-    const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair?.price || 0) + (char.selectedHairColor?.price || 0), 0);
-    if(hairPrice > 0) { breakdown.push({ label: 'Tóc & Màu', value: hairPrice }); total += hairPrice; }
+    const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair?.price || 0), 0);
+    if(hairPrice > 0) { breakdown.push({ label: 'Tóc', value: hairPrice }); total += hairPrice; }
 
-    const hatPrice = config.characters.reduce((acc, char) => acc + (char.hat?.price || 0) + (char.selectedHatColor?.price || 0), 0);
-    if(hatPrice > 0) { breakdown.push({ label: 'Mũ & Màu', value: hatPrice }); total += hatPrice; }
+    const hatPrice = config.characters.reduce((acc, char) => acc + (char.hat?.price || 0), 0);
+    if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
 
     const shirtPrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0) + (char.selectedShirtColor?.price || 0), 0);
     if(shirtPrice > 0) { total += shirtPrice; breakdown.push({ label: 'Áo & Màu', value: shirtPrice }); }
@@ -421,7 +421,6 @@ const Step3Characters: React.FC<{
             scale: 1,
             selectedShirtColor: legoParts.shirt[0]?.colors?.[0],
             selectedPantsColor: legoParts.pants[0]?.colors?.[0],
-            selectedHairColor: legoParts.hair[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -451,18 +450,14 @@ const Step3Characters: React.FC<{
 
                     if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
-                    if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
-                    if (part.type === 'hat') newChar.selectedHatColor = partColors?.[0];
                     
                     if (part.type === 'hair') {
                         newChar.hat = undefined;
-                        newChar.selectedHatColor = undefined;
                         newChar.previousHair = undefined;
                     }
                     if (part.type === 'hat') {
                         newChar.previousHair = c.hair;
                         newChar.hair = undefined;
-                        newChar.selectedHairColor = undefined;
                     }
                     return newChar;
                 }
@@ -478,12 +473,8 @@ const Step3Characters: React.FC<{
         characters: prev.characters.map(c => {
             if (c.id === activeCharId) {
                 const updatedChar = { ...c, [partType]: undefined };
-                if (partType === 'hair') updatedChar.selectedHairColor = undefined;
-                if (partType === 'hat') updatedChar.selectedHatColor = undefined;
-
                 if (partType === 'hat' && c.previousHair) {
                     updatedChar.hair = c.previousHair;
-                    updatedChar.selectedHairColor = c.previousHair.colors?.[0];
                     updatedChar.previousHair = undefined;
                 }
                 return updatedChar;
@@ -512,18 +503,9 @@ const Step3Characters: React.FC<{
       setPrintDialogCharId(null);
     };
 
-    const handleColorSelect = (partType: 'shirt' | 'pants' | 'hair' | 'hat', color: OutfitColor) => {
+    const handleColorSelect = (partType: 'shirt' | 'pants', color: OutfitColor) => {
         if (!activeCharId) return;
-        let key: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor' | 'selectedHatColor';
-        
-        switch(partType) {
-            case 'shirt': key = 'selectedShirtColor'; break;
-            case 'pants': key = 'selectedPantsColor'; break;
-            case 'hair': key = 'selectedHairColor'; break;
-            case 'hat': key = 'selectedHatColor'; break;
-            default: return;
-        }
-
+        const key = partType === 'shirt' ? 'selectedShirtColor' : 'selectedPantsColor';
         setConfig(prev => ({
             ...prev,
             characters: prev.characters.map(c => c.id === activeCharId ? { ...c, [key]: color } : c)
@@ -547,16 +529,9 @@ const Step3Characters: React.FC<{
 
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
-        
-        const getColorsForPart = (part: LegoPart | undefined) => {
-            if (part?.colors && part.colors.length > 0) return part.colors;
-            return null;
-        };
-
         if (activePartType === 'shirt') {
             const part = activeCharacter.shirt;
-            const colors = getColorsForPart(part);
-            if (colors) return colors;
+            if (part?.colors && part.colors.length > 0) return part.colors;
             if (part) {
                 const nameLower = part.name.toLowerCase();
                 if (part.id === 'shirt1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
@@ -566,8 +541,7 @@ const Step3Characters: React.FC<{
         }
         if (activePartType === 'pants') {
             const part = activeCharacter.pants;
-            const colors = getColorsForPart(part);
-            if (colors) return colors;
+            if (part?.colors && part.colors.length > 0) return part.colors;
             if (part) {
                 const nameLower = part.name.toLowerCase();
                 if (part.id === 'pants1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
@@ -575,9 +549,6 @@ const Step3Characters: React.FC<{
                 }
             }
         }
-        if (activePartType === 'hair') return getColorsForPart(activeCharacter.hair);
-        if (activePartType === 'hat') return getColorsForPart(activeCharacter.hat);
-
         return null;
     }, [activeCharacter, activePartType]);
 
@@ -656,33 +627,35 @@ const Step3Characters: React.FC<{
                         )}
                     </div>
 
-                    {/* Color Selection UI - Generic for shirt, pants, hair, hat */}
-                    {activePartColors && (
+                    {(activePartType === 'shirt' && activePartColors) && (
                       <div className="mt-4 pt-4 border-t">
-                        <label className="text-sm font-bold text-gray-600 block mb-2">
-                            Chỉnh màu {activePartType === 'shirt' ? 'áo' : activePartType === 'pants' ? 'quần' : activePartType === 'hair' ? 'tóc' : 'mũ'}
-                        </label>
+                        <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu áo</label>
                          <div className="flex flex-wrap gap-2">
-                           {activePartColors.map((color, idx) => {
-                               let isSelected = false;
-                               if (activePartType === 'shirt') isSelected = activeCharacter.selectedShirtColor?.imageUrl === color.imageUrl;
-                               else if (activePartType === 'pants') isSelected = activeCharacter.selectedPantsColor?.imageUrl === color.imageUrl;
-                               else if (activePartType === 'hair') isSelected = activeCharacter.selectedHairColor?.imageUrl === color.imageUrl;
-                               else if (activePartType === 'hat') isSelected = activeCharacter.selectedHatColor?.imageUrl === color.imageUrl;
-
-                               return (
-                                 <button
-                                   key={`${color.name}-${idx}`}
-                                   onClick={() => handleColorSelect(activePartType as any, color)}
-                                   className={`w-8 h-8 rounded-full border-2 transition-all relative ${isSelected ? 'border-luvin-pink scale-110' : 'border-white'}`}
-                                   style={{ backgroundColor: color.hex }}
-                                   title={`${color.name} (${formatCurrency(color.price)})`}
-                                 >
-                                     {color.imageUrl && <img src={color.imageUrl} className="w-full h-full object-contain opacity-0" alt="" />} 
-                                     {/* Hidden img just to maintain aspect ratio if needed, really background color is enough */}
-                                 </button>
-                               );
-                           })}
+                           {activePartColors.map(color => (
+                             <button
+                               key={color.name}
+                               onClick={() => handleColorSelect('shirt', color)}
+                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedShirtColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
+                               style={{ backgroundColor: color.hex }}
+                               title={`${color.name} (${formatCurrency(color.price)})`}
+                             />
+                           ))}
+                         </div>
+                      </div>
+                    )}
+                    {(activePartType === 'pants' && activePartColors) && (
+                      <div className="mt-4 pt-4 border-t">
+                        <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu quần</label>
+                         <div className="flex flex-wrap gap-2">
+                           {activePartColors.map(color => (
+                             <button
+                               key={color.name}
+                               onClick={() => handleColorSelect('pants', color)}
+                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedPantsColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
+                               style={{ backgroundColor: color.hex }}
+                               title={`${color.name} (${formatCurrency(color.price)})`}
+                             />
+                           ))}
                          </div>
                       </div>
                     )}
