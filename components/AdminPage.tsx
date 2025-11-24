@@ -275,7 +275,8 @@ const ProductForm: React.FC<{
         onSave({ ...formData, colors: colors });
     };
 
-    const canHaveColors = ['shirt', 'pants', 'accessory', 'pet'].includes(formData.type);
+    // Allow colors for almost all types now including hair and hat
+    const canHaveColors = ['shirt', 'pants', 'accessory', 'pet', 'hair', 'hat'].includes(formData.type);
 
     return (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
@@ -1320,13 +1321,27 @@ const AdminPage: React.FC = () => {
 
         if (sortMode === 'urgent') {
             result.sort((a, b) => {
-                if (a.isUrgent && !b.isUrgent) return -1;
-                if (!a.isUrgent && b.isUrgent) return 1;
-                if (a.adminDeadline && !b.adminDeadline) return -1;
-                if (!a.adminDeadline && b.adminDeadline) return 1;
-                return 0;
+                // 1. Absolute Priority: isUrgent flag
+                if (a.isUrgent !== b.isUrgent) return a.isUrgent ? -1 : 1;
+
+                // 2. Time Sensitivity: Compare effective deadlines
+                // Effective deadline = Admin Deadline (Internal) -> Customer Requested Date -> Far Future
+                const getTargetTime = (o: Order) => {
+                    if (o.adminDeadline) return new Date(o.adminDeadline).getTime();
+                    if (o.delivery.date) return new Date(o.delivery.date).getTime();
+                    return 9999999999999; // No deadline = last
+                };
+
+                const timeA = getTargetTime(a);
+                const timeB = getTargetTime(b);
+
+                if (timeA !== timeB) return timeA - timeB; // Earliest deadline first
+
+                // 3. Fallback: Creation date (Oldest first for FIFO within same priority)
+                return (a.createdAt || 0) - (b.createdAt || 0);
             });
         } else {
+            // Default: Newest created first
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
