@@ -532,7 +532,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                               src={imageUrl} 
                               alt={name} 
                               className="pointer-events-none"
-                              style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain' }}
+                              style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }}
                             />
                         </Transformable>
                     );
