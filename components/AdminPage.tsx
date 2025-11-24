@@ -77,7 +77,7 @@ const StatusDropdown: React.FC<{
             </button>
 
             {isOpen && (
-                <div className="absolute bottom-full mb-2 right-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                <div className="absolute bottom-full mb-2 left-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
                     <div className="p-1">
                         {STATUS_CONFIG.map((status) => {
                             // Hide 'Delete' from list if not admin or for standard flow
@@ -795,6 +795,12 @@ const AdminPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (role === 'warehouse' && activeTab === 'dashboard') {
+            setActiveTab('orders');
+        }
+    }, [role, activeTab]);
+
+    useEffect(() => {
         if (selectedOrder) {
             setNoteInput(selectedOrder.internalNotes || '');
             setAdminDeadlineInput(selectedOrder.adminDeadline || '');
@@ -1374,9 +1380,11 @@ const AdminPage: React.FC = () => {
                     <div className="flex items-center gap-8">
                         <div className="text-xl font-bold tracking-tight">The Luvin <span className="font-normal text-gray-400 text-base">| Quản lý</span></div>
                         <nav className="hidden md:flex gap-6">
-                             <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-                                Dashboard
-                             </button>
+                             {role === 'admin' && (
+                                <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+                                    Dashboard
+                                </button>
+                             )}
                             <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
                                 Đơn hàng
                             </button>
@@ -1402,7 +1410,7 @@ const AdminPage: React.FC = () => {
             <main className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6">
                 
                 {/* --- DASHBOARD TAB --- */}
-                {activeTab === 'dashboard' && (
+                {activeTab === 'dashboard' && role === 'admin' && (
                     <div className="space-y-8 animate-fade-in">
                         <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm gap-4">
                             <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">Tổng quan {analytics.dateLabel}</h2>
@@ -1543,7 +1551,7 @@ const AdminPage: React.FC = () => {
 
                         <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                             {selectedOrder ? (
-                                <div className="flex flex-col h-full">
+                                <div className="flex flex-col h-full relative">
                                     <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-white">
                                         <div className="flex items-start gap-2">
                                             <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-500 mr-2">←</button>
@@ -1734,31 +1742,35 @@ const AdminPage: React.FC = () => {
                                                 ))}
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {/* Actions */}
-                                        {!isEditingOrder && (
-                                            <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
-                                                {/* Status Actions */}
-                                                <StatusDropdown 
-                                                    currentStatus={selectedOrder.status} 
-                                                    onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })} 
-                                                    isAdmin={role === 'admin'}
-                                                    onDelete={handleDeleteOrder}
-                                                />
-                                                {/* Warehouse Actions */}
-                                                {selectedOrder.status === 'Đang đóng hàng' && !selectedOrder.packedBy && (
-                                                    <button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm transition-colors">
-                                                        ✅ Xác nhận Đã đóng gói
-                                                    </button>
-                                                )}
+                                    {/* Actions - Sticky Footer to avoid clipping */}
+                                    {!isEditingOrder && (
+                                        <div className="p-4 border-t border-gray-100 bg-white z-20 sticky bottom-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                                            <div className="flex flex-wrap gap-3 items-center justify-between">
+                                                <div className="flex gap-3 items-center">
+                                                    <StatusDropdown 
+                                                        currentStatus={selectedOrder.status} 
+                                                        onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })} 
+                                                        isAdmin={role === 'admin'}
+                                                        onDelete={handleDeleteOrder}
+                                                    />
+                                                    {/* Warehouse Actions - Expanded Visibility */}
+                                                    {['Đã xác nhận', 'Ưu tiên xuất đơn', 'Đang đóng hàng'].includes(selectedOrder.status) && !selectedOrder.packedBy && (
+                                                        <button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm transition-colors">
+                                                            ✅ Xác nhận Đã đóng gói
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                
                                                 {selectedOrder.packedBy && (
                                                     <div className="px-3 py-2 bg-gray-100 rounded-lg text-xs text-gray-600">
                                                         Đóng gói bởi: <span className="font-bold">{selectedOrder.packedBy}</span> lúc {formatDateTime(new Date(selectedOrder.packedAt || '').getTime())}
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="flex-grow flex items-center justify-center text-gray-400 text-sm">Chọn một đơn hàng để xem chi tiết</div>
