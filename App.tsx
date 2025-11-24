@@ -736,7 +736,11 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   }, [isMenuOpen]);
   
   const navItems: { label: string; page: Page }[] = [
-    { label: 'Trang chủ', page: 'home' }, { label: 'Thiết kế', page: 'builder' }, { label: 'Bộ sưu tập', page: 'collection' }, { label: 'Tra cứu', page: 'order-lookup' },
+    { label: 'Trang chủ', page: 'home' }, 
+    { label: 'Thiết kế', page: 'builder' }, 
+    { label: 'Bộ sưu tập', page: 'collection' }, 
+    { label: 'Tra cứu', page: 'order-lookup' },
+    { label: 'Về chúng tôi', page: 'about' }, // Added About Us
   ];
   
   const handleNav = (page: Page) => { navigateTo(page); setIsMenuOpen(false); }
@@ -829,18 +833,30 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
             </div>
         </div>
         <div className="container mx-auto px-6 py-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2">
-                    <h3 className="font-bold text-base mb-3">THE LUVIN - KHUNG ẢNH LEGO THIẾT KẾ</h3>
-                    <p className="text-gray-600">Địa chỉ: Khu 6, Thư Lâm, Hà Nội</p>
-                    <p className="text-gray-600">Hotline: 0964 393 115</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="lg:col-span-1">
+                    <h3 className="font-bold text-base mb-3 text-luvin-pink font-heading text-xl">The Luvin</h3>
+                    <p className="text-gray-600 text-xs leading-relaxed">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu của riêng bạn. Quà tặng độc đáo, tinh tế và đầy ý nghĩa.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold text-base mb-3">LIÊN HỆ</h3>
+                    <p className="text-gray-600 mb-1">Địa chỉ: Khu 6, Thư Lâm, Hà Nội</p>
+                    <p className="text-gray-600 mb-1">Hotline: 0964 393 115</p>
                     <p className="text-gray-600">Email: theluvin.gifts@gmail.com</p>
                 </div>
                 <div>
-                    <h3 className="font-bold text-base mb-3">MORE ABOUT US</h3>
+                    <h3 className="font-bold text-base mb-3">CHÍNH SÁCH & HỖ TRỢ</h3>
+                    <ul className="space-y-2">
+                        <li><button onClick={() => navigateTo('order-lookup')} className="text-gray-600 hover:text-luvin-pink transition-colors">Tra cứu đơn hàng</button></li>
+                        <li><button onClick={() => navigateTo('warranty')} className="text-gray-600 hover:text-luvin-pink transition-colors">Chính sách bảo hành</button></li>
+                        <li><button onClick={() => navigateTo('about')} className="text-gray-600 hover:text-luvin-pink transition-colors">Về chúng tôi</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 className="font-bold text-base mb-3">KẾT NỐI VỚI CHÚNG TÔI</h3>
                     <div className="flex space-x-4">
-                        <a href="https://www.instagram.com/the_luvin/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-300"><InstagramIcon /></a>
-                        <a href="https://www.facebook.com/theluvingifts" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-300"><FacebookIcon /></a>
+                        <a href="https://www.instagram.com/the_luvin/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-luvin-pink hover:text-white transition-all"><InstagramIcon /></a>
+                        <a href="https://www.facebook.com/theluvingifts" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-blue-600 hover:text-white transition-all"><FacebookIcon /></a>
                     </div>
                 </div>
             </div>
@@ -856,6 +872,109 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
     </footer>
   );
 };
+
+// --- NEW PAGES ---
+
+const AboutPage: React.FC = () => {
+    return (
+        <div className="bg-white font-body text-gray-800">
+            <div className="relative py-20 bg-luvin-cream">
+                <div className="container mx-auto px-6 text-center">
+                    <h1 className="text-4xl md:text-5xl font-heading text-luvin-pink mb-4">Câu chuyện của The Luvin</h1>
+                    <p className="text-lg max-w-2xl mx-auto text-gray-600 italic">"Không chỉ là quà tặng, đó là những kỷ niệm được đóng khung."</p>
+                </div>
+            </div>
+            
+            <div className="container mx-auto px-6 py-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-16">
+                    <div>
+                        <h2 className="text-2xl font-bold mb-4 text-gray-900">Khởi nguồn</h2>
+                        <p className="text-gray-600 leading-relaxed mb-4">
+                            The Luvin ra đời từ tình yêu với những mảnh ghép LEGO và mong muốn tạo ra những món quà cá nhân hóa thực sự ý nghĩa. Chúng tôi tin rằng mỗi mối quan hệ, mỗi kỷ niệm đều xứng đáng được lưu giữ một cách đặc biệt nhất.
+                        </p>
+                        <p className="text-gray-600 leading-relaxed">
+                            Thay vì những món quà công nghiệp hàng loạt, The Luvin cho phép bạn tự tay thiết kế từng chi tiết nhỏ: từ màu tóc, trang phục cho đến những phụ kiện nhỏ xinh đại diện cho sở thích của người thương.
+                        </p>
+                    </div>
+                    <div className="rounded-lg overflow-hidden shadow-lg bg-gray-100 aspect-video flex items-center justify-center">
+                        <span className="text-gray-400 font-script text-2xl">Hình ảnh workshop / team</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                    <div className="p-6 border border-gray-100 rounded-xl bg-gray-50 hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 bg-luvin-pink text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl">✨</div>
+                        <h3 className="font-bold text-lg mb-2">Cá nhân hóa 100%</h3>
+                        <p className="text-sm text-gray-600">Bạn là người thiết kế chính. Từng nhân vật, từng dòng chữ đều mang dấu ấn riêng của bạn.</p>
+                    </div>
+                    <div className="p-6 border border-gray-100 rounded-xl bg-gray-50 hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 bg-luvin-pink text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl">💎</div>
+                        <h3 className="font-bold text-lg mb-2">Chất lượng cao cấp</h3>
+                        <p className="text-sm text-gray-600">Sử dụng mảnh ghép LEGO chính hãng/cao cấp và khung ảnh composite bền đẹp theo thời gian.</p>
+                    </div>
+                    <div className="p-6 border border-gray-100 rounded-xl bg-gray-50 hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 bg-luvin-pink text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl">💌</div>
+                        <h3 className="font-bold text-lg mb-2">Gói ghém tận tâm</h3>
+                        <p className="text-sm text-gray-600">Mỗi đơn hàng đều được đóng gói cẩn thận như một món quà gửi đến chính người thân của chúng tôi.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const WarrantyPage: React.FC = () => {
+    return (
+        <div className="bg-gray-50 font-body text-gray-800 py-12 min-h-screen">
+            <div className="container mx-auto px-6 max-w-3xl">
+                <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">Chính sách Bảo hành & Đổi trả</h1>
+                
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-bold text-luvin-pink mb-4 flex items-center gap-2">
+                            <span>🛡️</span> Chính sách đổi trả
+                        </h2>
+                        <div className="space-y-3 text-sm text-gray-700">
+                            <p>The Luvin hỗ trợ đổi trả/hoàn tiền trong vòng <strong>03 ngày</strong> kể từ khi nhận hàng đối với các trường hợp sau:</p>
+                            <ul className="list-disc list-inside pl-2 space-y-1">
+                                <li>Sản phẩm bị vỡ, hỏng hóc nghiêm trọng do vận chuyển.</li>
+                                <li>Sản phẩm sai mẫu mã, sai thiết kế so với đơn đặt hàng đã chốt (sai tóc, sai áo, sai chữ...).</li>
+                                <li>Thiếu các bộ phận/chi tiết quan trọng.</li>
+                            </ul>
+                            <p className="italic mt-2 text-gray-500 bg-gray-50 p-2 rounded">Lưu ý: Vui lòng quay video mở hộp (unbox) để làm bằng chứng đối chiếu khi khiếu nại.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-bold text-luvin-pink mb-4 flex items-center gap-2">
+                            <span>🔧</span> Chính sách bảo hành
+                        </h2>
+                        <div className="space-y-3 text-sm text-gray-700">
+                            <p>Chúng tôi bảo hành sản phẩm trong vòng <strong>30 ngày</strong> với các lỗi:</p>
+                            <ul className="list-disc list-inside pl-2 space-y-1">
+                                <li>Keo dán bị bong tróc tự nhiên.</li>
+                                <li>Khung ảnh bị nứt/cong vênh do lỗi nhà sản xuất.</li>
+                            </ul>
+                            <p>Không bảo hành với các lỗi do người sử dụng gây ra như: làm rơi vỡ, để sản phẩm ở nơi ẩm ướt/nhiệt độ cao, tự ý tháo lắp làm hỏng chi tiết.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-bold text-luvin-pink mb-4 flex items-center gap-2">
+                            <span>🚚</span> Quy trình xử lý
+                        </h2>
+                        <ol className="list-decimal list-inside space-y-3 text-sm text-gray-700">
+                            <li>Liên hệ ngay với The Luvin qua Fanpage hoặc Hotline <strong>0964 393 115</strong> khi gặp sự cố.</li>
+                            <li>Gửi hình ảnh/video tình trạng sản phẩm.</li>
+                            <li>Chúng tôi sẽ xác nhận và gửi phương án xử lý (Gửi bù linh kiện / Đổi mới / Hoàn tiền) trong vòng 24h.</li>
+                            <li>Chi phí vận chuyển đổi trả (nếu do lỗi của The Luvin) sẽ được chúng tôi chi trả 100%.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 const HomePage: React.FC<{ 
     navigateTo: (page: Page) => void;
@@ -2346,6 +2465,8 @@ const App: React.FC = () => {
             {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'about' && <AboutPage />}
+            {currentPage === 'warranty' && <WarrantyPage />}
             {currentPage === 'admin' && <AdminPage />}
         </main>
 
