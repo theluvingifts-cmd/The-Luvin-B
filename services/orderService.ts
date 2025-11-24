@@ -107,14 +107,15 @@ export const getAllOrders = async (): Promise<Order[]> => {
 };
 
 // 4. Hàm cập nhật thông tin đơn hàng
+// UPDATED: Returns object { success, error } instead of boolean
 export const updateOrder = async (orderId: string, updates: Partial<Order>) => {
     try {
         const orderRef = doc(db, "orders", orderId);
         await updateDoc(orderRef, updates);
-        return true;
-    } catch (error) {
+        return { success: true };
+    } catch (error: any) {
         console.error("Lỗi cập nhật đơn hàng:", error);
-        return false;
+        return { success: false, error };
     }
 };
 
