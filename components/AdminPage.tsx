@@ -192,7 +192,6 @@ const ProductForm: React.FC<{
     };
 
     const handleSaveColor = () => {
-        // FIX: Removed strict requirement for imageUrl. Only name is mandatory.
         if (!newColor.name) {
             alert("Vui lòng nhập tên màu.");
             return;
@@ -271,8 +270,22 @@ const ProductForm: React.FC<{
     };
 
     const handleSave = () => {
-        // Include colors in the saved data
-        onSave({ ...formData, colors: colors });
+        // FIX: Sanitize data before saving to Firestore
+        // Firestore throws error on 'undefined' values. We must use 'null'.
+        const sanitizedColors = colors.map(c => ({
+            ...c,
+            stock: c.stock === undefined ? null : c.stock,
+            imageUrl: c.imageUrl || "", 
+        }));
+
+        const sanitizedData = {
+            ...formData,
+            stock: formData.stock === undefined ? null : formData.stock,
+            colors: sanitizedColors
+        };
+
+        // @ts-ignore
+        onSave(sanitizedData);
     };
 
     // Allow colors for almost all types now including hair and hat
