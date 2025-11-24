@@ -64,7 +64,7 @@ const StatusDropdown: React.FC<{
     currentStatus: string; 
     onStatusChange: (status: string) => void;
     onDelete?: () => void;
-    canCancel: boolean; // Changed from isAdmin to specific permission
+    canCancel: boolean; 
     canDelete: boolean;
 }> = ({ currentStatus, onStatusChange, onDelete, canCancel, canDelete }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -97,7 +97,7 @@ const StatusDropdown: React.FC<{
                 <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fade-in">
                     <div className="p-1 max-h-80 overflow-y-auto">
                         {STATUS_CONFIG.map((status) => {
-                            // Warehouse restrictions
+                            // Filter out restricted statuses/actions based on permissions
                             if (status.label === 'Huỷ đơn' && !canCancel) return null;
                             if (status.label === 'Xoá đơn' && !canDelete) return null;
 
@@ -147,7 +147,6 @@ const ProductForm: React.FC<{
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name === 'stock') {
-            // If value is empty string, set stock to undefined (unlimited)
             const stockVal = value === '' ? undefined : Number(value);
             setFormData(prev => ({ ...prev, stock: stockVal }));
         } else {
@@ -194,24 +193,20 @@ const ProductForm: React.FC<{
     };
 
     const handleSaveColor = () => {
-        // FIX: Removed strict requirement for imageUrl. Only name is mandatory.
         if (!newColor.name) {
             alert("Vui lòng nhập tên màu.");
             return;
         }
 
         if (editingColorIndex !== null) {
-            // Update existing color
             const updatedColors = [...colors];
             updatedColors[editingColorIndex] = newColor;
             setColors(updatedColors);
             setEditingColorIndex(null);
         } else {
-            // Add new color
             setColors([...colors, newColor]);
         }
         
-        // Reset inputs
         setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
     };
 
@@ -235,11 +230,9 @@ const ProductForm: React.FC<{
         }
     };
 
-    // Drag and Drop Handlers
     const handleColorDragStart = (e: React.DragEvent, index: number) => {
         setDraggedColorIndex(index);
         e.dataTransfer.effectAllowed = "move";
-        // Required for Firefox
         e.dataTransfer.setData("text/plain", index.toString());
     };
 
@@ -258,7 +251,6 @@ const ProductForm: React.FC<{
 
         setColors(updatedColors);
         
-        // Adjust editing index if needed
         if (editingColorIndex === draggedColorIndex) {
             setEditingColorIndex(index);
         } else if (editingColorIndex !== null) {
@@ -273,16 +265,11 @@ const ProductForm: React.FC<{
     };
 
     const handleSave = () => {
-        // Include colors in the saved data
-        // FIX: Firebase throws error on 'undefined' values. 
-        // JSON.parse(JSON.stringify(...)) removes keys with undefined values.
-        // This effectively treats undefined as "field missing", which matches our optional stock logic.
         const dataToSave = { ...formData, colors: colors };
         const cleanData = JSON.parse(JSON.stringify(dataToSave));
         onSave(cleanData);
     };
 
-    // Allow colors for almost all types now including hair and hat
     const canHaveColors = ['shirt', 'pants', 'accessory', 'pet', 'hair', 'hat'].includes(formData.type);
 
     return (
@@ -306,7 +293,6 @@ const ProductForm: React.FC<{
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
                         </div>
                         
-                        {/* Main Image Upload */}
                         <div className="col-span-2">
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh mặc định</label>
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
@@ -339,12 +325,10 @@ const ProductForm: React.FC<{
                         </div>
                     </div>
 
-                    {/* --- COLOR VARIANTS SECTION --- */}
                     {canHaveColors && (
                         <div className="border-t border-gray-200 pt-4 mt-4">
                             <h4 className="font-bold text-sm text-gray-800 mb-3">Biến thể màu sắc (Kéo thả để sắp xếp)</h4>
                             
-                            {/* List of existing colors */}
                             <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                                 {colors.map((color, idx) => (
                                     <div 
@@ -392,7 +376,6 @@ const ProductForm: React.FC<{
                                 {colors.length === 0 && <p className="text-xs text-gray-400 italic">Chưa có màu nào được thêm.</p>}
                             </div>
 
-                            {/* Add/Edit color inputs */}
                             <div className={`p-3 rounded-lg border transition-colors ${editingColorIndex !== null ? 'bg-yellow-50 border-yellow-300' : 'bg-blue-50 border-blue-100'}`}>
                                 <div className="flex justify-between items-center mb-2">
                                     <p className={`text-xs font-bold ${editingColorIndex !== null ? 'text-yellow-800' : 'text-blue-800'}`}>
@@ -761,6 +744,7 @@ const AdminPage: React.FC = () => {
     const [editForm, setEditForm] = useState<Order | null>(null);
     const [addingAccessoryToItemIndex, setAddingAccessoryToItemIndex] = useState<number | null>(null);
 
+    // --- ROLE & PERMISSIONS LOGIC ---
     const role = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
         const ADMIN_EMAILS = ['jinbduong@gmail.com']; 
@@ -770,12 +754,17 @@ const AdminPage: React.FC = () => {
         return 'warehouse';
     }, [currentUser]);
 
-    // --- PERMISSION FLAGS ---
-    const canViewDashboard = role === 'admin';
-    const canManageProducts = role === 'admin';
-    const canManageConfig = role === 'admin';
-    const canCancelOrder = role === 'admin';
-    const canDeleteOrder = role === 'admin';
+    const isAdmin = role === 'admin';
+    const isWarehouse = role === 'warehouse';
+
+    // Permission Flags
+    const canViewDashboard = isAdmin;
+    const canManageProducts = isAdmin;
+    const canManageConfig = isAdmin;
+    const canEditOrder = true; // Both roles can edit order details
+    const canCancelOrder = isAdmin; // Only admin can set "Huỷ đơn"
+    const canDeleteOrder = isAdmin; // Only admin can Delete
+    const canPackOrder = isWarehouse; // Only warehouse can see "Confirm Packed"
 
     const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
@@ -814,7 +803,7 @@ const AdminPage: React.FC = () => {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setIsAuthChecking(false); // Auth check done
+            setIsAuthChecking(false); 
             if (user) {
                 setCurrentUser(user);
                 fetchOrders();
@@ -830,8 +819,9 @@ const AdminPage: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
+    // Force 'orders' tab for warehouse
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config')) {
+        if (role === 'warehouse' && activeTab !== 'orders') {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -988,7 +978,7 @@ const AdminPage: React.FC = () => {
     };
 
     const startEditingOrder = () => {
-        if (!selectedOrder) return;
+        if (!selectedOrder || !canEditOrder) return;
         setEditForm(JSON.parse(JSON.stringify(selectedOrder))); 
         setIsEditingOrder(true);
     };
@@ -1000,7 +990,7 @@ const AdminPage: React.FC = () => {
     };
 
     const saveOrderChanges = async () => {
-        if (!editForm || !selectedOrder) return;
+        if (!editForm || !selectedOrder || !canEditOrder) return;
         
         setLoading(true);
 
@@ -1192,7 +1182,7 @@ const AdminPage: React.FC = () => {
     const formatDateTime = (timestamp: number) => new Date(timestamp).toLocaleString('vi-VN');
 
     const handleMarkAsPacked = async () => {
-        if (!selectedOrder || !currentUser) return;
+        if (!selectedOrder || !currentUser || !canPackOrder) return;
         if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói đơn này?`)) {
             const now = new Date().toISOString();
             await handleUpdate(selectedOrder.id, { 
@@ -1476,7 +1466,7 @@ const AdminPage: React.FC = () => {
                         </nav>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-xs text-gray-500 font-medium hidden sm:block">{currentUser.email}</span>
+                        <span className="text-xs text-gray-500 font-medium hidden sm:block">{currentUser.email} {isWarehouse ? '(Kho)' : '(Admin)'}</span>
                         <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors">Đăng xuất</button>
                     </div>
                 </div>
@@ -1653,8 +1643,8 @@ const AdminPage: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
-                                             {/* BUTTON XÁC NHẬN ĐÓNG GÓI */}
-                                             {(selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn') && (
+                                             {/* BUTTON XÁC NHẬN ĐÓNG GÓI - ONLY WAREHOUSE */}
+                                             {canPackOrder && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn') && (
                                                 <button 
                                                     onClick={handleMarkAsPacked}
                                                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"
