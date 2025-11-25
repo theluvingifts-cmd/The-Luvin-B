@@ -56,8 +56,11 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             adminDeadline: ""
         };
 
+        // SANITIZE: Firestore throws error on 'undefined'. We remove undefined keys.
+        const sanitizedOrder = JSON.parse(JSON.stringify(finalOrder));
+
         // 1. Lưu đơn hàng vào Firestore
-        await setDoc(doc(db, "orders", order.id), finalOrder);
+        await setDoc(doc(db, "orders", order.id), sanitizedOrder);
 
         // 2. Trừ tồn kho
         const partsUsage = countPartsInOrder(finalOrder.items);
@@ -110,7 +113,9 @@ export const getAllOrders = async (): Promise<Order[]> => {
 export const updateOrder = async (orderId: string, updates: Partial<Order>) => {
     try {
         const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, updates);
+        // Sanitize updates as well
+        const sanitizedUpdates = JSON.parse(JSON.stringify(updates));
+        await updateDoc(orderRef, sanitizedUpdates);
         return true;
     } catch (error) {
         console.error("Lỗi cập nhật đơn hàng:", error);

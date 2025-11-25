@@ -1093,7 +1093,7 @@ const HomePage: React.FC<{
           <div className="hidden md:block bg-cover bg-center" style={heroStyle}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
              <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
-             <p className="font-script text-3xl my-4 text-gray-600">self love, self care</p>
+             <p className="font-script text-3xl my-4 text-gray-600">Unique for every momment</p>
              <button 
                onClick={() => navigateTo('builder')}
                className="mt-4 border-2 border-luvin-pink text-luvin-pink font-bold py-2 px-8 rounded-full hover:bg-luvin-pink hover:text-gray-800 transition-colors duration-300 font-body tracking-wider"
