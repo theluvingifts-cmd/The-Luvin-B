@@ -811,6 +811,7 @@ const AdminPage: React.FC = () => {
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [orderSearch, setOrderSearch] = useState(''); // NEW SEARCH STATE
 
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
     const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -1363,6 +1364,16 @@ const AdminPage: React.FC = () => {
     
     const sortedOrders = useMemo(() => {
         let result = [...orders];
+
+        // 1. Search Filter
+        if (orderSearch.trim()) {
+            const searchLower = orderSearch.trim().toLowerCase();
+            result = result.filter(o => 
+                o.id.toLowerCase().includes(searchLower) || 
+                o.customer.phone.includes(searchLower)
+            );
+        }
+
         if (filterStatus !== 'all') {
             result = result.filter(o => o.status === filterStatus);
         }
@@ -1393,7 +1404,7 @@ const AdminPage: React.FC = () => {
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
-    }, [orders, sortMode, filterStatus]);
+    }, [orders, sortMode, filterStatus, orderSearch]);
 
     const partsByType = useMemo(() => {
         const types: Record<string, LegoPart[]> = {};
@@ -1658,6 +1669,18 @@ const AdminPage: React.FC = () => {
                      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in">
                         <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                             <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
+                                <div className="relative w-full">
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm mã đơn hoặc SĐT..."
+                                        value={orderSearch}
+                                        onChange={(e) => setOrderSearch(e.target.value)}
+                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-gray-900 outline-none"
+                                    />
+                                    <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
                                 <div className="flex gap-2 w-full">
                                     <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
                                     <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
