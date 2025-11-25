@@ -55,7 +55,7 @@ export interface LegoCharacterConfig {
   face?: LegoPart;
   shirt?: LegoPart;
   pants?: LegoPart;
-  hat?: LegoPart;
+  hat?: LegoPart; // Deprecated in UI logic, kept for type safety
   selectedShirtColor?: OutfitColor; 
   selectedPantsColor?: OutfitColor;
   selectedHairColor?: OutfitColor; // Added hair color selection
@@ -85,7 +85,7 @@ export interface TextConfig {
 export interface DraggableItem {
     id: number;
     partId: string; 
-    type: 'accessory' | 'pet' | 'charm';
+    type: 'accessory' | 'pet' | 'charm' | 'hat'; // Added 'hat'
     x: number; 
     y: number; 
     rotation: number; 

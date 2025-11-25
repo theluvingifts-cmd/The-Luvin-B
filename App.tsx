@@ -55,7 +55,8 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
     const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair?.price || 0) + (char.selectedHairColor?.price || 0), 0);
     if(hairPrice > 0) { breakdown.push({ label: 'Tóc & Màu', value: hairPrice }); total += hairPrice; }
 
-    const hatPrice = config.characters.reduce((acc, char) => acc + (char.hat?.price || 0), 0);
+    // Hat price is now calculated from draggable items
+    const hatPrice = config.draggableItems.filter(i => i.type === 'hat').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0), 0);
     if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
 
     const shirtPrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0) + (char.selectedShirtColor?.price || 0), 0);
@@ -433,8 +434,45 @@ const Step3Characters: React.FC<{
         setConfig(prev => ({...prev, characters: prev.characters.filter(c => c.id !== id)}));
     };
     
+    const addDraggableItem = (part: LegoPart) => {
+        // Modified to also accept 'hat'
+        if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
+        
+        // Logic position for hat: Above current character head
+        let startX = 50;
+        let startY = 50;
+        
+        if (part.type === 'hat' && activeCharacter) {
+            startX = activeCharacter.x;
+            startY = activeCharacter.y - 35; // Approximate head position offset
+        } else {
+            startX = 50 + (Math.random() - 0.5) * 20;
+            startY = 50 + (Math.random() - 0.5) * 20;
+        }
+
+        const newItem: DraggableItem = {
+            id: Date.now(), 
+            partId: part.id, 
+            type: part.type as 'accessory' | 'pet' | 'hat', 
+            x: startX, 
+            y: startY, 
+            rotation: 0, 
+            scale: 1, 
+            isFlipped: false, 
+            selectedColor: part.colors?.[0]
+        };
+        setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
+    }
+
     const handlePartSelect = (part: LegoPart | undefined) => {
         if (!activeCharId || !part) return;
+
+        // Special handling for Hat: Add as independent draggable item
+        if (part.type === 'hat') {
+            addDraggableItem(part);
+            return;
+        }
+
         setConfig(prev => ({
             ...prev,
             characters: prev.characters.map(c => {
@@ -455,14 +493,6 @@ const Step3Characters: React.FC<{
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
                     
-                    if (part.type === 'hair') {
-                        newChar.hat = undefined;
-                        newChar.previousHair = undefined;
-                    }
-                    if (part.type === 'hat') {
-                        newChar.previousHair = c.hair;
-                        newChar.hair = undefined;
-                    }
                     return newChar;
                 }
                 return c;
@@ -472,15 +502,17 @@ const Step3Characters: React.FC<{
 
     const handlePartDeselect = (partType: 'hair' | 'hat') => {
       if (!activeCharId) return;
+      
+      // For Hat: Since hats are now draggable items, "deselecting" here isn't really applicable 
+      // unless we want to clear all hats. But typically user will delete specific hat.
+      // We will keep it for 'hair' to allow bald characters.
+      if (partType === 'hat') return;
+
       setConfig(prev => ({
         ...prev,
         characters: prev.characters.map(c => {
             if (c.id === activeCharId) {
                 const updatedChar = { ...c, [partType]: undefined };
-                if (partType === 'hat' && c.previousHair) {
-                    updatedChar.hair = c.previousHair;
-                    updatedChar.previousHair = undefined;
-                }
                 return updatedChar;
             }
             return c;
@@ -488,13 +520,6 @@ const Step3Characters: React.FC<{
       }));
     }
     
-    const addDraggableItem = (part: LegoPart) => {
-        if (part.type !== 'accessory' && part.type !== 'pet') return;
-        const newItem: DraggableItem = {
-            id: Date.now(), partId: part.id, type: part.type, x: 50 + (Math.random() - 0.5) * 20, y: 50 + (Math.random() - 0.5) * 20, rotation: 0, scale: 1, isFlipped: false, selectedColor: part.colors?.[0]
-        };
-        setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
-    }
 
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
@@ -530,8 +555,7 @@ const Step3Characters: React.FC<{
         const randomFace = getRandomItem(legoParts.face);
         const randomShirt = getRandomItem(legoParts.shirt);
         const randomPants = getRandomItem(legoParts.pants);
-        // 20% chance of getting a hat instead of hair
-        const randomHat = Math.random() < 0.2 ? getRandomItem(legoParts.hat) : undefined;
+        // Note: We don't randomize Hat here anymore as it's a separate object.
 
         setConfig(prev => ({
             ...prev,
@@ -542,15 +566,9 @@ const Step3Characters: React.FC<{
                     newChar.face = randomFace || c.face;
                     newChar.shirt = randomShirt || c.shirt;
                     newChar.pants = randomPants || c.pants;
-
-                    if (randomHat) {
-                        newChar.hat = randomHat;
-                        newChar.previousHair = randomHair; // Save hair in case hat is removed
-                        newChar.hair = undefined;
-                    } else {
-                        newChar.hair = randomHair || c.hair;
-                        newChar.hat = undefined;
-                    }
+                    newChar.hair = randomHair || c.hair;
+                    // Ensure hat is removed if we are strictly randomizing outfit parts on the character body
+                    // But since hats are separate, we just ignore them here.
 
                     // Default colors
                     let shirtColors = newChar.shirt?.colors;
@@ -686,8 +704,8 @@ const Step3Characters: React.FC<{
                         ))}
                     </div>
                      <div className="grid grid-cols-4 gap-2">
-                         {(activePartType === 'hair' || activePartType === 'hat') && (
-                             <button onClick={() => handlePartDeselect(activePartType as 'hair' | 'hat')} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
+                         {(activePartType === 'hair') && (
+                             <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
                                <span className="text-2xl font-bold">&times;</span>
                                <span className="text-[11px] font-semibold">Không chọn</span>
                              </button>
@@ -696,7 +714,7 @@ const Step3Characters: React.FC<{
                             <PartButton 
                                 key={part.id} 
                                 part={part}
-                                isSelected={activeCharacter[activePartType]?.id === part.id}
+                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType]?.id === part.id}
                                 onClick={() => handlePartSelect(part)} 
                             />
                         )) : (
