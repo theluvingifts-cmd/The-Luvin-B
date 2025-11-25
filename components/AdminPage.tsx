@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
-import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock } from '../services/productService';
-import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds } from '../services/backgroundService';
+import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock, reorderParts } from '../services/productService';
+import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds, reorderBackgrounds } from '../services/backgroundService';
 import { getAllTemplates, addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../services/templateService';
 import { getAllFeedbacks, addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../services/feedbackService';
 import { uploadToCloudinary } from '../services/uploadService'; // Import hàm upload
@@ -930,6 +930,65 @@ const AdminPage: React.FC = () => {
         } finally {
             setUploadingField(null);
         }
+    };
+
+    // Drag and drop handlers
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDropProduct = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId === targetId) return;
+
+        // Only allow reordering if showing ALL products (to keep logic simple)
+        if (productCategory !== 'all' && productSearch !== '') return;
+
+        const items = [...products];
+        const draggedIndex = items.findIndex(p => p.id === draggedId);
+        const targetIndex = items.findIndex(p => p.id === targetId);
+
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [removed] = items.splice(draggedIndex, 1);
+        items.splice(targetIndex, 0, removed);
+
+        // Optimistic UI update
+        setProducts(items);
+        
+        // Save new order
+        reorderParts(items);
+    };
+
+    const handleDropBackground = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId === targetId) return;
+
+        // Only allow reordering if showing ALL backgrounds (or at least visible list matches state)
+        if (bgTypeFilter !== 'all' || bgCategoryFilter !== 'all' || bgSearch !== '') return;
+
+        const items = [...backgrounds];
+        const draggedIndex = items.findIndex(b => b.id === draggedId);
+        const targetIndex = items.findIndex(b => b.id === targetId);
+
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [removed] = items.splice(draggedIndex, 1);
+        items.splice(targetIndex, 0, removed);
+
+        // Optimistic UI update
+        setBackgrounds(items);
+
+        // Save new order
+        reorderBackgrounds(items);
     };
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -2009,7 +2068,14 @@ const AdminPage: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                     {filteredProducts.map(part => (
-                                        <div key={part.id} className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all">
+                                        <div 
+                                            key={part.id} 
+                                            className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all"
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, part.id)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDropProduct(e, part.id)}
+                                        >
                                             <div className="aspect-square bg-gray-50 rounded mb-2 flex items-center justify-center p-2">
                                                 <img src={part.imageUrl} className="max-w-full max-h-full object-contain" />
                                             </div>
@@ -2027,23 +2093,49 @@ const AdminPage: React.FC = () => {
 
                         {activeProductSubTab === 'backgrounds' && (
                             <>
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                        <input placeholder="Tìm background..." value={bgSearch} onChange={e => setBgSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
-                                        <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
-                                            <option value="all">Tất cả loại</option>
-                                            <option value="square">Vuông</option>
-                                            <option value="rectangle">Chữ nhật</option>
-                                        </select>
+                                <div className="flex flex-col gap-4 mb-4">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                            <input placeholder="Tìm background..." value={bgSearch} onChange={e => setBgSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                                            <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
+                                                <option value="all">Tất cả loại</option>
+                                                <option value="square">Vuông</option>
+                                                <option value="rectangle">Chữ nhật</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                            <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset BG</button>
+                                            <button onClick={() => setIsEditingBackground(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2 w-full sm:w-auto justify-end">
-                                        <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset BG</button>
-                                        <button onClick={() => setIsEditingBackground(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                                    {/* Category Filter Chips */}
+                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                                        <span className="text-xs font-bold text-gray-500 uppercase mr-2 flex-shrink-0">Dịp:</span>
+                                        {bgCategories.map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setBgCategoryFilter(cat)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${
+                                                    bgCategoryFilter === cat 
+                                                        ? 'bg-gray-900 text-white border-gray-900' 
+                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {cat === 'all' ? 'Tất cả' : cat}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                     {filteredBackgrounds.map(bg => (
-                                        <div key={bg.id} className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all">
+                                        <div 
+                                            key={bg.id} 
+                                            className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all cursor-move"
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, bg.id)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDropBackground(e, bg.id)}
+                                        >
                                             <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden`}>
                                                 <img src={bg.url} className="w-full h-full object-cover" />
                                             </div>

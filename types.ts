@@ -38,6 +38,7 @@ export interface LegoPart {
   dx?: number; 
   dy?: number; 
   stock?: number; // undefined = unlimited, 0 = out of stock
+  order?: number; // Position for sorting
 }
 
 // Interface mới cho Background
@@ -47,6 +48,7 @@ export interface PresetBackground {
     url: string;
     category: string;
     type: 'square' | 'rectangle'; // Phân loại cho khung vuông hoặc chữ nhật
+    order?: number; // Position for sorting
 }
 
 export interface LegoCharacterConfig {
