@@ -51,8 +51,9 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
         }
     });
 
-    const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair?.price || 0), 0);
-    if(hairPrice > 0) { breakdown.push({ label: 'Tóc', value: hairPrice }); total += hairPrice; }
+    // Updated hair price calculation to include selected hair color price
+    const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair?.price || 0) + (char.selectedHairColor?.price || 0), 0);
+    if(hairPrice > 0) { breakdown.push({ label: 'Tóc & Màu', value: hairPrice }); total += hairPrice; }
 
     const hatPrice = config.characters.reduce((acc, char) => acc + (char.hat?.price || 0), 0);
     if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
@@ -422,6 +423,7 @@ const Step3Characters: React.FC<{
             scale: 1,
             selectedShirtColor: legoParts.shirt[0]?.colors?.[0],
             selectedPantsColor: legoParts.pants[0]?.colors?.[0],
+            selectedHairColor: legoParts.hair[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -451,6 +453,7 @@ const Step3Characters: React.FC<{
 
                     if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
+                    if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
                     
                     if (part.type === 'hair') {
                         newChar.hat = undefined;
@@ -504,9 +507,13 @@ const Step3Characters: React.FC<{
       setPrintDialogCharId(null);
     };
 
-    const handleColorSelect = (partType: 'shirt' | 'pants', color: OutfitColor) => {
+    const handleColorSelect = (partType: 'shirt' | 'pants' | 'hair', color: OutfitColor) => {
         if (!activeCharId) return;
-        const key = partType === 'shirt' ? 'selectedShirtColor' : 'selectedPantsColor';
+        let key: keyof LegoCharacterConfig;
+        if (partType === 'shirt') key = 'selectedShirtColor';
+        else if (partType === 'pants') key = 'selectedPantsColor';
+        else key = 'selectedHairColor';
+
         setConfig(prev => ({
             ...prev,
             characters: prev.characters.map(c => c.id === activeCharId ? { ...c, [key]: color } : c)
@@ -560,6 +567,7 @@ const Step3Characters: React.FC<{
 
                     newChar.selectedShirtColor = getRandomColor(shirtColors) || shirtColors?.[0];
                     newChar.selectedPantsColor = getRandomColor(pantsColors) || pantsColors?.[0];
+                    newChar.selectedHairColor = getRandomColor(newChar.hair?.colors) || newChar.hair?.colors?.[0];
 
                     return newChar;
                 }
@@ -585,6 +593,9 @@ const Step3Characters: React.FC<{
 
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
+        if (activePartType === 'hair') {
+             return activeCharacter.hair?.colors || null;
+        }
         if (activePartType === 'shirt') {
             const part = activeCharacter.shirt;
             if (part?.colors && part.colors.length > 0) return part.colors;
@@ -720,6 +731,22 @@ const Step3Characters: React.FC<{
                                key={color.name}
                                onClick={() => handleColorSelect('pants', color)}
                                className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedPantsColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
+                               style={{ backgroundColor: color.hex }}
+                               title={`${color.name} (${formatCurrency(color.price)})`}
+                             />
+                           ))}
+                         </div>
+                      </div>
+                    )}
+                    {(activePartType === 'hair' && activePartColors) && (
+                      <div className="mt-4 pt-4 border-t">
+                        <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu tóc</label>
+                         <div className="flex flex-wrap gap-2">
+                           {activePartColors.map(color => (
+                             <button
+                               key={color.name}
+                               onClick={() => handleColorSelect('hair', color)}
+                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedHairColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
                                style={{ backgroundColor: color.hex }}
                                title={`${color.name} (${formatCurrency(color.price)})`}
                              />

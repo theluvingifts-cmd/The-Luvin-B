@@ -39,7 +39,16 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
   const { hair, hat, face, shirt, pants } = character;
   const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
   const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
+  
+  // Hair color logic: Use selected hair color image if available, else fallback to part image
+  let hairImageUrl = hair?.imageUrl;
+  if (character.selectedHairColor?.imageUrl) {
+      hairImageUrl = character.selectedHairColor.imageUrl;
+  }
+
   const activeHeadwear = hat || hair;
+  // Determine the image URL for the headwear (hat or hair)
+  const activeHeadwearUrl = hat ? hat.imageUrl : hairImageUrl;
 
   // Per user request, the character is composed of 4 same-sized, stacked images.
   // The container will have the final dimensions.
@@ -82,8 +91,8 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
       {face && face.imageUrl && (
         <SafeImage src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />
       )}
-      {activeHeadwear && activeHeadwear.imageUrl && (
-        <SafeImage src={activeHeadwear.imageUrl} alt={activeHeadwear.name} style={{ ...partStyle, zIndex: 4 }} />
+      {activeHeadwear && activeHeadwearUrl && (
+        <SafeImage src={activeHeadwearUrl} alt={activeHeadwear.name} style={{ ...partStyle, zIndex: 4 }} />
       )}
     </div>
   );
