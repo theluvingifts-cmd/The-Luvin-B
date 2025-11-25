@@ -25,6 +25,7 @@ import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
 declare var html2canvas: any;
+declare var confetti: any;
 
 const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
   if (amount === 0 && context === 'price') return 'Miễn phí';
@@ -511,6 +512,61 @@ const Step3Characters: React.FC<{
             characters: prev.characters.map(c => c.id === activeCharId ? { ...c, [key]: color } : c)
         }));
     }
+
+    const handleRandomizeOutfit = () => {
+        if (!activeCharId) return;
+        
+        const getRandomItem = (list: LegoPart[]) => list.length > 0 ? list[Math.floor(Math.random() * list.length)] : undefined;
+        const getRandomColor = (colors: OutfitColor[] | undefined) => colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : undefined;
+
+        const randomHair = getRandomItem(legoParts.hair);
+        const randomFace = getRandomItem(legoParts.face);
+        const randomShirt = getRandomItem(legoParts.shirt);
+        const randomPants = getRandomItem(legoParts.pants);
+        // 20% chance of getting a hat instead of hair
+        const randomHat = Math.random() < 0.2 ? getRandomItem(legoParts.hat) : undefined;
+
+        setConfig(prev => ({
+            ...prev,
+            characters: prev.characters.map(c => {
+                if (c.id === activeCharId) {
+                    const newChar: LegoCharacterConfig = { ...c };
+                    
+                    newChar.face = randomFace || c.face;
+                    newChar.shirt = randomShirt || c.shirt;
+                    newChar.pants = randomPants || c.pants;
+
+                    if (randomHat) {
+                        newChar.hat = randomHat;
+                        newChar.previousHair = randomHair; // Save hair in case hat is removed
+                        newChar.hair = undefined;
+                    } else {
+                        newChar.hair = randomHair || c.hair;
+                        newChar.hat = undefined;
+                    }
+
+                    // Default colors
+                    let shirtColors = newChar.shirt?.colors;
+                    if (!shirtColors || shirtColors.length === 0) {
+                         const nameLower = newChar.shirt?.name.toLowerCase() || '';
+                         if (nameLower.includes('trơn') || nameLower.includes('basic')) shirtColors = defaultShirtColors;
+                    }
+                    
+                    let pantsColors = newChar.pants?.colors;
+                    if (!pantsColors || pantsColors.length === 0) {
+                         const nameLower = newChar.pants?.name.toLowerCase() || '';
+                         if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors;
+                    }
+
+                    newChar.selectedShirtColor = getRandomColor(shirtColors) || shirtColors?.[0];
+                    newChar.selectedPantsColor = getRandomColor(pantsColors) || pantsColors?.[0];
+
+                    return newChar;
+                }
+                return c;
+            })
+        }));
+    };
     
     const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants', label: string }[] = [
         { key: 'shirt', label: 'Áo' },
@@ -572,7 +628,19 @@ const Step3Characters: React.FC<{
               </div>
             )}
             <div className="p-4 border border-gray-200 rounded-lg">
-                <h4 className="font-bold text-gray-800 mb-3">QUẢN LÝ NHÂN VẬT</h4>
+                <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-bold text-gray-800">QUẢN LÝ NHÂN VẬT</h4>
+                    {activeCharacter && (
+                        <button 
+                            onClick={handleRandomizeOutfit}
+                            className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors"
+                            title="Chọn ngẫu nhiên trang phục"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                            Ngẫu nhiên
+                        </button>
+                    )}
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     {config.characters.map((char, index) => (
                         <div key={char.id} className="relative">
@@ -1214,7 +1282,6 @@ const BuilderPage: React.FC<{
     };
   }, []);
 
-
   useEffect(() => {
     const observer = new ResizeObserver(entries => {
       if (entries[0]) {
@@ -1401,6 +1468,55 @@ const BuilderPage: React.FC<{
     }
   };
 
+  const handleSaveDraft = () => {
+      localStorage.setItem('design_draft', JSON.stringify(config));
+      showToast('Đã lưu bản nháp thành công!', 'success');
+  };
+
+  const handleResetDesign = () => {
+      if (confirm("Bạn có chắc muốn làm mới thiết kế? Mọi thay đổi sẽ bị xóa.")) {
+          setConfig(prev => ({
+              ...INITIAL_FRAME_CONFIG,
+              frameId: prev.frameId, // Keep size
+          }));
+      }
+  };
+
+  const handleShare = async () => {
+      const imageUrl = await captureFrameAsImage();
+      if (!imageUrl) return;
+
+      // If Web Share API supported
+      if (navigator.share) {
+          try {
+              const blob = await (await fetch(imageUrl)).blob();
+              const file = new File([blob], "design.png", { type: "image/png" });
+              await navigator.share({
+                  title: 'My LEGO Frame Design',
+                  text: 'Check out my design at The Luvin!',
+                  files: [file],
+              });
+          } catch (error) {
+              console.log('Error sharing', error);
+          }
+      } else {
+          // Fallback: Copy to clipboard or download
+          try {
+              const blob = await (await fetch(imageUrl)).blob();
+              const item = new ClipboardItem({ "image/png": blob });
+              await navigator.clipboard.write([item]);
+              showToast('Đã sao chép ảnh vào bộ nhớ tạm!', 'success');
+          } catch (err) {
+              // Final fallback: Open in new tab
+              const link = document.createElement('a');
+              link.href = imageUrl;
+              link.download = 'my-design.png';
+              link.click();
+              showToast('Đã tải ảnh về máy!', 'success');
+          }
+      }
+  };
+
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
@@ -1421,15 +1537,30 @@ const BuilderPage: React.FC<{
   return (
     <div className="bg-gray-50 py-4 sm:py-8">
       <div className="container mx-auto px-4">
-        <div className="text-sm text-gray-500 mb-2">
-            <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế & Mua hàng
+        <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-gray-500">
+                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế & Mua hàng
+            </div>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Thiết kế & Mua hàng Khung LEGO</h1>
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
-                <h3 className="font-bold text-gray-800 mb-3 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
+                    <div className="flex gap-2">
+                        <button onClick={handleSaveDraft} className="bg-white border border-gray-300 p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 text-xs font-bold flex items-center gap-1" title="Lưu bản nháp">
+                            💾
+                        </button>
+                        <button onClick={handleShare} className="bg-white border border-gray-300 p-1.5 rounded-lg hover:bg-gray-100 text-blue-600 text-xs font-bold flex items-center gap-1" title="Chia sẻ/Lưu ảnh">
+                            📤
+                        </button>
+                        <button onClick={handleResetDesign} className="bg-white border border-red-200 p-1.5 rounded-lg hover:bg-red-50 text-red-600 text-xs font-bold flex items-center gap-1" title="Làm mới">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
                 {/* Removed overflow-hidden here to allow toolbar to overflow */}
                 <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-12 lg:mb-0">
                     <FramePreview 
@@ -1961,6 +2092,27 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
     useEffect(() => {
         if (!order) {
             navigateTo('home');
+        } else {
+            // Confetti effect on mount
+            if (typeof confetti === 'function') {
+                const duration = 3 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+                const interval: any = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    const particleCount = 50 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            }
         }
     }, [order, navigateTo]);
     
@@ -1983,6 +2135,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
             <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
                 <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md">
                     <div className="text-center">
+                        <div className="mb-4 text-5xl">🎉</div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Đơn hàng của bạn đã được ghi nhận!</h1>
                         <p className="mt-2 text-sm text-gray-600">
                             Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.
