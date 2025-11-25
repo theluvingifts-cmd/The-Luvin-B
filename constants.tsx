@@ -20,6 +20,14 @@ export const defaultPantsColors: OutfitColor[] = [
     { name: 'Xám', hex: '#A0AEC0', imageUrl: '', price: 10000 },
 ];
 
+export const defaultHairColors: OutfitColor[] = [
+    { name: 'Đen', hex: '#1A202C', imageUrl: '', price: 0 },
+    { name: 'Nâu', hex: '#5D4037', imageUrl: '', price: 0 },
+    { name: 'Vàng', hex: '#F6E05E', imageUrl: '', price: 0 },
+    { name: 'Đỏ', hex: '#C53030', imageUrl: '', price: 0 },
+    { name: 'Xám', hex: '#A0AEC0', imageUrl: '', price: 0 },
+];
+
 // Dữ liệu LEGO Parts cơ bản (Fallback rỗng để tránh load ảnh cũ)
 export const LEGO_PARTS: {
   hair: LegoPart[];
