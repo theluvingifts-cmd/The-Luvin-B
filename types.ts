@@ -58,7 +58,6 @@ export interface LegoCharacterConfig {
   hat?: LegoPart;
   selectedShirtColor?: OutfitColor; 
   selectedPantsColor?: OutfitColor;
-  selectedHairColor?: OutfitColor; // New field for hair color
   customPrintPrice?: number;
   x: number; 
   y: number; 
