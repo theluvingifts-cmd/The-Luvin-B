@@ -2359,7 +2359,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                                     </div>
                                   </div>
                                   <div>
-                                    <p className="font-semibold">Khung tùy chỉnh x 1</p>
+                                    <p className="font-semibold">Khung tùy chỉnh x {order.items.length}</p>
                                   </div>
                                 </div>
                                 <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
