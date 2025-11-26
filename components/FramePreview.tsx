@@ -648,7 +648,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={id} id={id} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped}
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={false} 
+                            isResizable={isInteractive} // Changed to allow resizing for charms/uploaded images/accessories
                             isRotatable={isInteractive} 
                             isDraggable={isInteractive}
                             zIndex={zIndex}

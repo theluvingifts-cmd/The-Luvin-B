@@ -15,7 +15,7 @@ import {
     defaultPantsColors,
 } from './constants';
 import FramePreview from './components/FramePreview';
-import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
+import { createOrder, getOrderById, getOrdersByPhone } from './services/orderService'; // Kết nối Firebase
 import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
 import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
 import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
@@ -227,12 +227,12 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
   );
 };
 
-// ... (Keep PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters as is) ...
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
     onClick: () => void;
-}> = ({ bg, isSelected, onClick }) => {
+    onZoom: (url: string) => void;
+}> = ({ bg, isSelected, onClick, onZoom }) => {
     let line1 = bg.name;
     let line2 = '';
 
@@ -252,18 +252,28 @@ const PresetBackgroundButton: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`border-2 rounded-xl p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full ${
+            className={`border-2 rounded-xl p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative group ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
         >
-            <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+            <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
                 <img
                     src={bg.url}
                     alt={bg.name}
                     className="w-full h-full object-cover"
                 />
+                {/* Corner Zoom Button (Bottom Right Only) */}
+                <div className="absolute bottom-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div 
+                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto"
+                        onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
+                        title="Zoom"
+                    >
+                        <ZoomIcon className="w-4 h-4" />
+                    </div>
+                </div>
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-9 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-700">{line1}</span>
@@ -280,7 +290,8 @@ const Step2BackgroundAndDecorations: React.FC<{
   addText: () => void;
   addCharm: (dataUrl: string) => void;
   backgrounds: PresetBackground[];
-}> = ({ config, setConfig, addText, addCharm, backgrounds }) => {
+  onZoomImage: (url: string) => void;
+}> = ({ config, setConfig, addText, addCharm, backgrounds, onZoomImage }) => {
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -363,6 +374,7 @@ const Step2BackgroundAndDecorations: React.FC<{
                 bg={bg}
                 isSelected={config.background.value === bg.url}
                 onClick={() => setConfig((prev) => ({ ...prev, background: { type: 'image', value: bg.url } }))}
+                onZoom={onZoomImage}
               />
             ))
           ) : (
@@ -1338,7 +1350,8 @@ const BuilderPage: React.FC<{
     frames: FrameOption[]; 
     editingCartIndex: number | null; // ADDED
     onCancelEdit: () => void; // ADDED
-}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit }) => {
+    onZoomImage: (url: string) => void; // ADDED
+}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1654,7 +1667,7 @@ const BuilderPage: React.FC<{
     switch (step) {
       // Pass frames prop to Step1Frame
       case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} onZoomImage={onZoomImage} />;
       case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
@@ -1898,14 +1911,21 @@ const CartPage: React.FC<{
                             return (
                                 <div key={index} className="bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-center gap-4">
                                     <div 
-                                        className="w-40 h-40 flex-shrink-0 bg-gray-100 rounded-md p-2 cursor-pointer relative group"
-                                        onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}
+                                        className="w-40 h-40 flex-shrink-0 bg-gray-100 rounded-md p-2 relative group"
                                     >
                                       {item.previewImageUrl ? (
                                         <>
                                             <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
-                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
-                                                <ZoomIcon className="w-10 h-10 text-white drop-shadow-lg" />
+                                            
+                                            {/* Bottom Right Zoom Button Only */}
+                                            <div className="absolute bottom-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                <div 
+                                                    className="bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full cursor-pointer pointer-events-auto"
+                                                    onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
+                                                    title="Zoom"
+                                                >
+                                                    <ZoomIcon className="w-5 h-5" />
+                                                </div>
                                             </div>
                                         </>
                                       ) : (
@@ -2026,14 +2046,20 @@ const CartPanel: React.FC<{
               return (
                 <div key={index} className="flex gap-4">
                   <div 
-                    className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded p-1 cursor-pointer relative group"
-                    onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}
+                    className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded p-1 relative group"
                   >
                      {item.previewImageUrl ? (
                         <>
                             <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
-                                <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
+                            {/* Bottom Right Zoom Button Only */}
+                            <div className="absolute bottom-0 right-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <div 
+                                    className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto scale-75"
+                                    onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
+                                    title="Zoom"
+                                >
+                                    <ZoomIcon className="w-4 h-4" />
+                                </div>
                             </div>
                         </>
                       ) : (
@@ -2345,8 +2371,15 @@ const CheckoutPage: React.FC<{
                             {item.previewImageUrl ? (
                                 <>
                                     <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
-                                        <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
+                                    {/* Bottom Right Zoom Button Only */}
+                                    <div className="absolute bottom-0 right-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <div 
+                                            className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto scale-50"
+                                            onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
+                                            title="Zoom"
+                                        >
+                                            <ZoomIcon className="w-4 h-4" />
+                                        </div>
                                     </div>
                                 </>
                             ) : (
@@ -2542,7 +2575,10 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         let codeToSearch = (codeOverride || orderCode).trim().toUpperCase();
         if (!codeToSearch) return;
 
-        if (!codeToSearch.startsWith('#')) {
+        // Check if it's a phone number (all digits, 10 digits, starts with 0)
+        const isPhone = /^0\d{9}$/.test(codeToSearch);
+
+        if (!isPhone && !codeToSearch.startsWith('#')) {
             codeToSearch = '#' + codeToSearch;
         }
         
@@ -2553,10 +2589,19 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         setFoundOrder(null);
         
         try {
-            let order = await getOrderById(codeToSearch);
+            let order: Order | null = null;
 
-            if (!order) {
-                order = MOCK_ORDERS[codeToSearch] || null;
+            if (isPhone) {
+                const orders = await getOrdersByPhone(codeToSearch);
+                // If multiple orders found, just take the most recent one for simple lookup
+                if (orders.length > 0) {
+                    order = orders[0];
+                }
+            } else {
+                order = await getOrderById(codeToSearch);
+                if (!order) {
+                    order = MOCK_ORDERS[codeToSearch] || null;
+                }
             }
 
             setFoundOrder(order || 'not_found');
@@ -2565,8 +2610,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
             if (error.code === 'permission-denied') {
                 setFoundOrder('permission_error');
             } else {
-                const mockOrder = MOCK_ORDERS[codeToSearch];
-                setFoundOrder(mockOrder || 'not_found');
+                setFoundOrder('not_found');
             }
         } finally {
             setIsLoading(false);
@@ -2627,13 +2671,14 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                             type="text"
                             value={orderCode}
                             onChange={(e) => setOrderCode(e.target.value)}
-                            placeholder="#TL012804"
+                            placeholder="#TLxxxxxx hoặc SĐT"
                             className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center uppercase"
                         />
                         <button type="submit" disabled={isLoading} className="bg-luvin-pink text-gray-800 font-bold px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50">
                             {isLoading ? '...' : 'Tra cứu'}
                         </button>
                     </form>
+                    <p className="text-xs text-gray-500 mt-2">Nhập mã đơn hàng (có dấu #) hoặc số điện thoại đặt hàng</p>
                     
                     {/* Display saved orders */}
                     {savedOrders.length > 0 && !foundOrder && (
@@ -2662,7 +2707,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                     {isLoading && <p className="text-center">Đang tìm kiếm...</p>}
                     {foundOrder === 'not_found' && (
                         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center">
-                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng (Ví dụ: #TL123456).
+                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng hoặc số điện thoại.
                         </div>
                     )}
                     {foundOrder === 'permission_error' && (
@@ -2679,7 +2724,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                 <div>
                                     <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
                                     <p className="text-sm text-gray-500">
-                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date().toLocaleDateString('vi-VN') : '---'}
+                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date(Number(foundOrder.id.slice(3, -4))).toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -2740,7 +2785,27 @@ const categorizeParts = (parts: LegoPart[]) => {
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
-  const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
+  
+  // CART PERSISTENCE: Initialize state from LocalStorage
+  const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
+      try {
+          const savedCart = localStorage.getItem('shopping_cart');
+          return savedCart ? JSON.parse(savedCart) : [];
+      } catch (error) {
+          console.error("Failed to load cart from storage", error);
+          return [];
+      }
+  });
+
+  // CART PERSISTENCE: Update LocalStorage whenever cartItems changes
+  useEffect(() => {
+      try {
+          localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
+      } catch (error) {
+          console.error("Failed to save cart to storage", error);
+      }
+  }, [cartItems]);
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
@@ -2975,6 +3040,7 @@ const App: React.FC = () => {
                     frames={frames}
                     editingCartIndex={editingCartIndex} // Pass editing index
                     onCancelEdit={handleCancelEdit} // Pass cancel handler
+                    onZoomImage={setZoomedImageUrl} // Pass zoom handler
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}

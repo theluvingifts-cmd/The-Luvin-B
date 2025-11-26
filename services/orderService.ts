@@ -1,7 +1,7 @@
 
 // services/orderService.ts
 import { db } from '../config/firebase';
-import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where } from 'firebase/firestore';
 import type { Order } from '../types';
 import { uploadToCloudinary } from './uploadService';
 import { adjustStock } from './productService';
@@ -89,6 +89,25 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     } catch (error: any) {
         console.error("Lỗi lấy đơn hàng:", error);
         throw error; 
+    }
+};
+
+// 2b. Hàm tra cứu đơn hàng bằng SĐT
+export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
+    try {
+        // FIX: Removed orderBy("createdAt", "desc") from Firestore query to avoid "Requires Index" error.
+        // We sort the results on the client side instead.
+        const q = query(collection(db, "orders"), where("customer.phone", "==", phone));
+        const querySnapshot = await getDocs(q);
+        const orders: Order[] = [];
+        querySnapshot.forEach((doc) => {
+            orders.push(doc.data() as Order);
+        });
+        // Sort desc by time (Client-side sort)
+        return orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } catch (error) {
+        console.error("Lỗi tra cứu theo SĐT:", error);
+        return [];
     }
 };
 
