@@ -1331,11 +1331,14 @@ const BuilderPage: React.FC<{
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; 
     navigateTo: (p:Page) => void; 
     onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
+    onUpdateCart: (config: FrameConfig) => void; // ADDED
     showToast: (message: string, type: 'success' | 'error') => void;
-    legoParts: typeof LEGO_PARTS; // New prop
-    backgrounds: PresetBackground[]; // New prop
-    frames: FrameOption[]; // New prop
-}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts, backgrounds, frames }) => {
+    legoParts: typeof LEGO_PARTS; 
+    backgrounds: PresetBackground[]; 
+    frames: FrameOption[]; 
+    editingCartIndex: number | null; // ADDED
+    onCancelEdit: () => void; // ADDED
+}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1345,7 +1348,7 @@ const BuilderPage: React.FC<{
   const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
-  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); // ADDED
+  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1558,8 +1561,15 @@ const BuilderPage: React.FC<{
     const imageUrl = await captureFrameAsImage();
     setIsSaving(false);
     if (imageUrl) {
-      // Default quantity is 1
-      onAddToCart({ ...config, previewImageUrl: imageUrl, quantity: 1 }, !andCheckout);
+      if (editingCartIndex !== null && !andCheckout) {
+          // Updating existing item
+          onUpdateCart({ ...config, previewImageUrl: imageUrl });
+      } else {
+          // Adding new item
+          // Default quantity is 1
+          onAddToCart({ ...config, previewImageUrl: imageUrl, quantity: 1 }, !andCheckout);
+      }
+      
       if (andCheckout) {
         navigateTo('checkout');
       }
@@ -1666,7 +1676,9 @@ const BuilderPage: React.FC<{
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế & Mua hàng
             </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Thiết kế & Mua hàng Khung LEGO</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
+            {editingCartIndex !== null ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng Khung LEGO'}
+        </h1>
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
@@ -1746,44 +1758,77 @@ const BuilderPage: React.FC<{
                   <div className="mt-4 text-right font-bold text-lg text-gray-800">
                     Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
                   </div>
-                  <div className="mt-2 hidden lg:flex items-center gap-4">
-                      <button
-                          onClick={() => setStep(s => Math.max(1, s - 1))}
-                          disabled={step === 1}
-                          className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
-                      >
-                          &larr; Quay lại
-                      </button>
-                      <button
-                          onClick={() => setStep(s => Math.min(4, s + 1))}
-                          disabled={step === 4}
-                          className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
-                      >
-                          Tiếp theo
-                      </button>
-                  </div>
+                  {editingCartIndex !== null && step === 4 && (
+                        <div className="mt-4 mb-2">
+                            <button 
+                                onClick={onCancelEdit} 
+                                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                Hủy sửa
+                            </button>
+                        </div>
+                  )}
+                  {step === 4 && editingCartIndex !== null && (
+                        <div className="mt-2 hidden lg:flex items-center gap-4">
+                             <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
+                            </button>
+                        </div>
+                  )}
+                  
+                  {/* Only show standard navigation if not in the special update mode for step 4, OR if we are in update mode but not step 4 */}
+                  {!(editingCartIndex !== null && step === 4) && (
+                      <div className="mt-2 hidden lg:flex items-center gap-4">
+                          <button
+                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              disabled={step === 1}
+                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                          >
+                              &larr; Quay lại
+                          </button>
+                          <button
+                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              disabled={step === 4}
+                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                          >
+                              Tiếp theo
+                          </button>
+                      </div>
+                  )}
                 </>
               )}
                <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-top p-4 z-30 transition-transform duration-300 ease-in-out ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
                      <div className="text-right font-bold text-base text-gray-800 mb-2">
                         Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
                       </div>
-                     <div className="flex items-center gap-4">
-                       <button
-                          onClick={() => setStep(s => Math.max(1, s - 1))}
-                          disabled={step === 1}
-                          className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
-                      >
-                          Quay lại
-                      </button>
-                      <button
-                          onClick={() => setStep(s => Math.min(4, s + 1))}
-                          disabled={step === 4}
-                          className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
-                      >
-                          Tiếp theo
-                      </button>
-                     </div>
+                     
+                     {editingCartIndex !== null && step === 4 ? (
+                        <div className="flex flex-col gap-2">
+                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
+                            </button>
+                            <button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">
+                                Hủy sửa
+                            </button>
+                        </div>
+                     ) : (
+                         <div className="flex items-center gap-4">
+                           <button
+                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              disabled={step === 1}
+                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                          >
+                              Quay lại
+                          </button>
+                          <button
+                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              disabled={step === 4}
+                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                          >
+                              Tiếp theo
+                          </button>
+                         </div>
+                     )}
                 </div>
                <div className="lg:hidden h-32"></div>
           </div>
@@ -1829,11 +1874,12 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
 const CartPage: React.FC<{ 
     cartItems: FrameConfig[]; 
     onRemoveItem: (index: number) => void; 
+    onEditItem: (index: number) => void; // ADDED
     allParts: Record<string, LegoPart>; 
     navigateTo: (page: Page) => void;
-    onUpdateQuantity: (index: number, newQuantity: number) => void; // New prop
-    onZoomImage: (url: string) => void; // New prop
-}> = ({ cartItems, onRemoveItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+    onUpdateQuantity: (index: number, newQuantity: number) => void;
+    onZoomImage: (url: string) => void;
+}> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
     const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
 
     return (
@@ -1859,7 +1905,7 @@ const CartPage: React.FC<{
                                         <>
                                             <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
-                                                <ZoomIcon />
+                                                <ZoomIcon className="w-10 h-10 text-white drop-shadow-lg" />
                                             </div>
                                         </>
                                       ) : (
@@ -1889,7 +1935,10 @@ const CartPage: React.FC<{
                                     <div className="flex-shrink-0 text-center sm:text-right">
                                         <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
                                         <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / cái)</p>
-                                        <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline mt-2">Xóa</button>
+                                        <div className="flex justify-center sm:justify-end gap-3 mt-2">
+                                            <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">Sửa</button>
+                                            <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline">Xóa</button>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -1915,11 +1964,12 @@ const CartPanel: React.FC<{
   onClose: () => void;
   cartItems: FrameConfig[];
   onRemoveItem: (index: number) => void;
+  onEditItem: (index: number) => void; // ADDED
   allParts: Record<string, LegoPart>;
   navigateTo: (page: Page) => void;
-  onUpdateQuantity: (index: number, newQuantity: number) => void; // New prop
-  onZoomImage: (url: string) => void; // New prop
-}> = ({ isOpen, onClose, cartItems, onRemoveItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+  onUpdateQuantity: (index: number, newQuantity: number) => void;
+  onZoomImage: (url: string) => void;
+}> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
   const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
@@ -1983,7 +2033,7 @@ const CartPanel: React.FC<{
                         <>
                             <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
-                                <ZoomIcon />
+                                <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
                             </div>
                         </>
                       ) : (
@@ -2009,7 +2059,10 @@ const CartPanel: React.FC<{
                         </div>
                     </div>
                   </div>
-                  <button onClick={() => onRemoveItem(index)} className="text-red-500 self-start p-1 text-lg">&times;</button>
+                  <div className="flex flex-col gap-2">
+                      <button onClick={() => onRemoveItem(index)} className="text-red-500 self-start p-1 text-lg leading-none">&times;</button>
+                      <button onClick={() => onEditItem(index)} className="text-blue-600 text-xs font-bold hover:underline">Sửa</button>
+                  </div>
                 </div>
               );
             })}
@@ -2030,8 +2083,8 @@ const CartPanel: React.FC<{
   );
 };
 
-const ZoomIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+const ZoomIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
 )
 
 const CheckoutPage: React.FC<{
@@ -2293,7 +2346,7 @@ const CheckoutPage: React.FC<{
                                 <>
                                     <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
                                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
-                                        <ZoomIcon />
+                                        <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
                                     </div>
                                 </>
                             ) : (
@@ -2426,7 +2479,7 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                                   <div className="w-16 h-16 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => order.items[0].previewImageUrl && onZoomImage(order.items[0].previewImageUrl)}>
                                     <img src={order.items[0].previewImageUrl} className="w-full h-full object-contain" alt="preview" />
                                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <ZoomIcon />
+                                        <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
                                     </div>
                                   </div>
                                   <div>
@@ -2692,6 +2745,7 @@ const App: React.FC = () => {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [isAppLoading, setIsAppLoading] = useState(true); 
+  const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); // NEW STATE: Track item being edited
   
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
@@ -2823,6 +2877,28 @@ const App: React.FC = () => {
     if (openCart) setIsCartOpen(true);
   };
 
+  const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
+      if (editingCartIndex !== null) {
+          setCartItems(prev => prev.map((item, i) => i === editingCartIndex ? { ...updatedConfig, quantity: item.quantity } : item)); // Preserve quantity
+          setEditingCartIndex(null);
+          setConfig(INITIAL_FRAME_CONFIG); // Reset config
+          setIsCartOpen(true); // Open cart to show changes
+      }
+  };
+
+  const handleEditCartItem = (index: number) => {
+      setConfig(cartItems[index]);
+      setEditingCartIndex(index);
+      setIsCartOpen(false);
+      navigateTo('builder');
+  };
+
+  const handleCancelEdit = () => {
+      setEditingCartIndex(null);
+      setConfig(INITIAL_FRAME_CONFIG);
+      setIsCartOpen(true); // Go back to cart
+  };
+
   const handleRemoveCartItem = (index: number) => {
     setCartItems(prev => prev.filter((_, i) => i !== index));
   };
@@ -2892,16 +2968,20 @@ const App: React.FC = () => {
                     setConfig={setConfig} 
                     navigateTo={navigateTo} 
                     onAddToCart={handleAddToCart} 
+                    onUpdateCart={handleUpdateCartItem} // Pass update handler
                     showToast={showToast}
                     legoParts={legoParts}
                     backgrounds={backgrounds}
                     frames={frames}
+                    editingCartIndex={editingCartIndex} // Pass editing index
+                    onCancelEdit={handleCancelEdit} // Pass cancel handler
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
             {currentPage === 'cart' && <CartPage 
                 cartItems={cartItems} 
                 onRemoveItem={handleRemoveCartItem} 
+                onEditItem={handleEditCartItem} // Pass edit handler
                 allParts={allParts} 
                 navigateTo={navigateTo}
                 onUpdateQuantity={handleUpdateCartQuantity}
@@ -2922,6 +3002,7 @@ const App: React.FC = () => {
             onClose={() => setIsCartOpen(false)} 
             cartItems={cartItems} 
             onRemoveItem={handleRemoveCartItem}
+            onEditItem={handleEditCartItem} // Pass edit handler
             allParts={allParts}
             navigateTo={navigateTo}
             onUpdateQuantity={handleUpdateCartQuantity}
