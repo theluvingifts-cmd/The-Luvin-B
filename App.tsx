@@ -409,9 +409,10 @@ const Step3Characters: React.FC<{
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
     legoParts: typeof LEGO_PARTS;
     selectedItemId?: string | null;
+    setSelectedItemId: (id: string | null) => void;
     activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants';
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants') => void;
-}> = ({ config, setConfig, legoParts, selectedItemId, activePartType, setActivePartType }) => {
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -454,6 +455,10 @@ const Step3Characters: React.FC<{
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
+        
+        // Auto-select new character and default to shirt to show colors
+        setSelectedItemId(`character-${newId}`);
+        setActivePartType('shirt');
     };
     
     const handleRemoveChar = (id: number) => {
@@ -1556,7 +1561,7 @@ const BuilderPage: React.FC<{
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
