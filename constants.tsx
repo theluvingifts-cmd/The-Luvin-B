@@ -29,6 +29,7 @@ export const LEGO_PARTS: {
   hat: LegoPart[];
   accessory: LegoPart[];
   pet: LegoPart[];
+  set: LegoPart[]; // Added set category
 } = {
   hair: [],
   face: [],
@@ -37,6 +38,7 @@ export const LEGO_PARTS: {
   hat: [],
   accessory: [],
   pet: [],
+  set: [], // Added set category
 };
 
 
@@ -50,6 +52,7 @@ export const PRESET_BACKGROUNDS_RECTANGLE: { name: string; url: string; category
 
 export const INITIAL_FRAME_CONFIG: FrameConfig = {
   frameId: 'sm',
+  frameColor: 'white', // Default frame color
   background: { type: 'color', value: '#f4eee8' },
   characters: [],
   texts: [],

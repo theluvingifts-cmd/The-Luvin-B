@@ -29,7 +29,7 @@ export interface LegoPart {
   name: string;
   price: number; 
   imageUrl: string;
-  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat';
+  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set'; // Added 'set'
   widthCm: number;
   heightCm: number;
   colors?: OutfitColor[];
@@ -103,6 +103,7 @@ export interface BackgroundConfig {
 
 export interface FrameConfig {
   frameId: string;
+  frameColor?: 'black' | 'white'; // Added frame color
   background: BackgroundConfig;
   characters: LegoCharacterConfig[];
   texts: TextConfig[];

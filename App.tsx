@@ -162,6 +162,26 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
             </button>
           ))}
         </div>
+        {/* Frame Color Selection */}
+        <div className="mt-4 pt-4 border-t border-gray-100">
+            <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">MÀU KHUNG</h4>
+            <div className="flex gap-3">
+                <button 
+                    onClick={() => setConfig(prev => ({ ...prev, frameColor: 'white' }))}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${config.frameColor !== 'black' ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                >
+                    <div className="w-4 h-4 rounded-full bg-white border border-gray-300 shadow-sm"></div>
+                    <span className="text-sm font-medium text-gray-700">Trắng</span>
+                </button>
+                <button 
+                    onClick={() => setConfig(prev => ({ ...prev, frameColor: 'black' }))}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${config.frameColor === 'black' ? 'border-gray-800 ring-1 ring-gray-800 bg-gray-100' : 'border-gray-200 hover:bg-gray-50'}`}
+                >
+                    <div className="w-4 h-4 rounded-full bg-black border border-gray-600 shadow-sm"></div>
+                    <span className="text-sm font-medium text-gray-700">Đen</span>
+                </button>
+            </div>
+        </div>
       </div>
        {selectedFrame && (
         <div className="p-4 border border-gray-200 rounded-lg">
@@ -410,8 +430,8 @@ const Step3Characters: React.FC<{
     legoParts: typeof LEGO_PARTS;
     selectedItemId?: string | null;
     setSelectedItemId: (id: string | null) => void;
-    activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants';
-    setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants') => void;
+    activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
+    setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -508,7 +528,22 @@ const Step3Characters: React.FC<{
             ...prev,
             characters: prev.characters.map(c => {
                 if (c.id === activeCharId) {
-                    const newChar = { ...c, [part.type]: part };
+                    const newChar = { ...c };
+                    
+                    // Handle Sets (Vests/Combos)
+                    if (part.type === 'set') {
+                        newChar.shirt = part;
+                        newChar.pants = undefined; // Clear pants so they don't conflict visually
+                    } else {
+                        // Standard assignment
+                        (newChar as any)[part.type] = part;
+                        // If selecting standard pants/shirt while a set was active, ensure logic holds
+                        // (e.g. if user had a set, then clicks pants, does shirt remain as the set?
+                        // If the set is assigned to 'shirt', yes. It might look weird if the set image
+                        // is full body. But typically 'set' means top part that covers bottom.
+                        // For now, we just assign normally.)
+                    }
+
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
@@ -520,7 +555,7 @@ const Step3Characters: React.FC<{
                         }
                     }
 
-                    if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
+                    if (part.type === 'shirt' || part.type === 'set') newChar.selectedShirtColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
                     
@@ -551,7 +586,6 @@ const Step3Characters: React.FC<{
       }));
     }
     
-
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
       setConfig(prev => ({
@@ -612,9 +646,10 @@ const Step3Characters: React.FC<{
         }));
     };
     
-    const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants', label: string }[] = [
+    const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set', label: string }[] = [
         { key: 'shirt', label: 'Áo' },
         { key: 'pants', label: 'Quần' },
+        { key: 'set', label: 'Theo bộ' },
         { key: 'face', label: 'Mặt' },
         { key: 'hair', label: 'Tóc' },
         { key: 'hat', label: 'Mũ' },
@@ -687,16 +722,15 @@ const Step3Characters: React.FC<{
             </div>
 
             {activeCharacter && (
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg relative">
                     <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 overflow-x-auto no-scrollbar items-center">
                             {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
                                     {pt.label}
                                 </button>
                             ))}
                         </div>
-                        {/* REMOVED SORT DROPDOWN FROM HERE */}
                     </div>
                      <div className="grid grid-cols-4 gap-2">
                          {(activePartType === 'hair') && (
@@ -709,7 +743,7 @@ const Step3Characters: React.FC<{
                             <PartButton 
                                 key={part.id} 
                                 part={part}
-                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType]?.id === part.id}
+                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id}
                                 onClick={() => handlePartSelect(part)} 
                             />
                         )) : (
@@ -1281,7 +1315,7 @@ const BuilderPage: React.FC<{
   const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
-  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt'); // ADDED
+  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); // ADDED
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1557,6 +1591,22 @@ const BuilderPage: React.FC<{
       setSelectedItemId(`character-${charId}`);
   };
 
+  const handleAutoAdvance = () => {
+      const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
+      let currentIndex = order.indexOf(activePartType as any);
+      
+      if (activePartType === 'set') {
+          setActivePartType('hair');
+          return;
+      }
+
+      if (currentIndex !== -1 && currentIndex < order.length - 1) {
+          setActivePartType(order[currentIndex + 1]);
+      } else {
+          setActivePartType('shirt'); 
+      }
+  };
+
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
@@ -1614,6 +1664,7 @@ const BuilderPage: React.FC<{
                         onCharacterUpdate={handleCharacterUpdate} // ADDED
                         onItemFlip={handleItemFlip}
                         onCharacterDoubleClick={handleCharacterDoubleClick}
+                        onAutoAdvance={handleAutoAdvance} // PASS AUTO ADVANCE
                         className="w-full h-full"
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
@@ -2519,7 +2570,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
 // Helper to categorize parts
 const categorizeParts = (parts: LegoPart[]) => {
     const categories: typeof LEGO_PARTS = {
-        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: []
+        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: [], set: []
     };
     parts.forEach(p => {
         if (p.type in categories) {
