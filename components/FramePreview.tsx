@@ -32,11 +32,11 @@ interface FramePreviewProps {
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'; // Added set
 }
 
-// SafeImage component to handle broken URLs gracefully
+// SafeImage component to handle broken URLs gracefully and ensure CORS for html2canvas
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
-    return <img {...props} onError={() => setHasError(true)} />;
+    return <img crossOrigin="anonymous" {...props} onError={() => setHasError(true)} />;
 };
 
 const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {
@@ -367,7 +367,7 @@ const Transformable: React.FC<{
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
             onDoubleClick={(e) => { if(onDoubleClick) { e.stopPropagation(); onDoubleClick(); } }}
-            className="absolute"
+            className="absolute transform-gpu"
             style={{
                 ...style,
                 left: `${initialTransform.x}%`,
@@ -412,7 +412,7 @@ const Transformable: React.FC<{
                             title="Resize"
                             style={{ transform: `scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 20h16m0 0V4" /></svg>
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3" d="M4 20h16m0 0V4" /></svg>
                           </div>
                       )}
                     </>
@@ -640,8 +640,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                     // Hat should generally be above characters (zIndex 6) but below overlaid charms if any (zIndex 10)
                     // Actually, hats need to be above character (5), so 6 is good. Accessories usually 10.
-                    // Let's keep draggable items at 10 for now for simplicity, or distinguish types.
-                    // If it's a hat, it should be renderable on top of character.
                     const zIndex = item.type === 'hat' ? 12 : 10; 
 
                     const id = `item-${item.id}`;

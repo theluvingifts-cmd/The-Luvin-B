@@ -1527,6 +1527,7 @@ const BuilderPage: React.FC<{
       const originalSelectedId = selectedItemId;
       setSelectedItemId(null);
 
+      // Increased delay to 200ms to ensure clean state
       setTimeout(async () => {
         const element = frameCaptureRef.current;
         if (element && typeof html2canvas !== 'undefined') {
@@ -1548,7 +1549,7 @@ const BuilderPage: React.FC<{
           resolve('');
           setSelectedItemId(originalSelectedId);
         }
-      }, 50);
+      }, 200);
     });
   };
 
