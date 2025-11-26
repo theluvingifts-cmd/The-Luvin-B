@@ -20,6 +20,7 @@ interface FramePreviewProps {
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
   onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void; // Added for color updates
   onItemFlip?: (id: string) => void;
+  onCharacterDoubleClick?: (id: number) => void; // Added double click handler
   className?: string;
   isInteractive?: boolean;
   selectedItemId: string | null;
@@ -207,7 +208,8 @@ const Transformable: React.FC<{
     style?: React.CSSProperties;
     isTextItem?: boolean;
     containerSize?: { width: number; height: number; };
-}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, zIndex, style, isTextItem, containerSize }) => {
+    onDoubleClick?: () => void;
+}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, zIndex, style, isTextItem, containerSize, onDoubleClick }) => {
     
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
       if ('touches' in e && e.touches.length > 0) {
@@ -361,6 +363,7 @@ const Transformable: React.FC<{
         <div
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
+            onDoubleClick={(e) => { if(onDoubleClick) { e.stopPropagation(); onDoubleClick(); } }}
             className="absolute"
             style={{
                 ...style,
@@ -418,7 +421,7 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onItemFlip, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onItemFlip, onCharacterDoubleClick, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -507,8 +510,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
                             isResizable={false} isRotatable={false} isDraggable={isInteractive}
                             zIndex={5}
+                            onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
                         >
-                           <LegoCharacter character={char} pxPerCm={pxPerCm} />
+                           <div style={{width: '100%', height: '100%'}}>
+                               <LegoCharacter character={char} pxPerCm={pxPerCm} />
+                           </div>
                         </Transformable>
                     );
                 })}

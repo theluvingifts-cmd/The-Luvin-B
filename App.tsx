@@ -408,7 +408,8 @@ const Step3Characters: React.FC<{
     config: FrameConfig; 
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
     legoParts: typeof LEGO_PARTS;
-}> = ({ config, setConfig, legoParts }) => {
+    selectedItemId?: string | null;
+}> = ({ config, setConfig, legoParts, selectedItemId }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt');
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -423,6 +424,16 @@ const Step3Characters: React.FC<{
             setActiveCharId(config.characters[config.characters.length - 1]?.id || null);
         }
      }, [config.characters, activeCharId]);
+
+     // Effect to sync active character with selectedItemId from preview
+     useEffect(() => {
+        if (selectedItemId && selectedItemId.startsWith('character-')) {
+            const id = parseInt(selectedItemId.split('-')[1]);
+            if (!isNaN(id)) {
+                setActiveCharId(id);
+            }
+        }
+     }, [selectedItemId]);
 
     const handleAddChar = () => {
         const newId = Date.now();
@@ -1480,14 +1491,23 @@ const BuilderPage: React.FC<{
     
     if (type === 'text') {
         const idToUpdate = parseInt(rawId, 10);
-        setConfig(prev => ({
-            ...prev,
-            texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
-        }));
+        // Check if text content is already empty
+        const textItem = config.texts.find(t => t.id === idToUpdate);
+        
+        if (textItem && textItem.content && textItem.content.trim() !== '') {
+             // Step 1: Clear content
+             setConfig(prev => ({
+                ...prev,
+                texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
+            }));
+        } else {
+             // Step 2: Remove completely
+             handleItemRemoveCompletely(id);
+        }
     } else {
         handleItemRemoveCompletely(id);
     }
-  }, [setConfig, handleItemRemoveCompletely]);
+  }, [setConfig, handleItemRemoveCompletely, config.texts]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1576,6 +1596,8 @@ const BuilderPage: React.FC<{
               ...INITIAL_FRAME_CONFIG,
               frameId: prev.frameId, // Keep size
           }));
+          setStep(1);
+          setSelectedItemId(null);
       }
   };
 
@@ -1614,11 +1636,16 @@ const BuilderPage: React.FC<{
       }
   };
 
+  const handleCharacterDoubleClick = (charId: number) => {
+      setStep(3); // Move to design step
+      setSelectedItemId(`character-${charId}`);
+  };
+
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
@@ -1669,6 +1696,7 @@ const BuilderPage: React.FC<{
                         onTextUpdate={handleTextUpdate}
                         onItemUpdate={handleItemUpdate}
                         onItemFlip={handleItemFlip}
+                        onCharacterDoubleClick={handleCharacterDoubleClick}
                         className="w-full h-full"
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
