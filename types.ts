@@ -14,6 +14,9 @@ export interface FrameOption {
   price: number;
   imageUrl: string;
   description: string;
+  stock?: number; // Số lượng tồn kho
+  colors: string[]; // Danh sách màu: ['black', 'white', 'wood'...]
+  order?: number;
 }
 
 export interface OutfitColor {
@@ -103,7 +106,7 @@ export interface BackgroundConfig {
 
 export interface FrameConfig {
   frameId: string;
-  frameColor?: 'black' | 'white'; // Added frame color
+  frameColor?: string; // Changed to string to support dynamic colors from DB
   background: BackgroundConfig;
   characters: LegoCharacterConfig[];
   texts: TextConfig[];

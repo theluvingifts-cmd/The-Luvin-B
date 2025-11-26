@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem } from './types';
+import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption } from './types';
 import { 
     FRAME_OPTIONS, 
     LEGO_PARTS, 
@@ -21,6 +21,7 @@ import { getAllBackgrounds } from './services/backgroundService'; // Lấy backg
 import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
 import { getAllTemplates } from './services/templateService'; // Lấy mẫu
 import { getAllFeedbacks } from './services/feedbackService'; // Lấy feedback
+import { getAllFrames } from './services/frameService'; // Lấy khung
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
@@ -36,9 +37,10 @@ const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') 
 const CHARACTER_BASE_PRICE = 10000;
 const FREE_SHIPPING_THRESHOLD = 349000;
 
-const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>) => {
+// Updated to accept dynamic frames
+const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
     const breakdown: {label: string, value: number}[] = [];
-    const frame = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
+    const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
     let total = frame.price;
     breakdown.push({ label: `Khung ${frame.name}`, value: frame.price });
 
@@ -78,7 +80,7 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
-// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton components as is) ...
+// ... (Keep StepIndicator component as is) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
@@ -142,52 +144,78 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   );
 };
 
-const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>> }> = ({ config, setConfig }) => {
-  const selectedFrame = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
+// Updated Step1Frame to use dynamic frames and colors
+const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
+  const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
+  
+  // Effect to ensure frame color is valid for selected frame
+  useEffect(() => {
+      if (selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0) {
+          if (!config.frameColor || !selectedFrame.colors.includes(config.frameColor)) {
+              setConfig(prev => ({ ...prev, frameColor: selectedFrame.colors[0] }));
+          }
+      }
+  }, [selectedFrame, config.frameColor, setConfig]);
+
   return (
     <div className="space-y-4">
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">CHỌN KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
-          {FRAME_OPTIONS.map(frame => (
+          {frames.map(frame => (
             <button
               key={frame.id}
               onClick={() => setConfig(prev => ({ ...prev, frameId: frame.id }))}
-              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-16 ${
+              disabled={frame.stock === 0}
+              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative ${
                 config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'
-              }`}
+              } ${frame.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span>{frame.name}</span>
               <span className="font-normal opacity-80 mt-1">{formatCurrency(frame.price)}</span>
+              {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">Hết hàng</span>}
             </button>
           ))}
         </div>
         {/* Frame Color Selection */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
-            <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">MÀU KHUNG</h4>
-            <div className="flex gap-3">
-                <button 
-                    onClick={() => setConfig(prev => ({ ...prev, frameColor: 'white' }))}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${config.frameColor !== 'black' ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                >
-                    <div className="w-4 h-4 rounded-full bg-white border border-gray-300 shadow-sm"></div>
-                    <span className="text-sm font-medium text-gray-700">Trắng</span>
-                </button>
-                <button 
-                    onClick={() => setConfig(prev => ({ ...prev, frameColor: 'black' }))}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${config.frameColor === 'black' ? 'border-gray-800 ring-1 ring-gray-800 bg-gray-100' : 'border-gray-200 hover:bg-gray-50'}`}
-                >
-                    <div className="w-4 h-4 rounded-full bg-black border border-gray-600 shadow-sm"></div>
-                    <span className="text-sm font-medium text-gray-700">Đen</span>
-                </button>
+        {selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+                <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">MÀU KHUNG</h4>
+                <div className="flex gap-3 flex-wrap">
+                    {selectedFrame.colors.map(color => {
+                        const getColorStyle = (c: string) => {
+                            if (c === 'white') return { bg: '#fff', border: '#ddd' };
+                            if (c === 'black') return { bg: '#000', border: '#000' };
+                            if (c === 'wood') return { bg: '#d2b48c', border: '#c1a075' };
+                            if (c === 'gold') return { bg: '#ffd700', border: '#e6c200' };
+                            return { bg: c, border: c }; // Fallback
+                        };
+                        const style = getColorStyle(color);
+                        const isSelected = config.frameColor === color;
+
+                        return (
+                            <button 
+                                key={color}
+                                onClick={() => setConfig(prev => ({ ...prev, frameColor: color }))}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all capitalize ${isSelected ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                            >
+                                <div 
+                                    className="w-4 h-4 rounded-full shadow-sm border" 
+                                    style={{ backgroundColor: style.bg, borderColor: style.border }}
+                                ></div>
+                                <span className="text-sm font-medium text-gray-700">{color === 'white' ? 'Trắng' : color === 'black' ? 'Đen' : color}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+        )}
       </div>
        {selectedFrame && (
         <div className="p-4 border border-gray-200 rounded-lg">
             <h4 className="font-bold text-gray-800 mb-3">GIÁ CƠ BẢN BAO GỒM</h4>
             <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
-                <li>1 Khung ảnh composite cao cấp.</li>
+                <li>1 Khung ảnh {selectedFrame.name} ({selectedFrame.description}).</li>
                 <li>1 Nền tùy chọn (mẫu có sẵn hoặc ảnh của bạn).</li>
                 <li>Miễn phí thêm chữ & ảnh nhỏ trang trí.</li>
                 <li>Hộp quà & thiệp viết tay theo yêu cầu.</li>
@@ -199,6 +227,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
   );
 };
 
+// ... (Keep PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters as is) ...
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
@@ -1305,7 +1334,8 @@ const BuilderPage: React.FC<{
     showToast: (message: string, type: 'success' | 'error') => void;
     legoParts: typeof LEGO_PARTS; // New prop
     backgrounds: PresetBackground[]; // New prop
-}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts, backgrounds }) => {
+    frames: FrameOption[]; // New prop
+}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts, backgrounds, frames }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1354,7 +1384,8 @@ const BuilderPage: React.FC<{
   
   const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts), [config, allParts]);
+  // Pass frames to calculatePrice
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   
   const selectedText = useMemo(() => {
     if (selectedItemId?.startsWith('text-')) {
@@ -1609,13 +1640,14 @@ const BuilderPage: React.FC<{
 
   const renderStepContent = () => {
     switch (step) {
-      case 1: return <Step1Frame config={config} setConfig={setConfig} />;
+      // Pass frames prop to Step1Frame
+      case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
       case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
-        frameName={FRAME_OPTIONS.find(f => f.id === config.frameId)?.name || ''} 
+        frameName={frames.find(f => f.id === config.frameId)?.name || ''} 
         charCount={config.characters.length} 
         onAddToCart={() => handleAddToCartWrapper(false)} 
         onBuyNow={() => handleAddToCartWrapper(true)}
@@ -1793,7 +1825,7 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
 }
 
 const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: number) => void; allParts: Record<string, LegoPart>; navigateTo: (page: Page) => void;}> = ({ cartItems, onRemoveItem, allParts, navigateTo }) => {
-    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0);
+    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice, 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
@@ -1804,7 +1836,7 @@ const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: numbe
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
                         {cartItems.map((item, index) => {
-                            const { totalPrice } = calculatePrice(item, allParts);
+                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
                             const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
                             return (
                                 <div key={index} className="bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-center gap-4">
@@ -1851,7 +1883,7 @@ const CartPanel: React.FC<{
   allParts: Record<string, LegoPart>;
   navigateTo: (page: Page) => void;
 }> = ({ isOpen, onClose, cartItems, onRemoveItem, allParts, navigateTo }) => {
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0);
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice, 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -1900,7 +1932,7 @@ const CartPanel: React.FC<{
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {cartItems.map((item, index) => {
-              const { totalPrice } = calculatePrice(item, allParts);
+              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
               const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
               return (
                 <div key={index} className="flex gap-4">
@@ -2004,7 +2036,7 @@ const CheckoutPage: React.FC<{
   }, [selectedDistrict]);
 
 
-  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0), [cartItems, allParts]);
+  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice, 0), [cartItems, allParts]);
   
   // Logic miễn phí vận chuyển
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
@@ -2189,7 +2221,7 @@ const CheckoutPage: React.FC<{
               <h2 className="font-bold text-lg mb-4 border-b pb-2">Đơn hàng của bạn</h2>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {cartItems.map((item, index) => {
-                  const { totalPrice } = calculatePrice(item, allParts);
+                  const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
                   return (
                     <div key={index} className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-2">
@@ -2593,6 +2625,7 @@ const App: React.FC = () => {
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
+  const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); // Initialize with constant fallback
 
   // Lazy initialization for logoUrl to prevent FOUC and sync issues
   const [logoUrl, setLogoUrl] = useState<string>(() => {
@@ -2640,12 +2673,13 @@ const App: React.FC = () => {
   useEffect(() => {
       const fetchData = async () => {
           try {
-            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
+            const [parts, bgs, storeConfig, tpls, fbs, fetchedFrames] = await Promise.all([
                 getAllParts(), 
                 getAllBackgrounds(), 
                 getStoreConfig(),
                 getAllTemplates(),
-                getAllFeedbacks()
+                getAllFeedbacks(),
+                getAllFrames()
             ]);
             
             if (parts && parts.length > 0) {
@@ -2659,6 +2693,9 @@ const App: React.FC = () => {
             }
             if (fbs && fbs.length > 0) {
                 setFeedbacks(fbs);
+            }
+            if (fetchedFrames && fetchedFrames.length > 0) {
+                setFrames(fetchedFrames);
             }
 
             if (storeConfig) {
@@ -2780,6 +2817,7 @@ const App: React.FC = () => {
                     showToast={showToast}
                     legoParts={legoParts}
                     backgrounds={backgrounds}
+                    frames={frames}
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
