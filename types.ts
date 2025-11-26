@@ -112,6 +112,7 @@ export interface FrameConfig {
   texts: TextConfig[];
   draggableItems: DraggableItem[];
   previewImageUrl?: string;
+  quantity?: number; // Added quantity field
 }
 
 export interface Order {

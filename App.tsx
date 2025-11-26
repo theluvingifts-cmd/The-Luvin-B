@@ -1558,7 +1558,8 @@ const BuilderPage: React.FC<{
     const imageUrl = await captureFrameAsImage();
     setIsSaving(false);
     if (imageUrl) {
-      onAddToCart({ ...config, previewImageUrl: imageUrl }, !andCheckout);
+      // Default quantity is 1
+      onAddToCart({ ...config, previewImageUrl: imageUrl, quantity: 1 }, !andCheckout);
       if (andCheckout) {
         navigateTo('checkout');
       }
@@ -1825,8 +1826,15 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
     );
 }
 
-const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: number) => void; allParts: Record<string, LegoPart>; navigateTo: (page: Page) => void;}> = ({ cartItems, onRemoveItem, allParts, navigateTo }) => {
-    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice, 0);
+const CartPage: React.FC<{ 
+    cartItems: FrameConfig[]; 
+    onRemoveItem: (index: number) => void; 
+    allParts: Record<string, LegoPart>; 
+    navigateTo: (page: Page) => void;
+    onUpdateQuantity: (index: number, newQuantity: number) => void; // New prop
+    onZoomImage: (url: string) => void; // New prop
+}> = ({ cartItems, onRemoveItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
@@ -1839,11 +1847,21 @@ const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: numbe
                         {cartItems.map((item, index) => {
                             const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
                             const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
+                            const quantity = item.quantity || 1;
+                            
                             return (
                                 <div key={index} className="bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-center gap-4">
-                                    <div className="w-40 h-40 flex-shrink-0 bg-gray-100 rounded-md p-2">
+                                    <div 
+                                        className="w-40 h-40 flex-shrink-0 bg-gray-100 rounded-md p-2 cursor-pointer relative group"
+                                        onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}
+                                    >
                                       {item.previewImageUrl ? (
-                                        <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
+                                        <>
+                                            <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
+                                                <ZoomIcon />
+                                            </div>
+                                        </>
                                       ) : (
                                         <FramePreview config={item} containerWidth={144} onItemTransform={() => {}} onTextUpdate={() => {}} onItemFlip={() => {}} selectedItemId={null} setSelectedItemId={() => {}} isInteractive={false} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                                       )}
@@ -1852,10 +1870,26 @@ const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: numbe
                                         <h3 className="font-bold text-lg font-body text-luvin-pink">Khung tùy chỉnh</h3>
                                         <p className="text-sm text-gray-600">Kích thước: {frame.name}</p>
                                         <p className="text-sm text-gray-600">Số nhân vật: {item.characters.length}</p>
+                                        <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                                            <span className="text-sm font-medium">Số lượng:</span>
+                                            <div className="flex items-center border border-gray-300 rounded">
+                                                <button 
+                                                    onClick={() => onUpdateQuantity(index, quantity - 1)}
+                                                    className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+                                                    disabled={quantity <= 1}
+                                                >-</button>
+                                                <span className="px-2 py-1 text-sm font-bold min-w-[20px] text-center">{quantity}</span>
+                                                <button 
+                                                    onClick={() => onUpdateQuantity(index, quantity + 1)}
+                                                    className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+                                                >+</button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex-shrink-0 text-center sm:text-right">
-                                        <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</p>
-                                        <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline mt-1">Xóa</button>
+                                        <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
+                                        <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / cái)</p>
+                                        <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline mt-2">Xóa</button>
                                     </div>
                                 </div>
                             );
@@ -1883,8 +1917,10 @@ const CartPanel: React.FC<{
   onRemoveItem: (index: number) => void;
   allParts: Record<string, LegoPart>;
   navigateTo: (page: Page) => void;
-}> = ({ isOpen, onClose, cartItems, onRemoveItem, allParts, navigateTo }) => {
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice, 0);
+  onUpdateQuantity: (index: number, newQuantity: number) => void; // New prop
+  onZoomImage: (url: string) => void; // New prop
+}> = ({ isOpen, onClose, cartItems, onRemoveItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -1935,11 +1971,21 @@ const CartPanel: React.FC<{
             {cartItems.map((item, index) => {
               const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
               const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
+              const quantity = item.quantity || 1;
+
               return (
                 <div key={index} className="flex gap-4">
-                  <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded p-1">
+                  <div 
+                    className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded p-1 cursor-pointer relative group"
+                    onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}
+                  >
                      {item.previewImageUrl ? (
-                        <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
+                        <>
+                            <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                                <ZoomIcon />
+                            </div>
+                        </>
                       ) : (
                         <FramePreview config={item} containerWidth={72} isInteractive={false} onItemTransform={()=>{}} onTextUpdate={()=>{}} onItemFlip={()=>{}} selectedItemId={null} setSelectedItemId={()=>{}} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                       )}
@@ -1947,7 +1993,21 @@ const CartPanel: React.FC<{
                   <div className="flex-grow">
                     <h3 className="text-sm font-semibold">Khung LEGO tùy chỉnh</h3>
                     <p className="text-xs text-gray-500">{frame.name}</p>
-                    <p className="text-sm font-bold mt-1">{formatCurrency(totalPrice)}</p>
+                    <div className="flex justify-between items-end mt-1">
+                        <p className="text-sm font-bold">{formatCurrency(totalPrice * quantity)}</p>
+                        <div className="flex items-center border border-gray-300 rounded bg-white">
+                            <button 
+                                onClick={() => onUpdateQuantity(index, quantity - 1)}
+                                className="px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-100"
+                                disabled={quantity <= 1}
+                            >-</button>
+                            <span className="px-1.5 text-xs font-bold min-w-[16px] text-center">{quantity}</span>
+                            <button 
+                                onClick={() => onUpdateQuantity(index, quantity + 1)}
+                                className="px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-100"
+                            >+</button>
+                        </div>
+                    </div>
                   </div>
                   <button onClick={() => onRemoveItem(index)} className="text-red-500 self-start p-1 text-lg">&times;</button>
                 </div>
@@ -2037,7 +2097,7 @@ const CheckoutPage: React.FC<{
   }, [selectedDistrict]);
 
 
-  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice, 0), [cartItems, allParts]);
+  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0), [cartItems, allParts]);
   
   // Logic miễn phí vận chuyển
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
@@ -2223,18 +2283,29 @@ const CheckoutPage: React.FC<{
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {cartItems.map((item, index) => {
                   const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+                  const quantity = item.quantity || 1;
+                  
                   return (
                     <div key={index} className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                            <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <ZoomIcon />
-                            </div>
+                            {item.previewImageUrl ? (
+                                <>
+                                    <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded">
+                                        <ZoomIcon />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[8px]">No Img</div>
+                            )}
                         </div>
-                        <span>Khung tùy chỉnh</span>
+                        <div>
+                            <span>Khung tùy chỉnh</span>
+                            {quantity > 1 && <span className="ml-1 text-xs font-bold text-gray-500">x{quantity}</span>}
+                        </div>
                       </div>
-                      <span>{formatCurrency(totalPrice)}</span>
+                      <span>{formatCurrency(totalPrice * quantity)}</span>
                     </div>
                   )
                 })}
@@ -2747,12 +2818,18 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
-    setCartItems(prev => [...prev, newConfig]);
+    // Ensure quantity is 1 when adding new item
+    setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
     if (openCart) setIsCartOpen(true);
   };
 
   const handleRemoveCartItem = (index: number) => {
     setCartItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateCartQuantity = (index: number, newQuantity: number) => {
+      if (newQuantity < 1) return;
+      setCartItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
@@ -2822,7 +2899,14 @@ const App: React.FC = () => {
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
-            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
+            {currentPage === 'cart' && <CartPage 
+                cartItems={cartItems} 
+                onRemoveItem={handleRemoveCartItem} 
+                allParts={allParts} 
+                navigateTo={navigateTo}
+                onUpdateQuantity={handleUpdateCartQuantity}
+                onZoomImage={setZoomedImageUrl} 
+            />}
             {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
@@ -2840,12 +2924,20 @@ const App: React.FC = () => {
             onRemoveItem={handleRemoveCartItem}
             allParts={allParts}
             navigateTo={navigateTo}
+            onUpdateQuantity={handleUpdateCartQuantity}
+            onZoomImage={setZoomedImageUrl}
         />
         
          {zoomedImageUrl && (
-            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
-                <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain rounded-lg" />
-                <button className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80">&times;</button>
+            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 animate-fade-in" onClick={() => setZoomedImageUrl(null)}>
+                <div className="relative max-w-4xl max-h-full w-full flex justify-center">
+                    <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                    <button className="absolute -top-12 right-0 sm:-right-12 text-white hover:text-gray-300 transition-colors" onClick={() => setZoomedImageUrl(null)}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         )}
 
