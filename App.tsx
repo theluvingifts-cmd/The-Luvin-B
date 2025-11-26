@@ -34,6 +34,7 @@ const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') 
 
 
 const CHARACTER_BASE_PRICE = 10000;
+const FREE_SHIPPING_THRESHOLD = 349000;
 
 const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>) => {
     const breakdown: {label: string, value: number}[] = [];
@@ -393,6 +394,15 @@ const PartButton: React.FC<{
     );
 };
 
+// Helper for sorting parts
+const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
+    if (mode === 'default') return parts;
+    return [...parts].sort((a, b) => {
+        const priceA = a.price || 0;
+        const priceB = b.price || 0;
+        return mode === 'price_asc' ? priceA - priceB : priceB - priceA;
+    });
+};
 
 const Step3Characters: React.FC<{ 
     config: FrameConfig; 
@@ -403,6 +413,10 @@ const Step3Characters: React.FC<{
     const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt');
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
+    
+    // Sorting States
+    const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
+    const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
 
      useEffect(() => {
         if (!config.characters.find(c => c.id === activeCharId)) {
@@ -607,7 +621,10 @@ const Step3Characters: React.FC<{
         return list.filter(p => p.stock === undefined || p.stock > 0);
     };
 
-    const currentPartList = getAvailableParts(legoParts[activePartType] || []);
+    const currentPartList = useMemo(() => {
+        const list = getAvailableParts(legoParts[activePartType] || []);
+        return sortParts(list, sortMode);
+    }, [legoParts, activePartType, sortMode]);
 
     const activePartColors = useMemo(() => {
         if (!activeCharacter) return null;
@@ -696,12 +713,23 @@ const Step3Characters: React.FC<{
 
             {activeCharacter && (
                 <div className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-200 pb-4">
-                        {partTypes.map(pt => (
-                            <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
-                                {pt.label}
-                            </button>
-                        ))}
+                    <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
+                        <div className="flex flex-wrap gap-2">
+                            {partTypes.map(pt => (
+                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                    {pt.label}
+                                </button>
+                            ))}
+                        </div>
+                        <select 
+                            value={sortMode}
+                            onChange={(e) => setSortMode(e.target.value as any)}
+                            className="text-xs border border-gray-300 rounded p-1.5 bg-white outline-none min-w-[80px]"
+                        >
+                            <option value="default">Sắp xếp</option>
+                            <option value="price_asc">Giá: Thấp - Cao</option>
+                            <option value="price_desc">Giá: Cao - Thấp</option>
+                        </select>
                     </div>
                      <div className="grid grid-cols-4 gap-2">
                          {(activePartType === 'hair') && (
@@ -776,9 +804,20 @@ const Step3Characters: React.FC<{
             )}
             
             <div className="p-4 border border-gray-200 rounded-lg">
-                <h4 className="font-bold text-gray-800 mb-3">THÊM PHỤ KIỆN</h4>
+                <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
+                    <select 
+                        value={accessorySortMode}
+                        onChange={(e) => setAccessorySortMode(e.target.value as any)}
+                        className="text-xs border border-gray-300 rounded p-1 bg-white outline-none"
+                    >
+                        <option value="default">Sắp xếp</option>
+                        <option value="price_asc">Giá tăng</option>
+                        <option value="price_desc">Giá giảm</option>
+                    </select>
+                </div>
                 <div className="grid grid-cols-4 gap-2">
-                    {getAvailableParts(legoParts.accessory).map(part => (
+                    {sortParts(getAvailableParts(legoParts.accessory), accessorySortMode).map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
@@ -797,6 +836,7 @@ const Step3Characters: React.FC<{
 };
 
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: string, value: number}[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving }) => {
+  const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
     <div>
@@ -819,6 +859,19 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
                 <div className="flex justify-between text-base font-bold text-gray-800">
                     <span>Tổng cộng</span>
                     <span>{formatCurrency(totalPrice)}</span>
+                </div>
+                
+                {/* Free Shipping Notification */}
+                <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                    {remainingForFreeShip > 0 ? (
+                        <p className="text-xs text-gray-600 text-center">
+                            Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span>
+                        </p>
+                    ) : (
+                        <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1">
+                            <span>🎉</span> Đơn hàng đủ điều kiện Freeship!
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
@@ -921,7 +974,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   );
 };
 
-// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage, CartPanel, ZoomIcon, CheckoutPage, OrderConfirmationPage, OrderLookupPage components as is) ...
+// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage components as is) ...
 // ... skipping redundant parts for brevity ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
@@ -986,8 +1039,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
   );
 };
 
-// --- NEW PAGES ---
-
+// ... (Keep AboutPage, WarrantyPage, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage as is) ...
 const AboutPage: React.FC = () => {
     return (
         <div className="bg-white font-body text-gray-800">
@@ -1803,6 +1855,8 @@ const CartPanel: React.FC<{
   navigateTo: (page: Page) => void;
 }> = ({ isOpen, onClose, cartItems, onRemoveItem, allParts, navigateTo }) => {
   const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0);
+  const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
+  const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
   const handleCheckout = () => {
     onClose();
@@ -1823,6 +1877,27 @@ const CartPanel: React.FC<{
           <h2 className="text-lg font-bold">Giỏ hàng</h2>
           <button onClick={onClose} className="p-1">&times;</button>
         </div>
+
+        {/* Free Shipping Progress in Cart Panel */}
+        {cartItems.length > 0 && (
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                 {remaining > 0 ? (
+                    <div className="space-y-1">
+                        <p className="text-xs text-gray-600">
+                            Thêm <span className="font-bold text-gray-900">{formatCurrency(remaining)}</span> để được <span className="font-bold text-green-600">Free Ship</span>
+                        </p>
+                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 transition-all duration-500" style={{width: `${percentage}%`}}></div>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-xs text-green-600 font-bold flex items-center gap-1">
+                        <span>✨</span> Bạn đã được Miễn phí vận chuyển!
+                    </p>
+                )}
+            </div>
+        )}
+
         {cartItems.length === 0 ? (
           <p className="flex-grow flex items-center justify-center text-gray-500">Giỏ hàng trống.</p>
         ) : (
@@ -1933,7 +2008,16 @@ const CheckoutPage: React.FC<{
 
 
   const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0), [cartItems, allParts]);
-  const shippingFee = SHIPPING_FEES[shippingOption];
+  
+  // Logic miễn phí vận chuyển
+  let calculatedShippingFee = SHIPPING_FEES[shippingOption];
+  const isFreeShippingEligible = subtotal >= FREE_SHIPPING_THRESHOLD;
+  
+  if (shippingOption === 'standard' && isFreeShippingEligible) {
+      calculatedShippingFee = 0;
+  }
+  
+  const shippingFee = calculatedShippingFee;
   const giftBoxFee = addGiftBox ? GIFT_BOX_PRICE : 0;
   const totalPrice = subtotal + shippingFee + giftBoxFee;
   const amountToPay = paymentMethod === 'deposit' ? totalPrice * 0.7 : totalPrice;
@@ -2038,7 +2122,14 @@ const CheckoutPage: React.FC<{
                                 <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="standard" checked={shippingOption === 'standard'} onChange={() => setShippingOption('standard')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
                                     <span className="ml-2 text-sm flex-grow text-gray-700">Giao hàng thường</span>
-                                    <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.standard)}</span>
+                                    {isFreeShippingEligible ? (
+                                        <div className="text-right">
+                                            <span className="text-xs text-gray-400 line-through mr-1">{formatCurrency(SHIPPING_FEES.standard)}</span>
+                                            <span className="text-sm font-bold text-green-600">Miễn phí</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.standard)}</span>
+                                    )}
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="express" checked={shippingOption === 'express'} onChange={() => setShippingOption('express')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
@@ -2076,6 +2167,28 @@ const CheckoutPage: React.FC<{
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
+                
+              {/* Free Shipping Progress Bar in Checkout */}
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                 {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                    <div className="bg-green-100 text-green-800 p-3 rounded-lg text-sm font-bold flex items-center gap-2">
+                        <span>🎉</span>
+                        <span>Chúc mừng! Bạn được Miễn phí giao hàng thường.</span>
+                    </div>
+                ) : (
+                    <div>
+                        <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600">Tiến độ Freeship</span>
+                            <span className="font-bold text-gray-900">{Math.round((subtotal/FREE_SHIPPING_THRESHOLD)*100)}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-1">
+                            <div className="h-full bg-luvin-pink transition-all duration-500" style={{width: `${(subtotal/FREE_SHIPPING_THRESHOLD)*100}%`}}></div>
+                        </div>
+                        <p className="text-xs text-gray-500 text-right">Mua thêm <span className="font-bold text-gray-900">{formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)}</span> để được Freeship</p>
+                    </div>
+                )}
+              </div>
+
               <h2 className="font-bold text-lg mb-4 border-b pb-2">Đơn hàng của bạn</h2>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {cartItems.map((item, index) => {
@@ -2099,7 +2212,14 @@ const CheckoutPage: React.FC<{
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>Tạm tính</span><span>{formatCurrency(subtotal)}</span></div>
                 {addGiftBox && <div className="flex justify-between"><span>Hộp quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
-                <div className="flex justify-between"><span>Phí vận chuyển</span><span>{shippingOption === 'bookship' ? 'Tự thỏa thuận' : formatCurrency(shippingFee)}</span></div>
+                <div className="flex justify-between">
+                    <span>Phí vận chuyển</span>
+                    {isFreeShippingEligible && shippingOption === 'standard' ? (
+                        <span className="text-green-600 font-bold">Miễn phí</span>
+                    ) : (
+                        <span>{shippingOption === 'bookship' ? 'Tự thỏa thuận' : formatCurrency(shippingFee)}</span>
+                    )}
+                </div>
               </div>
               <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
                 <span>Tổng cộng</span>
@@ -2217,7 +2337,14 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
 
                             <div className="text-sm space-y-2">
                                 <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</span></div>
-                                <div className="flex justify-between"><span>Phí vận chuyển:</span><span className="font-medium">{formatCurrency(order.shipping.fee)}</span></div>
+                                <div className="flex justify-between">
+                                    <span>Phí vận chuyển:</span>
+                                    {order.shipping.fee === 0 && order.shipping.method === 'standard' ? (
+                                        <span className="font-bold text-green-600">Miễn phí</span>
+                                    ) : (
+                                        <span className="font-medium">{formatCurrency(order.shipping.fee)}</span>
+                                    )}
+                                </div>
                                 {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà:</span><span className="font-medium">{formatCurrency(30000)}</span></div>}
                                 <div className="border-t my-2"></div>
                                 <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
