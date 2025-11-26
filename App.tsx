@@ -919,13 +919,13 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
               </button>
             ))}
             <button onClick={onCartClick} className="relative text-gray-800 hover:text-luvin-pink transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
               {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">{cartCount}</span>}
             </button>
           </div>
           <div className="md:hidden flex items-center gap-4">
             <button onClick={onCartClick} className="relative text-gray-800">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
                 {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">{cartCount}</span>}
             </button>
             <button onClick={() => setIsMenuOpen(true)} className="text-gray-800 focus:outline-none">
@@ -2980,7 +2980,8 @@ const App: React.FC = () => {
         
         // Save to local history for Order Lookup
         try {
-            const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
+            // FIX: Explicitly type saved to avoid "unknown" type errors and spread errors
+            const saved: any[] = JSON.parse(localStorage.getItem('my_orders') || '[]');
             const newEntry = { id: res.data.id, date: Date.now() };
             // Add new entry to start, remove duplicates if any, keep max 5
             const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
