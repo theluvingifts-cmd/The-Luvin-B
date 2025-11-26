@@ -1,8 +1,8 @@
 
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS } from '../constants';
+import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
+import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
 type Transform = {
   x: number;
@@ -19,6 +19,7 @@ interface FramePreviewProps {
   onItemRemove: (id: string) => void;
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
   onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void; // Added for color updates
+  onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void; // Added for character updates
   onItemFlip?: (id: string) => void;
   onCharacterDoubleClick?: (id: number) => void; // Added double click handler
   className?: string;
@@ -27,6 +28,7 @@ interface FramePreviewProps {
   setSelectedItemId: (id: string | null) => void;
   setIsEditingText: (isEditing: boolean) => void;
   allParts?: Record<string, LegoPart>;
+  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants'; // Added active part type
 }
 
 // SafeImage component to handle broken URLs gracefully
@@ -421,7 +423,7 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onItemFlip, onCharacterDoubleClick, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -445,6 +447,28 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
   }, [propAllParts]);
 
+  const getCharacterColors = (char: LegoCharacterConfig, type: string) => {
+      if (type === 'shirt') {
+          if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
+          // Fallback logic
+          const name = char.shirt?.name.toLowerCase() || '';
+          if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) {
+              return defaultShirtColors;
+          }
+      }
+      if (type === 'pants') {
+          if (char.pants?.colors && char.pants.colors.length > 0) return char.pants.colors;
+           const name = char.pants?.name.toLowerCase() || '';
+          if (char.pants && (char.pants.id === 'pants1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) {
+              return defaultPantsColors;
+          }
+      }
+      if (type === 'hair') {
+          return char.hair?.colors;
+      }
+      return null;
+  }
+
   // --- Context Toolbar Logic ---
   const selectedItemDetails = useMemo(() => {
       if (!selectedItemId) return null;
@@ -467,6 +491,16 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return null;
   }, [selectedItemId, config, allParts]);
 
+  const activeColors = useMemo(() => {
+      if (selectedItemDetails?.type === 'item') {
+          return selectedItemDetails.part?.colors;
+      }
+      if (selectedItemDetails?.type === 'character' && activePartType) {
+          return getCharacterColors(selectedItemDetails.data as LegoCharacterConfig, activePartType);
+      }
+      return null;
+  }, [selectedItemDetails, activePartType]);
+
   const handleToolbarDelete = () => {
       if (selectedItemId) onItemRemove(selectedItemId);
   };
@@ -476,9 +510,28 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   };
 
   const handleColorSelect = (color: any) => {
-      if (selectedItemId && onItemUpdate) {
+      if (selectedItemDetails?.type === 'item' && onItemUpdate && selectedItemId) {
           onItemUpdate(selectedItemId, { selectedColor: color });
       }
+      if (selectedItemDetails?.type === 'character' && onCharacterUpdate && selectedItemDetails.data) {
+          // Determine field based on activePartType
+          if (activePartType === 'shirt') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
+          else if (activePartType === 'pants') onCharacterUpdate(selectedItemDetails.data.id, { selectedPantsColor: color });
+          else if (activePartType === 'hair') onCharacterUpdate(selectedItemDetails.data.id, { selectedHairColor: color });
+      }
+  };
+
+  const getActiveColorHex = (color: any) => {
+      if (selectedItemDetails?.type === 'item') {
+          return (selectedItemDetails.data as DraggableItem)?.selectedColor?.hex;
+      }
+      if (selectedItemDetails?.type === 'character' && activePartType) {
+          const char = selectedItemDetails.data as LegoCharacterConfig;
+          if (activePartType === 'shirt') return char.selectedShirtColor?.hex;
+          if (activePartType === 'pants') return char.selectedPantsColor?.hex;
+          if (activePartType === 'hair') return char.selectedHairColor?.hex;
+      }
+      return null;
   };
 
   return (
@@ -589,13 +642,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         {isInteractive && selectedItemId && (
             <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-fade-in transform-handle">
                 {/* Color Selection Row */}
-                {selectedItemDetails?.part?.colors && selectedItemDetails.part.colors.length > 0 && (
+                {activeColors && activeColors.length > 0 && (
                     <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-2 overflow-x-auto max-w-[90vw] no-scrollbar">
-                        {selectedItemDetails.part.colors.map((color, idx) => (
+                        {activeColors.map((color: OutfitColor, idx: number) => (
                             <button
                                 key={idx}
                                 onClick={() => handleColorSelect(color)}
-                                className={`w-6 h-6 rounded-full border relative flex-shrink-0 ${(selectedItemDetails.data as DraggableItem)?.selectedColor?.hex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
+                                className={`w-6 h-6 rounded-full border relative flex-shrink-0 ${getActiveColorHex(color) === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
                                 style={{ backgroundColor: color.hex }}
                                 title={`${color.name}`}
                             >

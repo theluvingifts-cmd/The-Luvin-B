@@ -78,7 +78,7 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>)
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
-// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters, Step4Summary components as is) ...
+// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton components as is) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
@@ -409,9 +409,10 @@ const Step3Characters: React.FC<{
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
     legoParts: typeof LEGO_PARTS;
     selectedItemId?: string | null;
-}> = ({ config, setConfig, legoParts, selectedItemId }) => {
+    activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants';
+    setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants') => void;
+}> = ({ config, setConfig, legoParts, selectedItemId, activePartType, setActivePartType }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
-    const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt');
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
     
@@ -557,19 +558,6 @@ const Step3Characters: React.FC<{
       setPrintDialogCharId(null);
     };
 
-    const handleColorSelect = (partType: 'shirt' | 'pants' | 'hair', color: OutfitColor) => {
-        if (!activeCharId) return;
-        let key: keyof LegoCharacterConfig;
-        if (partType === 'shirt') key = 'selectedShirtColor';
-        else if (partType === 'pants') key = 'selectedPantsColor';
-        else key = 'selectedHairColor';
-
-        setConfig(prev => ({
-            ...prev,
-            characters: prev.characters.map(c => c.id === activeCharId ? { ...c, [key]: color } : c)
-        }));
-    }
-
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
         
@@ -637,35 +625,6 @@ const Step3Characters: React.FC<{
         return sortParts(list, sortMode);
     }, [legoParts, activePartType, sortMode]);
 
-    const activePartColors = useMemo(() => {
-        if (!activeCharacter) return null;
-        if (activePartType === 'hair') {
-             return activeCharacter.hair?.colors || null;
-        }
-        if (activePartType === 'shirt') {
-            const part = activeCharacter.shirt;
-            if (part?.colors && part.colors.length > 0) return part.colors;
-            if (part) {
-                const nameLower = part.name.toLowerCase();
-                if (part.id === 'shirt1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
-                    return defaultShirtColors;
-                }
-            }
-        }
-        if (activePartType === 'pants') {
-            const part = activeCharacter.pants;
-            if (part?.colors && part.colors.length > 0) return part.colors;
-            if (part) {
-                const nameLower = part.name.toLowerCase();
-                if (part.id === 'pants1' || nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic')) {
-                    return defaultPantsColors;
-                }
-            }
-        }
-        return null;
-    }, [activeCharacter, activePartType]);
-
-
     return (
         <div className="space-y-4">
             {printDialogCharId && (
@@ -732,15 +691,7 @@ const Step3Characters: React.FC<{
                                 </button>
                             ))}
                         </div>
-                        <select 
-                            value={sortMode}
-                            onChange={(e) => setSortMode(e.target.value as any)}
-                            className="text-xs border border-gray-300 rounded p-1.5 bg-white outline-none min-w-[80px]"
-                        >
-                            <option value="default">Sắp xếp</option>
-                            <option value="price_asc">Giá: Thấp - Cao</option>
-                            <option value="price_desc">Giá: Cao - Thấp</option>
-                        </select>
+                        {/* REMOVED SORT DROPDOWN FROM HERE */}
                     </div>
                      <div className="grid grid-cols-4 gap-2">
                          {(activePartType === 'hair') && (
@@ -762,61 +713,13 @@ const Step3Characters: React.FC<{
                             </div>
                         )}
                     </div>
-
-                    {(activePartType === 'shirt' && activePartColors) && (
-                      <div className="mt-4 pt-4 border-t">
-                        <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu áo</label>
-                         <div className="flex flex-wrap gap-2">
-                           {activePartColors.map(color => (
-                             <button
-                               key={color.name}
-                               onClick={() => handleColorSelect('shirt', color)}
-                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedShirtColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
-                               style={{ backgroundColor: color.hex }}
-                               title={`${color.name} (${formatCurrency(color.price)})`}
-                             />
-                           ))}
-                         </div>
-                      </div>
-                    )}
-                    {(activePartType === 'pants' && activePartColors) && (
-                      <div className="mt-4 pt-4 border-t">
-                        <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu quần</label>
-                         <div className="flex flex-wrap gap-2">
-                           {activePartColors.map(color => (
-                             <button
-                               key={color.name}
-                               onClick={() => handleColorSelect('pants', color)}
-                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedPantsColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
-                               style={{ backgroundColor: color.hex }}
-                               title={`${color.name} (${formatCurrency(color.price)})`}
-                             />
-                           ))}
-                         </div>
-                      </div>
-                    )}
-                    {(activePartType === 'hair' && activePartColors) && (
-                      <div className="mt-4 pt-4 border-t">
-                        <label className="text-sm font-bold text-gray-600 block mb-2">Chỉnh màu tóc</label>
-                         <div className="flex flex-wrap gap-2">
-                           {activePartColors.map(color => (
-                             <button
-                               key={color.name}
-                               onClick={() => handleColorSelect('hair', color)}
-                               className={`w-8 h-8 rounded-full border-2 transition-all ${activeCharacter.selectedHairColor?.imageUrl === color.imageUrl ? 'border-luvin-pink scale-110' : 'border-white'}`}
-                               style={{ backgroundColor: color.hex }}
-                               title={`${color.name} (${formatCurrency(color.price)})`}
-                             />
-                           ))}
-                         </div>
-                      </div>
-                    )}
                 </div>
             )}
             
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
+                    {/* KEEPING SORT DROPDOWN ONLY HERE */}
                     <select 
                         value={accessorySortMode}
                         onChange={(e) => setAccessorySortMode(e.target.value as any)}
@@ -1373,6 +1276,7 @@ const BuilderPage: React.FC<{
   const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
+  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt'); // ADDED
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1465,6 +1369,13 @@ const BuilderPage: React.FC<{
               )
           }));
       }
+  }, [setConfig]);
+
+  const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
+      setConfig(prev => ({
+          ...prev,
+          characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
+      }));
   }, [setConfig]);
 
   const handleItemRemoveCompletely = useCallback((id: string) => {
@@ -1645,7 +1556,7 @@ const BuilderPage: React.FC<{
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
@@ -1695,6 +1606,7 @@ const BuilderPage: React.FC<{
                         onItemRemove={handleItemRemoveCompletely}
                         onTextUpdate={handleTextUpdate}
                         onItemUpdate={handleItemUpdate}
+                        onCharacterUpdate={handleCharacterUpdate} // ADDED
                         onItemFlip={handleItemFlip}
                         onCharacterDoubleClick={handleCharacterDoubleClick}
                         className="w-full h-full"
@@ -1702,6 +1614,7 @@ const BuilderPage: React.FC<{
                         setSelectedItemId={setSelectedItemId}
                         setIsEditingText={setIsEditingText}
                         allParts={allParts}
+                        activePartType={activePartType} // ADDED
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
