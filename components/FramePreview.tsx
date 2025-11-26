@@ -447,7 +447,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
   }, [propAllParts]);
 
-  const getCharacterColors = (char: LegoCharacterConfig, type: string) => {
+  const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
+      if (!char) return [];
+      
       if (type === 'shirt') {
           if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
           // Fallback logic
@@ -495,7 +497,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       if (selectedItemDetails?.type === 'item') {
           return selectedItemDetails.part?.colors;
       }
-      if (selectedItemDetails?.type === 'character' && activePartType) {
+      if (selectedItemDetails?.type === 'character' && activePartType && selectedItemDetails.data) {
           return getCharacterColors(selectedItemDetails.data as LegoCharacterConfig, activePartType);
       }
       return null;
