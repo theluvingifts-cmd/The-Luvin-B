@@ -49,7 +49,25 @@
       body {
         font-family: 'Montserrat', sans-serif;
         background-color: #f9f4ef;
+        /* Global protection css */
+        -webkit-user-select: none; /* Safari */
+        -ms-user-select: none; /* IE 10 and IE 11 */
+        user-select: none; /* Standard syntax */
+        -webkit-touch-callout: none; /* Disable long-press context menu on iOS */
       }
+      
+      /* Disable image dragging */
+      img {
+        -webkit-user-drag: none;
+        user-drag: none;
+        pointer-events: none; /* Helps with click-through but might affect interaction, careful usage */
+      }
+      
+      /* Re-enable pointer events for interactive elements */
+      button, a, input, select, textarea, .cursor-pointer {
+        pointer-events: auto;
+      }
+
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
@@ -61,14 +79,14 @@
         animation-play-state: paused;
       }
       
-      /* FIX: Force light mode styles for inputs to prevent dark backgrounds on Chrome/Edge */
       input, select, textarea {
         background-color: #ffffff !important;
         color: #1f2937 !important; /* text-gray-800 */
         border-color: #d1d5db;
+        user-select: text; /* Allow text selection in inputs */
+        -webkit-user-select: text;
       }
 
-      /* Fix autofill specifically to keep background white */
       input:-webkit-autofill,
       input:-webkit-autofill:hover, 
       input:-webkit-autofill:focus, 
@@ -95,7 +113,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
+  <body oncontextmenu="return false;">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
