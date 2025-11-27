@@ -50,12 +50,6 @@
         font-family: 'Montserrat', sans-serif;
         background-color: #f9f4ef;
       }
-      
-      /* Re-enable pointer events for interactive elements */
-      button, a, input, select, textarea, .cursor-pointer {
-        pointer-events: auto;
-      }
-
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
@@ -67,14 +61,14 @@
         animation-play-state: paused;
       }
       
+      /* FIX: Force light mode styles for inputs to prevent dark backgrounds on Chrome/Edge */
       input, select, textarea {
         background-color: #ffffff !important;
         color: #1f2937 !important; /* text-gray-800 */
         border-color: #d1d5db;
-        user-select: text; /* Allow text selection in inputs */
-        -webkit-user-select: text;
       }
 
+      /* Fix autofill specifically to keep background white */
       input:-webkit-autofill,
       input:-webkit-autofill:hover, 
       input:-webkit-autofill:focus, 
