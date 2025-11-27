@@ -1405,7 +1405,6 @@ const BuilderPage: React.FC<{
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
-  const [isCapturing, setIsCapturing] = useState(false); // NEW STATE: Track capture status
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1585,10 +1584,10 @@ const BuilderPage: React.FC<{
   const captureFrameAsImage = async (): Promise<string> => {
     return new Promise((resolve) => {
       const originalSelectedId = selectedItemId;
+      // 1. Temporarily deselect item to remove border/handlers from UI
       setSelectedItemId(null);
-      setIsCapturing(true); // Turn on capture mode (hides watermark)
 
-      // Increased delay to 300ms to ensure React has time to unmount the watermark
+      // 2. Wait a moment for React to update the DOM removing the selection UI
       setTimeout(async () => {
         const element = frameCaptureRef.current;
         if (element && typeof html2canvas !== 'undefined') {
@@ -1597,22 +1596,34 @@ const BuilderPage: React.FC<{
               backgroundColor: null,
               logging: false,
               useCORS: true,
-              scale: 2, // Increase scale for better quality
+              scale: 3, // High quality
+              // 3. CRITICAL FIX: Use onclone to modify the document BEFORE capture
+              onclone: (clonedDoc: Document) => {
+                  // Find and remove the watermark layer from the CLONED document
+                  // This ensures the capture never sees the watermark div
+                  const watermarkLayer = clonedDoc.querySelector('.watermark-layer');
+                  if (watermarkLayer) {
+                      watermarkLayer.remove();
+                  }
+                  
+                  // Also remove any residual transform handles just in case
+                  const handles = clonedDoc.querySelectorAll('.transform-handle');
+                  handles.forEach(el => el.remove());
+              }
             });
             resolve(canvas.toDataURL('image/png'));
           } catch (error) {
             console.error('Error capturing frame:', error);
             resolve('');
           } finally {
+            // 4. Restore selection state
             setSelectedItemId(originalSelectedId);
-            setIsCapturing(false); // Turn off capture mode (shows watermark)
           }
         } else {
           resolve('');
           setSelectedItemId(originalSelectedId);
-          setIsCapturing(false);
         }
-      }, 300);
+      }, 100); 
     });
   };
 
@@ -1723,7 +1734,6 @@ const BuilderPage: React.FC<{
                         allParts={allParts}
                         activePartType={activePartType} // ADDED
                         logoUrl={logoUrl} // PASS LOGO URL
-                        isCapturing={isCapturing} // PASS CAPTURE STATE
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
