@@ -2998,11 +2998,18 @@ const App: React.FC = () => {
         
         // Save to local history for Order Lookup
         try {
-            // FIX: Explicitly type saved to avoid "unknown" type errors and spread errors
-            const saved: any[] = JSON.parse(localStorage.getItem('my_orders') || '[]');
+            const rawSaved = localStorage.getItem('my_orders');
+            let saved: { id: string; date: number }[] = [];
+            if (rawSaved) {
+                const parsed = JSON.parse(rawSaved);
+                if (Array.isArray(parsed)) {
+                    saved = parsed as { id: string; date: number }[];
+                }
+            }
+            
             const newEntry = { id: res.data.id, date: Date.now() };
             // Add new entry to start, remove duplicates if any, keep max 5
-            const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
+            const updated = [newEntry, ...saved.filter((o) => o.id !== res.data.id)].slice(0, 5);
             localStorage.setItem('my_orders', JSON.stringify(updated));
         } catch (e) {
             console.error("Failed to save local order history", e);

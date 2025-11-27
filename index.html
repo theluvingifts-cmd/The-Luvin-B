@@ -49,18 +49,6 @@
       body {
         font-family: 'Montserrat', sans-serif;
         background-color: #f9f4ef;
-        /* Global protection css */
-        -webkit-user-select: none; /* Safari */
-        -ms-user-select: none; /* IE 10 and IE 11 */
-        user-select: none; /* Standard syntax */
-        -webkit-touch-callout: none; /* Disable long-press context menu on iOS */
-      }
-      
-      /* Disable image dragging */
-      img {
-        -webkit-user-drag: none;
-        user-drag: none;
-        pointer-events: none; /* Helps with click-through but might affect interaction, careful usage */
       }
       
       /* Re-enable pointer events for interactive elements */
@@ -113,7 +101,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body oncontextmenu="return false;">
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

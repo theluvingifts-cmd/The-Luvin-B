@@ -417,7 +417,6 @@ const Transformable: React.FC<{
 const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
-  const veilRef = useRef<HTMLDivElement>(null); // Ref for anti-screenshot veil
   
   const uniqueId = React.useId();
   const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
@@ -441,76 +440,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       if (propAllParts) return propAllParts;
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
   }, [propAllParts]);
-
-  // --- ANTI-SCREENSHOT LOGIC (FAST DOM MANIPULATION) ---
-  useEffect(() => {
-    const veil = veilRef.current;
-    if (!veil) return;
-
-    let timeoutId: any;
-
-    const hideContent = () => {
-        veil.style.opacity = '1';
-        veil.style.pointerEvents = 'auto';
-        if (timeoutId) clearTimeout(timeoutId);
-    };
-
-    const showContent = () => {
-        // Delay showing content slightly to ensure screenshot tools miss the restoration
-        timeoutId = setTimeout(() => {
-            veil.style.opacity = '0';
-            veil.style.pointerEvents = 'none';
-        }, 500); 
-    };
-
-    // 1. Detect PrintScreen Key
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey)) {
-            hideContent();
-            // Auto restore after 2 seconds if user doesn't release focus
-            setTimeout(showContent, 2000);
-        }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-        if (e.key === 'PrintScreen') {
-            showContent();
-        }
-    }
-
-    // 2. Detect Focus/Blur (Snipping Tool often takes focus away)
-    const handleWindowBlur = () => hideContent();
-    const handleWindowFocus = () => showContent();
-
-    // 3. Detect Visibility Change
-    const handleVisibilityChange = () => {
-        if (document.hidden) hideContent();
-        else showContent();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleWindowBlur);
-    window.addEventListener('focus', handleWindowFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // 4. Disable Context Menu (Right Click)
-    const container = previewContainerRef.current;
-    if (container) {
-        container.addEventListener('contextmenu', (e) => e.preventDefault());
-    }
-
-    return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('keyup', handleKeyUp);
-        window.removeEventListener('blur', handleWindowBlur);
-        window.removeEventListener('focus', handleWindowFocus);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        if (container) {
-            container.removeEventListener('contextmenu', (e) => e.preventDefault());
-        }
-    };
-  }, []);
 
   const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
       if (!char) return [];
@@ -668,13 +597,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* --- ANTI-SCREENSHOT VEIL --- */}
-                <div 
-                    ref={veilRef}
-                    className="absolute inset-0 bg-white z-50 pointer-events-none transition-opacity duration-75"
-                    style={{ opacity: 0 }}
-                ></div>
-
                 {/* WATERMARK OVERLAY - REFINED */}
                 {logoUrl && (
                     <div 
