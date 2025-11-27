@@ -1596,9 +1596,9 @@ const BuilderPage: React.FC<{
             const canvas = await html2canvas(element, {
               backgroundColor: null,
               logging: false, // Turn off debugging logs
-              useCORS: true,
+              useCORS: true, // IMPORTANT: Must be true
+              allowTaint: false, // IMPORTANT: Must be false for export
               scale: 2, // Reduce scale to 2x to prevent crashes/white images on mobile
-              allowTaint: true,
               scrollX: 0,
               scrollY: 0,
               // 3. Use ignoreElements instead of onclone for cleaner removal
