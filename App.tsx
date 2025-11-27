@@ -951,7 +951,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
       <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="cursor-pointer" onClick={() => handleNav('home')}>
-              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-heading text-2xl text-luvin-pink">The Luvin</span>}
+              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-brand-heading text-2xl text-luvin-pink">The Luvin</span>}
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => (
@@ -1009,8 +1009,6 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   );
 };
 
-// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage components as is) ...
-// ... skipping redundant parts for brevity ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 )
@@ -1036,7 +1034,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
         <div className="container mx-auto px-6 py-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-1">
-                    <h3 className="font-bold text-base mb-3 text-luvin-pink font-heading text-xl">The Luvin</h3>
+                    <h3 className="font-bold text-base mb-3 text-luvin-pink font-brand-heading text-xl">The Luvin</h3>
                     <p className="text-gray-600 text-xs leading-relaxed">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu của riêng bạn. Quà tặng độc đáo, tinh tế và đầy ý nghĩa.</p>
                 </div>
                 <div>
@@ -1074,14 +1072,12 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
   );
 };
 
-// ... (Keep AboutPage, WarrantyPage, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage as is) ...
-// ... skipping redundant parts for brevity ...
 const AboutPage: React.FC = () => {
     return (
         <div className="bg-white font-body text-gray-800">
             <div className="relative py-20 bg-luvin-cream">
                 <div className="container mx-auto px-6 text-center">
-                    <h1 className="text-4xl md:text-5xl font-heading text-luvin-pink mb-4">Câu chuyện của The Luvin</h1>
+                    <h1 className="text-4xl md:text-5xl font-brand-heading text-luvin-pink mb-4">Câu chuyện của The Luvin</h1>
                     <p className="text-lg max-w-2xl mx-auto text-gray-600 italic">"Không chỉ là quà tặng, đó là những kỷ niệm được đóng khung."</p>
                 </div>
             </div>
@@ -1225,8 +1221,9 @@ const HomePage: React.FC<{
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
           <div className="hidden md:block bg-cover bg-center" style={heroStyle}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
-             <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
-             <p className="font-script text-3xl my-4 text-gray-600">Unique for every momment</p>
+             <h1 className="text-5xl font-brand-heading text-luvin-pink">The Luvin</h1>
+             {/* Updated slogan font to use font-heading as requested to match brand font */}
+             <p className="font-brand-heading text-3xl my-4 text-gray-600">Unique for every momment</p>
              <button 
                onClick={() => navigateTo('builder')}
                className="mt-4 border-2 border-luvin-pink text-luvin-pink font-bold py-2 px-8 rounded-full hover:bg-luvin-pink hover:text-gray-800 transition-colors duration-300 font-body tracking-wider"
@@ -1582,34 +1579,59 @@ const BuilderPage: React.FC<{
   }
   
   const captureFrameAsImage = async (): Promise<string> => {
-    return new Promise((resolve) => {
-      const originalSelectedId = selectedItemId;
-      setSelectedItemId(null);
+    // 1. Preserve and clear selection state
+    const originalSelectedId = selectedItemId;
+    setSelectedItemId(null); 
 
-      // Increased delay to 200ms to ensure clean state
+    // 2. Identify elements to hide manually (Direct DOM manipulation)
+    // We do this to ensure they are hidden even if React state update is slow
+    // or if html2canvas 'ignoreElements' is buggy.
+    const elementsToHide: { element: HTMLElement; originalDisplay: string }[] = [];
+    const selectors = ['.watermark-layer', '.transform-handle'];
+
+    const container = frameCaptureRef.current;
+    if (!container) return '';
+
+    // Find and hide elements
+    selectors.forEach(selector => {
+      const els = container.querySelectorAll(selector);
+      els.forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        elementsToHide.push({
+          element: htmlEl,
+          originalDisplay: htmlEl.style.display
+        });
+        htmlEl.style.setProperty('display', 'none', 'important'); // Force hide
+      });
+    });
+
+    return new Promise((resolve) => {
+      // 3. Wait for render/paint cycle to complete
       setTimeout(async () => {
-        const element = frameCaptureRef.current;
-        if (element && typeof html2canvas !== 'undefined') {
-          try {
-            const canvas = await html2canvas(element, {
+        try {
+          if (typeof html2canvas !== 'undefined') {
+            const canvas = await html2canvas(container, {
               backgroundColor: null,
+              useCORS: true, // Critical for Cloudinary images
+              scale: 3,      // High Resolution Capture
               logging: false,
-              useCORS: true,
-              // IGNORE THE WATERMARK LAYER
-              ignoreElements: (el) => el.classList.contains('transform-handle') || el.classList.contains('watermark-layer'),
             });
             resolve(canvas.toDataURL('image/png'));
-          } catch (error) {
-            console.error('Error capturing frame:', error);
+          } else {
+            console.error('html2canvas not loaded');
             resolve('');
-          } finally {
-            setSelectedItemId(originalSelectedId);
           }
-        } else {
+        } catch (error) {
+          console.error('Capture failed:', error);
           resolve('');
+        } finally {
+          // 4. Cleanup / Restore state
+          elementsToHide.forEach(({ element, originalDisplay }) => {
+            element.style.display = originalDisplay;
+          });
           setSelectedItemId(originalSelectedId);
         }
-      }, 200);
+      }, 300); // 300ms delay to ensure DOM is ready
     });
   };
 
