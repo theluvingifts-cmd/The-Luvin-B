@@ -426,7 +426,7 @@ const PartButton: React.FC<{
     return (
         <button
             onClick={handleClick}
-            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1 transition-all text-center w-full relative overflow-hidden ${
+            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative overflow-hidden ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -1047,6 +1047,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
 };
 
 // ... (Keep AboutPage, WarrantyPage, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage as is) ...
+// ... skipping redundant parts for brevity ...
 const AboutPage: React.FC = () => {
     return (
         <div className="bg-white font-body text-gray-800">
@@ -2674,6 +2675,15 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         );
     };
 
+    const getVietQR = (order: Order) => {
+        const BANK_ID = '970407'; // Techcombank
+        const ACCOUNT_NO = '65838666666';
+        const TEMPLATE = 'compact2';
+        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
+        const amount = order.amountToPay;
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+    };
+
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8 min-h-[60vh]">
             <div className="max-w-3xl mx-auto">
@@ -2746,6 +2756,26 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                             </div>
 
                             <StatusTracker currentStatus={foundOrder.status} />
+
+                            {foundOrder.status === 'Chờ thanh toán' && (
+                                <div className="mt-6 bg-white border border-yellow-200 rounded-lg p-6 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400"></div>
+                                    <h3 className="font-bold text-gray-800 mb-1">Đơn hàng chưa thanh toán</h3>
+                                    <p className="text-sm text-gray-500 mb-4">Quét mã QR để thanh toán ngay</p>
+                                    
+                                    <div className="bg-white p-2 border rounded-xl shadow-sm inline-block">
+                                        <img src={getVietQR(foundOrder)} alt="Mã QR Thanh toán" className="w-48 h-48 object-contain rounded-lg" />
+                                    </div>
+                                    
+                                    <div className="mt-4 space-y-1">
+                                        <p className="text-sm font-bold text-gray-800">Techcombank - 65838666666</p>
+                                        <p className="text-sm">Chủ TK: NGO TRONG DUONG</p>
+                                        <div className="mt-2 inline-block bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
+                                            Nội dung: <span className="font-bold text-gray-900 select-all">{foundOrder.id}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div>
