@@ -1,4 +1,4 @@
-// FIX: import useMemo from React
+
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
@@ -17,18 +17,18 @@ interface FramePreviewProps {
   onItemTransform: (id: string, newTransform: Transform) => void;
   onItemRemove: (id: string) => void;
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
-  onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void; // Added for color updates
-  onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void; // Added for character updates
+  onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void;
+  onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void;
   onItemFlip?: (id: string) => void;
-  onCharacterDoubleClick?: (id: number) => void; // Added double click handler
-  onAutoAdvance?: () => void; // Added auto advance handler
+  onCharacterDoubleClick?: (id: number) => void;
+  onAutoAdvance?: () => void;
   className?: string;
   isInteractive?: boolean;
   selectedItemId: string | null;
   setSelectedItemId: (id: string | null) => void;
   setIsEditingText: (isEditing: boolean) => void;
   allParts?: Record<string, LegoPart>;
-  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'; // Added set
+  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
 }
 
@@ -44,14 +44,11 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
   const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
   const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
   
-  // Hair color logic: Use selected hair color image if available, else fallback to part image
   let hairImageUrl = hair?.imageUrl;
   if (character.selectedHairColor?.imageUrl) {
       hairImageUrl = character.selectedHairColor.imageUrl;
   }
 
-  // Per user request, the character is composed of 4 same-sized, stacked images.
-  // The container will have the final dimensions.
   const CHARACTER_WIDTH_CM = 2.5;
   const CHARACTER_HEIGHT_CM = 4.0;
 
@@ -64,24 +61,18 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
     transformOrigin: 'center',
   };
 
-  // This style will be applied to all parts. They are layers filling the container.
   const partStyle: React.CSSProperties = {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    objectFit: 'contain', // Use contain to respect aspect ratio of user's image
+    objectFit: 'contain',
     pointerEvents: 'none',
   };
 
   return (
     <div style={containerStyle}>
-      {/* 
-        Each image is a full-size layer. The user must provide transparent PNGs 
-        where the part is correctly positioned within the 2.5cm x 4cm frame.
-        The stacking order is controlled by z-index.
-      */}
       {pants && pantsImageUrl && (
         <SafeImage src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />
       )}
@@ -138,7 +129,7 @@ const EditableText: React.FC<{
         }
         if (e.key === 'Escape') {
             e.preventDefault();
-            setEditedContent(text.content); // Revert changes
+            setEditedContent(text.content);
             handleBlur();
         }
     };
@@ -313,7 +304,7 @@ const Transformable: React.FC<{
              const moveCoords = getClientCoords(moveEvent);
              if (!moveCoords) return;
              const dx = moveCoords.x - startCoords.x;
-             const scaleChange = dx / 100; // Adjust sensitivity
+             const scaleChange = dx / 100;
              onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + scaleChange) });
         };
         const handleEnd = () => {
@@ -337,7 +328,7 @@ const Transformable: React.FC<{
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
         
-        const startWidth = initialTransform.width || 30; // start width in percent
+        const startWidth = initialTransform.width || 30;
 
         const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
             const moveCoords = getClientCoords(moveEvent);
@@ -359,7 +350,6 @@ const Transformable: React.FC<{
         window.addEventListener('touchend', handleEnd);
     };
 
-    // Calculate inverse scale for handles to keep them visually consistent size
     const handleScale = 1 / (initialTransform.scale || 1);
     
     return (
@@ -412,7 +402,7 @@ const Transformable: React.FC<{
                             title="Resize"
                             style={{ transform: `scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3" d="M4 20h16m0 0V4" /></svg>
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
                           </div>
                       )}
                     </>
@@ -428,7 +418,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
-  // NEW: ID for watermark pattern
   const uniqueId = React.useId();
   const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
 
@@ -455,9 +444,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
       if (!char) return [];
       
-      if (type === 'shirt' || type === 'set') { // Support colors for sets if needed
+      if (type === 'shirt' || type === 'set') { 
           if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
-          // Fallback logic
           const name = char.shirt?.name.toLowerCase() || '';
           if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) {
               return defaultShirtColors;
@@ -476,7 +464,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return null;
   }
 
-  // --- Context Toolbar Logic ---
   const selectedItemDetails = useMemo(() => {
       if (!selectedItemId) return null;
       const [type, idStr] = selectedItemId.split('-');
@@ -485,7 +472,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       if (type === 'item') {
           const item = config.draggableItems.find(i => i.id === id);
           const part = item ? allParts[item.partId] : null;
-          // Allow flip for 'hat', 'accessory', 'pet'
           const canFlip = item && (item.type === 'accessory' || item.type === 'pet' || item.type === 'hat');
           return { type: 'item', data: item, part: part, canFlip };
       } else if (type === 'text') {
@@ -521,7 +507,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
           onItemUpdate(selectedItemId, { selectedColor: color });
       }
       if (selectedItemDetails?.type === 'character' && onCharacterUpdate && selectedItemDetails.data) {
-          // Determine field based on activePartType
           if (activePartType === 'shirt' || activePartType === 'set') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
           else if (activePartType === 'pants') onCharacterUpdate(selectedItemDetails.data.id, { selectedPantsColor: color });
           else if (activePartType === 'hair') onCharacterUpdate(selectedItemDetails.data.id, { selectedHairColor: color });
@@ -541,12 +526,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return null;
   };
 
-  // KEYBOARD EVENT LISTENER (Arrow Keys)
   useEffect(() => {
     if (!isInteractive || !selectedItemId) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Ignore if typing in input
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
         const [type, idStr] = selectedItemId.split('-');
@@ -561,7 +544,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
         let dx = 0;
         let dy = 0;
-        const step = e.shiftKey ? 5 : 0.5; // Small nudges, bigger if shift held
+        const step = e.shiftKey ? 5 : 0.5;
 
         switch(e.key) {
             case 'ArrowUp': dy = -step; break;
@@ -571,7 +554,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             default: return;
         }
 
-        e.preventDefault(); // Prevent scrolling
+        e.preventDefault();
 
         const newTransform = {
             x: Math.max(0, Math.min(100, currentItem.x + dx)),
@@ -614,52 +597,28 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - SVG PATTERN */}
+                {/* WATERMARK OVERLAY - REFINED */}
                 {logoUrl && (
                     <div 
                         style={{
                             position: 'absolute',
                             inset: 0,
-                            zIndex: 9999,
+                            zIndex: 40,
                             pointerEvents: 'none',
                         }}
                     >
-                        {/* 
-                            HƯỚNG DẪN ĐIỀU CHỈNH WATERMARK (LOGO CHÌM):
-                            Để thay đổi cách hiển thị logo, hãy chỉnh sửa các thông số trong thẻ <svg> và <pattern> bên dưới:
-
-                            1. ĐỘ MỜ (OPACITY):
-                               - Tìm `style={{ opacity: 0.12 }}` trong thẻ <svg> đầu tiên.
-                               - Thay đổi số 0.12 (0 là trong suốt, 1 là rõ nhất).
-                               - Ví dụ: 0.05 sẽ rất mờ, 0.2 sẽ rõ hơn.
-
-                            2. MẬT ĐỘ (KHOẢNG CÁCH GIỮA CÁC LOGO):
-                               - Tìm `width="160" height="160"` trong thẻ <pattern id={patternId}...>.
-                               - Tăng số này lên để logo thưa hơn (ví dụ: 200, 300).
-                               - Giảm số này xuống để logo dày đặc hơn (ví dụ: 100, 80).
-
-                            3. KÍCH THƯỚC LOGO:
-                               - Tìm `width="60" height="60"` trong thẻ <image... /> bên trong <pattern>.
-                               - Tăng/giảm số này để logo to/nhỏ hơn (ví dụ: 40, 80).
-
-                            4. VỊ TRÍ LOGO TRONG Ô:
-                               - Tìm `x="50" y="50"` trong thẻ <image... />.
-                               - Để căn giữa, công thức là: (Kích thước Pattern - Kích thước Logo) / 2.
-                               - Ví dụ hiện tại: (160 - 60) / 2 = 50. Nếu bạn đổi Pattern thành 200 và Logo thành 80, thì x = (200-80)/2 = 60.
-                        */}
-                        <svg width="100%" height="100%" style={{ opacity: 0.1 }}> {/* <--- 1. CHỈNH ĐỘ MỜ TẠI ĐÂY */}
+                        <svg width="100%" height="100%" style={{ opacity: 0.15 }}>
                             <defs>
                                 <pattern 
                                     id={patternId}
                                     x="0" 
                                     y="0" 
-                                    width="90" 
-                                    height="200"  /* <--- 2. CHỈNH KHOẢNG CÁCH (MẬT ĐỘ) TẠI ĐÂY */
+                                    width="120" 
+                                    height="120" 
                                     patternUnits="userSpaceOnUse" 
-                                    patternTransform="rotate(-30)"
+                                    patternTransform="rotate(-45)"
                                 >
-                                    {/* <--- 3. & 4. CHỈNH KÍCH THƯỚC VÀ VỊ TRÍ LOGO TẠI ĐÂY */}
-                                    <image href={logoUrl} x="50" y="50" width="60" height="60" />
+                                    <image href={logoUrl} x="40" y="40" width="40" height="40" preserveAspectRatio="xMidYMid meet" />
                                 </pattern>
                             </defs>
                             <rect width="100%" height="100%" fill={`url(#${patternId})`} />
@@ -687,7 +646,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 {config.draggableItems.map(item => {
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
-                    // Use selected color image if available, else fallback to part image
                     const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
                     const widthCm = isCharm ? 2 : (part?.widthCm || 1);
@@ -695,8 +653,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                     if (!imageUrl) return null;
 
-                    // Hat should generally be above characters (zIndex 6) but below overlaid charms if any (zIndex 10)
-                    // Actually, hats need to be above character (5), so 6 is good. Accessories usually 10.
                     const zIndex = item.type === 'hat' ? 12 : 10; 
 
                     const id = `item-${item.id}`;
@@ -705,7 +661,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={id} id={id} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped}
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={isInteractive && isCharm} // Resizable only if charm/upload
+                            isResizable={isInteractive && isCharm} 
                             isRotatable={isInteractive} 
                             isDraggable={isInteractive}
                             zIndex={zIndex}
@@ -748,10 +704,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             </div>
         </div>
 
-        {/* --- Floating Mobile Action Toolbar (Moved outside the frame content area) --- */}
         {isInteractive && selectedItemId && (
             <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-fade-in transform-handle">
-                {/* Color Selection Row */}
                 {activeColors && activeColors.length > 0 && (
                     <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-2 overflow-x-auto max-w-[90vw] no-scrollbar">
                         {activeColors.map((color: OutfitColor, idx: number) => (
@@ -768,7 +722,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
-                {/* Action Buttons Row */}
                 <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
                     {selectedItemDetails?.canFlip && (
                         <button onClick={handleToolbarFlip} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
