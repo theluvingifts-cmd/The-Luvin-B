@@ -1581,47 +1581,35 @@ const BuilderPage: React.FC<{
       setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
-  // FIX: Robust capture function using ignoreElements and reduced scale
   const captureFrameAsImage = async (): Promise<string> => {
     return new Promise((resolve) => {
       const originalSelectedId = selectedItemId;
-      // 1. Temporarily deselect item to remove border/handlers from UI
       setSelectedItemId(null);
 
-      // 2. Wait a moment for React to update the DOM removing the selection UI
+      // Increased delay to 200ms to ensure clean state
       setTimeout(async () => {
         const element = frameCaptureRef.current;
         if (element && typeof html2canvas !== 'undefined') {
           try {
             const canvas = await html2canvas(element, {
               backgroundColor: null,
-              logging: false, // Turn off debugging logs
-              useCORS: true, // IMPORTANT: Must be true
-              allowTaint: false, // IMPORTANT: Must be false for export
-              scale: 2, // Reduce scale to 2x to prevent crashes/white images on mobile
-              scrollX: 0,
-              scrollY: 0,
-              // 3. Use ignoreElements instead of onclone for cleaner removal
-              ignoreElements: (element) => {
-                  // Ignore watermark layer and any transform handles
-                  if (element.classList.contains('watermark-layer')) return true;
-                  if (element.classList.contains('transform-handle')) return true;
-                  return false;
-              }
+              logging: false,
+              useCORS: true,
+              // IGNORE THE WATERMARK LAYER
+              ignoreElements: (el) => el.classList.contains('transform-handle') || el.classList.contains('watermark-layer'),
             });
             resolve(canvas.toDataURL('image/png'));
           } catch (error) {
             console.error('Error capturing frame:', error);
             resolve('');
           } finally {
-            // 4. Restore selection state
             setSelectedItemId(originalSelectedId);
           }
         } else {
           resolve('');
           setSelectedItemId(originalSelectedId);
         }
-      }, 100); 
+      }, 200);
     });
   };
 

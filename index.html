@@ -22,8 +22,7 @@
               'luvin-light-gray': '#d8d8d8',
             },
             fontFamily: {
-              // Ưu tiên font thương hiệu BrandFont, sau đó mới đến Playfair Display
-              heading: ['"BrandFont"', '"Playfair Display"', 'serif'], 
+              heading: ['"Playfair Display"', 'serif'],
               body: ['"Montserrat"', 'sans-serif'],
               script: ['"Dancing Script"', 'cursive'],
             },
@@ -44,16 +43,6 @@
       }
     </script>
     <style>
-      /* Định nghĩa Font Thương Hiệu */
-      @font-face {
-        font-family: 'BrandFont';
-        src: url('/brand-font.woff2') format('woff2'),
-             url('/brand-font.ttf') format('truetype'); /* Fallback */
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
-
       :root {
         color-scheme: light;
       }
@@ -84,7 +73,6 @@
         border-color: #d1d5db;
         user-select: text; /* Allow text selection in inputs */
         -webkit-user-select: text;
-        font-size: 16px; /* Prevent zoom on iOS inputs */
       }
 
       input:-webkit-autofill,

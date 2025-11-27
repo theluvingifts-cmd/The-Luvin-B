@@ -597,10 +597,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - ALWAYS VISIBLE TO USER, BUT REMOVED BY ONCLONE DURING CAPTURE */}
+                {/* WATERMARK OVERLAY - REFINED FOR SAFETY & CAPTURE EXCLUSION */}
                 {logoUrl && (
                     <div 
-                        className="watermark-layer"
+                        className="watermark-layer" // Class added for HTML2Canvas ignore
                         style={{
                             position: 'absolute',
                             inset: 0,
