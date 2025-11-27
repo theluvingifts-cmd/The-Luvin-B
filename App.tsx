@@ -1595,7 +1595,8 @@ const BuilderPage: React.FC<{
               backgroundColor: null,
               logging: false,
               useCORS: true,
-              ignoreElements: (el) => el.classList.contains('transform-handle'),
+              // IGNORE THE WATERMARK LAYER
+              ignoreElements: (el) => el.classList.contains('transform-handle') || el.classList.contains('watermark-layer'),
             });
             resolve(canvas.toDataURL('image/png'));
           } catch (error) {

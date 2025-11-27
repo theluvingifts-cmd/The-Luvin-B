@@ -391,7 +391,7 @@ const Transformable: React.FC<{
                             title="Rotate"
                             style={{ transform: `translateX(-50%) scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                           </div>
                       )}
                       {isResizable && (
@@ -597,17 +597,19 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - REFINED */}
+                {/* WATERMARK OVERLAY - REFINED FOR SAFETY & CAPTURE EXCLUSION */}
                 {logoUrl && (
                     <div 
+                        className="watermark-layer" // Class added for HTML2Canvas ignore
                         style={{
                             position: 'absolute',
                             inset: 0,
                             zIndex: 40,
                             pointerEvents: 'none',
+                            mixBlendMode: 'multiply', // Ensure transparency over light backgrounds
                         }}
                     >
-                        <svg width="100%" height="100%" style={{ opacity: 0.15 }}>
+                        <svg width="100%" height="100%" style={{ opacity: 0.12 }} fill="transparent">
                             <defs>
                                 <pattern 
                                     id={patternId}
