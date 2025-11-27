@@ -71,5 +71,6 @@ export const GENERAL_ASSETS = {
   hero: '',
   inspire: '',
   giftbox: 'https://cdn-icons-png.flaticon.com/512/4530/4530625.png', // Icon hộp quà nhẹ
-  vietqr: ''
+  vietqr: '',
+  watermark: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png' // Thay link ảnh watermark của bạn vào đây
 }

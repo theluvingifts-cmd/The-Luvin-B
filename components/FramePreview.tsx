@@ -2,7 +2,7 @@
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
+import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors, GENERAL_ASSETS } from '../constants';
 
 type Transform = {
   x: number;
@@ -610,6 +610,35 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
+                {/* WATERMARK OVERLAY - ROTATED & TILED PATTERN */}
+                {GENERAL_ASSETS.watermark && (
+                    <div 
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 9999, // Always top
+                            pointerEvents: 'none', // Allow clicks to pass through
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div 
+                            style={{
+                                position: 'absolute',
+                                top: '-50%',
+                                left: '-50%',
+                                width: '200%',
+                                height: '200%',
+                                transform: 'rotate(-30deg)',
+                                backgroundImage: `url(${GENERAL_ASSETS.watermark})`,
+                                backgroundRepeat: 'repeat',
+                                backgroundSize: '120px',
+                                opacity: 0.15,
+                                mixBlendMode: 'multiply'
+                            }}
+                        />
+                    </div>
+                )}
+
                 {config.characters.map(char => {
                     const id = `character-${char.id}`;
                     return (
