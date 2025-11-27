@@ -62,23 +62,11 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>,
     const hatPrice = config.draggableItems.filter(i => i.type === 'hat').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0), 0);
     if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
 
-    // Detailed Shirt Price
-    const shirtBasePrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0), 0);
-    const shirtColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedShirtColor?.price || 0), 0);
-    const totalShirtPrice = shirtBasePrice + shirtColorPrice;
-    if(totalShirtPrice > 0) { 
-        total += totalShirtPrice; 
-        breakdown.push({ label: 'Áo & Màu', value: totalShirtPrice }); 
-    }
+    const shirtPrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0) + (char.selectedShirtColor?.price || 0), 0);
+    if(shirtPrice > 0) { total += shirtPrice; breakdown.push({ label: 'Áo & Màu', value: shirtPrice }); }
 
-    // Detailed Pants Price
-    const pantsBasePrice = config.characters.reduce((acc, char) => acc + (char.pants?.price || 0), 0);
-    const pantsColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedPantsColor?.price || 0), 0);
-    const totalPantsPrice = pantsBasePrice + pantsColorPrice;
-    if(totalPantsPrice > 0) { 
-        total += totalPantsPrice; 
-        breakdown.push({ label: 'Quần & Màu', value: totalPantsPrice }); 
-    }
+    const pantsPrice = config.characters.reduce((acc, char) => acc + (char.pants?.price || 0) + (char.selectedPantsColor?.price || 0), 0);
+    if(pantsPrice > 0) { total += pantsPrice; breakdown.push({ label: 'Quần & Màu', value: pantsPrice }); }
 
     const accessoryPrice = config.draggableItems.filter(i => i.type === 'accessory').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0) + (item.selectedColor?.price || 0), 0);
     if(accessoryPrice > 0) { total += accessoryPrice; breakdown.push({ label: 'Phụ kiện', value: accessoryPrice }); }
@@ -276,10 +264,10 @@ const PresetBackgroundButton: React.FC<{
                     alt={bg.name}
                     className="w-full h-full object-cover"
                 />
-                {/* Fixed Mobile Double Tap Issue: On mobile (small screens), opacity is 1 (visible), on desktop (md+) it is 0 and requires hover */}
-                <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
+                {/* Corner Zoom Button (Bottom Right Only) */}
+                <div className="absolute bottom-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <div 
-                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
+                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto"
                         onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
                         title="Zoom"
                     >
@@ -425,8 +413,7 @@ const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
     onClick: () => void;
-    priceToDisplay: number; // New Prop for dynamic price
-}> = ({ part, isSelected, onClick, priceToDisplay }) => {
+}> = ({ part, isSelected, onClick }) => {
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -462,9 +449,7 @@ const PartButton: React.FC<{
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-800">{part.name}</span>
-                <span className={`text-[11px] font-bold ${isSelected && priceToDisplay > part.price ? 'text-red-600' : 'text-luvin-pink'}`}>
-                    {formatCurrency(priceToDisplay)}
-                </span>
+                <span className="text-[11px] font-bold text-luvin-pink">{formatCurrency(part.price)}</span>
             </div>
         </button>
     );
@@ -604,6 +589,7 @@ const Step3Characters: React.FC<{
                     } else {
                         // Standard assignment
                         (newChar as any)[part.type] = part;
+                        // If selecting standard pants/shirt while a set was active, ensure logic holds
                     }
 
                     let partColors = part.colors;
@@ -807,28 +793,14 @@ const Step3Characters: React.FC<{
                                <span className="text-[11px] font-semibold">Không chọn</span>
                              </button>
                          )}
-                        {currentPartList.length > 0 ? currentPartList.map(part => {
-                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
-                            
-                            // CALCULATE TOTAL PRICE TO DISPLAY (Base + Color)
-                            let priceToDisplay = part.price;
-                            if (isSelected) {
-                                // Add selected color price
-                                if (activePartType === 'shirt' || activePartType === 'set') priceToDisplay += (activeCharacter.selectedShirtColor?.price || 0);
-                                else if (activePartType === 'pants') priceToDisplay += (activeCharacter.selectedPantsColor?.price || 0);
-                                else if (activePartType === 'hair') priceToDisplay += (activeCharacter.selectedHairColor?.price || 0);
-                            }
-
-                            return (
-                                <PartButton 
-                                    key={part.id} 
-                                    part={part}
-                                    isSelected={isSelected}
-                                    onClick={() => handlePartSelect(part)}
-                                    priceToDisplay={priceToDisplay} 
-                                />
-                            );
-                        }) : (
+                        {currentPartList.length > 0 ? currentPartList.map(part => (
+                            <PartButton 
+                                key={part.id} 
+                                part={part}
+                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id}
+                                onClick={() => handlePartSelect(part)} 
+                            />
+                        )) : (
                             <div className="col-span-4 text-center text-sm text-gray-400 py-4">
                                 {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
                             </div>
@@ -853,7 +825,7 @@ const Step3Characters: React.FC<{
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                     {sortParts(getAvailableParts(legoParts.accessory), accessorySortMode).map(part => (
-                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
+                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
             </div>
@@ -862,7 +834,7 @@ const Step3Characters: React.FC<{
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => (
-                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
+                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
                     ))}
                 </div>
             </div>
@@ -951,7 +923,7 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
       <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="cursor-pointer" onClick={() => handleNav('home')}>
-              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-brand-heading text-2xl text-luvin-pink">The Luvin</span>}
+              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-heading text-2xl text-luvin-pink">The Luvin</span>}
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => (
@@ -1009,6 +981,8 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
   );
 };
 
+// ... (Keep InstagramIcon, FacebookIcon, Footer, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage components as is) ...
+// ... skipping redundant parts for brevity ...
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 )
@@ -1034,7 +1008,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
         <div className="container mx-auto px-6 py-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-1">
-                    <h3 className="font-bold text-base mb-3 text-luvin-pink font-brand-heading text-xl">The Luvin</h3>
+                    <h3 className="font-bold text-base mb-3 text-luvin-pink font-heading text-xl">The Luvin</h3>
                     <p className="text-gray-600 text-xs leading-relaxed">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu của riêng bạn. Quà tặng độc đáo, tinh tế và đầy ý nghĩa.</p>
                 </div>
                 <div>
@@ -1072,12 +1046,14 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
   );
 };
 
+// ... (Keep AboutPage, WarrantyPage, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage as is) ...
+// ... skipping redundant parts for brevity ...
 const AboutPage: React.FC = () => {
     return (
         <div className="bg-white font-body text-gray-800">
             <div className="relative py-20 bg-luvin-cream">
                 <div className="container mx-auto px-6 text-center">
-                    <h1 className="text-4xl md:text-5xl font-brand-heading text-luvin-pink mb-4">Câu chuyện của The Luvin</h1>
+                    <h1 className="text-4xl md:text-5xl font-heading text-luvin-pink mb-4">Câu chuyện của The Luvin</h1>
                     <p className="text-lg max-w-2xl mx-auto text-gray-600 italic">"Không chỉ là quà tặng, đó là những kỷ niệm được đóng khung."</p>
                 </div>
             </div>
@@ -1221,9 +1197,8 @@ const HomePage: React.FC<{
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2">
           <div className="hidden md:block bg-cover bg-center" style={heroStyle}></div>
           <div className="flex flex-col justify-center items-center p-8 text-center bg-white">
-             <h1 className="text-5xl font-brand-heading text-luvin-pink">The Luvin</h1>
-             {/* Updated slogan font to use font-heading as requested to match brand font */}
-             <p className="font-brand-heading text-3xl my-4 text-gray-600">Unique for every momment</p>
+             <h1 className="text-5xl font-heading text-luvin-pink">The Luvin</h1>
+             <p className="font-script text-3xl my-4 text-gray-600">Unique for every momment</p>
              <button 
                onClick={() => navigateTo('builder')}
                className="mt-4 border-2 border-luvin-pink text-luvin-pink font-bold py-2 px-8 rounded-full hover:bg-luvin-pink hover:text-gray-800 transition-colors duration-300 font-body tracking-wider"
@@ -1390,8 +1365,7 @@ const BuilderPage: React.FC<{
     editingCartIndex: number | null; // ADDED
     onCancelEdit: () => void; // ADDED
     onZoomImage: (url: string) => void; // ADDED
-    logoUrl?: string; // ADDED
-}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl }) => {
+}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1578,39 +1552,34 @@ const BuilderPage: React.FC<{
       setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
-  // NEW CAPTURE FUNCTION (DUMB BUT SOLID)
   const captureFrameAsImage = async (): Promise<string> => {
-    const originalSelection = selectedItemId;
-    setSelectedItemId(null); // Deselect everything to hide UI
-
     return new Promise((resolve) => {
-        // Wait 1s for DOM repaint and potential image loading/CORS headers
-        setTimeout(async () => {
-            if (!frameCaptureRef.current) {
-                resolve('');
-                return;
-            }
-            try {
-                // Use html2canvas with strong settings
-                const canvas = await html2canvas(frameCaptureRef.current, {
-                    useCORS: true,        // CRITICAL: Allow cross-origin images
-                    scale: 3,             // High resolution
-                    allowTaint: true,     // Allow tainted canvas (helps sometimes)
-                    backgroundColor: null, // Transparent base
-                    scrollX: 0,           // Prevent scrolling offset issues
-                    scrollY: 0
-                });
-                
-                const dataUrl = canvas.toDataURL('image/png');
-                resolve(dataUrl);
-            } catch (e) {
-                console.error("Capture failed:", e);
-                resolve('');
-            } finally {
-                // Restore selection
-                setSelectedItemId(originalSelection);
-            }
-        }, 1000);
+      const originalSelectedId = selectedItemId;
+      setSelectedItemId(null);
+
+      // Increased delay to 200ms to ensure clean state
+      setTimeout(async () => {
+        const element = frameCaptureRef.current;
+        if (element && typeof html2canvas !== 'undefined') {
+          try {
+            const canvas = await html2canvas(element, {
+              backgroundColor: null,
+              logging: false,
+              useCORS: true,
+              ignoreElements: (el) => el.classList.contains('transform-handle'),
+            });
+            resolve(canvas.toDataURL('image/png'));
+          } catch (error) {
+            console.error('Error capturing frame:', error);
+            resolve('');
+          } finally {
+            setSelectedItemId(originalSelectedId);
+          }
+        } else {
+          resolve('');
+          setSelectedItemId(originalSelectedId);
+        }
+      }, 200);
     });
   };
 
@@ -1642,13 +1611,6 @@ const BuilderPage: React.FC<{
   };
 
   const handleAutoAdvance = () => {
-      // Logic for Draggable Items: Deselect (Done editing)
-      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-'))) {
-          setSelectedItemId(null);
-          return;
-      }
-
-      // Logic for Characters: Advance Part Type
       const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
       let currentIndex = order.indexOf(activePartType as any);
       
@@ -1720,7 +1682,6 @@ const BuilderPage: React.FC<{
                         setIsEditingText={setIsEditingText}
                         allParts={allParts}
                         activePartType={activePartType} // ADDED
-                        logoUrl={logoUrl} // PASS LOGO URL
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
@@ -2724,7 +2685,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                 <div>
                                     <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
                                     <p className="text-sm text-gray-500">
-                                        Ngày đặt: {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}
+                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date(Number(foundOrder.id.slice(3, -4))).toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -3000,18 +2961,11 @@ const App: React.FC = () => {
         
         // Save to local history for Order Lookup
         try {
-            const rawSaved = localStorage.getItem('my_orders');
-            let saved: { id: string; date: number }[] = [];
-            if (rawSaved) {
-                const parsed = JSON.parse(rawSaved);
-                if (Array.isArray(parsed)) {
-                    saved = parsed as { id: string; date: number }[];
-                }
-            }
-            
+            // FIX: Explicitly type saved to avoid "unknown" type errors and spread errors
+            const saved: any[] = JSON.parse(localStorage.getItem('my_orders') || '[]');
             const newEntry = { id: res.data.id, date: Date.now() };
             // Add new entry to start, remove duplicates if any, keep max 5
-            const updated = [newEntry, ...saved.filter((o) => o.id !== res.data.id)].slice(0, 5);
+            const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
             localStorage.setItem('my_orders', JSON.stringify(updated));
         } catch (e) {
             console.error("Failed to save local order history", e);
@@ -3069,7 +3023,6 @@ const App: React.FC = () => {
                     editingCartIndex={editingCartIndex} // Pass editing index
                     onCancelEdit={handleCancelEdit} // Pass cancel handler
                     onZoomImage={setZoomedImageUrl} // Pass zoom handler
-                    logoUrl={logoUrl} // Pass logo URL for watermark
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}

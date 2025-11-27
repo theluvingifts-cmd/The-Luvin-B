@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -21,10 +22,9 @@
               'luvin-light-gray': '#d8d8d8',
             },
             fontFamily: {
-              // Cấu hình BrandFont làm ưu tiên số 1
-              heading: ['BrandFont', 'Playfair Display', 'serif'],
-              body: ['Montserrat', 'sans-serif'],
-              script: ['BrandFont', 'Dancing Script', 'cursive'], 
+              heading: ['"Playfair Display"', 'serif'],
+              body: ['"Montserrat"', 'sans-serif'],
+              script: ['"Dancing Script"', 'cursive'],
             },
             boxShadow: {
               'top': '0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)',
@@ -46,51 +46,29 @@
       :root {
         color-scheme: light;
       }
-      
-      /* KHAI BÁO FONT CHỮ THƯƠNG HIỆU CHUẨN XÁC */
-      @font-face {
-        font-family: 'BrandFont';
-        /* Thử cả đường dẫn tương đối và tuyệt đối để đảm bảo trình duyệt tìm thấy */
-        src: url('/brand-font.ttf') format('truetype'), 
-             url('brand-font.ttf') format('truetype');
-        font-weight: normal;
-        font-style: normal;
-        font-display: block;
-      }
-      
-      /* Class ép buộc dùng font thương hiệu (độ ưu tiên cao nhất) */
-      .font-brand-heading {
-        font-family: 'BrandFont', 'Playfair Display', serif !important;
-      }
-      
       body {
         font-family: 'Montserrat', sans-serif;
         background-color: #f9f4ef;
       }
-      
-      button, a, input, select, textarea, .cursor-pointer {
-        pointer-events: auto;
-      }
-
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
       .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
       }
       .group:hover .animate-marquee {
         animation-play-state: paused;
       }
       
+      /* FIX: Force light mode styles for inputs to prevent dark backgrounds on Chrome/Edge */
       input, select, textarea {
         background-color: #ffffff !important;
-        color: #1f2937 !important;
+        color: #1f2937 !important; /* text-gray-800 */
         border-color: #d1d5db;
-        user-select: text;
-        -webkit-user-select: text;
       }
 
+      /* Fix autofill specifically to keep background white */
       input:-webkit-autofill,
       input:-webkit-autofill:hover, 
       input:-webkit-autofill:focus, 
