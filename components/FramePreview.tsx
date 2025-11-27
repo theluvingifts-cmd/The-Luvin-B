@@ -36,7 +36,7 @@ interface FramePreviewProps {
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
-    return <img crossOrigin="anonymous" {...props} onError={() => setHasError(true)} />;
+    return <img crossOrigin="anonymous" {...props} onError={() => setHasError(true)} onDragStart={(e) => e.preventDefault()} />;
 };
 
 const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {
@@ -158,6 +158,7 @@ const EditableText: React.FC<{
         padding: '10px',
         wordBreak: 'break-word',
         textShadow: '0 0 5px white, 0 0 5px white',
+        userSelect: 'none', // Prevent text selection
         ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
     };
 
@@ -180,6 +181,7 @@ const EditableText: React.FC<{
                     boxShadow: '0 0 0 2px #efa3b5',
                     margin: 0,
                     cursor: 'text',
+                    userSelect: 'text'
                 }}
             />
         );
@@ -427,7 +429,34 @@ const Transformable: React.FC<{
 const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [isContentHidden, setIsContentHidden] = useState(false);
   
+  // Anti-Screenshot Protection & PrintScreen Detection
+  useEffect(() => {
+    // 1. PrintScreen Detection
+    const handleKeyUp = (e: KeyboardEvent) => {
+        if (e.key === 'PrintScreen') {
+            setIsContentHidden(true);
+            // Hide content for 2 seconds if PrintScreen is detected
+            setTimeout(() => setIsContentHidden(false), 2000);
+        }
+    };
+
+    // 2. Clear Clipboard on Focus (Aggressive protection)
+    const handleFocus = () => {
+        // Optional: Clear clipboard when window regains focus to prevent pasting screenshots
+        // navigator.clipboard.writeText(''); 
+    };
+
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+        window.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('focus', handleFocus);
+    }
+  }, []);
+
   const maxDimensionCm = useMemo(() => 
     Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm)))
   , []);
@@ -585,7 +614,12 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   }, [isInteractive, selectedItemId, config, onItemTransform]);
 
   return (
-    <div ref={ref} className={`flex items-center justify-center relative ${className}`} style={{ width: frameWidth, height: frameHeight }}>
+    <div 
+        ref={ref} 
+        className={`flex items-center justify-center relative ${className}`} 
+        style={{ width: frameWidth, height: frameHeight }}
+        onContextMenu={(e) => e.preventDefault()} // Anti-Right Click: Prevent context menu
+    >
         <div 
           className="relative transition-colors duration-300"
           style={{ 
@@ -595,129 +629,152 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
               boxShadow: `0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)`
           }}
         >
-            <div
-                ref={previewContainerRef}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
-                style={{
-                    width: backgroundWidth,
-                    height: backgroundHeight,
-                    ...backgroundStyle,
-                    boxShadow: `inset 0 0 0 1px rgba(0, 0, 0, 0.15)`,
-                }}
-                onClick={(e) => {
-                    if (isInteractive && e.target === previewContainerRef.current) {
-                        setSelectedItemId(null);
-                    }
-                }}
-            >
-                {/* WATERMARK OVERLAY - ROTATED & TILED PATTERN */}
-                {GENERAL_ASSETS.watermark && (
+            {isContentHidden ? (
+                <div className="absolute inset-0 z-[10000] bg-white flex flex-col items-center justify-center text-gray-400 select-none">
+                    <svg className="w-16 h-16 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3l18 18" />
+                    </svg>
+                    <p className="font-bold text-sm tracking-widest uppercase">No Screenshot</p>
+                    <p className="text-xs mt-1">Bản quyền thuộc về The Luvin</p>
+                </div>
+            ) : (
+                <div
+                    ref={previewContainerRef}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
+                    style={{
+                        width: backgroundWidth,
+                        height: backgroundHeight,
+                        ...backgroundStyle,
+                        boxShadow: `inset 0 0 0 1px rgba(0, 0, 0, 0.15)`,
+                    }}
+                    onClick={(e) => {
+                        if (isInteractive && e.target === previewContainerRef.current) {
+                            setSelectedItemId(null);
+                        }
+                    }}
+                >
+                    {/* NOISE OVERLAY - Anti-Print Quality Grain */}
                     <div 
+                        className="absolute inset-0 pointer-events-none z-[9998]"
                         style={{
-                            position: 'absolute',
-                            inset: 0,
-                            zIndex: 9999, // Always top
-                            pointerEvents: 'none', // Allow clicks to pass through
-                            overflow: 'hidden'
+                            opacity: 0.2, // Visible enough to ruin print quality, subtle enough for preview
+                            mixBlendMode: 'overlay',
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")`,
+                            backgroundRepeat: 'repeat',
                         }}
-                    >
+                    />
+
+                    {/* WATERMARK OVERLAY - ROTATED & TILED PATTERN */}
+                    {GENERAL_ASSETS.watermark && (
                         <div 
                             style={{
                                 position: 'absolute',
-                                top: '-50%',
-                                left: '-50%',
-                                width: '200%',
-                                height: '200%',
-                                transform: 'rotate(-30deg)',
-                                backgroundImage: `url(${GENERAL_ASSETS.watermark})`,
-                                backgroundRepeat: 'repeat',
-                                backgroundSize: '120px',
-                                opacity: 0.15,
-                                mixBlendMode: 'multiply'
+                                inset: 0,
+                                zIndex: 9999, // Always top
+                                pointerEvents: 'none', // Allow clicks to pass through
+                                overflow: 'hidden'
                             }}
-                        />
-                    </div>
-                )}
-
-                {config.characters.map(char => {
-                    const id = `character-${char.id}`;
-                    return (
-                        <Transformable 
-                            key={id} id={id} initialTransform={char} onTransform={onItemTransform} 
-                            parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={false} isRotatable={false} isDraggable={isInteractive}
-                            zIndex={5}
-                            onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
                         >
-                           <div style={{width: '100%', height: '100%'}}>
-                               <LegoCharacter character={char} pxPerCm={pxPerCm} />
-                           </div>
-                        </Transformable>
-                    );
-                })}
-                
-                {config.draggableItems.map(item => {
-                    const isCharm = item.type === 'charm';
-                    const part = !isCharm ? allParts[item.partId] : null;
-                    // Use selected color image if available, else fallback to part image
-                    const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
-                    const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
-                    const widthCm = isCharm ? 2 : (part?.widthCm || 1);
-                    const heightCm = isCharm ? 2 : (part?.heightCm || 1);
-
-                    if (!imageUrl) return null;
-
-                    // Hat should generally be above characters (zIndex 6) but below overlaid charms if any (zIndex 10)
-                    // Actually, hats need to be above character (5), so 6 is good. Accessories usually 10.
-                    const zIndex = item.type === 'hat' ? 12 : 10; 
-
-                    const id = `item-${item.id}`;
-                    return (
-                        <Transformable 
-                            key={id} id={id} initialTransform={item} onTransform={onItemTransform}
-                            isFlipped={item.isFlipped}
-                            parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={isInteractive && isCharm} // Resizable only if charm/upload
-                            isRotatable={isInteractive} 
-                            isDraggable={isInteractive}
-                            zIndex={zIndex}
-                        >
-                            <SafeImage 
-                              src={imageUrl} 
-                              alt={name} 
-                              className="pointer-events-none"
-                              style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }}
+                            <div 
+                                style={{
+                                    position: 'absolute',
+                                    top: '-50%',
+                                    left: '-50%',
+                                    width: '200%',
+                                    height: '200%',
+                                    transform: 'rotate(-30deg)',
+                                    backgroundImage: `url(${GENERAL_ASSETS.watermark})`,
+                                    backgroundRepeat: 'repeat',
+                                    backgroundSize: '120px',
+                                    opacity: 0.15,
+                                    mixBlendMode: 'multiply'
+                                }}
                             />
-                        </Transformable>
-                    );
-                })}
-                
-                {config.texts.map(text => {
-                    const id = `text-${text.id}`;
-                    return (
-                        <Transformable 
-                            key={id} id={id} 
-                            initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
-                            onTransform={onItemTransform} 
-                            parentRef={previewContainerRef} 
-                            isSelected={selectedItemId === id} 
-                            onSelect={setSelectedItemId}
-                            isDraggable={isInteractive}
-                            zIndex={15}
-                            isTextItem={true}
-                            containerSize={{ width: backgroundWidth, height: backgroundHeight }}
-                            style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
-                        >
-                           <EditableText
-                             text={text}
-                             onUpdate={(updates) => onTextUpdate(text.id, updates)}
-                             onBeginEditing={() => setIsEditingText(true)}
-                             onEndEditing={() => setIsEditingText(false)}
-                           />
-                        </Transformable>
-                    );
-                })}
-            </div>
+                        </div>
+                    )}
+
+                    {config.characters.map(char => {
+                        const id = `character-${char.id}`;
+                        return (
+                            <Transformable 
+                                key={id} id={id} initialTransform={char} onTransform={onItemTransform} 
+                                parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
+                                isResizable={false} isRotatable={false} isDraggable={isInteractive}
+                                zIndex={5}
+                                onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
+                            >
+                            <div style={{width: '100%', height: '100%'}}>
+                                <LegoCharacter character={char} pxPerCm={pxPerCm} />
+                            </div>
+                            </Transformable>
+                        );
+                    })}
+                    
+                    {config.draggableItems.map(item => {
+                        const isCharm = item.type === 'charm';
+                        const part = !isCharm ? allParts[item.partId] : null;
+                        // Use selected color image if available, else fallback to part image
+                        const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
+                        const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
+                        const widthCm = isCharm ? 2 : (part?.widthCm || 1);
+                        const heightCm = isCharm ? 2 : (part?.heightCm || 1);
+
+                        if (!imageUrl) return null;
+
+                        // Hat should generally be above characters (zIndex 6) but below overlaid charms if any (zIndex 10)
+                        // Actually, hats need to be above character (5), so 6 is good. Accessories usually 10.
+                        const zIndex = item.type === 'hat' ? 12 : 10; 
+
+                        const id = `item-${item.id}`;
+                        return (
+                            <Transformable 
+                                key={id} id={id} initialTransform={item} onTransform={onItemTransform}
+                                isFlipped={item.isFlipped}
+                                parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
+                                isResizable={isInteractive && isCharm} // Resizable only if charm/upload
+                                isRotatable={isInteractive} 
+                                isDraggable={isInteractive}
+                                zIndex={zIndex}
+                            >
+                                <SafeImage 
+                                src={imageUrl} 
+                                alt={name} 
+                                className="pointer-events-none"
+                                style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }}
+                                />
+                            </Transformable>
+                        );
+                    })}
+                    
+                    {config.texts.map(text => {
+                        const id = `text-${text.id}`;
+                        return (
+                            <Transformable 
+                                key={id} id={id} 
+                                initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
+                                onTransform={onItemTransform} 
+                                parentRef={previewContainerRef} 
+                                isSelected={selectedItemId === id} 
+                                onSelect={setSelectedItemId}
+                                isDraggable={isInteractive}
+                                zIndex={15}
+                                isTextItem={true}
+                                containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                                style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
+                            >
+                            <EditableText
+                                text={text}
+                                onUpdate={(updates) => onTextUpdate(text.id, updates)}
+                                onBeginEditing={() => setIsEditingText(true)}
+                                onEndEditing={() => setIsEditingText(false)}
+                            />
+                            </Transformable>
+                        );
+                    })}
+                </div>
+            )}
         </div>
 
         {/* --- Floating Mobile Action Toolbar (Moved outside the frame content area) --- */}
