@@ -482,6 +482,11 @@ const Step3Characters: React.FC<{
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
 
+    // Helper to filter out items with 0 stock
+    const getAvailableParts = (list: LegoPart[]) => {
+        return list.filter(p => p.stock === undefined || p.stock > 0);
+    };
+
      useEffect(() => {
         if (!config.characters.find(c => c.id === activeCharId)) {
             setActiveCharId(config.characters[config.characters.length - 1]?.id || null);
@@ -500,19 +505,25 @@ const Step3Characters: React.FC<{
 
     const handleAddChar = () => {
         const newId = Date.now();
+        // Should pick default available parts if first ones are out of stock
+        const availableShirts = getAvailableParts(legoParts.shirt);
+        const availablePants = getAvailableParts(legoParts.pants);
+        const availableFaces = getAvailableParts(legoParts.face);
+        const availableHairs = getAvailableParts(legoParts.hair);
+
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
-            shirt: legoParts.shirt[0], 
-            pants: legoParts.pants[0],
-            face: legoParts.face[0], 
-            hair: legoParts.hair[0],
+            shirt: availableShirts[0] || legoParts.shirt[0], 
+            pants: availablePants[0] || legoParts.pants[0],
+            face: availableFaces[0] || legoParts.face[0], 
+            hair: availableHairs[0] || legoParts.hair[0],
             x: 30 + (config.characters.length % 3) * 20, 
             y: 75, 
             rotation: 0, 
             scale: 1,
-            selectedShirtColor: legoParts.shirt[0]?.colors?.[0],
-            selectedPantsColor: legoParts.pants[0]?.colors?.[0],
-            selectedHairColor: legoParts.hair[0]?.colors?.[0],
+            selectedShirtColor: availableShirts[0]?.colors?.[0],
+            selectedPantsColor: availablePants[0]?.colors?.[0],
+            selectedHairColor: availableHairs[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -579,10 +590,6 @@ const Step3Characters: React.FC<{
                         // Standard assignment
                         (newChar as any)[part.type] = part;
                         // If selecting standard pants/shirt while a set was active, ensure logic holds
-                        // (e.g. if user had a set, then clicks pants, does shirt remain as the set?
-                        // If the set is assigned to 'shirt', yes. It might look weird if the set image
-                        // is full body. But typically 'set' means top part that covers bottom.
-                        // For now, we just assign normally.)
                     }
 
                     let partColors = part.colors;
@@ -641,13 +648,25 @@ const Step3Characters: React.FC<{
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
         
-        const getRandomItem = (list: LegoPart[]) => list.length > 0 ? list[Math.floor(Math.random() * list.length)] : undefined;
-        const getRandomColor = (colors: OutfitColor[] | undefined) => colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : undefined;
+        // 1. Filter available parts first to ensure we don't pick out-of-stock items
+        const availableHair = getAvailableParts(legoParts.hair);
+        const availableFace = getAvailableParts(legoParts.face);
+        const availableShirt = getAvailableParts(legoParts.shirt);
+        const availablePants = getAvailableParts(legoParts.pants);
 
-        const randomHair = getRandomItem(legoParts.hair);
-        const randomFace = getRandomItem(legoParts.face);
-        const randomShirt = getRandomItem(legoParts.shirt);
-        const randomPants = getRandomItem(legoParts.pants);
+        const getRandomItem = (list: LegoPart[]) => list.length > 0 ? list[Math.floor(Math.random() * list.length)] : undefined;
+        
+        const getRandomColor = (colors: OutfitColor[] | undefined) => {
+            if (!colors) return undefined;
+            // Filter available colors
+            const availableColors = colors.filter(c => c.stock === undefined || c.stock > 0);
+            return availableColors.length > 0 ? availableColors[Math.floor(Math.random() * availableColors.length)] : undefined;
+        };
+
+        const randomHair = getRandomItem(availableHair);
+        const randomFace = getRandomItem(availableFace);
+        const randomShirt = getRandomItem(availableShirt);
+        const randomPants = getRandomItem(availablePants);
         // Note: We don't randomize Hat here anymore as it's a separate object.
 
         setConfig(prev => ({
@@ -656,14 +675,13 @@ const Step3Characters: React.FC<{
                 if (c.id === activeCharId) {
                     const newChar: LegoCharacterConfig = { ...c };
                     
+                    // Only replace if a random available item was found, otherwise keep current
                     newChar.face = randomFace || c.face;
                     newChar.shirt = randomShirt || c.shirt;
                     newChar.pants = randomPants || c.pants;
                     newChar.hair = randomHair || c.hair;
-                    // Ensure hat is removed if we are strictly randomizing outfit parts on the character body
-                    // But since hats are separate, we just ignore them here.
 
-                    // Default colors
+                    // Default colors logic with stock check
                     let shirtColors = newChar.shirt?.colors;
                     if (!shirtColors || shirtColors.length === 0) {
                          const nameLower = newChar.shirt?.name.toLowerCase() || '';
@@ -695,11 +713,6 @@ const Step3Characters: React.FC<{
         { key: 'hair', label: 'Tóc' },
         { key: 'hat', label: 'Mũ' },
     ];
-
-    // Helper to filter out items with 0 stock
-    const getAvailableParts = (list: LegoPart[]) => {
-        return list.filter(p => p.stock === undefined || p.stock > 0);
-    };
 
     const currentPartList = useMemo(() => {
         const list = getAvailableParts(legoParts[activePartType] || []);
