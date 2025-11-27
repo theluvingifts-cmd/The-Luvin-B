@@ -2723,7 +2723,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                 <div>
                                     <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
                                     <p className="text-sm text-gray-500">
-                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date(Number(foundOrder.id.slice(3, -4))).toLocaleDateString('vi-VN') : '---'}
+                                        Ngày đặt: {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
