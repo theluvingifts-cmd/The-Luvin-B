@@ -1,5 +1,4 @@
-
-import React, { useRef, useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
@@ -32,15 +31,22 @@ interface FramePreviewProps {
   logoUrl?: string;
 }
 
-// SafeImage component updated with crossOrigin="anonymous" to fix CORS issues with html2canvas
+// --- CORE FIX: SafeImage luôn có crossOrigin ---
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
+    
+    // BẮT BUỘC: crossOrigin="anonymous" để html2canvas vẽ được ảnh từ domain khác
     return (
         <img 
-            crossOrigin="anonymous" // CRITICAL FIX: Allows html2canvas to read image data from Cloudinary
+            crossOrigin="anonymous" 
+            referrerPolicy="no-referrer"
             {...props} 
-            onError={() => setHasError(true)} 
+            onError={(e) => {
+                console.warn("Image load failed:", props.src);
+                setHasError(true);
+                if (props.onError) props.onError(e);
+            }} 
         />
     );
 };
@@ -437,11 +443,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const backgroundWidth = frameOption.backgroundWidthCm * pxPerCm;
   const backgroundHeight = frameOption.backgroundHeightCm * pxPerCm;
 
-  const backgroundStyle: React.CSSProperties =
-    config.background.type === 'color'
-      ? { backgroundColor: config.background.value }
-      : { backgroundImage: `url(${config.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' };
-  
   const allParts: Record<string, LegoPart> = useMemo(() => {
       if (propAllParts) return propAllParts;
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
@@ -594,7 +595,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 style={{
                     width: backgroundWidth,
                     height: backgroundHeight,
-                    ...backgroundStyle,
+                    backgroundColor: config.background.type === 'color' ? config.background.value : 'transparent',
                     boxShadow: `inset 0 0 0 1px rgba(0, 0, 0, 0.15)`,
                 }}
                 onClick={(e) => {
@@ -603,16 +604,27 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - REFINED FOR SAFETY & CAPTURE EXCLUSION */}
+                {/* --- CORE FIX: Dùng thẻ IMG thay vì BackgroundImage để tránh lỗi CORS --- */}
+                {config.background.type !== 'color' && config.background.value && (
+                    <img 
+                        src={config.background.value} 
+                        crossOrigin="anonymous"
+                        referrerPolicy="no-referrer"
+                        className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+                        alt="background"
+                    />
+                )}
+
+                {/* WATERMARK: Vẫn giữ nhưng bỏ qua việc ẩn hiện phức tạp */}
                 {logoUrl && (
                     <div 
-                        className="watermark-layer" // Class added for HTML2Canvas ignore
+                        className="watermark-layer" 
                         style={{
                             position: 'absolute',
                             inset: 0,
                             zIndex: 40,
                             pointerEvents: 'none',
-                            mixBlendMode: 'multiply', // Ensure transparency over light backgrounds
+                            mixBlendMode: 'multiply',
                         }}
                     >
                         <svg width="100%" height="100%" style={{ opacity: 0.12 }} fill="transparent">
@@ -724,7 +736,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                                 style={{ backgroundColor: color.hex }}
                                 title={`${color.name}`}
                             >
-                                {color.imageUrl && <img src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
+                                {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
                             </button>
                         ))}
                     </div>
@@ -733,11 +745,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
                     {selectedItemDetails?.canFlip && (
                         <button onClick={handleToolbarFlip} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         </button>
                     )}
                     <button onClick={handleToolbarDelete} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
                     {onAutoAdvance && (
