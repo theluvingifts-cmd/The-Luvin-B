@@ -1605,57 +1605,6 @@ const BuilderPage: React.FC<{
     }
   };
 
-  const handleSaveDraft = () => {
-      localStorage.setItem('design_draft', JSON.stringify(config));
-      showToast('Đã lưu bản nháp thành công!', 'success');
-  };
-
-  const handleResetDesign = () => {
-      if (confirm("Bạn có chắc muốn làm mới thiết kế? Mọi thay đổi sẽ bị xóa.")) {
-          setConfig(prev => ({
-              ...INITIAL_FRAME_CONFIG,
-              frameId: prev.frameId, // Keep size
-          }));
-          setStep(1);
-          setSelectedItemId(null);
-      }
-  };
-
-  const handleShare = async () => {
-      const imageUrl = await captureFrameAsImage();
-      if (!imageUrl) return;
-
-      // If Web Share API supported
-      if (navigator.share) {
-          try {
-              const blob = await (await fetch(imageUrl)).blob();
-              const file = new File([blob], "design.png", { type: "image/png" });
-              await navigator.share({
-                  title: 'My LEGO Frame Design',
-                  text: 'Check out my design at The Luvin!',
-                  files: [file],
-              });
-          } catch (error) {
-              console.log('Error sharing', error);
-          }
-      } else {
-          // Fallback: Copy to clipboard or download
-          try {
-              const blob = await (await fetch(imageUrl)).blob();
-              const item = new ClipboardItem({ "image/png": blob });
-              await navigator.clipboard.write([item]);
-              showToast('Đã sao chép ảnh vào bộ nhớ tạm!', 'success');
-          } catch (err) {
-              // Final fallback: Open in new tab
-              const link = document.createElement('a');
-              link.href = imageUrl;
-              link.download = 'my-design.png';
-              link.click();
-              showToast('Đã tải ảnh về máy!', 'success');
-          }
-      }
-  };
-
   const handleCharacterDoubleClick = (charId: number) => {
       setStep(3); // Move to design step
       setSelectedItemId(`character-${charId}`);
@@ -1712,17 +1661,6 @@ const BuilderPage: React.FC<{
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
-                    <div className="flex gap-2">
-                        <button onClick={handleSaveDraft} className="bg-white border border-gray-300 p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 text-xs font-bold flex items-center gap-1" title="Lưu bản nháp">
-                            💾
-                        </button>
-                        <button onClick={handleShare} className="bg-white border border-gray-300 p-1.5 rounded-lg hover:bg-gray-100 text-blue-600 text-xs font-bold flex items-center gap-1" title="Chia sẻ/Lưu ảnh">
-                            📤
-                        </button>
-                        <button onClick={handleResetDesign} className="bg-white border border-red-200 p-1.5 rounded-lg hover:bg-red-50 text-red-600 text-xs font-bold flex items-center gap-1" title="Làm mới">
-                            🗑️
-                        </button>
-                    </div>
                 </div>
                 {/* Removed overflow-hidden here to allow toolbar to overflow */}
                 <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-12 lg:mb-0">
