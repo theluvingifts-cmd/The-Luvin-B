@@ -2,7 +2,7 @@
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors, GENERAL_ASSETS } from '../constants';
+import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
 type Transform = {
   x: number;
@@ -22,21 +22,20 @@ interface FramePreviewProps {
   onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void; // Added for character updates
   onItemFlip?: (id: string) => void;
   onCharacterDoubleClick?: (id: number) => void; // Added double click handler
-  onAutoAdvance?: () => void; // Added auto advance handler
   className?: string;
   isInteractive?: boolean;
   selectedItemId: string | null;
   setSelectedItemId: (id: string | null) => void;
   setIsEditingText: (isEditing: boolean) => void;
   allParts?: Record<string, LegoPart>;
-  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'; // Added set
+  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants'; // Added active part type
 }
 
-// SafeImage component to handle broken URLs gracefully and ensure CORS for html2canvas
+// SafeImage component to handle broken URLs gracefully
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
-    return <img crossOrigin="anonymous" {...props} onError={() => setHasError(true)} />;
+    return <img {...props} onError={() => setHasError(true)} />;
 };
 
 const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {
@@ -367,7 +366,7 @@ const Transformable: React.FC<{
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
             onDoubleClick={(e) => { if(onDoubleClick) { e.stopPropagation(); onDoubleClick(); } }}
-            className="absolute transform-gpu"
+            className="absolute"
             style={{
                 ...style,
                 left: `${initialTransform.x}%`,
@@ -424,7 +423,7 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -451,7 +450,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
       if (!char) return [];
       
-      if (type === 'shirt' || type === 'set') { // Support colors for sets if needed
+      if (type === 'shirt') {
           if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
           // Fallback logic
           const name = char.shirt?.name.toLowerCase() || '';
@@ -518,7 +517,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       }
       if (selectedItemDetails?.type === 'character' && onCharacterUpdate && selectedItemDetails.data) {
           // Determine field based on activePartType
-          if (activePartType === 'shirt' || activePartType === 'set') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
+          if (activePartType === 'shirt') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
           else if (activePartType === 'pants') onCharacterUpdate(selectedItemDetails.data.id, { selectedPantsColor: color });
           else if (activePartType === 'hair') onCharacterUpdate(selectedItemDetails.data.id, { selectedHairColor: color });
       }
@@ -530,70 +529,18 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       }
       if (selectedItemDetails?.type === 'character' && activePartType) {
           const char = selectedItemDetails.data as LegoCharacterConfig;
-          if (activePartType === 'shirt' || activePartType === 'set') return char.selectedShirtColor?.hex;
+          if (activePartType === 'shirt') return char.selectedShirtColor?.hex;
           if (activePartType === 'pants') return char.selectedPantsColor?.hex;
           if (activePartType === 'hair') return char.selectedHairColor?.hex;
       }
       return null;
   };
 
-  // KEYBOARD EVENT LISTENER (Arrow Keys)
-  useEffect(() => {
-    if (!isInteractive || !selectedItemId) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-        // Ignore if typing in input
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-        const [type, idStr] = selectedItemId.split('-');
-        const id = parseInt(idStr);
-        
-        let currentItem: any = null;
-        if (type === 'item') currentItem = config.draggableItems.find(i => i.id === id);
-        else if (type === 'character') currentItem = config.characters.find(c => c.id === id);
-        else if (type === 'text') currentItem = config.texts.find(t => t.id === id);
-
-        if (!currentItem) return;
-
-        let dx = 0;
-        let dy = 0;
-        const step = e.shiftKey ? 5 : 0.5; // Small nudges, bigger if shift held
-
-        switch(e.key) {
-            case 'ArrowUp': dy = -step; break;
-            case 'ArrowDown': dy = step; break;
-            case 'ArrowLeft': dx = -step; break;
-            case 'ArrowRight': dx = step; break;
-            default: return;
-        }
-
-        e.preventDefault(); // Prevent scrolling
-
-        const newTransform = {
-            x: Math.max(0, Math.min(100, currentItem.x + dx)),
-            y: Math.max(0, Math.min(100, currentItem.y + dy)),
-            rotation: currentItem.rotation,
-            scale: currentItem.scale,
-            width: (currentItem as TextConfig).width
-        };
-
-        onItemTransform(selectedItemId, newTransform);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isInteractive, selectedItemId, config, onItemTransform]);
-
   return (
     <div ref={ref} className={`flex items-center justify-center relative ${className}`} style={{ width: frameWidth, height: frameHeight }}>
         <div 
-          className="relative transition-colors duration-300"
-          style={{ 
-              width: '100%', 
-              height: '100%', 
-              backgroundColor: config.frameColor === 'black' ? '#1a1a1a' : '#ffffff',
-              boxShadow: `0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)`
-          }}
+          className="relative bg-white"
+          style={{ width: '100%', height: '100%', boxShadow: `0 4px 12px #d8d8d8` }}
         >
             <div
                 ref={previewContainerRef}
@@ -610,35 +557,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - ROTATED & TILED PATTERN */}
-                {GENERAL_ASSETS.watermark && (
-                    <div 
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            zIndex: 9999, // Always top
-                            pointerEvents: 'none', // Allow clicks to pass through
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <div 
-                            style={{
-                                position: 'absolute',
-                                top: '-50%',
-                                left: '-50%',
-                                width: '200%',
-                                height: '200%',
-                                transform: 'rotate(-30deg)',
-                                backgroundImage: `url(${GENERAL_ASSETS.watermark})`,
-                                backgroundRepeat: 'repeat',
-                                backgroundSize: '120px',
-                                opacity: 0.15,
-                                mixBlendMode: 'multiply'
-                            }}
-                        />
-                    </div>
-                )}
-
                 {config.characters.map(char => {
                     const id = `character-${char.id}`;
                     return (
@@ -669,6 +587,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                     // Hat should generally be above characters (zIndex 6) but below overlaid charms if any (zIndex 10)
                     // Actually, hats need to be above character (5), so 6 is good. Accessories usually 10.
+                    // Let's keep draggable items at 10 for now for simplicity, or distinguish types.
+                    // If it's a hat, it should be renderable on top of character.
                     const zIndex = item.type === 'hat' ? 12 : 10; 
 
                     const id = `item-${item.id}`;
@@ -677,7 +597,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={id} id={id} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped}
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={isInteractive && isCharm} // Resizable only if charm/upload
+                            isResizable={false} 
                             isRotatable={isInteractive} 
                             isDraggable={isInteractive}
                             zIndex={zIndex}
@@ -751,13 +671,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                    {onAutoAdvance && (
-                        <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors" title="Xong (Tiếp)">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                        </button>
-                    )}
-                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Bỏ chọn">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Xong">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                     </button>
                 </div>
             </div>

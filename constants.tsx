@@ -3,9 +3,9 @@ import type { FrameOption, LegoPart, FrameConfig, OutfitColor, Order } from './t
 
 
 export const FRAME_OPTIONS: FrameOption[] = [
-  { id: 'sm', name: '15x15cm', frameWidthCm: 15, frameHeightCm: 15, backgroundWidthCm: 12, backgroundHeightCm: 12, price: 210000, imageUrl: '', description: 'Nhỏ gọn, tinh tế', colors: ['black', 'white'], stock: 100 },
-  { id: 'md', name: '14.8x21cm', frameWidthCm: 14.8, frameHeightCm: 21, backgroundWidthCm: 11.8, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Thanh lịch, đứng dáng', colors: ['black', 'white'], stock: 100 },
-  { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: '', description: 'Sang trọng, ấn tượng', colors: ['black', 'white'], stock: 100 },
+  { id: 'sm', name: '15x15cm', frameWidthCm: 15, frameHeightCm: 15, backgroundWidthCm: 12, backgroundHeightCm: 12, price: 210000, imageUrl: '', description: 'Nhỏ gọn, tinh tế' },
+  { id: 'md', name: '14.8x21cm', frameWidthCm: 14.8, frameHeightCm: 21, backgroundWidthCm: 11.8, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Thanh lịch, đứng dáng' },
+  { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: '', description: 'Sang trọng, ấn tượng' },
 ];
 
 export const defaultShirtColors: OutfitColor[] = [
@@ -29,7 +29,6 @@ export const LEGO_PARTS: {
   hat: LegoPart[];
   accessory: LegoPart[];
   pet: LegoPart[];
-  set: LegoPart[]; // Added set category
 } = {
   hair: [],
   face: [],
@@ -38,7 +37,6 @@ export const LEGO_PARTS: {
   hat: [],
   accessory: [],
   pet: [],
-  set: [], // Added set category
 };
 
 
@@ -52,7 +50,6 @@ export const PRESET_BACKGROUNDS_RECTANGLE: { name: string; url: string; category
 
 export const INITIAL_FRAME_CONFIG: FrameConfig = {
   frameId: 'sm',
-  frameColor: 'white', // Default frame color
   background: { type: 'color', value: '#f4eee8' },
   characters: [],
   texts: [],
@@ -71,6 +68,5 @@ export const GENERAL_ASSETS = {
   hero: '',
   inspire: '',
   giftbox: 'https://cdn-icons-png.flaticon.com/512/4530/4530625.png', // Icon hộp quà nhẹ
-  vietqr: '',
-  watermark: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png' // Thay link ảnh watermark của bạn vào đây
+  vietqr: ''
 }

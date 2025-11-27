@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption } from './types';
+import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem } from './types';
 import { 
     FRAME_OPTIONS, 
     LEGO_PARTS, 
@@ -15,13 +15,12 @@ import {
     defaultPantsColors,
 } from './constants';
 import FramePreview from './components/FramePreview';
-import { createOrder, getOrderById, getOrdersByPhone } from './services/orderService'; // Kết nối Firebase
+import { createOrder, getOrderById } from './services/orderService'; // Kết nối Firebase
 import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
 import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
 import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
 import { getAllTemplates } from './services/templateService'; // Lấy mẫu
 import { getAllFeedbacks } from './services/feedbackService'; // Lấy feedback
-import { getAllFrames } from './services/frameService'; // Lấy khung
 import AdminPage from './components/AdminPage'; // Trang Admin
 import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
 
@@ -37,10 +36,9 @@ const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') 
 const CHARACTER_BASE_PRICE = 10000;
 const FREE_SHIPPING_THRESHOLD = 349000;
 
-// Updated to accept dynamic frames
-const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
+const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>) => {
     const breakdown: {label: string, value: number}[] = [];
-    const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
+    const frame = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
     let total = frame.price;
     breakdown.push({ label: `Khung ${frame.name}`, value: frame.price });
 
@@ -80,7 +78,7 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>,
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
-// ... (Keep StepIndicator component as is) ...
+// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton components as is) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
@@ -144,78 +142,32 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   );
 };
 
-// Updated Step1Frame to use dynamic frames and colors
-const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
-  const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
-  
-  // Effect to ensure frame color is valid for selected frame
-  useEffect(() => {
-      if (selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0) {
-          if (!config.frameColor || !selectedFrame.colors.includes(config.frameColor)) {
-              setConfig(prev => ({ ...prev, frameColor: selectedFrame.colors[0] }));
-          }
-      }
-  }, [selectedFrame, config.frameColor, setConfig]);
-
+const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>> }> = ({ config, setConfig }) => {
+  const selectedFrame = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   return (
     <div className="space-y-4">
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">CHỌN KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
-          {frames.map(frame => (
+          {FRAME_OPTIONS.map(frame => (
             <button
               key={frame.id}
               onClick={() => setConfig(prev => ({ ...prev, frameId: frame.id }))}
-              disabled={frame.stock === 0}
-              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative ${
+              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-16 ${
                 config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'
-              } ${frame.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              }`}
             >
               <span>{frame.name}</span>
               <span className="font-normal opacity-80 mt-1">{formatCurrency(frame.price)}</span>
-              {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">Hết hàng</span>}
             </button>
           ))}
         </div>
-        {/* Frame Color Selection */}
-        {selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-                <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">MÀU KHUNG</h4>
-                <div className="flex gap-3 flex-wrap">
-                    {selectedFrame.colors.map(color => {
-                        const getColorStyle = (c: string) => {
-                            if (c === 'white') return { bg: '#fff', border: '#ddd' };
-                            if (c === 'black') return { bg: '#000', border: '#000' };
-                            if (c === 'wood') return { bg: '#d2b48c', border: '#c1a075' };
-                            if (c === 'gold') return { bg: '#ffd700', border: '#e6c200' };
-                            return { bg: c, border: c }; // Fallback
-                        };
-                        const style = getColorStyle(color);
-                        const isSelected = config.frameColor === color;
-
-                        return (
-                            <button 
-                                key={color}
-                                onClick={() => setConfig(prev => ({ ...prev, frameColor: color }))}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all capitalize ${isSelected ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                            >
-                                <div 
-                                    className="w-4 h-4 rounded-full shadow-sm border" 
-                                    style={{ backgroundColor: style.bg, borderColor: style.border }}
-                                ></div>
-                                <span className="text-sm font-medium text-gray-700">{color === 'white' ? 'Trắng' : color === 'black' ? 'Đen' : color}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-        )}
       </div>
        {selectedFrame && (
         <div className="p-4 border border-gray-200 rounded-lg">
             <h4 className="font-bold text-gray-800 mb-3">GIÁ CƠ BẢN BAO GỒM</h4>
             <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
-                <li>1 Khung ảnh {selectedFrame.name} ({selectedFrame.description}).</li>
+                <li>1 Khung ảnh composite cao cấp.</li>
                 <li>1 Nền tùy chọn (mẫu có sẵn hoặc ảnh của bạn).</li>
                 <li>Miễn phí thêm chữ & ảnh nhỏ trang trí.</li>
                 <li>Hộp quà & thiệp viết tay theo yêu cầu.</li>
@@ -231,8 +183,7 @@ const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
     onClick: () => void;
-    onZoom: (url: string) => void;
-}> = ({ bg, isSelected, onClick, onZoom }) => {
+}> = ({ bg, isSelected, onClick }) => {
     let line1 = bg.name;
     let line2 = '';
 
@@ -252,28 +203,18 @@ const PresetBackgroundButton: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`border-2 rounded-xl p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative group ${
+            className={`border-2 rounded-xl p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
         >
-            <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
+            <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
                 <img
                     src={bg.url}
                     alt={bg.name}
                     className="w-full h-full object-cover"
                 />
-                {/* Corner Zoom Button (Bottom Right Only) */}
-                <div className="absolute bottom-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <div 
-                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto"
-                        onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
-                        title="Zoom"
-                    >
-                        <ZoomIcon className="w-4 h-4" />
-                    </div>
-                </div>
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-9 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-700">{line1}</span>
@@ -290,8 +231,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   addText: () => void;
   addCharm: (dataUrl: string) => void;
   backgrounds: PresetBackground[];
-  onZoomImage: (url: string) => void;
-}> = ({ config, setConfig, addText, addCharm, backgrounds, onZoomImage }) => {
+}> = ({ config, setConfig, addText, addCharm, backgrounds }) => {
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -374,7 +314,6 @@ const Step2BackgroundAndDecorations: React.FC<{
                 bg={bg}
                 isSelected={config.background.value === bg.url}
                 onClick={() => setConfig((prev) => ({ ...prev, background: { type: 'image', value: bg.url } }))}
-                onZoom={onZoomImage}
               />
             ))
           ) : (
@@ -426,7 +365,7 @@ const PartButton: React.FC<{
     return (
         <button
             onClick={handleClick}
-            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative overflow-hidden ${
+            className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1 transition-all text-center w-full relative overflow-hidden ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -471,8 +410,8 @@ const Step3Characters: React.FC<{
     legoParts: typeof LEGO_PARTS;
     selectedItemId?: string | null;
     setSelectedItemId: (id: string | null) => void;
-    activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
-    setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
+    activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants';
+    setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants') => void;
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -481,11 +420,6 @@ const Step3Characters: React.FC<{
     // Sorting States
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
-
-    // Helper to filter out items with 0 stock
-    const getAvailableParts = (list: LegoPart[]) => {
-        return list.filter(p => p.stock === undefined || p.stock > 0);
-    };
 
      useEffect(() => {
         if (!config.characters.find(c => c.id === activeCharId)) {
@@ -505,25 +439,19 @@ const Step3Characters: React.FC<{
 
     const handleAddChar = () => {
         const newId = Date.now();
-        // Should pick default available parts if first ones are out of stock
-        const availableShirts = getAvailableParts(legoParts.shirt);
-        const availablePants = getAvailableParts(legoParts.pants);
-        const availableFaces = getAvailableParts(legoParts.face);
-        const availableHairs = getAvailableParts(legoParts.hair);
-
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
-            shirt: availableShirts[0] || legoParts.shirt[0], 
-            pants: availablePants[0] || legoParts.pants[0],
-            face: availableFaces[0] || legoParts.face[0], 
-            hair: availableHairs[0] || legoParts.hair[0],
+            shirt: legoParts.shirt[0], 
+            pants: legoParts.pants[0],
+            face: legoParts.face[0], 
+            hair: legoParts.hair[0],
             x: 30 + (config.characters.length % 3) * 20, 
             y: 75, 
             rotation: 0, 
             scale: 1,
-            selectedShirtColor: availableShirts[0]?.colors?.[0],
-            selectedPantsColor: availablePants[0]?.colors?.[0],
-            selectedHairColor: availableHairs[0]?.colors?.[0],
+            selectedShirtColor: legoParts.shirt[0]?.colors?.[0],
+            selectedPantsColor: legoParts.pants[0]?.colors?.[0],
+            selectedHairColor: legoParts.hair[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -580,18 +508,7 @@ const Step3Characters: React.FC<{
             ...prev,
             characters: prev.characters.map(c => {
                 if (c.id === activeCharId) {
-                    const newChar = { ...c };
-                    
-                    // Handle Sets (Vests/Combos)
-                    if (part.type === 'set') {
-                        newChar.shirt = part;
-                        newChar.pants = undefined; // Clear pants so they don't conflict visually
-                    } else {
-                        // Standard assignment
-                        (newChar as any)[part.type] = part;
-                        // If selecting standard pants/shirt while a set was active, ensure logic holds
-                    }
-
+                    const newChar = { ...c, [part.type]: part };
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
@@ -603,7 +520,7 @@ const Step3Characters: React.FC<{
                         }
                     }
 
-                    if (part.type === 'shirt' || part.type === 'set') newChar.selectedShirtColor = partColors?.[0];
+                    if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
                     
@@ -634,6 +551,7 @@ const Step3Characters: React.FC<{
       }));
     }
     
+
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
       setConfig(prev => ({
@@ -648,25 +566,13 @@ const Step3Characters: React.FC<{
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
         
-        // 1. Filter available parts first to ensure we don't pick out-of-stock items
-        const availableHair = getAvailableParts(legoParts.hair);
-        const availableFace = getAvailableParts(legoParts.face);
-        const availableShirt = getAvailableParts(legoParts.shirt);
-        const availablePants = getAvailableParts(legoParts.pants);
-
         const getRandomItem = (list: LegoPart[]) => list.length > 0 ? list[Math.floor(Math.random() * list.length)] : undefined;
-        
-        const getRandomColor = (colors: OutfitColor[] | undefined) => {
-            if (!colors) return undefined;
-            // Filter available colors
-            const availableColors = colors.filter(c => c.stock === undefined || c.stock > 0);
-            return availableColors.length > 0 ? availableColors[Math.floor(Math.random() * availableColors.length)] : undefined;
-        };
+        const getRandomColor = (colors: OutfitColor[] | undefined) => colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : undefined;
 
-        const randomHair = getRandomItem(availableHair);
-        const randomFace = getRandomItem(availableFace);
-        const randomShirt = getRandomItem(availableShirt);
-        const randomPants = getRandomItem(availablePants);
+        const randomHair = getRandomItem(legoParts.hair);
+        const randomFace = getRandomItem(legoParts.face);
+        const randomShirt = getRandomItem(legoParts.shirt);
+        const randomPants = getRandomItem(legoParts.pants);
         // Note: We don't randomize Hat here anymore as it's a separate object.
 
         setConfig(prev => ({
@@ -675,13 +581,14 @@ const Step3Characters: React.FC<{
                 if (c.id === activeCharId) {
                     const newChar: LegoCharacterConfig = { ...c };
                     
-                    // Only replace if a random available item was found, otherwise keep current
                     newChar.face = randomFace || c.face;
                     newChar.shirt = randomShirt || c.shirt;
                     newChar.pants = randomPants || c.pants;
                     newChar.hair = randomHair || c.hair;
+                    // Ensure hat is removed if we are strictly randomizing outfit parts on the character body
+                    // But since hats are separate, we just ignore them here.
 
-                    // Default colors logic with stock check
+                    // Default colors
                     let shirtColors = newChar.shirt?.colors;
                     if (!shirtColors || shirtColors.length === 0) {
                          const nameLower = newChar.shirt?.name.toLowerCase() || '';
@@ -705,14 +612,18 @@ const Step3Characters: React.FC<{
         }));
     };
     
-    const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set', label: string }[] = [
+    const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants', label: string }[] = [
         { key: 'shirt', label: 'Áo' },
         { key: 'pants', label: 'Quần' },
-        { key: 'set', label: 'Theo bộ' },
         { key: 'face', label: 'Mặt' },
         { key: 'hair', label: 'Tóc' },
         { key: 'hat', label: 'Mũ' },
     ];
+
+    // Helper to filter out items with 0 stock
+    const getAvailableParts = (list: LegoPart[]) => {
+        return list.filter(p => p.stock === undefined || p.stock > 0);
+    };
 
     const currentPartList = useMemo(() => {
         const list = getAvailableParts(legoParts[activePartType] || []);
@@ -776,15 +687,16 @@ const Step3Characters: React.FC<{
             </div>
 
             {activeCharacter && (
-                <div className="p-4 border border-gray-200 rounded-lg relative">
+                <div className="p-4 border border-gray-200 rounded-lg">
                     <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
-                        <div className="flex flex-wrap gap-2 overflow-x-auto no-scrollbar items-center">
+                        <div className="flex flex-wrap gap-2">
                             {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
                                     {pt.label}
                                 </button>
                             ))}
                         </div>
+                        {/* REMOVED SORT DROPDOWN FROM HERE */}
                     </div>
                      <div className="grid grid-cols-4 gap-2">
                          {(activePartType === 'hair') && (
@@ -797,7 +709,7 @@ const Step3Characters: React.FC<{
                             <PartButton 
                                 key={part.id} 
                                 part={part}
-                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id}
+                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType]?.id === part.id}
                                 onClick={() => handlePartSelect(part)} 
                             />
                         )) : (
@@ -932,13 +844,13 @@ const Header: React.FC<{ navigateTo: (page: Page) => void; cartCount: number; on
               </button>
             ))}
             <button onClick={onCartClick} className="relative text-gray-800 hover:text-luvin-pink transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
               {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">{cartCount}</span>}
             </button>
           </div>
           <div className="md:hidden flex items-center gap-4">
             <button onClick={onCartClick} className="relative text-gray-800">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                 {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">{cartCount}</span>}
             </button>
             <button onClick={() => setIsMenuOpen(true)} className="text-gray-800 focus:outline-none">
@@ -1047,7 +959,6 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
 };
 
 // ... (Keep AboutPage, WarrantyPage, HomePage, TextEditor, BuilderPage, CollectionPage, CartPage as is) ...
-// ... skipping redundant parts for brevity ...
 const AboutPage: React.FC = () => {
     return (
         <div className="bg-white font-body text-gray-800">
@@ -1357,15 +1268,10 @@ const BuilderPage: React.FC<{
     setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; 
     navigateTo: (p:Page) => void; 
     onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
-    onUpdateCart: (config: FrameConfig) => void; // ADDED
     showToast: (message: string, type: 'success' | 'error') => void;
-    legoParts: typeof LEGO_PARTS; 
-    backgrounds: PresetBackground[]; 
-    frames: FrameOption[]; 
-    editingCartIndex: number | null; // ADDED
-    onCancelEdit: () => void; // ADDED
-    onZoomImage: (url: string) => void; // ADDED
-}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage }) => {
+    legoParts: typeof LEGO_PARTS; // New prop
+    backgrounds: PresetBackground[]; // New prop
+}> = ({ config, setConfig, navigateTo, onAddToCart, showToast, legoParts, backgrounds }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1375,7 +1281,7 @@ const BuilderPage: React.FC<{
   const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
-  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
+  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants'>('shirt'); // ADDED
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1414,8 +1320,7 @@ const BuilderPage: React.FC<{
   
   const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
-  // Pass frames to calculatePrice
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts), [config, allParts]);
   
   const selectedText = useMemo(() => {
     if (selectedItemId?.startsWith('text-')) {
@@ -1557,7 +1462,6 @@ const BuilderPage: React.FC<{
       const originalSelectedId = selectedItemId;
       setSelectedItemId(null);
 
-      // Increased delay to 200ms to ensure clean state
       setTimeout(async () => {
         const element = frameCaptureRef.current;
         if (element && typeof html2canvas !== 'undefined') {
@@ -1579,7 +1483,7 @@ const BuilderPage: React.FC<{
           resolve('');
           setSelectedItemId(originalSelectedId);
         }
-      }, 200);
+      }, 50);
     });
   };
 
@@ -1588,15 +1492,7 @@ const BuilderPage: React.FC<{
     const imageUrl = await captureFrameAsImage();
     setIsSaving(false);
     if (imageUrl) {
-      if (editingCartIndex !== null && !andCheckout) {
-          // Updating existing item
-          onUpdateCart({ ...config, previewImageUrl: imageUrl });
-      } else {
-          // Adding new item
-          // Default quantity is 1
-          onAddToCart({ ...config, previewImageUrl: imageUrl, quantity: 1 }, !andCheckout);
-      }
-      
+      onAddToCart({ ...config, previewImageUrl: imageUrl }, !andCheckout);
       if (andCheckout) {
         navigateTo('checkout');
       }
@@ -1605,37 +1501,71 @@ const BuilderPage: React.FC<{
     }
   };
 
+  const handleSaveDraft = () => {
+      localStorage.setItem('design_draft', JSON.stringify(config));
+      showToast('Đã lưu bản nháp thành công!', 'success');
+  };
+
+  const handleResetDesign = () => {
+      if (confirm("Bạn có chắc muốn làm mới thiết kế? Mọi thay đổi sẽ bị xóa.")) {
+          setConfig(prev => ({
+              ...INITIAL_FRAME_CONFIG,
+              frameId: prev.frameId, // Keep size
+          }));
+          setStep(1);
+          setSelectedItemId(null);
+      }
+  };
+
+  const handleShare = async () => {
+      const imageUrl = await captureFrameAsImage();
+      if (!imageUrl) return;
+
+      // If Web Share API supported
+      if (navigator.share) {
+          try {
+              const blob = await (await fetch(imageUrl)).blob();
+              const file = new File([blob], "design.png", { type: "image/png" });
+              await navigator.share({
+                  title: 'My LEGO Frame Design',
+                  text: 'Check out my design at The Luvin!',
+                  files: [file],
+              });
+          } catch (error) {
+              console.log('Error sharing', error);
+          }
+      } else {
+          // Fallback: Copy to clipboard or download
+          try {
+              const blob = await (await fetch(imageUrl)).blob();
+              const item = new ClipboardItem({ "image/png": blob });
+              await navigator.clipboard.write([item]);
+              showToast('Đã sao chép ảnh vào bộ nhớ tạm!', 'success');
+          } catch (err) {
+              // Final fallback: Open in new tab
+              const link = document.createElement('a');
+              link.href = imageUrl;
+              link.download = 'my-design.png';
+              link.click();
+              showToast('Đã tải ảnh về máy!', 'success');
+          }
+      }
+  };
+
   const handleCharacterDoubleClick = (charId: number) => {
       setStep(3); // Move to design step
       setSelectedItemId(`character-${charId}`);
   };
 
-  const handleAutoAdvance = () => {
-      const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
-      let currentIndex = order.indexOf(activePartType as any);
-      
-      if (activePartType === 'set') {
-          setActivePartType('hair');
-          return;
-      }
-
-      if (currentIndex !== -1 && currentIndex < order.length - 1) {
-          setActivePartType(order[currentIndex + 1]);
-      } else {
-          setActivePartType('shirt'); 
-      }
-  };
-
   const renderStepContent = () => {
     switch (step) {
-      // Pass frames prop to Step1Frame
-      case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} onZoomImage={onZoomImage} />;
+      case 1: return <Step1Frame config={config} setConfig={setConfig} />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} />;
       case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
-        frameName={frames.find(f => f.id === config.frameId)?.name || ''} 
+        frameName={FRAME_OPTIONS.find(f => f.id === config.frameId)?.name || ''} 
         charCount={config.characters.length} 
         onAddToCart={() => handleAddToCartWrapper(false)} 
         onBuyNow={() => handleAddToCartWrapper(true)}
@@ -1652,15 +1582,24 @@ const BuilderPage: React.FC<{
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế & Mua hàng
             </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
-            {editingCartIndex !== null ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng Khung LEGO'}
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Thiết kế & Mua hàng Khung LEGO</h1>
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
+                    <div className="flex gap-2">
+                        <button onClick={handleSaveDraft} className="bg-white border border-gray-300 p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 text-xs font-bold flex items-center gap-1" title="Lưu bản nháp">
+                            💾
+                        </button>
+                        <button onClick={handleShare} className="bg-white border border-gray-300 p-1.5 rounded-lg hover:bg-gray-100 text-blue-600 text-xs font-bold flex items-center gap-1" title="Chia sẻ/Lưu ảnh">
+                            📤
+                        </button>
+                        <button onClick={handleResetDesign} className="bg-white border border-red-200 p-1.5 rounded-lg hover:bg-red-50 text-red-600 text-xs font-bold flex items-center gap-1" title="Làm mới">
+                            🗑️
+                        </button>
+                    </div>
                 </div>
                 {/* Removed overflow-hidden here to allow toolbar to overflow */}
                 <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-12 lg:mb-0">
@@ -1675,7 +1614,6 @@ const BuilderPage: React.FC<{
                         onCharacterUpdate={handleCharacterUpdate} // ADDED
                         onItemFlip={handleItemFlip}
                         onCharacterDoubleClick={handleCharacterDoubleClick}
-                        onAutoAdvance={handleAutoAdvance} // PASS AUTO ADVANCE
                         className="w-full h-full"
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
@@ -1723,77 +1661,44 @@ const BuilderPage: React.FC<{
                   <div className="mt-4 text-right font-bold text-lg text-gray-800">
                     Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
                   </div>
-                  {editingCartIndex !== null && step === 4 && (
-                        <div className="mt-4 mb-2">
-                            <button 
-                                onClick={onCancelEdit} 
-                                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors"
-                            >
-                                Hủy sửa
-                            </button>
-                        </div>
-                  )}
-                  {step === 4 && editingCartIndex !== null && (
-                        <div className="mt-2 hidden lg:flex items-center gap-4">
-                             <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
-                            </button>
-                        </div>
-                  )}
-                  
-                  {/* Only show standard navigation if not in the special update mode for step 4, OR if we are in update mode but not step 4 */}
-                  {!(editingCartIndex !== null && step === 4) && (
-                      <div className="mt-2 hidden lg:flex items-center gap-4">
-                          <button
-                              onClick={() => setStep(s => Math.max(1, s - 1))}
-                              disabled={step === 1}
-                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
-                          >
-                              &larr; Quay lại
-                          </button>
-                          <button
-                              onClick={() => setStep(s => Math.min(4, s + 1))}
-                              disabled={step === 4}
-                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
-                          >
-                              Tiếp theo
-                          </button>
-                      </div>
-                  )}
+                  <div className="mt-2 hidden lg:flex items-center gap-4">
+                      <button
+                          onClick={() => setStep(s => Math.max(1, s - 1))}
+                          disabled={step === 1}
+                          className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                      >
+                          &larr; Quay lại
+                      </button>
+                      <button
+                          onClick={() => setStep(s => Math.min(4, s + 1))}
+                          disabled={step === 4}
+                          className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                      >
+                          Tiếp theo
+                      </button>
+                  </div>
                 </>
               )}
                <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-top p-4 z-30 transition-transform duration-300 ease-in-out ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
                      <div className="text-right font-bold text-base text-gray-800 mb-2">
                         Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
                       </div>
-                     
-                     {editingCartIndex !== null && step === 4 ? (
-                        <div className="flex flex-col gap-2">
-                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
-                            </button>
-                            <button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">
-                                Hủy sửa
-                            </button>
-                        </div>
-                     ) : (
-                         <div className="flex items-center gap-4">
-                           <button
-                              onClick={() => setStep(s => Math.max(1, s - 1))}
-                              disabled={step === 1}
-                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
-                          >
-                              Quay lại
-                          </button>
-                          <button
-                              onClick={() => setStep(s => Math.min(4, s + 1))}
-                              disabled={step === 4}
-                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
-                          >
-                              Tiếp theo
-                          </button>
-                         </div>
-                     )}
+                     <div className="flex items-center gap-4">
+                       <button
+                          onClick={() => setStep(s => Math.max(1, s - 1))}
+                          disabled={step === 1}
+                          className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                      >
+                          Quay lại
+                      </button>
+                      <button
+                          onClick={() => setStep(s => Math.min(4, s + 1))}
+                          disabled={step === 4}
+                          className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                      >
+                          Tiếp theo
+                      </button>
+                     </div>
                 </div>
                <div className="lg:hidden h-32"></div>
           </div>
@@ -1836,16 +1741,8 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
     );
 }
 
-const CartPage: React.FC<{ 
-    cartItems: FrameConfig[]; 
-    onRemoveItem: (index: number) => void; 
-    onEditItem: (index: number) => void; // ADDED
-    allParts: Record<string, LegoPart>; 
-    navigateTo: (page: Page) => void;
-    onUpdateQuantity: (index: number, newQuantity: number) => void;
-    onZoomImage: (url: string) => void;
-}> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
-    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
+const CartPage: React.FC<{ cartItems: FrameConfig[]; onRemoveItem: (index: number) => void; allParts: Record<string, LegoPart>; navigateTo: (page: Page) => void;}> = ({ cartItems, onRemoveItem, allParts, navigateTo }) => {
+    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
@@ -1856,30 +1753,13 @@ const CartPage: React.FC<{
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
                         {cartItems.map((item, index) => {
-                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+                            const { totalPrice } = calculatePrice(item, allParts);
                             const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
-                            const quantity = item.quantity || 1;
-                            
                             return (
                                 <div key={index} className="bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-center gap-4">
-                                    <div 
-                                        className="w-40 h-40 flex-shrink-0 bg-gray-100 rounded-md p-2 relative group"
-                                    >
+                                    <div className="w-40 h-40 flex-shrink-0 bg-gray-100 rounded-md p-2">
                                       {item.previewImageUrl ? (
-                                        <>
-                                            <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
-                                            
-                                            {/* Bottom Right Zoom Button Only */}
-                                            <div className="absolute bottom-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                                <div 
-                                                    className="bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full cursor-pointer pointer-events-auto"
-                                                    onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
-                                                    title="Zoom"
-                                                >
-                                                    <ZoomIcon className="w-5 h-5" />
-                                                </div>
-                                            </div>
-                                        </>
+                                        <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                                       ) : (
                                         <FramePreview config={item} containerWidth={144} onItemTransform={() => {}} onTextUpdate={() => {}} onItemFlip={() => {}} selectedItemId={null} setSelectedItemId={() => {}} isInteractive={false} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                                       )}
@@ -1888,29 +1768,10 @@ const CartPage: React.FC<{
                                         <h3 className="font-bold text-lg font-body text-luvin-pink">Khung tùy chỉnh</h3>
                                         <p className="text-sm text-gray-600">Kích thước: {frame.name}</p>
                                         <p className="text-sm text-gray-600">Số nhân vật: {item.characters.length}</p>
-                                        <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-                                            <span className="text-sm font-medium">Số lượng:</span>
-                                            <div className="flex items-center border border-gray-300 rounded">
-                                                <button 
-                                                    onClick={() => onUpdateQuantity(index, quantity - 1)}
-                                                    className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                                                    disabled={quantity <= 1}
-                                                >-</button>
-                                                <span className="px-2 py-1 text-sm font-bold min-w-[20px] text-center">{quantity}</span>
-                                                <button 
-                                                    onClick={() => onUpdateQuantity(index, quantity + 1)}
-                                                    className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                                                >+</button>
-                                            </div>
-                                        </div>
                                     </div>
                                     <div className="flex-shrink-0 text-center sm:text-right">
-                                        <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
-                                        <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / cái)</p>
-                                        <div className="flex justify-center sm:justify-end gap-3 mt-2">
-                                            <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">Sửa</button>
-                                            <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline">Xóa</button>
-                                        </div>
+                                        <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</p>
+                                        <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline mt-1">Xóa</button>
                                     </div>
                                 </div>
                             );
@@ -1936,13 +1797,10 @@ const CartPanel: React.FC<{
   onClose: () => void;
   cartItems: FrameConfig[];
   onRemoveItem: (index: number) => void;
-  onEditItem: (index: number) => void; // ADDED
   allParts: Record<string, LegoPart>;
   navigateTo: (page: Page) => void;
-  onUpdateQuantity: (index: number, newQuantity: number) => void;
-  onZoomImage: (url: string) => void;
-}> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
+}> = ({ isOpen, onClose, cartItems, onRemoveItem, allParts, navigateTo }) => {
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -1991,29 +1849,13 @@ const CartPanel: React.FC<{
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {cartItems.map((item, index) => {
-              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+              const { totalPrice } = calculatePrice(item, allParts);
               const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
-              const quantity = item.quantity || 1;
-
               return (
                 <div key={index} className="flex gap-4">
-                  <div 
-                    className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded p-1 relative group"
-                  >
+                  <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded p-1">
                      {item.previewImageUrl ? (
-                        <>
-                            <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
-                            {/* Bottom Right Zoom Button Only */}
-                            <div className="absolute bottom-0 right-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                <div 
-                                    className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto scale-75"
-                                    onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
-                                    title="Zoom"
-                                >
-                                    <ZoomIcon className="w-4 h-4" />
-                                </div>
-                            </div>
-                        </>
+                        <img src={item.previewImageUrl} alt="Design Preview" className="w-full h-full object-contain" />
                       ) : (
                         <FramePreview config={item} containerWidth={72} isInteractive={false} onItemTransform={()=>{}} onTextUpdate={()=>{}} onItemFlip={()=>{}} selectedItemId={null} setSelectedItemId={()=>{}} onItemRemove={() => {}} setIsEditingText={() => {}} allParts={allParts} />
                       )}
@@ -2021,26 +1863,9 @@ const CartPanel: React.FC<{
                   <div className="flex-grow">
                     <h3 className="text-sm font-semibold">Khung LEGO tùy chỉnh</h3>
                     <p className="text-xs text-gray-500">{frame.name}</p>
-                    <div className="flex justify-between items-end mt-1">
-                        <p className="text-sm font-bold">{formatCurrency(totalPrice * quantity)}</p>
-                        <div className="flex items-center border border-gray-300 rounded bg-white">
-                            <button 
-                                onClick={() => onUpdateQuantity(index, quantity - 1)}
-                                className="px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-100"
-                                disabled={quantity <= 1}
-                            >-</button>
-                            <span className="px-1.5 text-xs font-bold min-w-[16px] text-center">{quantity}</span>
-                            <button 
-                                onClick={() => onUpdateQuantity(index, quantity + 1)}
-                                className="px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-100"
-                            >+</button>
-                        </div>
-                    </div>
+                    <p className="text-sm font-bold mt-1">{formatCurrency(totalPrice)}</p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                      <button onClick={() => onRemoveItem(index)} className="text-red-500 self-start p-1 text-lg leading-none">&times;</button>
-                      <button onClick={() => onEditItem(index)} className="text-blue-600 text-xs font-bold hover:underline">Sửa</button>
-                  </div>
+                  <button onClick={() => onRemoveItem(index)} className="text-red-500 self-start p-1 text-lg">&times;</button>
                 </div>
               );
             })}
@@ -2061,8 +1886,8 @@ const CartPanel: React.FC<{
   );
 };
 
-const ZoomIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+const ZoomIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
 )
 
 const CheckoutPage: React.FC<{
@@ -2128,7 +1953,7 @@ const CheckoutPage: React.FC<{
   }, [selectedDistrict]);
 
 
-  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0), [cartItems, allParts]);
+  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts).totalPrice, 0), [cartItems, allParts]);
   
   // Logic miễn phí vận chuyển
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
@@ -2313,37 +2138,19 @@ const CheckoutPage: React.FC<{
               <h2 className="font-bold text-lg mb-4 border-b pb-2">Đơn hàng của bạn</h2>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {cartItems.map((item, index) => {
-                  const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
-                  const quantity = item.quantity || 1;
-                  
+                  const { totalPrice } = calculatePrice(item, allParts);
                   return (
                     <div key={index} className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                            {item.previewImageUrl ? (
-                                <>
-                                    <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
-                                    {/* Bottom Right Zoom Button Only */}
-                                    <div className="absolute bottom-0 right-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                        <div 
-                                            className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto scale-50"
-                                            onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
-                                            title="Zoom"
-                                        >
-                                            <ZoomIcon className="w-4 h-4" />
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[8px]">No Img</div>
-                            )}
+                            <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <ZoomIcon />
+                            </div>
                         </div>
-                        <div>
-                            <span>Khung tùy chỉnh</span>
-                            {quantity > 1 && <span className="ml-1 text-xs font-bold text-gray-500">x{quantity}</span>}
-                        </div>
+                        <span>Khung tùy chỉnh</span>
                       </div>
-                      <span>{formatCurrency(totalPrice * quantity)}</span>
+                      <span>{formatCurrency(totalPrice)}</span>
                     </div>
                   )
                 })}
@@ -2464,11 +2271,11 @@ const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: 
                                   <div className="w-16 h-16 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => order.items[0].previewImageUrl && onZoomImage(order.items[0].previewImageUrl)}>
                                     <img src={order.items[0].previewImageUrl} className="w-full h-full object-contain" alt="preview" />
                                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
+                                        <ZoomIcon />
                                     </div>
                                   </div>
                                   <div>
-                                    <p className="font-semibold">Khung tùy chỉnh x {order.items.length}</p>
+                                    <p className="font-semibold">Khung tùy chỉnh x 1</p>
                                   </div>
                                 </div>
                                 <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
@@ -2527,10 +2334,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         let codeToSearch = (codeOverride || orderCode).trim().toUpperCase();
         if (!codeToSearch) return;
 
-        // Check if it's a phone number (all digits, 10 digits, starts with 0)
-        const isPhone = /^0\d{9}$/.test(codeToSearch);
-
-        if (!isPhone && !codeToSearch.startsWith('#')) {
+        if (!codeToSearch.startsWith('#')) {
             codeToSearch = '#' + codeToSearch;
         }
         
@@ -2541,19 +2345,10 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         setFoundOrder(null);
         
         try {
-            let order: Order | null = null;
+            let order = await getOrderById(codeToSearch);
 
-            if (isPhone) {
-                const orders = await getOrdersByPhone(codeToSearch);
-                // If multiple orders found, just take the most recent one for simple lookup
-                if (orders.length > 0) {
-                    order = orders[0];
-                }
-            } else {
-                order = await getOrderById(codeToSearch);
-                if (!order) {
-                    order = MOCK_ORDERS[codeToSearch] || null;
-                }
+            if (!order) {
+                order = MOCK_ORDERS[codeToSearch] || null;
             }
 
             setFoundOrder(order || 'not_found');
@@ -2562,7 +2357,8 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
             if (error.code === 'permission-denied') {
                 setFoundOrder('permission_error');
             } else {
-                setFoundOrder('not_found');
+                const mockOrder = MOCK_ORDERS[codeToSearch];
+                setFoundOrder(mockOrder || 'not_found');
             }
         } finally {
             setIsLoading(false);
@@ -2613,15 +2409,6 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
         );
     };
 
-    const getVietQR = (order: Order) => {
-        const BANK_ID = '970407'; // Techcombank
-        const ACCOUNT_NO = '65838666666';
-        const TEMPLATE = 'compact2';
-        const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
-        const amount = order.amountToPay;
-        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
-    };
-
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8 min-h-[60vh]">
             <div className="max-w-3xl mx-auto">
@@ -2632,14 +2419,13 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                             type="text"
                             value={orderCode}
                             onChange={(e) => setOrderCode(e.target.value)}
-                            placeholder="#TLxxxxxx hoặc SĐT"
+                            placeholder="#TL012804"
                             className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center uppercase"
                         />
                         <button type="submit" disabled={isLoading} className="bg-luvin-pink text-gray-800 font-bold px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50">
                             {isLoading ? '...' : 'Tra cứu'}
                         </button>
                     </form>
-                    <p className="text-xs text-gray-500 mt-2">Nhập mã đơn hàng (có dấu #) hoặc số điện thoại đặt hàng</p>
                     
                     {/* Display saved orders */}
                     {savedOrders.length > 0 && !foundOrder && (
@@ -2668,7 +2454,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                     {isLoading && <p className="text-center">Đang tìm kiếm...</p>}
                     {foundOrder === 'not_found' && (
                         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center">
-                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng hoặc số điện thoại.
+                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng (Ví dụ: #TL123456).
                         </div>
                     )}
                     {foundOrder === 'permission_error' && (
@@ -2685,7 +2471,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                                 <div>
                                     <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
                                     <p className="text-sm text-gray-500">
-                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date(Number(foundOrder.id.slice(3, -4))).toLocaleDateString('vi-VN') : '---'}
+                                        Ngày đặt: {foundOrder.id.startsWith('#TL') && !isNaN(Number(foundOrder.id.slice(3, -4))) ? new Date().toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -2694,26 +2480,6 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
                             </div>
 
                             <StatusTracker currentStatus={foundOrder.status} />
-
-                            {foundOrder.status === 'Chờ thanh toán' && (
-                                <div className="mt-6 bg-white border border-yellow-200 rounded-lg p-6 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400"></div>
-                                    <h3 className="font-bold text-gray-800 mb-1">Đơn hàng chưa thanh toán</h3>
-                                    <p className="text-sm text-gray-500 mb-4">Quét mã QR để thanh toán ngay</p>
-                                    
-                                    <div className="bg-white p-2 border rounded-xl shadow-sm inline-block">
-                                        <img src={getVietQR(foundOrder)} alt="Mã QR Thanh toán" className="w-48 h-48 object-contain rounded-lg" />
-                                    </div>
-                                    
-                                    <div className="mt-4 space-y-1">
-                                        <p className="text-sm font-bold text-gray-800">Techcombank - 65838666666</p>
-                                        <p className="text-sm">Chủ TK: NGO TRONG DUONG</p>
-                                        <div className="mt-2 inline-block bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
-                                            Nội dung: <span className="font-bold text-gray-900 select-all">{foundOrder.id}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div>
@@ -2753,7 +2519,7 @@ const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoom
 // Helper to categorize parts
 const categorizeParts = (parts: LegoPart[]) => {
     const categories: typeof LEGO_PARTS = {
-        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: [], set: []
+        hair: [], face: [], shirt: [], pants: [], hat: [], accessory: [], pet: []
     };
     parts.forEach(p => {
         if (p.type in categories) {
@@ -2766,38 +2532,16 @@ const categorizeParts = (parts: LegoPart[]) => {
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
-  
-  // CART PERSISTENCE: Initialize state from LocalStorage
-  const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
-      try {
-          const savedCart = localStorage.getItem('shopping_cart');
-          return savedCart ? JSON.parse(savedCart) : [];
-      } catch (error) {
-          console.error("Failed to load cart from storage", error);
-          return [];
-      }
-  });
-
-  // CART PERSISTENCE: Update LocalStorage whenever cartItems changes
-  useEffect(() => {
-      try {
-          localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
-      } catch (error) {
-          console.error("Failed to save cart to storage", error);
-      }
-  }, [cartItems]);
-
+  const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [isAppLoading, setIsAppLoading] = useState(true); 
-  const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); // NEW STATE: Track item being edited
   
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
-  const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); // Initialize with constant fallback
 
   // Lazy initialization for logoUrl to prevent FOUC and sync issues
   const [logoUrl, setLogoUrl] = useState<string>(() => {
@@ -2845,13 +2589,12 @@ const App: React.FC = () => {
   useEffect(() => {
       const fetchData = async () => {
           try {
-            const [parts, bgs, storeConfig, tpls, fbs, fetchedFrames] = await Promise.all([
+            const [parts, bgs, storeConfig, tpls, fbs] = await Promise.all([
                 getAllParts(), 
                 getAllBackgrounds(), 
                 getStoreConfig(),
                 getAllTemplates(),
-                getAllFeedbacks(),
-                getAllFrames()
+                getAllFeedbacks()
             ]);
             
             if (parts && parts.length > 0) {
@@ -2865,9 +2608,6 @@ const App: React.FC = () => {
             }
             if (fbs && fbs.length > 0) {
                 setFeedbacks(fbs);
-            }
-            if (fetchedFrames && fetchedFrames.length > 0) {
-                setFrames(fetchedFrames);
             }
 
             if (storeConfig) {
@@ -2918,40 +2658,12 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
-    // Ensure quantity is 1 when adding new item
-    setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
+    setCartItems(prev => [...prev, newConfig]);
     if (openCart) setIsCartOpen(true);
-  };
-
-  const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
-      if (editingCartIndex !== null) {
-          setCartItems(prev => prev.map((item, i) => i === editingCartIndex ? { ...updatedConfig, quantity: item.quantity } : item)); // Preserve quantity
-          setEditingCartIndex(null);
-          setConfig(INITIAL_FRAME_CONFIG); // Reset config
-          setIsCartOpen(true); // Open cart to show changes
-      }
-  };
-
-  const handleEditCartItem = (index: number) => {
-      setConfig(cartItems[index]);
-      setEditingCartIndex(index);
-      setIsCartOpen(false);
-      navigateTo('builder');
-  };
-
-  const handleCancelEdit = () => {
-      setEditingCartIndex(null);
-      setConfig(INITIAL_FRAME_CONFIG);
-      setIsCartOpen(true); // Go back to cart
   };
 
   const handleRemoveCartItem = (index: number) => {
     setCartItems(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleUpdateCartQuantity = (index: number, newQuantity: number) => {
-      if (newQuantity < 1) return;
-      setCartItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
@@ -2961,8 +2673,7 @@ const App: React.FC = () => {
         
         // Save to local history for Order Lookup
         try {
-            // FIX: Explicitly type saved to avoid "unknown" type errors and spread errors
-            const saved: any[] = JSON.parse(localStorage.getItem('my_orders') || '[]');
+            const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
             const newEntry = { id: res.data.id, date: Date.now() };
             // Add new entry to start, remove duplicates if any, keep max 5
             const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
@@ -3015,26 +2726,13 @@ const App: React.FC = () => {
                     setConfig={setConfig} 
                     navigateTo={navigateTo} 
                     onAddToCart={handleAddToCart} 
-                    onUpdateCart={handleUpdateCartItem} // Pass update handler
                     showToast={showToast}
                     legoParts={legoParts}
                     backgrounds={backgrounds}
-                    frames={frames}
-                    editingCartIndex={editingCartIndex} // Pass editing index
-                    onCancelEdit={handleCancelEdit} // Pass cancel handler
-                    onZoomImage={setZoomedImageUrl} // Pass zoom handler
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
-            {currentPage === 'cart' && <CartPage 
-                cartItems={cartItems} 
-                onRemoveItem={handleRemoveCartItem} 
-                onEditItem={handleEditCartItem} // Pass edit handler
-                allParts={allParts} 
-                navigateTo={navigateTo}
-                onUpdateQuantity={handleUpdateCartQuantity}
-                onZoomImage={setZoomedImageUrl} 
-            />}
+            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} allParts={allParts} navigateTo={navigateTo} />}
             {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={(url) => setZoomedImageUrl(url)} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={(url) => setZoomedImageUrl(url)} />}
@@ -3050,23 +2748,14 @@ const App: React.FC = () => {
             onClose={() => setIsCartOpen(false)} 
             cartItems={cartItems} 
             onRemoveItem={handleRemoveCartItem}
-            onEditItem={handleEditCartItem} // Pass edit handler
             allParts={allParts}
             navigateTo={navigateTo}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onZoomImage={setZoomedImageUrl}
         />
         
          {zoomedImageUrl && (
-            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 animate-fade-in" onClick={() => setZoomedImageUrl(null)}>
-                <div className="relative max-w-4xl max-h-full w-full flex justify-center">
-                    <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
-                    <button className="absolute -top-12 right-0 sm:-right-12 text-white hover:text-gray-300 transition-colors" onClick={() => setZoomedImageUrl(null)}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
+            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedImageUrl(null)}>
+                <img src={zoomedImageUrl} alt="Zoomed" className="max-w-full max-h-full object-contain rounded-lg" />
+                <button className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80">&times;</button>
             </div>
         )}
 
