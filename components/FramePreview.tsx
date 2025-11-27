@@ -685,13 +685,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             pointerEvents: 'none',
                         }}
                     >
-                        <svg width="100%" height="100%" style={{ opacity: 0.12 }}>
+                        <svg width="100%" height="100%" style={{ opacity: 0.15 }}>
                             <defs>
                                 <pattern 
                                     id={patternId}
                                     x="0" 
                                     y="0" 
-                                    width="90" 
+                                    width="120" 
                                     height="120" 
                                     patternUnits="userSpaceOnUse" 
                                     patternTransform="rotate(-45)"
