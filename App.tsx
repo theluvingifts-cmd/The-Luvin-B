@@ -1578,42 +1578,39 @@ const BuilderPage: React.FC<{
       setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
-  // NEW SIMPLIFIED CAPTURE FUNCTION (FIXED FOR CORS)
+  // NEW CAPTURE FUNCTION (DUMB BUT SOLID)
   const captureFrameAsImage = async (): Promise<string> => {
-    // 1. Chỉ đơn giản là bỏ chọn item để ẩn khung viền.
-    // Không cố gắng ẩn các element khác bằng tay để tránh phức tạp và lỗi.
-    const originalSelectedId = selectedItemId;
-    setSelectedItemId(null); 
+    const originalSelection = selectedItemId;
+    setSelectedItemId(null); // Deselect everything to hide UI
 
     return new Promise((resolve) => {
-      // 2. Tăng thời gian chờ lên 1s (1000ms) để đảm bảo:
-      // - React render lại giao diện sạch sẽ.
-      // - Các ảnh từ Cloudinary đã tải xong với header CORS (do thẻ SafeImage có crossOrigin).
-      setTimeout(async () => {
-        try {
-          const container = frameCaptureRef.current;
-          if (container && typeof html2canvas !== 'undefined') {
-            const canvas = await html2canvas(container, {
-              backgroundColor: null,
-              useCORS: true, // QUAN TRỌNG: Cho phép vẽ ảnh từ domain khác
-              scale: 3,      // Độ phân giải cao
-              logging: false,
-              scrollX: 0,    
-              scrollY: 0,
-            });
-            resolve(canvas.toDataURL('image/png'));
-          } else {
-            console.error('html2canvas chưa tải hoặc không tìm thấy container');
-            resolve('');
-          }
-        } catch (error) {
-          console.error('Lỗi chụp ảnh:', error);
-          resolve('');
-        } finally {
-          // 3. Khôi phục lại item đã chọn
-          setSelectedItemId(originalSelectedId);
-        }
-      }, 1000); // 1 giây delay an toàn
+        // Wait 1s for DOM repaint and potential image loading/CORS headers
+        setTimeout(async () => {
+            if (!frameCaptureRef.current) {
+                resolve('');
+                return;
+            }
+            try {
+                // Use html2canvas with strong settings
+                const canvas = await html2canvas(frameCaptureRef.current, {
+                    useCORS: true,        // CRITICAL: Allow cross-origin images
+                    scale: 3,             // High resolution
+                    allowTaint: true,     // Allow tainted canvas (helps sometimes)
+                    backgroundColor: null, // Transparent base
+                    scrollX: 0,           // Prevent scrolling offset issues
+                    scrollY: 0
+                });
+                
+                const dataUrl = canvas.toDataURL('image/png');
+                resolve(dataUrl);
+            } catch (e) {
+                console.error("Capture failed:", e);
+                resolve('');
+            } finally {
+                // Restore selection
+                setSelectedItemId(originalSelection);
+            }
+        }, 1000);
     });
   };
 

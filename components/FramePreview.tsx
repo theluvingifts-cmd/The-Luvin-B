@@ -32,15 +32,21 @@ interface FramePreviewProps {
   logoUrl?: string;
 }
 
-// SafeImage component updated with crossOrigin="anonymous" to fix CORS issues with html2canvas
+// SAFE IMAGE COMPONENT - CRITICAL FOR HTML2CANVAS
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
+    
     return (
         <img 
-            crossOrigin="anonymous" // CRITICAL FIX: Allows html2canvas to read image data from Cloudinary
+            crossOrigin="anonymous" 
+            referrerPolicy="no-referrer"
             {...props} 
-            onError={() => setHasError(true)} 
+            onError={(e) => {
+                console.warn("Image load failed:", props.src);
+                setHasError(true);
+                if (props.onError) props.onError(e);
+            }} 
         />
     );
 };
@@ -437,10 +443,26 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const backgroundWidth = frameOption.backgroundWidthCm * pxPerCm;
   const backgroundHeight = frameOption.backgroundHeightCm * pxPerCm;
 
-  const backgroundStyle: React.CSSProperties =
-    config.background.type === 'color'
-      ? { backgroundColor: config.background.value }
-      : { backgroundImage: `url(${config.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+  // REFACTORED BACKGROUND LOGIC FOR HTML2CANVAS COMPATIBILITY
+  // We use actual <img /> tags instead of CSS background-image
+  const BackgroundLayer = () => {
+      if (config.background.type === 'color') {
+          return (
+              <div 
+                className="absolute inset-0 z-0 pointer-events-none"
+                style={{ backgroundColor: config.background.value }}
+              />
+          );
+      } else {
+          return (
+              <SafeImage 
+                src={config.background.value}
+                className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+                alt="background"
+              />
+          );
+      }
+  };
   
   const allParts: Record<string, LegoPart> = useMemo(() => {
       if (propAllParts) return propAllParts;
@@ -594,7 +616,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 style={{
                     width: backgroundWidth,
                     height: backgroundHeight,
-                    ...backgroundStyle,
                     boxShadow: `inset 0 0 0 1px rgba(0, 0, 0, 0.15)`,
                 }}
                 onClick={(e) => {
@@ -603,16 +624,19 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - REFINED FOR SAFETY & CAPTURE EXCLUSION */}
+                {/* 1. BACKGROUND LAYER (Absolute bottom) */}
+                <BackgroundLayer />
+
+                {/* 2. WATERMARK LAYER */}
                 {logoUrl && (
                     <div 
-                        className="watermark-layer" // Class added for HTML2Canvas ignore
+                        className="watermark-layer" 
                         style={{
                             position: 'absolute',
                             inset: 0,
-                            zIndex: 40,
+                            zIndex: 1, // Above BG
                             pointerEvents: 'none',
-                            mixBlendMode: 'multiply', // Ensure transparency over light backgrounds
+                            mixBlendMode: 'multiply',
                         }}
                     >
                         <svg width="100%" height="100%" style={{ opacity: 0.12 }} fill="transparent">
@@ -634,6 +658,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
+                {/* 3. CONTENT LAYERS (Z-index 10+) */}
                 {config.characters.map(char => {
                     const id = `character-${char.id}`;
                     return (
@@ -641,7 +666,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={id} id={id} initialTransform={char} onTransform={onItemTransform} 
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
                             isResizable={false} isRotatable={false} isDraggable={isInteractive}
-                            zIndex={5}
+                            zIndex={10}
                             onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
                         >
                            <div style={{width: '100%', height: '100%'}}>
@@ -661,7 +686,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                     if (!imageUrl) return null;
 
-                    const zIndex = item.type === 'hat' ? 12 : 10; 
+                    const zIndex = item.type === 'hat' ? 20 : 15; // Hats higher
 
                     const id = `item-${item.id}`;
                     return (
@@ -695,7 +720,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             isSelected={selectedItemId === id} 
                             onSelect={setSelectedItemId}
                             isDraggable={isInteractive}
-                            zIndex={15}
+                            zIndex={25}
                             isTextItem={true}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                             style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
@@ -724,7 +749,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                                 style={{ backgroundColor: color.hex }}
                                 title={`${color.name}`}
                             >
-                                {color.imageUrl && <img src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
+                                {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
                             </button>
                         ))}
                     </div>
