@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
@@ -32,11 +32,17 @@ interface FramePreviewProps {
   logoUrl?: string;
 }
 
-// SafeImage component to handle broken URLs gracefully and ensure CORS for html2canvas
+// SafeImage component updated with crossOrigin="anonymous" to fix CORS issues with html2canvas
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
-    return <img crossOrigin="anonymous" {...props} onError={() => setHasError(true)} />;
+    return (
+        <img 
+            crossOrigin="anonymous" // CRITICAL FIX: Allows html2canvas to read image data from Cloudinary
+            {...props} 
+            onError={() => setHasError(true)} 
+        />
+    );
 };
 
 const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {

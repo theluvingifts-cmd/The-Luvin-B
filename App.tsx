@@ -1578,60 +1578,40 @@ const BuilderPage: React.FC<{
       setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
+  // NEW SIMPLIFIED CAPTURE FUNCTION (FIXED FOR CORS)
   const captureFrameAsImage = async (): Promise<string> => {
-    // 1. Preserve and clear selection state
+    // 1. Chỉ đơn giản là bỏ chọn item để ẩn khung viền.
+    // Không cố gắng ẩn các element khác bằng tay để tránh phức tạp và lỗi.
     const originalSelectedId = selectedItemId;
     setSelectedItemId(null); 
 
-    // 2. Identify elements to hide manually (Direct DOM manipulation)
-    // We do this to ensure they are hidden even if React state update is slow
-    // or if html2canvas 'ignoreElements' is buggy.
-    const elementsToHide: { element: HTMLElement; originalDisplay: string }[] = [];
-    const selectors = ['.watermark-layer', '.transform-handle'];
-
-    const container = frameCaptureRef.current;
-    if (!container) return '';
-
-    // Find and hide elements
-    selectors.forEach(selector => {
-      const els = container.querySelectorAll(selector);
-      els.forEach((el) => {
-        const htmlEl = el as HTMLElement;
-        elementsToHide.push({
-          element: htmlEl,
-          originalDisplay: htmlEl.style.display
-        });
-        htmlEl.style.setProperty('display', 'none', 'important'); // Force hide
-      });
-    });
-
     return new Promise((resolve) => {
-      // 3. Wait for render/paint cycle to complete
+      // 2. Tăng thời gian chờ lên 1s (1000ms) để đảm bảo:
+      // - React render lại giao diện sạch sẽ.
+      // - Các ảnh từ Cloudinary đã tải xong với header CORS (do thẻ SafeImage có crossOrigin).
       setTimeout(async () => {
         try {
-          if (typeof html2canvas !== 'undefined') {
+          const container = frameCaptureRef.current;
+          if (container && typeof html2canvas !== 'undefined') {
             const canvas = await html2canvas(container, {
               backgroundColor: null,
-              useCORS: true, // Critical for Cloudinary images
-              scale: 3,      // High Resolution Capture
+              useCORS: true, // QUAN TRỌNG: Cho phép vẽ ảnh từ domain khác
+              scale: 3,      // Độ phân giải cao
               logging: false,
             });
             resolve(canvas.toDataURL('image/png'));
           } else {
-            console.error('html2canvas not loaded');
+            console.error('html2canvas chưa tải hoặc không tìm thấy container');
             resolve('');
           }
         } catch (error) {
-          console.error('Capture failed:', error);
+          console.error('Lỗi chụp ảnh:', error);
           resolve('');
         } finally {
-          // 4. Cleanup / Restore state
-          elementsToHide.forEach(({ element, originalDisplay }) => {
-            element.style.display = originalDisplay;
-          });
+          // 3. Khôi phục lại item đã chọn
           setSelectedItemId(originalSelectedId);
         }
-      }, 300); // 300ms delay to ensure DOM is ready
+      }, 1000); // 1 giây delay an toàn
     });
   };
 
