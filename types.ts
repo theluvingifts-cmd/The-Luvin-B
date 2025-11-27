@@ -14,6 +14,9 @@ export interface FrameOption {
   price: number;
   imageUrl: string;
   description: string;
+  stock?: number; // Số lượng tồn kho
+  colors: string[]; // Danh sách màu: ['black', 'white', 'wood'...]
+  order?: number;
 }
 
 export interface OutfitColor {
@@ -29,7 +32,7 @@ export interface LegoPart {
   name: string;
   price: number; 
   imageUrl: string;
-  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat';
+  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set'; // Added 'set'
   widthCm: number;
   heightCm: number;
   colors?: OutfitColor[];
@@ -103,11 +106,13 @@ export interface BackgroundConfig {
 
 export interface FrameConfig {
   frameId: string;
+  frameColor?: string; // Changed to string to support dynamic colors from DB
   background: BackgroundConfig;
   characters: LegoCharacterConfig[];
   texts: TextConfig[];
   draggableItems: DraggableItem[];
   previewImageUrl?: string;
+  quantity?: number; // Added quantity field
 }
 
 export interface Order {

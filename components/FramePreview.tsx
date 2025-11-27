@@ -1,6 +1,5 @@
 
-// FIX: import useMemo from React
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
@@ -18,24 +17,32 @@ interface FramePreviewProps {
   onItemTransform: (id: string, newTransform: Transform) => void;
   onItemRemove: (id: string) => void;
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
-  onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void; // Added for color updates
-  onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void; // Added for character updates
+  onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void;
+  onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void;
   onItemFlip?: (id: string) => void;
-  onCharacterDoubleClick?: (id: number) => void; // Added double click handler
+  onCharacterDoubleClick?: (id: number) => void;
+  onAutoAdvance?: () => void;
   className?: string;
   isInteractive?: boolean;
   selectedItemId: string | null;
   setSelectedItemId: (id: string | null) => void;
   setIsEditingText: (isEditing: boolean) => void;
   allParts?: Record<string, LegoPart>;
-  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants'; // Added active part type
+  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
+  logoUrl?: string;
 }
 
-// SafeImage component to handle broken URLs gracefully
+// SafeImage component updated with crossOrigin="anonymous" to fix CORS issues with html2canvas
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
-    return <img {...props} onError={() => setHasError(true)} />;
+    return (
+        <img 
+            crossOrigin="anonymous" // CRITICAL FIX: Allows html2canvas to read image data from Cloudinary
+            {...props} 
+            onError={() => setHasError(true)} 
+        />
+    );
 };
 
 const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {
@@ -43,14 +50,11 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
   const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
   const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
   
-  // Hair color logic: Use selected hair color image if available, else fallback to part image
   let hairImageUrl = hair?.imageUrl;
   if (character.selectedHairColor?.imageUrl) {
       hairImageUrl = character.selectedHairColor.imageUrl;
   }
 
-  // Per user request, the character is composed of 4 same-sized, stacked images.
-  // The container will have the final dimensions.
   const CHARACTER_WIDTH_CM = 2.5;
   const CHARACTER_HEIGHT_CM = 4.0;
 
@@ -63,24 +67,18 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
     transformOrigin: 'center',
   };
 
-  // This style will be applied to all parts. They are layers filling the container.
   const partStyle: React.CSSProperties = {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    objectFit: 'contain', // Use contain to respect aspect ratio of user's image
+    objectFit: 'contain',
     pointerEvents: 'none',
   };
 
   return (
     <div style={containerStyle}>
-      {/* 
-        Each image is a full-size layer. The user must provide transparent PNGs 
-        where the part is correctly positioned within the 2.5cm x 4cm frame.
-        The stacking order is controlled by z-index.
-      */}
       {pants && pantsImageUrl && (
         <SafeImage src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />
       )}
@@ -137,7 +135,7 @@ const EditableText: React.FC<{
         }
         if (e.key === 'Escape') {
             e.preventDefault();
-            setEditedContent(text.content); // Revert changes
+            setEditedContent(text.content);
             handleBlur();
         }
     };
@@ -312,7 +310,7 @@ const Transformable: React.FC<{
              const moveCoords = getClientCoords(moveEvent);
              if (!moveCoords) return;
              const dx = moveCoords.x - startCoords.x;
-             const scaleChange = dx / 100; // Adjust sensitivity
+             const scaleChange = dx / 100;
              onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + scaleChange) });
         };
         const handleEnd = () => {
@@ -336,7 +334,7 @@ const Transformable: React.FC<{
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
         
-        const startWidth = initialTransform.width || 30; // start width in percent
+        const startWidth = initialTransform.width || 30;
 
         const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
             const moveCoords = getClientCoords(moveEvent);
@@ -358,7 +356,6 @@ const Transformable: React.FC<{
         window.addEventListener('touchend', handleEnd);
     };
 
-    // Calculate inverse scale for handles to keep them visually consistent size
     const handleScale = 1 / (initialTransform.scale || 1);
     
     return (
@@ -366,7 +363,7 @@ const Transformable: React.FC<{
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
             onDoubleClick={(e) => { if(onDoubleClick) { e.stopPropagation(); onDoubleClick(); } }}
-            className="absolute"
+            className="absolute transform-gpu"
             style={{
                 ...style,
                 left: `${initialTransform.x}%`,
@@ -400,7 +397,7 @@ const Transformable: React.FC<{
                             title="Rotate"
                             style={{ transform: `translateX(-50%) scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                           </div>
                       )}
                       {isResizable && (
@@ -411,7 +408,7 @@ const Transformable: React.FC<{
                             title="Resize"
                             style={{ transform: `scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 20h16m0 0V4" /></svg>
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
                           </div>
                       )}
                     </>
@@ -423,10 +420,13 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
+  const uniqueId = React.useId();
+  const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
+
   const maxDimensionCm = useMemo(() => 
     Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm)))
   , []);
@@ -450,9 +450,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
       if (!char) return [];
       
-      if (type === 'shirt') {
+      if (type === 'shirt' || type === 'set') { 
           if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
-          // Fallback logic
           const name = char.shirt?.name.toLowerCase() || '';
           if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) {
               return defaultShirtColors;
@@ -471,7 +470,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return null;
   }
 
-  // --- Context Toolbar Logic ---
   const selectedItemDetails = useMemo(() => {
       if (!selectedItemId) return null;
       const [type, idStr] = selectedItemId.split('-');
@@ -480,7 +478,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       if (type === 'item') {
           const item = config.draggableItems.find(i => i.id === id);
           const part = item ? allParts[item.partId] : null;
-          // Allow flip for 'hat', 'accessory', 'pet'
           const canFlip = item && (item.type === 'accessory' || item.type === 'pet' || item.type === 'hat');
           return { type: 'item', data: item, part: part, canFlip };
       } else if (type === 'text') {
@@ -516,8 +513,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
           onItemUpdate(selectedItemId, { selectedColor: color });
       }
       if (selectedItemDetails?.type === 'character' && onCharacterUpdate && selectedItemDetails.data) {
-          // Determine field based on activePartType
-          if (activePartType === 'shirt') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
+          if (activePartType === 'shirt' || activePartType === 'set') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
           else if (activePartType === 'pants') onCharacterUpdate(selectedItemDetails.data.id, { selectedPantsColor: color });
           else if (activePartType === 'hair') onCharacterUpdate(selectedItemDetails.data.id, { selectedHairColor: color });
       }
@@ -529,18 +525,68 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       }
       if (selectedItemDetails?.type === 'character' && activePartType) {
           const char = selectedItemDetails.data as LegoCharacterConfig;
-          if (activePartType === 'shirt') return char.selectedShirtColor?.hex;
+          if (activePartType === 'shirt' || activePartType === 'set') return char.selectedShirtColor?.hex;
           if (activePartType === 'pants') return char.selectedPantsColor?.hex;
           if (activePartType === 'hair') return char.selectedHairColor?.hex;
       }
       return null;
   };
 
+  useEffect(() => {
+    if (!isInteractive || !selectedItemId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        
+        let currentItem: any = null;
+        if (type === 'item') currentItem = config.draggableItems.find(i => i.id === id);
+        else if (type === 'character') currentItem = config.characters.find(c => c.id === id);
+        else if (type === 'text') currentItem = config.texts.find(t => t.id === id);
+
+        if (!currentItem) return;
+
+        let dx = 0;
+        let dy = 0;
+        const step = e.shiftKey ? 5 : 0.5;
+
+        switch(e.key) {
+            case 'ArrowUp': dy = -step; break;
+            case 'ArrowDown': dy = step; break;
+            case 'ArrowLeft': dx = -step; break;
+            case 'ArrowRight': dx = step; break;
+            default: return;
+        }
+
+        e.preventDefault();
+
+        const newTransform = {
+            x: Math.max(0, Math.min(100, currentItem.x + dx)),
+            y: Math.max(0, Math.min(100, currentItem.y + dy)),
+            rotation: currentItem.rotation,
+            scale: currentItem.scale,
+            width: (currentItem as TextConfig).width
+        };
+
+        onItemTransform(selectedItemId, newTransform);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isInteractive, selectedItemId, config, onItemTransform]);
+
   return (
     <div ref={ref} className={`flex items-center justify-center relative ${className}`} style={{ width: frameWidth, height: frameHeight }}>
         <div 
-          className="relative bg-white"
-          style={{ width: '100%', height: '100%', boxShadow: `0 4px 12px #d8d8d8` }}
+          className="relative transition-colors duration-300"
+          style={{ 
+              width: '100%', 
+              height: '100%', 
+              backgroundColor: config.frameColor === 'black' ? '#1a1a1a' : '#ffffff',
+              boxShadow: `0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)`
+          }}
         >
             <div
                 ref={previewContainerRef}
@@ -557,6 +603,37 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
+                {/* WATERMARK OVERLAY - REFINED FOR SAFETY & CAPTURE EXCLUSION */}
+                {logoUrl && (
+                    <div 
+                        className="watermark-layer" // Class added for HTML2Canvas ignore
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 40,
+                            pointerEvents: 'none',
+                            mixBlendMode: 'multiply', // Ensure transparency over light backgrounds
+                        }}
+                    >
+                        <svg width="100%" height="100%" style={{ opacity: 0.12 }} fill="transparent">
+                            <defs>
+                                <pattern 
+                                    id={patternId}
+                                    x="0" 
+                                    y="0" 
+                                    width="120" 
+                                    height="120" 
+                                    patternUnits="userSpaceOnUse" 
+                                    patternTransform="rotate(-45)"
+                                >
+                                    <image href={logoUrl} x="40" y="40" width="40" height="40" preserveAspectRatio="xMidYMid meet" />
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+                        </svg>
+                    </div>
+                )}
+
                 {config.characters.map(char => {
                     const id = `character-${char.id}`;
                     return (
@@ -577,7 +654,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 {config.draggableItems.map(item => {
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
-                    // Use selected color image if available, else fallback to part image
                     const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
                     const widthCm = isCharm ? 2 : (part?.widthCm || 1);
@@ -585,10 +661,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                     if (!imageUrl) return null;
 
-                    // Hat should generally be above characters (zIndex 6) but below overlaid charms if any (zIndex 10)
-                    // Actually, hats need to be above character (5), so 6 is good. Accessories usually 10.
-                    // Let's keep draggable items at 10 for now for simplicity, or distinguish types.
-                    // If it's a hat, it should be renderable on top of character.
                     const zIndex = item.type === 'hat' ? 12 : 10; 
 
                     const id = `item-${item.id}`;
@@ -597,7 +669,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={id} id={id} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped}
                             parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={false} 
+                            isResizable={isInteractive && isCharm} 
                             isRotatable={isInteractive} 
                             isDraggable={isInteractive}
                             zIndex={zIndex}
@@ -640,10 +712,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             </div>
         </div>
 
-        {/* --- Floating Mobile Action Toolbar (Moved outside the frame content area) --- */}
         {isInteractive && selectedItemId && (
             <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-fade-in transform-handle">
-                {/* Color Selection Row */}
                 {activeColors && activeColors.length > 0 && (
                     <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-2 overflow-x-auto max-w-[90vw] no-scrollbar">
                         {activeColors.map((color: OutfitColor, idx: number) => (
@@ -660,7 +730,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
-                {/* Action Buttons Row */}
                 <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
                     {selectedItemDetails?.canFlip && (
                         <button onClick={handleToolbarFlip} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
@@ -671,8 +740,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Xong">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                    {onAutoAdvance && (
+                        <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors" title="Xong (Tiếp)">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                        </button>
+                    )}
+                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Bỏ chọn">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
             </div>
