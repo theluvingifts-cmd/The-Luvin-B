@@ -412,7 +412,7 @@ const Transformable: React.FC<{
                             title="Resize"
                             style={{ transform: `scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3" d="M4 20h16m0 0V4" /></svg>
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 20h16m0 0V4" /></svg>
                           </div>
                       )}
                     </>
