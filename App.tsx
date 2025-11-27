@@ -1365,7 +1365,8 @@ const BuilderPage: React.FC<{
     editingCartIndex: number | null; // ADDED
     onCancelEdit: () => void; // ADDED
     onZoomImage: (url: string) => void; // ADDED
-}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage }) => {
+    logoUrl?: string; // ADDED
+}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl }) => {
   const [step, setStep] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1682,6 +1683,7 @@ const BuilderPage: React.FC<{
                         setIsEditingText={setIsEditingText}
                         allParts={allParts}
                         activePartType={activePartType} // ADDED
+                        logoUrl={logoUrl} // PASS LOGO URL
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
@@ -3023,6 +3025,7 @@ const App: React.FC = () => {
                     editingCartIndex={editingCartIndex} // Pass editing index
                     onCancelEdit={handleCancelEdit} // Pass cancel handler
                     onZoomImage={setZoomedImageUrl} // Pass zoom handler
+                    logoUrl={logoUrl} // Pass logo URL for watermark
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}

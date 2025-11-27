@@ -1,8 +1,7 @@
-
 // FIX: import useMemo from React
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
-import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors, GENERAL_ASSETS } from '../constants';
+import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
 type Transform = {
   x: number;
@@ -30,6 +29,7 @@ interface FramePreviewProps {
   setIsEditingText: (isEditing: boolean) => void;
   allParts?: Record<string, LegoPart>;
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'; // Added set
+  logoUrl?: string;
 }
 
 // SafeImage component to handle broken URLs gracefully and ensure CORS for html2canvas
@@ -412,7 +412,7 @@ const Transformable: React.FC<{
                             title="Resize"
                             style={{ transform: `scale(${handleScale})` }}
                           >
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 20h16m0 0V4" /></svg>
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3" d="M4 20h16m0 0V4" /></svg>
                           </div>
                       )}
                     </>
@@ -424,10 +424,14 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
+  // NEW: ID for watermark pattern
+  const uniqueId = React.useId();
+  const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
+
   const maxDimensionCm = useMemo(() => 
     Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm)))
   , []);
@@ -610,32 +614,56 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - ROTATED & TILED PATTERN */}
-                {GENERAL_ASSETS.watermark && (
+                {/* WATERMARK OVERLAY - SVG PATTERN */}
+                {logoUrl && (
                     <div 
                         style={{
                             position: 'absolute',
                             inset: 0,
-                            zIndex: 9999, // Always top
-                            pointerEvents: 'none', // Allow clicks to pass through
-                            overflow: 'hidden'
+                            zIndex: 9999,
+                            pointerEvents: 'none',
                         }}
                     >
-                        <div 
-                            style={{
-                                position: 'absolute',
-                                top: '-50%',
-                                left: '-50%',
-                                width: '200%',
-                                height: '200%',
-                                transform: 'rotate(-30deg)',
-                                backgroundImage: `url(${GENERAL_ASSETS.watermark})`,
-                                backgroundRepeat: 'repeat',
-                                backgroundSize: '120px',
-                                opacity: 0.15,
-                                mixBlendMode: 'multiply'
-                            }}
-                        />
+                        {/* 
+                            HƯỚNG DẪN ĐIỀU CHỈNH WATERMARK (LOGO CHÌM):
+                            Để thay đổi cách hiển thị logo, hãy chỉnh sửa các thông số trong thẻ <svg> và <pattern> bên dưới:
+
+                            1. ĐỘ MỜ (OPACITY):
+                               - Tìm `style={{ opacity: 0.12 }}` trong thẻ <svg> đầu tiên.
+                               - Thay đổi số 0.12 (0 là trong suốt, 1 là rõ nhất).
+                               - Ví dụ: 0.05 sẽ rất mờ, 0.2 sẽ rõ hơn.
+
+                            2. MẬT ĐỘ (KHOẢNG CÁCH GIỮA CÁC LOGO):
+                               - Tìm `width="160" height="160"` trong thẻ <pattern id={patternId}...>.
+                               - Tăng số này lên để logo thưa hơn (ví dụ: 200, 300).
+                               - Giảm số này xuống để logo dày đặc hơn (ví dụ: 100, 80).
+
+                            3. KÍCH THƯỚC LOGO:
+                               - Tìm `width="60" height="60"` trong thẻ <image... /> bên trong <pattern>.
+                               - Tăng/giảm số này để logo to/nhỏ hơn (ví dụ: 40, 80).
+
+                            4. VỊ TRÍ LOGO TRONG Ô:
+                               - Tìm `x="50" y="50"` trong thẻ <image... />.
+                               - Để căn giữa, công thức là: (Kích thước Pattern - Kích thước Logo) / 2.
+                               - Ví dụ hiện tại: (160 - 60) / 2 = 50. Nếu bạn đổi Pattern thành 200 và Logo thành 80, thì x = (200-80)/2 = 60.
+                        */}
+                        <svg width="100%" height="100%" style={{ opacity: 0.1 }}> {/* <--- 1. CHỈNH ĐỘ MỜ TẠI ĐÂY */}
+                            <defs>
+                                <pattern 
+                                    id={patternId}
+                                    x="0" 
+                                    y="0" 
+                                    width="90" 
+                                    height="200"  /* <--- 2. CHỈNH KHOẢNG CÁCH (MẬT ĐỘ) TẠI ĐÂY */
+                                    patternUnits="userSpaceOnUse" 
+                                    patternTransform="rotate(-30)"
+                                >
+                                    {/* <--- 3. & 4. CHỈNH KÍCH THƯỚC VÀ VỊ TRÍ LOGO TẠI ĐÂY */}
+                                    <image href={logoUrl} x="50" y="50" width="60" height="60" />
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+                        </svg>
                     </div>
                 )}
 
