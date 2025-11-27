@@ -1581,6 +1581,7 @@ const BuilderPage: React.FC<{
       setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
+  // FIX: Robust capture function using ignoreElements and reduced scale
   const captureFrameAsImage = async (): Promise<string> => {
     return new Promise((resolve) => {
       const originalSelectedId = selectedItemId;
@@ -1594,21 +1595,18 @@ const BuilderPage: React.FC<{
           try {
             const canvas = await html2canvas(element, {
               backgroundColor: null,
-              logging: false,
+              logging: false, // Turn off debugging logs
               useCORS: true,
-              scale: 3, // High quality
-              // 3. CRITICAL FIX: Use onclone to modify the document BEFORE capture
-              onclone: (clonedDoc: Document) => {
-                  // Find and remove the watermark layer from the CLONED document
-                  // This ensures the capture never sees the watermark div
-                  const watermarkLayer = clonedDoc.querySelector('.watermark-layer');
-                  if (watermarkLayer) {
-                      watermarkLayer.remove();
-                  }
-                  
-                  // Also remove any residual transform handles just in case
-                  const handles = clonedDoc.querySelectorAll('.transform-handle');
-                  handles.forEach(el => el.remove());
+              scale: 2, // Reduce scale to 2x to prevent crashes/white images on mobile
+              allowTaint: true,
+              scrollX: 0,
+              scrollY: 0,
+              // 3. Use ignoreElements instead of onclone for cleaner removal
+              ignoreElements: (element) => {
+                  // Ignore watermark layer and any transform handles
+                  if (element.classList.contains('watermark-layer')) return true;
+                  if (element.classList.contains('transform-handle')) return true;
+                  return false;
               }
             });
             resolve(canvas.toDataURL('image/png'));
