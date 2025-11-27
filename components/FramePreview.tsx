@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+
+import React, { useRef, useState, useEffect, useMemo, forwardRef } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
@@ -31,22 +32,16 @@ interface FramePreviewProps {
   logoUrl?: string;
 }
 
-// --- CORE FIX: SafeImage luôn có crossOrigin ---
+// 1. SafeImage Component: Bắt buộc thêm crossOrigin và referrerPolicy để tránh lỗi CORS khi vẽ canvas
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
     const [hasError, setHasError] = useState(false);
     if (hasError) return null;
-    
-    // BẮT BUỘC: crossOrigin="anonymous" để html2canvas vẽ được ảnh từ domain khác
     return (
         <img 
             crossOrigin="anonymous" 
             referrerPolicy="no-referrer"
             {...props} 
-            onError={(e) => {
-                console.warn("Image load failed:", props.src);
-                setHasError(true);
-                if (props.onError) props.onError(e);
-            }} 
+            onError={() => setHasError(true)} 
         />
     );
 };
@@ -85,22 +80,13 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
 
   return (
     <div style={containerStyle}>
-      {pants && pantsImageUrl && (
-        <SafeImage src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />
-      )}
-      {shirt && shirtImageUrl && (
-        <SafeImage src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />
-      )}
-      {face && face.imageUrl && (
-        <SafeImage src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />
-      )}
-      {hair && hairImageUrl && (
-        <SafeImage src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />
-      )}
+      {pants && pantsImageUrl && <SafeImage src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />}
+      {shirt && shirtImageUrl && <SafeImage src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />}
+      {face && face.imageUrl && <SafeImage src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
+      {hair && hairImageUrl && <SafeImage src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
     </div>
   );
 };
-
 
 const getFontFamily = (fontName: string) => {
     switch (fontName) {
@@ -137,11 +123,6 @@ const EditableText: React.FC<{
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleBlur();
-        }
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            setEditedContent(text.content);
             handleBlur();
         }
     };
@@ -190,13 +171,10 @@ const EditableText: React.FC<{
 
     return (
         <div style={{minWidth: '50px', width: '100%', height: '100%'}} onDoubleClick={handleDoubleClick}>
-            <p style={textStyle} >
-                {text.content || " "}
-            </p>
+            <p style={textStyle}>{text.content || " "}</p>
         </div>
     );
 };
-
 
 const Transformable: React.FC<{
     children: React.ReactNode;
@@ -218,12 +196,8 @@ const Transformable: React.FC<{
 }> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, zIndex, style, isTextItem, containerSize, onDoubleClick }) => {
     
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
-      if ('touches' in e && e.touches.length > 0) {
-        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      }
-      if ('clientX' in e) {
-        return { x: e.clientX, y: e.clientY };
-      }
+      if ('touches' in e && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      if ('clientX' in e) return { x: e.clientX, y: e.clientY };
       return null;
     };
 
@@ -235,25 +209,17 @@ const Transformable: React.FC<{
 
         const parentRect = parentRef.current?.getBoundingClientRect();
         if (!parentRect) return;
-
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
 
         const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
             const moveCoords = getClientCoords(moveEvent);
             if (!moveCoords) return;
-
             const dx = moveCoords.x - startCoords.x;
             const dy = moveCoords.y - startCoords.y;
-
             const newX = ((initialTransform.x / 100) * parentRect.width + dx) / parentRect.width * 100;
             const newY = ((initialTransform.y / 100) * parentRect.height + dy) / parentRect.height * 100;
-
-            onTransform(id, {
-                ...initialTransform,
-                x: Math.max(0, Math.min(100, newX)),
-                y: Math.max(0, Math.min(100, newY)),
-            });
+            onTransform(id, { ...initialTransform, x: Math.max(0, Math.min(100, newX)), y: Math.max(0, Math.min(100, newY)) });
         };
         const handleEnd = () => {
             window.removeEventListener('mousemove', handleMove);
@@ -272,13 +238,10 @@ const Transformable: React.FC<{
         e.stopPropagation();
         const parentRect = parentRef.current?.getBoundingClientRect();
         if (!parentRect) return;
-        
         const startCoords = getClientCoords(e.nativeEvent);
         if(!startCoords) return;
-
         const centerX = parentRect.left + (initialTransform.x / 100) * parentRect.width;
         const centerY = parentRect.top + (initialTransform.y / 100) * parentRect.height;
-        
         const startAngle = Math.atan2(startCoords.y - centerY, startCoords.x - centerX) * 180 / Math.PI;
         const startRotation = initialTransform.rotation;
 
@@ -286,8 +249,7 @@ const Transformable: React.FC<{
             const moveCoords = getClientCoords(moveEvent);
             if (!moveCoords) return;
             const currentAngle = Math.atan2(moveCoords.y - centerY, moveCoords.x - centerX) * 180 / Math.PI;
-            const deltaAngle = currentAngle - startAngle;
-            onTransform(id, { ...initialTransform, rotation: startRotation + deltaAngle });
+            onTransform(id, { ...initialTransform, rotation: startRotation + (currentAngle - startAngle) });
         };
         const handleEnd = () => {
             window.removeEventListener('mousemove', handleMove);
@@ -304,20 +266,15 @@ const Transformable: React.FC<{
      const handleResizeStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        const parentRect = parentRef.current?.getBoundingClientRect();
-        if (!parentRect) return;
-        
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
-
         const startScale = initialTransform.scale;
         
         const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
              const moveCoords = getClientCoords(moveEvent);
              if (!moveCoords) return;
              const dx = moveCoords.x - startCoords.x;
-             const scaleChange = dx / 100;
-             onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + scaleChange) });
+             onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
         };
         const handleEnd = () => {
             window.removeEventListener('mousemove', handleMove);
@@ -334,21 +291,16 @@ const Transformable: React.FC<{
     const handleResizeWidthStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        const parentRect = containerSize;
-        if (!parentRect) return;
-        
+        if (!containerSize) return;
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
-        
         const startWidth = initialTransform.width || 30;
 
         const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
             const moveCoords = getClientCoords(moveEvent);
             if (!moveCoords) return;
-
             const dx = moveCoords.x - startCoords.x;
-            const dWidthPercent = (dx / parentRect.width) * 100;
-            onTransform(id, { ...initialTransform, width: Math.max(10, startWidth + dWidthPercent) });
+            onTransform(id, { ...initialTransform, width: Math.max(10, startWidth + (dx / containerSize.width) * 100) });
         };
         const handleEnd = () => {
             window.removeEventListener('mousemove', handleMove);
@@ -390,7 +342,6 @@ const Transformable: React.FC<{
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 
                         className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-4 h-8 rounded-md border-2 border-white shadow-sm" 
-                        title="Resize Width"
                         style={{ transform: `translateY(-50%) scale(${handleScale})` }}
                       ></div>
                   ) : (
@@ -400,7 +351,6 @@ const Transformable: React.FC<{
                             onMouseDown={handleRotateStart} 
                             onTouchStart={handleRotateStart} 
                             className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-sm" 
-                            title="Rotate"
                             style={{ transform: `translateX(-50%) scale(${handleScale})` }}
                           >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -411,7 +361,6 @@ const Transformable: React.FC<{
                             onMouseDown={handleResizeStart} 
                             onTouchStart={handleResizeStart} 
                             className="transform-handle absolute -bottom-3 -right-3 cursor-nwse-resize bg-luvin-pink w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
-                            title="Resize"
                             style={{ transform: `scale(${handleScale})` }}
                           >
                               <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
@@ -425,7 +374,6 @@ const Transformable: React.FC<{
     );
 };
 
-
 const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -433,10 +381,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const uniqueId = React.useId();
   const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
 
-  const maxDimensionCm = useMemo(() => 
-    Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm)))
-  , []);
-
+  const maxDimensionCm = useMemo(() => Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm))), []);
   const pxPerCm = containerWidth / maxDimensionCm;
   const frameWidth = frameOption.frameWidthCm * pxPerCm;
   const frameHeight = frameOption.frameHeightCm * pxPerCm;
@@ -450,24 +395,17 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
   const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
       if (!char) return [];
-      
       if (type === 'shirt' || type === 'set') { 
           if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
           const name = char.shirt?.name.toLowerCase() || '';
-          if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) {
-              return defaultShirtColors;
-          }
+          if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultShirtColors;
       }
       if (type === 'pants') {
           if (char.pants?.colors && char.pants.colors.length > 0) return char.pants.colors;
            const name = char.pants?.name.toLowerCase() || '';
-          if (char.pants && (char.pants.id === 'pants1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) {
-              return defaultPantsColors;
-          }
+          if (char.pants && (char.pants.id === 'pants1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultPantsColors;
       }
-      if (type === 'hair') {
-          return char.hair?.colors;
-      }
+      if (type === 'hair') return char.hair?.colors;
       return null;
   }
 
@@ -475,44 +413,25 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       if (!selectedItemId) return null;
       const [type, idStr] = selectedItemId.split('-');
       const id = parseInt(idStr);
-      
       if (type === 'item') {
           const item = config.draggableItems.find(i => i.id === id);
-          const part = item ? allParts[item.partId] : null;
-          const canFlip = item && (item.type === 'accessory' || item.type === 'pet' || item.type === 'hat');
-          return { type: 'item', data: item, part: part, canFlip };
+          return { type: 'item', data: item, part: item ? allParts[item.partId] : null, canFlip: item && ['accessory', 'pet', 'hat'].includes(item.type) };
       } else if (type === 'text') {
-          const item = config.texts.find(t => t.id === id);
-          return { type: 'text', data: item, canFlip: false };
+          return { type: 'text', data: config.texts.find(t => t.id === id), canFlip: false };
       } else if (type === 'character') {
-          const item = config.characters.find(c => c.id === id);
-          return { type: 'character', data: item, canFlip: false };
+          return { type: 'character', data: config.characters.find(c => c.id === id), canFlip: false };
       }
       return null;
   }, [selectedItemId, config, allParts]);
 
   const activeColors = useMemo(() => {
-      if (selectedItemDetails?.type === 'item') {
-          return selectedItemDetails.part?.colors;
-      }
-      if (selectedItemDetails?.type === 'character' && activePartType && selectedItemDetails.data) {
-          return getCharacterColors(selectedItemDetails.data as LegoCharacterConfig, activePartType);
-      }
+      if (selectedItemDetails?.type === 'item') return selectedItemDetails.part?.colors;
+      if (selectedItemDetails?.type === 'character' && activePartType && selectedItemDetails.data) return getCharacterColors(selectedItemDetails.data as LegoCharacterConfig, activePartType);
       return null;
   }, [selectedItemDetails, activePartType]);
 
-  const handleToolbarDelete = () => {
-      if (selectedItemId) onItemRemove(selectedItemId);
-  };
-
-  const handleToolbarFlip = () => {
-      if (selectedItemId && onItemFlip) onItemFlip(selectedItemId);
-  };
-
   const handleColorSelect = (color: any) => {
-      if (selectedItemDetails?.type === 'item' && onItemUpdate && selectedItemId) {
-          onItemUpdate(selectedItemId, { selectedColor: color });
-      }
+      if (selectedItemDetails?.type === 'item' && onItemUpdate && selectedItemId) onItemUpdate(selectedItemId, { selectedColor: color });
       if (selectedItemDetails?.type === 'character' && onCharacterUpdate && selectedItemDetails.data) {
           if (activePartType === 'shirt' || activePartType === 'set') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
           else if (activePartType === 'pants') onCharacterUpdate(selectedItemDetails.data.id, { selectedPantsColor: color });
@@ -521,9 +440,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   };
 
   const getActiveColorHex = (color: any) => {
-      if (selectedItemDetails?.type === 'item') {
-          return (selectedItemDetails.data as DraggableItem)?.selectedColor?.hex;
-      }
+      if (selectedItemDetails?.type === 'item') return (selectedItemDetails.data as DraggableItem)?.selectedColor?.hex;
       if (selectedItemDetails?.type === 'character' && activePartType) {
           const char = selectedItemDetails.data as LegoCharacterConfig;
           if (activePartType === 'shirt' || activePartType === 'set') return char.selectedShirtColor?.hex;
@@ -535,24 +452,18 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
   useEffect(() => {
     if (!isInteractive || !selectedItemId) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
         const [type, idStr] = selectedItemId.split('-');
         const id = parseInt(idStr);
-        
         let currentItem: any = null;
         if (type === 'item') currentItem = config.draggableItems.find(i => i.id === id);
         else if (type === 'character') currentItem = config.characters.find(c => c.id === id);
         else if (type === 'text') currentItem = config.texts.find(t => t.id === id);
 
         if (!currentItem) return;
-
-        let dx = 0;
-        let dy = 0;
+        let dx = 0; let dy = 0;
         const step = e.shiftKey ? 5 : 0.5;
-
         switch(e.key) {
             case 'ArrowUp': dy = -step; break;
             case 'ArrowDown': dy = step; break;
@@ -560,20 +471,15 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             case 'ArrowRight': dx = step; break;
             default: return;
         }
-
         e.preventDefault();
-
-        const newTransform = {
+        onItemTransform(selectedItemId, {
             x: Math.max(0, Math.min(100, currentItem.x + dx)),
             y: Math.max(0, Math.min(100, currentItem.y + dy)),
             rotation: currentItem.rotation,
             scale: currentItem.scale,
             width: (currentItem as TextConfig).width
-        };
-
-        onItemTransform(selectedItemId, newTransform);
+        });
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isInteractive, selectedItemId, config, onItemTransform]);
@@ -581,7 +487,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   return (
     <div ref={ref} className={`flex items-center justify-center relative ${className}`} style={{ width: frameWidth, height: frameHeight }}>
         <div 
-          className="relative transition-colors duration-300"
+          className="relative transition-colors duration-300 flex items-center justify-center"
           style={{ 
               width: '100%', 
               height: '100%', 
@@ -591,53 +497,33 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         >
             <div
                 ref={previewContainerRef}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
+                className="relative overflow-hidden"
                 style={{
                     width: backgroundWidth,
                     height: backgroundHeight,
-                    backgroundColor: config.background.type === 'color' ? config.background.value : 'transparent',
-                    boxShadow: `inset 0 0 0 1px rgba(0, 0, 0, 0.15)`,
+                    border: '1px solid #c0c0c0', // 2. Darker border explicitly set
                 }}
                 onClick={(e) => {
-                    if (isInteractive && e.target === previewContainerRef.current) {
-                        setSelectedItemId(null);
-                    }
+                    if (isInteractive && e.target === previewContainerRef.current) setSelectedItemId(null);
                 }}
             >
-                {/* --- CORE FIX: Dùng thẻ IMG thay vì BackgroundImage để tránh lỗi CORS --- */}
-                {config.background.type !== 'color' && config.background.value && (
-                    <img 
+                {/* 3. Background Layer using Img for CORS safety */}
+                {config.background.type === 'color' ? (
+                    <div style={{ position: 'absolute', inset: 0, backgroundColor: config.background.value, zIndex: 0 }} />
+                ) : (
+                    <SafeImage 
                         src={config.background.value} 
-                        crossOrigin="anonymous"
-                        referrerPolicy="no-referrer"
-                        className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} 
                         alt="background"
                     />
                 )}
 
-                {/* WATERMARK: Vẫn giữ nhưng bỏ qua việc ẩn hiện phức tạp */}
+                {/* 4. Watermark Layer (Layer 1) */}
                 {logoUrl && (
-                    <div 
-                        className="watermark-layer" 
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            zIndex: 40,
-                            pointerEvents: 'none',
-                            mixBlendMode: 'multiply',
-                        }}
-                    >
+                    <div className="watermark-layer" style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', mixBlendMode: 'multiply' }}>
                         <svg width="100%" height="100%" style={{ opacity: 0.12 }} fill="transparent">
                             <defs>
-                                <pattern 
-                                    id={patternId}
-                                    x="0" 
-                                    y="0" 
-                                    width="120" 
-                                    height="120" 
-                                    patternUnits="userSpaceOnUse" 
-                                    patternTransform="rotate(-45)"
-                                >
+                                <pattern id={patternId} x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
                                     <image href={logoUrl} x="40" y="40" width="40" height="40" preserveAspectRatio="xMidYMid meet" />
                                 </pattern>
                             </defs>
@@ -646,22 +532,17 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
-                {config.characters.map(char => {
-                    const id = `character-${char.id}`;
-                    return (
-                        <Transformable 
-                            key={id} id={id} initialTransform={char} onTransform={onItemTransform} 
-                            parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={false} isRotatable={false} isDraggable={isInteractive}
-                            zIndex={5}
-                            onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
-                        >
-                           <div style={{width: '100%', height: '100%'}}>
-                               <LegoCharacter character={char} pxPerCm={pxPerCm} />
-                           </div>
-                        </Transformable>
-                    );
-                })}
+                {/* 5. Content Layers (Layer 10+) */}
+                {config.characters.map(char => (
+                    <Transformable 
+                        key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} onTransform={onItemTransform} 
+                        parentRef={previewContainerRef} isSelected={selectedItemId === `character-${char.id}`} onSelect={setSelectedItemId}
+                        isResizable={false} isRotatable={false} isDraggable={isInteractive} zIndex={5}
+                        onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
+                    >
+                       <div style={{width: '100%', height: '100%'}}><LegoCharacter character={char} pxPerCm={pxPerCm} /></div>
+                    </Transformable>
+                ))}
                 
                 {config.draggableItems.map(item => {
                     const isCharm = item.type === 'charm';
@@ -670,60 +551,35 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
                     const widthCm = isCharm ? 2 : (part?.widthCm || 1);
                     const heightCm = isCharm ? 2 : (part?.heightCm || 1);
-
                     if (!imageUrl) return null;
 
-                    const zIndex = item.type === 'hat' ? 12 : 10; 
-
-                    const id = `item-${item.id}`;
                     return (
                         <Transformable 
-                            key={id} id={id} initialTransform={item} onTransform={onItemTransform}
-                            isFlipped={item.isFlipped}
-                            parentRef={previewContainerRef} isSelected={selectedItemId === id} onSelect={setSelectedItemId}
-                            isResizable={isInteractive && isCharm} 
-                            isRotatable={isInteractive} 
-                            isDraggable={isInteractive}
-                            zIndex={zIndex}
+                            key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} onTransform={onItemTransform}
+                            isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
+                            isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
+                            zIndex={item.type === 'hat' ? 12 : 10}
                         >
-                            <SafeImage 
-                              src={imageUrl} 
-                              alt={name} 
-                              className="pointer-events-none"
-                              style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }}
-                            />
+                            <SafeImage src={imageUrl} alt={name} className="pointer-events-none" style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }} />
                         </Transformable>
                     );
                 })}
                 
-                {config.texts.map(text => {
-                    const id = `text-${text.id}`;
-                    return (
-                        <Transformable 
-                            key={id} id={id} 
-                            initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
-                            onTransform={onItemTransform} 
-                            parentRef={previewContainerRef} 
-                            isSelected={selectedItemId === id} 
-                            onSelect={setSelectedItemId}
-                            isDraggable={isInteractive}
-                            zIndex={15}
-                            isTextItem={true}
-                            containerSize={{ width: backgroundWidth, height: backgroundHeight }}
-                            style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
-                        >
-                           <EditableText
-                             text={text}
-                             onUpdate={(updates) => onTextUpdate(text.id, updates)}
-                             onBeginEditing={() => setIsEditingText(true)}
-                             onEndEditing={() => setIsEditingText(false)}
-                           />
-                        </Transformable>
-                    );
-                })}
+                {config.texts.map(text => (
+                    <Transformable 
+                        key={`text-${text.id}`} id={`text-${text.id}`} 
+                        initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
+                        onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={selectedItemId === `text-${text.id}`} onSelect={setSelectedItemId}
+                        isDraggable={isInteractive} zIndex={15} isTextItem={true} containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                        style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
+                    >
+                       <EditableText text={text} onUpdate={(updates) => onTextUpdate(text.id, updates)} onBeginEditing={() => setIsEditingText(true)} onEndEditing={() => setIsEditingText(false)} />
+                    </Transformable>
+                ))}
             </div>
         </div>
 
+        {/* Toolbar */}
         {isInteractive && selectedItemId && (
             <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-fade-in transform-handle">
                 {activeColors && activeColors.length > 0 && (
@@ -741,22 +597,24 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         ))}
                     </div>
                 )}
-
                 <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
                     {selectedItemDetails?.canFlip && (
-                        <button onClick={handleToolbarFlip} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                        <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         </button>
                     )}
-                    <button onClick={handleToolbarDelete} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <button onClick={() => onItemRemove(selectedItemId)} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
-                    <div className="w-px h-4 bg-gray-300 mx-1"></div>
                     {onAutoAdvance && (
-                        <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors" title="Xong (Tiếp)">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                        </button>
+                        <>
+                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                            <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors" title="Xong (Tiếp)">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                        </>
                     )}
+                    <div className="w-px h-4 bg-gray-300 mx-1"></div>
                     <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Bỏ chọn">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
