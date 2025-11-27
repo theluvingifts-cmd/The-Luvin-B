@@ -62,11 +62,23 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>,
     const hatPrice = config.draggableItems.filter(i => i.type === 'hat').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0), 0);
     if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
 
-    const shirtPrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0) + (char.selectedShirtColor?.price || 0), 0);
-    if(shirtPrice > 0) { total += shirtPrice; breakdown.push({ label: 'Áo & Màu', value: shirtPrice }); }
+    // Detailed Shirt Price
+    const shirtBasePrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0), 0);
+    const shirtColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedShirtColor?.price || 0), 0);
+    const totalShirtPrice = shirtBasePrice + shirtColorPrice;
+    if(totalShirtPrice > 0) { 
+        total += totalShirtPrice; 
+        breakdown.push({ label: 'Áo & Màu', value: totalShirtPrice }); 
+    }
 
-    const pantsPrice = config.characters.reduce((acc, char) => acc + (char.pants?.price || 0) + (char.selectedPantsColor?.price || 0), 0);
-    if(pantsPrice > 0) { total += pantsPrice; breakdown.push({ label: 'Quần & Màu', value: pantsPrice }); }
+    // Detailed Pants Price
+    const pantsBasePrice = config.characters.reduce((acc, char) => acc + (char.pants?.price || 0), 0);
+    const pantsColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedPantsColor?.price || 0), 0);
+    const totalPantsPrice = pantsBasePrice + pantsColorPrice;
+    if(totalPantsPrice > 0) { 
+        total += totalPantsPrice; 
+        breakdown.push({ label: 'Quần & Màu', value: totalPantsPrice }); 
+    }
 
     const accessoryPrice = config.draggableItems.filter(i => i.type === 'accessory').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0) + (item.selectedColor?.price || 0), 0);
     if(accessoryPrice > 0) { total += accessoryPrice; breakdown.push({ label: 'Phụ kiện', value: accessoryPrice }); }
@@ -264,10 +276,10 @@ const PresetBackgroundButton: React.FC<{
                     alt={bg.name}
                     className="w-full h-full object-cover"
                 />
-                {/* Corner Zoom Button (Bottom Right Only) */}
-                <div className="absolute bottom-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {/* Fixed Mobile Double Tap Issue: On mobile (small screens), opacity is 1 (visible), on desktop (md+) it is 0 and requires hover */}
+                <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
                     <div 
-                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto"
+                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
                         title="Zoom"
                     >
@@ -413,7 +425,8 @@ const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
     onClick: () => void;
-}> = ({ part, isSelected, onClick }) => {
+    priceToDisplay: number; // New Prop for dynamic price
+}> = ({ part, isSelected, onClick, priceToDisplay }) => {
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -449,7 +462,9 @@ const PartButton: React.FC<{
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-800">{part.name}</span>
-                <span className="text-[11px] font-bold text-luvin-pink">{formatCurrency(part.price)}</span>
+                <span className={`text-[11px] font-bold ${isSelected && priceToDisplay > part.price ? 'text-red-600' : 'text-luvin-pink'}`}>
+                    {formatCurrency(priceToDisplay)}
+                </span>
             </div>
         </button>
     );
@@ -589,7 +604,6 @@ const Step3Characters: React.FC<{
                     } else {
                         // Standard assignment
                         (newChar as any)[part.type] = part;
-                        // If selecting standard pants/shirt while a set was active, ensure logic holds
                     }
 
                     let partColors = part.colors;
@@ -793,14 +807,28 @@ const Step3Characters: React.FC<{
                                <span className="text-[11px] font-semibold">Không chọn</span>
                              </button>
                          )}
-                        {currentPartList.length > 0 ? currentPartList.map(part => (
-                            <PartButton 
-                                key={part.id} 
-                                part={part}
-                                isSelected={activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id}
-                                onClick={() => handlePartSelect(part)} 
-                            />
-                        )) : (
+                        {currentPartList.length > 0 ? currentPartList.map(part => {
+                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
+                            
+                            // CALCULATE TOTAL PRICE TO DISPLAY (Base + Color)
+                            let priceToDisplay = part.price;
+                            if (isSelected) {
+                                // Add selected color price
+                                if (activePartType === 'shirt' || activePartType === 'set') priceToDisplay += (activeCharacter.selectedShirtColor?.price || 0);
+                                else if (activePartType === 'pants') priceToDisplay += (activeCharacter.selectedPantsColor?.price || 0);
+                                else if (activePartType === 'hair') priceToDisplay += (activeCharacter.selectedHairColor?.price || 0);
+                            }
+
+                            return (
+                                <PartButton 
+                                    key={part.id} 
+                                    part={part}
+                                    isSelected={isSelected}
+                                    onClick={() => handlePartSelect(part)}
+                                    priceToDisplay={priceToDisplay} 
+                                />
+                            );
+                        }) : (
                             <div className="col-span-4 text-center text-sm text-gray-400 py-4">
                                 {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
                             </div>
@@ -825,7 +853,7 @@ const Step3Characters: React.FC<{
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                     {sortParts(getAvailableParts(legoParts.accessory), accessorySortMode).map(part => (
-                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
+                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
                     ))}
                 </div>
             </div>
@@ -834,7 +862,7 @@ const Step3Characters: React.FC<{
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => (
-                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} />
+                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
                     ))}
                 </div>
             </div>
@@ -1612,6 +1640,13 @@ const BuilderPage: React.FC<{
   };
 
   const handleAutoAdvance = () => {
+      // Logic for Draggable Items: Deselect (Done editing)
+      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-'))) {
+          setSelectedItemId(null);
+          return;
+      }
+
+      // Logic for Characters: Advance Part Type
       const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
       let currentIndex = order.indexOf(activePartType as any);
       
