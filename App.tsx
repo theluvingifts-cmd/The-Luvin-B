@@ -1598,6 +1598,8 @@ const BuilderPage: React.FC<{
               useCORS: true, // QUAN TRỌNG: Cho phép vẽ ảnh từ domain khác
               scale: 3,      // Độ phân giải cao
               logging: false,
+              scrollX: 0,    
+              scrollY: 0,
             });
             resolve(canvas.toDataURL('image/png'));
           } else {
