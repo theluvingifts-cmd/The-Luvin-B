@@ -30,6 +30,7 @@ interface FramePreviewProps {
   allParts?: Record<string, LegoPart>;
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
+  isCapturing?: boolean; // New Prop
 }
 
 // SafeImage component to handle broken URLs gracefully and ensure CORS for html2canvas
@@ -414,7 +415,7 @@ const Transformable: React.FC<{
 };
 
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, isCapturing }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -597,10 +598,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     }
                 }}
             >
-                {/* WATERMARK OVERLAY - REFINED FOR SAFETY & CAPTURE EXCLUSION */}
-                {logoUrl && (
+                {/* WATERMARK OVERLAY - CONDITIONALLY RENDERED VIA STATE TO AVOID CAPTURE ARTIFACTS */}
+                {logoUrl && !isCapturing && (
                     <div 
-                        className="watermark-layer" // Class added for HTML2Canvas ignore
+                        className="watermark-layer"
                         style={{
                             position: 'absolute',
                             inset: 0,

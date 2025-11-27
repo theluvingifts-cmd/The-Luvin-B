@@ -1405,6 +1405,7 @@ const BuilderPage: React.FC<{
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
+  const [isCapturing, setIsCapturing] = useState(false); // NEW STATE: Track capture status
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1585,8 +1586,9 @@ const BuilderPage: React.FC<{
     return new Promise((resolve) => {
       const originalSelectedId = selectedItemId;
       setSelectedItemId(null);
+      setIsCapturing(true); // Turn on capture mode (hides watermark)
 
-      // Increased delay to 200ms to ensure clean state
+      // Increased delay to 300ms to ensure React has time to unmount the watermark
       setTimeout(async () => {
         const element = frameCaptureRef.current;
         if (element && typeof html2canvas !== 'undefined') {
@@ -1595,8 +1597,7 @@ const BuilderPage: React.FC<{
               backgroundColor: null,
               logging: false,
               useCORS: true,
-              // IGNORE THE WATERMARK LAYER
-              ignoreElements: (el) => el.classList.contains('transform-handle') || el.classList.contains('watermark-layer'),
+              scale: 2, // Increase scale for better quality
             });
             resolve(canvas.toDataURL('image/png'));
           } catch (error) {
@@ -1604,12 +1605,14 @@ const BuilderPage: React.FC<{
             resolve('');
           } finally {
             setSelectedItemId(originalSelectedId);
+            setIsCapturing(false); // Turn off capture mode (shows watermark)
           }
         } else {
           resolve('');
           setSelectedItemId(originalSelectedId);
+          setIsCapturing(false);
         }
-      }, 200);
+      }, 300);
     });
   };
 
@@ -1720,6 +1723,7 @@ const BuilderPage: React.FC<{
                         allParts={allParts}
                         activePartType={activePartType} // ADDED
                         logoUrl={logoUrl} // PASS LOGO URL
+                        isCapturing={isCapturing} // PASS CAPTURE STATE
                     />
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
