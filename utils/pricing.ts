@@ -52,8 +52,11 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     return { totalPrice: total, priceBreakdown: breakdown };
 };
 
-export const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
-  if (amount === 0 && context === 'price') return 'Miễn phí';
+export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'admin' = 'price') => {
+  if (amount === 0) {
+      if (context === 'price') return 'Miễn phí';
+      if (context === 'admin') return '0 ₫'; // Explicitly show 0 for admin stats
+  }
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
