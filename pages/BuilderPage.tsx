@@ -410,7 +410,7 @@ const Step3Characters: React.FC<{
     
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
-    const [accessoryCategory, setAccessoryCategory] = useState<string>('All');
+    const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
 
     const getAvailableParts = (list: LegoPart[]) => {
         return list.filter(p => p.stock === undefined || p.stock > 0);
@@ -635,12 +635,12 @@ const Step3Characters: React.FC<{
         legoParts.accessory.forEach(p => {
             if (p.category) cats.add(p.category);
         });
-        return ['All', ...Array.from(cats)];
+        return ['Tất cả', ...Array.from(cats)];
     }, [legoParts.accessory]);
 
     const filteredAccessories = useMemo(() => {
         let list = getAvailableParts(legoParts.accessory);
-        if (accessoryCategory !== 'All') {
+        if (accessoryCategory !== 'Tất cả') {
             list = list.filter(p => p.category === accessoryCategory);
         }
         return sortParts(list, accessorySortMode);
@@ -749,35 +749,53 @@ const Step3Characters: React.FC<{
             )}
             
             <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex flex-col gap-3 mb-4">
                     <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
-                    <div className="flex gap-2">
-                        {uniqueAccessoryCategories.length > 1 && (
+                    
+                    {/* Category Filter Pills */}
+                    {uniqueAccessoryCategories.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                            {uniqueAccessoryCategories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setAccessoryCategory(cat)}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                                        accessoryCategory === cat 
+                                            ? 'bg-gray-900 text-white border-gray-900 shadow-md transform scale-105' 
+                                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Sorting Dropdown */}
+                    <div className="flex justify-end">
+                        <div className="relative inline-block w-32">
                             <select 
-                                value={accessoryCategory}
-                                onChange={(e) => setAccessoryCategory(e.target.value)}
-                                className="text-xs border border-gray-300 rounded p-1 bg-white outline-none"
+                                value={accessorySortMode}
+                                onChange={(e) => setAccessorySortMode(e.target.value as any)}
+                                className="appearance-none w-full pl-3 pr-8 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-900 cursor-pointer"
                             >
-                                {uniqueAccessoryCategories.map(cat => (
-                                    <option key={cat} value={cat}>{cat === 'All' ? 'Tất cả' : cat}</option>
-                                ))}
+                                <option value="default">Sắp xếp</option>
+                                <option value="price_asc">Giá tăng dần</option>
+                                <option value="price_desc">Giá giảm dần</option>
                             </select>
-                        )}
-                        <select 
-                            value={accessorySortMode}
-                            onChange={(e) => setAccessorySortMode(e.target.value as any)}
-                            className="text-xs border border-gray-300 rounded p-1 bg-white outline-none"
-                        >
-                            <option value="default">Sắp xếp</option>
-                            <option value="price_asc">Giá tăng</option>
-                            <option value="price_desc">Giá giảm</option>
-                        </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
                 <div className="grid grid-cols-4 gap-2">
-                    {filteredAccessories.map(part => (
+                    {filteredAccessories.length > 0 ? filteredAccessories.map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
-                    ))}
+                    )) : (
+                        <p className="col-span-4 text-center text-sm text-gray-400 py-4">Không tìm thấy phụ kiện nào.</p>
+                    )}
                 </div>
             </div>
 
