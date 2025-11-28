@@ -1026,7 +1026,7 @@ const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) 
                     <h3 className="font-bold text-base mb-3">KẾT NỐI VỚI CHÚNG TÔI</h3>
                     <div className="flex space-x-4">
                         <a href="https://www.instagram.com/the_luvin/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-luvin-pink hover:text-white transition-all"><InstagramIcon /></a>
-                        <a href="https://www.facebook.com/theluvingifts" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-blue-600 hover:text-white transition-all"><FacebookIcon /></a>
+                        <a href="https://www.facebook.com/theluvin" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-blue-600 hover:text-white transition-all"><FacebookIcon /></a>
                     </div>
                 </div>
             </div>
