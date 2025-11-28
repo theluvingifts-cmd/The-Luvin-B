@@ -1,5 +1,5 @@
 
-import { FrameConfig, FrameOption, LegoPart } from '../types';
+import { FrameConfig, FrameOption, LegoPart, Order } from '../types';
 import { FRAME_OPTIONS } from '../constants';
 
 export const CHARACTER_BASE_PRICE = 10000;
@@ -55,4 +55,45 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 export const formatCurrency = (amount: number, context: 'price' | 'payment' = 'price') => {
   if (amount === 0 && context === 'price') return 'Miễn phí';
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
+export const calculateOrderTotal = (order: Order, allParts: LegoPart[], frames: FrameOption[]) => {
+    let subtotal = 0;
+    // Tạo map để tra cứu nhanh
+    const partLookup = allParts.reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>);
+
+    order.items.forEach(item => {
+        // Tìm frame từ danh sách frames động, fallback về constants nếu không thấy
+        const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
+        subtotal += frame.price;
+        
+        subtotal += item.characters.length * CHARACTER_BASE_PRICE;
+        item.characters.forEach(char => {
+            if (char.customPrintPrice) subtotal += char.customPrintPrice;
+            if (char.hair?.price) subtotal += char.hair.price;
+            if (char.hat?.price) subtotal += char.hat.price;
+            if (char.shirt?.price) subtotal += char.shirt.price;
+            if (char.selectedShirtColor?.price) subtotal += char.selectedShirtColor.price;
+            if (char.pants?.price) subtotal += char.pants.price;
+            if (char.selectedPantsColor?.price) subtotal += char.selectedPantsColor.price;
+        });
+
+        item.draggableItems.forEach(di => {
+            if (di.type !== 'charm' && partLookup[di.partId]) {
+                 subtotal += partLookup[di.partId].price;
+                 if (di.selectedColor?.price) subtotal += di.selectedColor.price;
+            }
+        });
+    });
+
+    const giftBoxFee = order.addGiftBox ? 30000 : 0;
+    const shippingFee = order.shipping.fee || 0;
+    const totalPrice = subtotal + giftBoxFee + shippingFee;
+    
+    let amountToPay = totalPrice;
+    if (order.payment.method === 'deposit') {
+        amountToPay = Math.round(totalPrice * 0.7);
+    }
+
+    return { totalPrice, amountToPay };
 };

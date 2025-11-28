@@ -17,7 +17,7 @@ import { getAllFeedbacks } from './services/feedbackService';
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
 
-import AdminPage from './components/AdminPage'; 
+import AdminPage from './pages/AdminPage'; // Changed import
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { CartPanel } from './components/CartPanel';

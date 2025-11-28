@@ -1,0 +1,127 @@
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { getAllOrders } from '../services/orderService';
+import { getAllParts } from '../services/productService';
+import { getAllBackgrounds } from '../services/backgroundService';
+import { getAllTemplates } from '../services/templateService';
+import { getAllFeedbacks } from '../services/feedbackService';
+import { getAllFrames } from '../services/frameService';
+import { getStoreConfig, StoreConfig } from '../services/configService';
+import { auth } from '../config/firebase';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption } from '../types';
+
+import { AdminLogin } from '../components/admin/AdminLogin';
+import { AdminDashboard } from '../components/admin/AdminDashboard';
+import { AdminOrders } from '../components/admin/AdminOrders';
+import { AdminProducts } from '../components/admin/AdminProducts';
+import { AdminConfig } from '../components/admin/AdminConfig';
+
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config';
+
+const AdminPage: React.FC = () => {
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [isAuthChecking, setIsAuthChecking] = useState(true);
+    const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
+
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [products, setProducts] = useState<LegoPart[]>([]);
+    const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
+    const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
+    const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+    const [frames, setFrames] = useState<FrameOption[]>([]);
+    const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setIsAuthChecking(false);
+            if (user) {
+                setCurrentUser(user);
+                fetchData();
+            } else {
+                setCurrentUser(null);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const fetchData = async () => {
+        const [o, p, b, t, fb, fr, c] = await Promise.all([
+            getAllOrders(), getAllParts(), getAllBackgrounds(), getAllTemplates(), getAllFeedbacks(), getAllFrames(), getStoreConfig()
+        ]);
+        setOrders(o); setProducts(p); setBackgrounds(b); setTemplates(t); setFeedbacks(fb); setFrames(fr);
+        if(c) setStoreConfig(c);
+    };
+
+    const handleLogout = async () => { await signOut(auth); };
+
+    const role = useMemo(() => {
+        if (!currentUser || !currentUser.email) return null;
+        const ADMIN_EMAILS = ['jinbduong@gmail.com']; 
+        if (ADMIN_EMAILS.includes(currentUser.email) || currentUser.email.includes('admin')) {
+            return 'admin';
+        }
+        return 'warehouse';
+    }, [currentUser]);
+
+    const canViewDashboard = role === 'admin';
+    const canManageProducts = role === 'admin';
+    const canManageConfig = role === 'admin';
+
+    useEffect(() => {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config')) {
+            setActiveTab('orders');
+        }
+    }, [role, activeTab]);
+
+    if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>;
+    if (!currentUser) return <AdminLogin />;
+
+    return (
+        <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
+                    <div className="h-16 flex justify-between items-center">
+                        <div className="flex items-center gap-4 lg:gap-8">
+                            <div className="text-xl font-bold tracking-tight whitespace-nowrap">The Luvin <span className="font-normal text-gray-400 text-sm sm:text-base hidden sm:inline">| Quản lý</span></div>
+                            <nav className="hidden md:flex gap-6">
+                                 {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
+                                <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
+                                {canManageProducts && <button onClick={() => setActiveTab('products')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
+                                {canManageConfig && <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>}
+                            </nav>
+                        </div>
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="flex flex-col items-end leading-tight">
+                                <span className="text-xs text-gray-500 font-medium hidden sm:block">{currentUser.email}</span>
+                                <span className={`text-[10px] font-bold uppercase ${role === 'admin' ? 'text-red-600' : 'text-blue-600'}`}>{role === 'admin' ? '(Admin)' : '(Kho/NV)'}</span>
+                            </div>
+                            <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors" title="Đăng xuất">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div className="md:hidden border-t border-gray-100 overflow-x-auto no-scrollbar bg-white">
+                    <nav className="flex px-4 gap-6 min-w-max">
+                         {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
+                        <button onClick={() => setActiveTab('orders')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
+                        {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
+                        {canManageConfig && <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>}
+                    </nav>
+                </div>
+            </header>
+
+            <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-4 sm:px-6">
+                {activeTab === 'dashboard' && canViewDashboard && <AdminDashboard orders={orders} products={products} frames={frames} />}
+                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
+                {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} />}
+                {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} templates={templates} feedbacks={feedbacks} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
+            </main>
+        </div>
+    );
+};
+
+export default AdminPage;

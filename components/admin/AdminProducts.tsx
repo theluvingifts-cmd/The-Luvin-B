@@ -1,0 +1,266 @@
+
+import React, { useState, useMemo } from 'react';
+import { LegoPart, FrameOption, PresetBackground } from '../../types';
+import { addPart, updatePart, deletePart, seedDatabase, reorderParts } from '../../services/productService';
+import { addFrame, updateFrame, deleteFrame, seedFrames } from '../../services/frameService';
+import { addBackground, updateBackground, deleteBackground, seedBackgrounds, reorderBackgrounds } from '../../services/backgroundService';
+import { ProductForm } from './forms/ProductForm';
+import { FrameForm } from './forms/FrameForm';
+import { BackgroundForm } from './forms/BackgroundForm';
+import { formatCurrency } from '../../utils/pricing';
+
+interface AdminProductsProps {
+    products: LegoPart[];
+    frames: FrameOption[];
+    backgrounds: PresetBackground[];
+    onRefreshProducts: () => void;
+    onRefreshFrames: () => void;
+    onRefreshBackgrounds: () => void;
+}
+
+type ProductSubTab = 'parts' | 'backgrounds' | 'frames';
+
+export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds }) => {
+    const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
+    
+    // Product Filters
+    const [productSearch, setProductSearch] = useState('');
+    const [productCategory, setProductCategory] = useState('all');
+    
+    // Background Filters
+    const [bgSearch, setBgSearch] = useState('');
+    const [bgTypeFilter, setBgTypeFilter] = useState<'all' | 'square' | 'rectangle'>('all');
+    const [bgCategoryFilter, setBgCategoryFilter] = useState<string>('all');
+
+    // Editing States
+    const [isEditingProduct, setIsEditingProduct] = useState(false);
+    const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
+    const [isEditingBackground, setIsEditingBackground] = useState(false);
+    const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
+    const [isEditingFrame, setIsEditingFrame] = useState(false);
+    const [editingFrame, setEditingFrame] = useState<FrameOption | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    // Filter Logic
+    const filteredProducts = useMemo(() => 
+        products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), 
+    [products, productSearch, productCategory]);
+
+    const bgCategories = useMemo(() => {
+        return ['all', ...Array.from(new Set(backgrounds.map(bg => bg.category)))];
+    }, [backgrounds]);
+
+    const filteredBackgrounds = useMemo(() => 
+        backgrounds.filter(bg => {
+            const matchType = bgTypeFilter === 'all' || bg.type === bgTypeFilter;
+            const matchCategory = bgCategoryFilter === 'all' || bg.category === bgCategoryFilter;
+            const matchSearch = bg.name.toLowerCase().includes(bgSearch.toLowerCase());
+            return matchType && matchCategory && matchSearch;
+        }),
+    [backgrounds, bgTypeFilter, bgCategoryFilter, bgSearch]);
+
+    // Handlers
+    const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); onRefreshProducts(); } };
+    const handleSeedFrames = async () => { if (confirm("Reset Frames về mặc định?")) { setLoading(true); await seedFrames(); setLoading(false); onRefreshFrames(); } };
+    const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); onRefreshBackgrounds(); } };
+
+    const handleSaveProduct = async (part: LegoPart) => { setIsEditingProduct(false); if (editingPart) await updatePart(part.id, part); else await addPart(part); onRefreshProducts(); setEditingPart(null); };
+    const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); onRefreshProducts(); } };
+    
+    const handleSaveBackground = async (bg: PresetBackground) => { setIsEditingBackground(false); if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); onRefreshBackgrounds(); setEditingBg(null); };
+    const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); onRefreshBackgrounds(); } };
+
+    const handleSaveFrame = async (frame: FrameOption) => { setIsEditingFrame(false); if (editingFrame) await updateFrame(frame.id, frame); else await addFrame(frame); onRefreshFrames(); setEditingFrame(null); };
+    const handleDeleteFrame = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFrame(id); onRefreshFrames(); } };
+
+    const handleDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; };
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+
+    const handleDropProduct = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId === targetId) return;
+        if (productCategory !== 'all' && productSearch !== '') return; // Simple safety check for reordering only when full list visible
+
+        const items = [...products];
+        const draggedIndex = items.findIndex(p => p.id === draggedId);
+        const targetIndex = items.findIndex(p => p.id === targetId);
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [removed] = items.splice(draggedIndex, 1);
+        items.splice(targetIndex, 0, removed);
+        
+        // Optimistic UI Update might be tricky with Parent State, calling reorder service directly
+        reorderParts(items).then(() => onRefreshProducts());
+    };
+
+    const handleDropBackground = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId === targetId) return;
+        
+        const items = [...backgrounds];
+        const draggedIndex = items.findIndex(b => b.id === draggedId);
+        const targetIndex = items.findIndex(b => b.id === targetId);
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [removed] = items.splice(draggedIndex, 1);
+        items.splice(targetIndex, 0, removed);
+
+        reorderBackgrounds(items).then(() => onRefreshBackgrounds());
+    };
+
+    return (
+        <div className="animate-fade-in">
+            {loading && <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"><div className="bg-white p-4 rounded shadow">Loading...</div></div>}
+            
+            <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4">
+                <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Linh kiện LEGO</button>
+                <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Khung Tranh</button>
+                <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Hình nền</button>
+            </div>
+
+            {activeProductSubTab === 'parts' && (
+                <>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                            <input placeholder="Tìm kiếm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                            <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
+                                <option value="all">Tất cả loại</option>
+                                <option value="hair">Tóc</option>
+                                <option value="face">Mặt</option>
+                                <option value="shirt">Áo</option>
+                                <option value="pants">Quần</option>
+                                <option value="hat">Mũ</option>
+                                <option value="accessory">Phụ kiện</option>
+                                <option value="pet">Thú cưng</option>
+                                <option value="set">Theo bộ</option>
+                            </select>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto justify-end">
+                            <button onClick={handleSeedData} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Data</button>
+                            <button onClick={() => setIsEditingProduct(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {filteredProducts.map(part => (
+                            <div 
+                                key={part.id} 
+                                className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all"
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, part.id)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDropProduct(e, part.id)}
+                            >
+                                <div className="aspect-square bg-gray-50 rounded mb-2 flex items-center justify-center p-2">
+                                    <img src={part.imageUrl} className="max-w-full max-h-full object-contain" />
+                                </div>
+                                <h4 className="font-bold text-sm truncate" title={part.name}>{part.name}</h4>
+                                <p className="text-xs text-gray-500">{formatCurrency(part.price)}</p>
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="p-1 bg-blue-100 text-blue-600 rounded">✏️</button>
+                                    <button onClick={() => handleDeleteProduct(part.id)} className="p-1 bg-red-100 text-red-600 rounded">🗑️</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {activeProductSubTab === 'frames' && (
+                <>
+                    <div className="flex justify-end gap-2 mb-4">
+                        <button onClick={handleSeedFrames} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Frames</button>
+                        <button onClick={() => setIsEditingFrame(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm Khung</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {frames.map(frame => (
+                            <div key={frame.id} className="bg-white border rounded-lg p-4 shadow-sm relative group">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-bold text-lg">{frame.name}</h4>
+                                    <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">{frame.id}</span>
+                                </div>
+                                <div className="text-sm text-gray-600 space-y-1 mb-4">
+                                    <p>Kích thước: {frame.frameWidthCm}x{frame.frameHeightCm}cm</p>
+                                    <p>Giá: <span className="font-bold text-gray-900">{formatCurrency(frame.price)}</span></p>
+                                    <p>Tồn kho: <span className="font-bold">{frame.stock}</span></p>
+                                    <div className="flex gap-1 mt-1">
+                                        {frame.colors.map(c => <span key={c} className="w-3 h-3 rounded-full border" style={{backgroundColor: c === 'wood' ? '#d2b48c' : c}}></span>)}
+                                    </div>
+                                </div>
+                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                    <button onClick={() => { setEditingFrame(frame); setIsEditingFrame(true); }} className="px-3 py-1 bg-blue-100 text-blue-600 rounded text-xs font-bold">Sửa</button>
+                                    <button onClick={() => handleDeleteFrame(frame.id)} className="px-3 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">Xóa</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {activeProductSubTab === 'backgrounds' && (
+                <>
+                    <div className="flex flex-col gap-4 mb-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <input placeholder="Tìm background..." value={bgSearch} onChange={e => setBgSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                                <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
+                                    <option value="all">Tất cả loại</option>
+                                    <option value="square">Vuông</option>
+                                    <option value="rectangle">Chữ nhật</option>
+                                </select>
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset BG</button>
+                                <button onClick={() => setIsEditingBackground(true)} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase mr-2 flex-shrink-0">Dịp:</span>
+                            {bgCategories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setBgCategoryFilter(cat)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${
+                                        bgCategoryFilter === cat 
+                                            ? 'bg-gray-900 text-white border-gray-900' 
+                                            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {cat === 'all' ? 'Tất cả' : cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {filteredBackgrounds.map(bg => (
+                            <div 
+                                key={bg.id} 
+                                className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all cursor-move"
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, bg.id)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDropBackground(e, bg.id)}
+                            >
+                                <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden`}>
+                                    <img src={bg.url} className="w-full h-full object-cover" />
+                                </div>
+                                <h4 className="font-bold text-sm truncate">{bg.name}</h4>
+                                <p className="text-xs text-gray-500">{bg.category}</p>
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <button onClick={() => { setEditingBg(bg); setIsEditingBackground(true); }} className="p-1 bg-blue-100 text-blue-600 rounded">✏️</button>
+                                    <button onClick={() => handleDeleteBackground(bg.id)} className="p-1 bg-red-100 text-red-600 rounded">🗑️</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {/* Modals */}
+            {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} />}
+            {isEditingBackground && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} />}
+            {isEditingFrame && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={() => { setIsEditingFrame(false); setEditingFrame(null); }} />}
+        </div>
+    );
+};
