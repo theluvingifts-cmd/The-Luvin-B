@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption } from './types';
 import { 
@@ -14,16 +15,16 @@ import {
     defaultPantsColors,
 } from './constants';
 import FramePreview from './components/FramePreview';
-import { createOrder, getOrderById, getOrdersByPhone } from './services/orderService'; // Kết nối Firebase
-import { getAllParts } from './services/productService'; // Lấy sản phẩm từ DB
-import { getAllBackgrounds } from './services/backgroundService'; // Lấy background từ DB
-import { getStoreConfig } from './services/configService'; // Lấy cấu hình (logo)
-import { getAllTemplates } from './services/templateService'; // Lấy mẫu
-import { getAllFeedbacks } from './services/feedbackService'; // Lấy feedback
-import { getAllFrames } from './services/frameService'; // Lấy khung
-import AdminPage from './components/AdminPage'; // Trang Admin
-import { sendOrderEmail } from './services/emailService'; // Hàm gửi mail
-import { uploadToCloudinary } from './services/uploadService'; // NEW: Upload service
+import { createOrder, getOrderById, getOrdersByPhone } from './services/orderService'; 
+import { getAllParts } from './services/productService'; 
+import { getAllBackgrounds } from './services/backgroundService'; 
+import { getStoreConfig } from './services/configService'; 
+import { getAllTemplates } from './services/templateService'; 
+import { getAllFeedbacks } from './services/feedbackService'; 
+import { getAllFrames } from './services/frameService'; 
+import AdminPage from './components/AdminPage'; 
+import { sendOrderEmail } from './services/emailService'; 
+import { uploadToCloudinary } from './services/uploadService'; 
 
 declare var html2canvas: any;
 declare var confetti: any;
@@ -54,15 +55,12 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>,
         }
     });
 
-    // Updated hair price calculation to include selected hair color price
     const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair?.price || 0) + (char.selectedHairColor?.price || 0), 0);
     if(hairPrice > 0) { breakdown.push({ label: 'Tóc & Màu', value: hairPrice }); total += hairPrice; }
 
-    // Hat price is now calculated from draggable items
     const hatPrice = config.draggableItems.filter(i => i.type === 'hat').reduce((acc, item) => acc + (allParts[item.partId]?.price || 0), 0);
     if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
 
-    // Detailed Shirt Price
     const shirtBasePrice = config.characters.reduce((acc, char) => acc + (char.shirt?.price || 0), 0);
     const shirtColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedShirtColor?.price || 0), 0);
     const totalShirtPrice = shirtBasePrice + shirtColorPrice;
@@ -71,7 +69,6 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>,
         breakdown.push({ label: 'Áo & Màu', value: totalShirtPrice }); 
     }
 
-    // Detailed Pants Price
     const pantsBasePrice = config.characters.reduce((acc, char) => acc + (char.pants?.price || 0), 0);
     const pantsColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedPantsColor?.price || 0), 0);
     const totalPantsPrice = pantsBasePrice + pantsColorPrice;
@@ -92,14 +89,11 @@ const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>,
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
 
-// ... (Keep StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton components as is) ...
-// ... (Including the full implementations of these components to ensure the file is complete) ...
-
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
   return (
-    <div className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2">
+    <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
       <div className="flex justify-between md:justify-start md:gap-4 items-center relative md:w-max">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 transform -translate-y-1/2 hidden sm:block"></div>
         
@@ -158,6 +152,7 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   );
 };
 
+// ... (Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton - Keep as is) ...
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
@@ -180,7 +175,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
               onClick={() => setConfig(prev => ({ ...prev, frameId: frame.id }))}
               disabled={frame.stock === 0}
               className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative ${
-                config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'
+                config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-50'
               } ${frame.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span>{frame.name}</span>
@@ -1192,18 +1187,18 @@ const HomePage: React.FC<{
                        </h1>
                    </div>
 
-                   {/* 3. Dynamic Island Button (Apple Style) */}
+                   {/* 3. Modern Button (Redesigned) */}
                    <button
                      onClick={() => navigateTo('builder')}
-                     className="group relative h-14 bg-black rounded-full flex items-center justify-between px-2 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:w-[260px] w-[200px] active:scale-95 shadow-xl hover:shadow-2xl overflow-hidden"
+                     className="group relative h-14 bg-black rounded-full flex items-center justify-between px-4 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:w-[260px] w-[200px] active:scale-95 shadow-xl hover:shadow-2xl overflow-hidden"
                    >
-                     {/* Left Icon (Dynamic) */}
-                     <div className="h-10 w-10 bg-gray-800 rounded-full flex items-center justify-center transition-colors duration-500 group-hover:bg-[#862b33] relative z-10">
-                        <span className="text-lg filter drop-shadow-sm">🎁</span>
+                     {/* Left Icon (No Background) */}
+                     <div className="flex items-center justify-center relative z-10 pl-2">
+                        <span className="text-2xl filter drop-shadow-sm">🎁</span>
                      </div>
 
                      {/* Text */}
-                     <span className="text-white font-medium text-sm whitespace-nowrap absolute left-1/2 -translate-x-1/2 transition-all duration-500 group-hover:translate-x-[-15px]">
+                     <span className="text-white font-medium text-sm whitespace-nowrap absolute left-1/2 -translate-x-1/2 transition-all duration-500 group-hover:translate-x-[-10px]">
                         Bắt đầu thiết kế
                      </span>
 
@@ -1377,8 +1372,9 @@ const BuilderPage: React.FC<{
     onCancelEdit: () => void; 
     onZoomImage: (url: string) => void; 
     logoUrl?: string; 
-}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl }) => {
-  const [step, setStep] = useState(1);
+    initialStep?: number; // ADDED: Accept initial step
+}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep }) => {
+  const [step, setStep] = useState(initialStep || 1); // Use initialStep
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
   const frameCaptureRef = useRef<HTMLDivElement>(null);
@@ -1388,6 +1384,29 @@ const BuilderPage: React.FC<{
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
+
+  // ADDED: Auto scroll to action area on step change for mobile
+  useEffect(() => {
+      // Check if mobile view (stacked layout)
+      const isMobile = window.innerWidth < 1024;
+      
+      if (isMobile) {
+          const element = document.getElementById('builder-action-area');
+          if (element) {
+              const headerOffset = 100; // Offset for sticky header/preview
+              const elementPosition = element.getBoundingClientRect().top;
+              const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+              window.scrollTo({
+                  top: offsetPosition,
+                  behavior: "smooth"
+              });
+          }
+      } else {
+          // On desktop, maybe scroll to top if needed, but usually fine
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+  }, [step]);
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -1736,7 +1755,7 @@ const BuilderPage: React.FC<{
             </div>
           </div>
 
-          <div className="lg:col-span-5 mt-4 lg:mt-0">
+          <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> {/* ADDED ID HERE */}
               <div className="bg-white p-4 rounded-xl border border-gray-200">
                   {selectedText ? (
                       <TextEditor 
@@ -1840,12 +1859,8 @@ const BuilderPage: React.FC<{
 };
 
 // ... (Keep CollectionPage, CartPage, CartPanel, CheckoutPage components as is) ...
-// ... (Including full implementation to ensure file completeness) ...
-
-const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>, templates?: CollectionTemplate[] }> = ({ navigateTo, setConfig, templates }) => {
+const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, onCustomize: (config: FrameConfig) => void, templates?: CollectionTemplate[] }> = ({ navigateTo, onCustomize, templates }) => {
     const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
-    
-    const handleCustomize = (config: FrameConfig) => { setConfig(config); navigateTo('builder'); };
     
     return ( 
       <div className="container mx-auto px-6 py-8">
@@ -1856,7 +1871,7 @@ const CollectionPage: React.FC<{ navigateTo: (page: Page) => void, setConfig: Re
               <div className="relative">
                 <img src={template.imageUrl} alt={template.name} className="w-full h-72 object-cover" />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-                  <button onClick={() => handleCustomize(template.config)} className="bg-white/80 text-luvin-pink font-bold py-2 px-4 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-body">
+                  <button onClick={() => onCustomize(template.config)} className="bg-white/80 text-luvin-pink font-bold py-2 px-4 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-body">
                     Tùy chỉnh mẫu này
                   </button>
                 </div>
@@ -1965,9 +1980,6 @@ const CartPage: React.FC<{
         </div>
     );
 };
-
-// ... (Keep CartPanel, ZoomIcon, CheckoutPage, OrderConfirmationPage, OrderLookupPage, categorizeParts, App export) ...
-// ... (Including full implementation to ensure file completeness) ...
 
 const CartPanel: React.FC<{
   isOpen: boolean;
@@ -2797,6 +2809,9 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
   
+  // ADDED: Control initial step when entering builder
+  const [builderInitialStep, setBuilderInitialStep] = useState(1);
+
   const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
       try {
           const savedCart = localStorage.getItem('shopping_cart');
@@ -2927,8 +2942,20 @@ const App: React.FC = () => {
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
+    // Reset initial step to 1 when navigating to builder normally
+    if (page === 'builder') {
+        setBuilderInitialStep(1);
+    }
     setCurrentPage(page);
     window.scrollTo(0, 0);
+  };
+
+  // ADDED: Handle customizing template from collection
+  const handleCustomizeTemplate = (templateConfig: FrameConfig) => {
+      setConfig(templateConfig);
+      setBuilderInitialStep(3); // Start at Step 3 (Design)
+      setCurrentPage('builder');
+      window.scrollTo(0, 0);
   };
 
   useEffect(() => {
@@ -2960,6 +2987,8 @@ const App: React.FC = () => {
       setConfig(cartItems[index]);
       setEditingCartIndex(index);
       setIsCartOpen(false);
+      // When editing cart, also start at design step usually, but keeping default flow for now
+      setBuilderInitialStep(4); // Jump to step 4 or 3 depending on preference, sticking to logic
       navigateTo('builder');
   };
 
@@ -3050,10 +3079,11 @@ const App: React.FC = () => {
                     editingCartIndex={editingCartIndex} 
                     onCancelEdit={handleCancelEdit} 
                     onZoomImage={setZoomedImageUrl} 
-                    logoUrl={logoUrl} 
+                    logoUrl={logoUrl}
+                    initialStep={builderInitialStep}
                 />
             )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} setConfig={setConfig} templates={templates} />}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} />}
             {currentPage === 'cart' && <CartPage 
                 cartItems={cartItems} 
                 onRemoveItem={handleRemoveCartItem} 
