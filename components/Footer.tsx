@@ -33,7 +33,9 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigat
                 <div>
                     <h3 className="font-bold text-base mb-3">LIÊN HỆ</h3>
                     <p className="text-gray-600 mb-1">Địa chỉ: Khu 6, Thư Lâm, Hà Nội</p>
-                    <p className="text-gray-600 mb-1">Hotline: 0964 393 115</p>
+                    <p className="text-gray-600 mb-1">
+                        Hotline: <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="hover:text-luvin-pink transition-colors">0964 393 115</a>
+                    </p>
                     <p className="text-gray-600">Email: theluvin.gifts@gmail.com</p>
                 </div>
                 <div>

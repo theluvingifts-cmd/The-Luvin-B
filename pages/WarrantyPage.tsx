@@ -45,7 +45,7 @@ export const WarrantyPage: React.FC = () => (
                 <section className="bg-gray-50 p-6 rounded-xl border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-2">Quy trình xử lý</h3>
                     <p className="text-sm">
-                        Vui lòng liên hệ với chúng tôi qua Fanpage hoặc Hotline <strong className="text-luvin-pink">0964 393 115</strong> ngay khi gặp vấn đề. The Luvin sẽ phản hồi và hướng dẫn bạn cách thức gửi hàng nhanh nhất.
+                        Vui lòng liên hệ với chúng tôi qua Fanpage hoặc Hotline <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="text-luvin-pink font-bold hover:underline">0964 393 115</a> ngay khi gặp vấn đề. The Luvin sẽ phản hồi và hướng dẫn bạn cách thức gửi hàng nhanh nhất.
                     </p>
                 </section>
             </div>

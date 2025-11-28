@@ -168,7 +168,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = (
                         <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg text-center">
                             <p className="font-bold">Hệ thống đang bảo trì</p>
                             <p className="text-sm mt-1">
-                                Tính năng tra cứu đang được nâng cấp. Vui lòng inbox Fanpage hoặc gọi Hotline <strong className="whitespace-nowrap">0964 393 115</strong> để được hỗ trợ kiểm tra đơn hàng nhanh nhất.
+                                Tính năng tra cứu đang được nâng cấp. Vui lòng inbox Fanpage hoặc gọi Hotline <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap font-bold hover:text-luvin-pink transition-colors">0964 393 115</a> để được hỗ trợ kiểm tra đơn hàng nhanh nhất.
                             </p>
                         </div>
                     )}
