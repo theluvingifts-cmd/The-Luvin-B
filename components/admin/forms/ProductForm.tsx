@@ -10,7 +10,7 @@ export const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: []
+        id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: ''
     });
     const [isUploading, setIsUploading] = useState(false);
     
@@ -174,6 +174,13 @@ export const ProductForm: React.FC<{
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
                         </div>
                         
+                        {(formData.type === 'accessory' || formData.type === 'pet') && (
+                            <div className="col-span-2">
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Dịp / Danh mục (Ví dụ: Noel, Sinh nhật)</label>
+                                <input name="category" value={formData.category || ''} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" placeholder="Để trống nếu là phụ kiện chung" />
+                            </div>
+                        )}
+
                         <div className="col-span-2">
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh mặc định</label>
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">

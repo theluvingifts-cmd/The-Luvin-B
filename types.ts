@@ -42,6 +42,7 @@ export interface LegoPart {
   dy?: number; 
   stock?: number; // undefined = unlimited, 0 = out of stock
   order?: number; // Position for sorting
+  category?: string; // ADDED: Dịp / Danh mục (Ví dụ: Noel, Sinh nhật)
 }
 
 // Interface mới cho Background

@@ -77,10 +77,6 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   );
 };
 
-// ... (Step1Frame, PresetBackgroundButton, Step2, PartButton, sortParts, Step3 code remains exactly the same)
-// I will include them to ensure the file is complete, but for brevity in this response, I'm focusing on the changes.
-// Since the prompt asks for "Full content", I must include everything.
-
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
@@ -414,6 +410,7 @@ const Step3Characters: React.FC<{
     
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
+    const [accessoryCategory, setAccessoryCategory] = useState<string>('All');
 
     const getAvailableParts = (list: LegoPart[]) => {
         return list.filter(p => p.stock === undefined || p.stock > 0);
@@ -633,6 +630,22 @@ const Step3Characters: React.FC<{
         return sortParts(list, sortMode);
     }, [legoParts, activePartType, sortMode]);
 
+    const uniqueAccessoryCategories = useMemo(() => {
+        const cats = new Set<string>();
+        legoParts.accessory.forEach(p => {
+            if (p.category) cats.add(p.category);
+        });
+        return ['All', ...Array.from(cats)];
+    }, [legoParts.accessory]);
+
+    const filteredAccessories = useMemo(() => {
+        let list = getAvailableParts(legoParts.accessory);
+        if (accessoryCategory !== 'All') {
+            list = list.filter(p => p.category === accessoryCategory);
+        }
+        return sortParts(list, accessorySortMode);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory]);
+
     return (
         <div className="space-y-4">
             {printDialogCharId && (
@@ -738,18 +751,31 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
-                    <select 
-                        value={accessorySortMode}
-                        onChange={(e) => setAccessorySortMode(e.target.value as any)}
-                        className="text-xs border border-gray-300 rounded p-1 bg-white outline-none"
-                    >
-                        <option value="default">Sắp xếp</option>
-                        <option value="price_asc">Giá tăng</option>
-                        <option value="price_desc">Giá giảm</option>
-                    </select>
+                    <div className="flex gap-2">
+                        {uniqueAccessoryCategories.length > 1 && (
+                            <select 
+                                value={accessoryCategory}
+                                onChange={(e) => setAccessoryCategory(e.target.value)}
+                                className="text-xs border border-gray-300 rounded p-1 bg-white outline-none"
+                            >
+                                {uniqueAccessoryCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat === 'All' ? 'Tất cả' : cat}</option>
+                                ))}
+                            </select>
+                        )}
+                        <select 
+                            value={accessorySortMode}
+                            onChange={(e) => setAccessorySortMode(e.target.value as any)}
+                            className="text-xs border border-gray-300 rounded p-1 bg-white outline-none"
+                        >
+                            <option value="default">Sắp xếp</option>
+                            <option value="price_asc">Giá tăng</option>
+                            <option value="price_desc">Giá giảm</option>
+                        </select>
+                    </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
-                    {sortParts(getAvailableParts(legoParts.accessory), accessorySortMode).map(part => (
+                    {filteredAccessories.map(part => (
                         <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
                     ))}
                 </div>
