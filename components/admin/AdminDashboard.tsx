@@ -49,6 +49,37 @@ const TopItemsCard = ({ title, data }: { title: string, data: Record<string, num
     </div>
 );
 
+const RevenueChart: React.FC<{ data: { date: string; revenue: number }[] }> = ({ data }) => {
+    const maxRevenue = Math.max(...data.map(d => d.revenue), 100000); 
+
+    return (
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ doanh thu (7 ngày)</h4>
+            <div className="flex items-end justify-between h-40 gap-2 sm:gap-4">
+                {data.map((d, index) => {
+                    const heightPercent = (d.revenue / maxRevenue) * 100;
+                    return (
+                        <div key={index} className="flex flex-col items-center flex-1 group relative">
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {formatCurrency(d.revenue)}
+                            </div>
+                            
+                            <div 
+                                className="w-full bg-blue-100 hover:bg-blue-200 rounded-t transition-all relative flex flex-col justify-end overflow-hidden" 
+                                style={{ height: `${heightPercent}%`, minHeight: '4px' }}
+                            >
+                                <div className="absolute bottom-0 left-0 w-full bg-blue-500 opacity-20 h-1"></div>
+                            </div>
+                            <span className="text-[10px] text-gray-500 mt-2 font-medium">{d.date}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products, frames }) => {
     const [filterType, setFilterType] = useState<'period' | 'month' | 'custom'>('period');
     const [period, setPeriod] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
@@ -167,7 +198,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
         const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
 
-        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel };
+        // Chart Data (Last 7 days relative to 'end' date)
+        const chartData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(end);
+            d.setDate(d.getDate() - i);
+            const dStart = getStartOfDay(d);
+            const dEnd = getEndOfDay(d);
+            
+            const dailyRevenue = orders
+                .filter(o => {
+                    const time = o.createdAt || 0;
+                    return time >= dStart.getTime() && time <= dEnd.getTime();
+                })
+                .reduce((sum, o) => sum + o.totalPrice, 0);
+            
+            chartData.push({
+                date: `${d.getDate()}/${d.getMonth() + 1}`,
+                revenue: dailyRevenue
+            });
+        }
+
+        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData };
     }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts, frames]); 
 
     return (
@@ -220,6 +272,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hiệu suất kho</p>
                     <div className="flex items-end gap-2"><p className="text-3xl font-light text-gray-900">{analytics.packers.length > 0 ? analytics.packers[0].count : 0}</p><p className="text-sm font-medium text-gray-600 mb-1 truncate w-24">Top 1</p></div>
                 </div>
+            </div>
+
+            {/* CHARTS SECTION */}
+            <div className="grid grid-cols-1 gap-6">
+                <RevenueChart data={analytics.chartData} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
