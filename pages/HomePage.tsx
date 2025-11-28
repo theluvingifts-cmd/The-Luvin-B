@@ -14,11 +14,77 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspireImage, feedbacks, templates }) => {
   const [activeSlide, setActiveSlide] = useState(0);
   
+  // --- FEEDBACK LOGIC (JS Infinite Scroll) ---
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isDown, setIsDown] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
+  const [isHover, setIsHover] = useState(false);
+
+  // Tạo danh sách lặp lại đủ dài để scroll vô tận (x3)
+  // Logic: [Set 1] [Set 2] [Set 3]
+  // Khi scroll hết Set 1, ta reset về 0. Người dùng sẽ không nhận ra vì Set 2 bắt đầu giống hệt Set 1.
+  const displayFeedbacks = useMemo(() => {
+      const raw = (feedbacks && feedbacks.length > 0) ? feedbacks : [];
+      if (raw.length === 0) return [];
+      // Nhân 4 lần để đảm bảo luôn đủ độ dài lấp đầy màn hình trước khi logic reset hoạt động
+      return [...raw, ...raw, ...raw, ...raw];
+  }, [feedbacks]);
+
+  // Auto Scroll Effect
+  useEffect(() => {
+      const scrollContainer = scrollRef.current;
+      if (!scrollContainer || displayFeedbacks.length === 0) return;
+
+      const scrollStep = () => {
+          // Chỉ tự động trượt khi không kéo chuột và không hover
+          if (!isDown && !isHover) {
+              if (scrollContainer.scrollLeft >= scrollContainer.scrollWidth / 2) {
+                  // Reset về đầu (hoặc vị trí tương ứng) khi đi quá nửa
+                  // Để mượt mà, ta reset về: hiện tại - (tổng / 2)
+                  scrollContainer.scrollLeft = scrollContainer.scrollLeft - (scrollContainer.scrollWidth / 2);
+              } else {
+                  scrollContainer.scrollLeft += 1; // Tốc độ trượt: 1px mỗi chu kỳ
+              }
+          }
+      };
+
+      // Tốc độ: 30ms = ~33fps, đủ chậm để xem
+      const intervalId = setInterval(scrollStep, 30);
+      return () => clearInterval(intervalId);
+  }, [isDown, isHover, displayFeedbacks]);
+
+  // Drag Events
+  const handleMouseDown = (e: React.MouseEvent) => {
+      if (!scrollRef.current) return;
+      setIsDown(true);
+      setStartX(e.pageX - scrollRef.current.offsetLeft);
+      setScrollLeftState(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+      setIsDown(false);
+      setIsHover(false);
+  };
+
+  const handleMouseUp = () => {
+      setIsDown(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+      if (!isDown || !scrollRef.current) return;
+      e.preventDefault();
+      const x = e.pageX - scrollRef.current.offsetLeft;
+      const walk = (x - startX) * 2; // Tốc độ kéo (x2 cho nhạy)
+      scrollRef.current.scrollLeft = scrollLeftState - walk;
+  };
+
   const sliderProducts = useMemo(() => {
       if (templates && templates.length > 0) return templates.slice(0, 4);
       return COLLECTION_TEMPLATES.slice(0, 4);
   }, [templates]);
 
+  // Hero Slider Logic
   useEffect(() => {
     const interval = setInterval(() => {
       handleNext();
@@ -36,8 +102,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
   const heroStyle = heroImage ? {backgroundImage: `url(${heroImage})`} : { backgroundColor: '#fce7f3' }; 
   const inspireStyle = inspireImage ? {backgroundImage: `url(${inspireImage})`} : { backgroundColor: '#fce7f3' };
 
-  const displayFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : [];
-
   const snowStyle = `
     @keyframes fall {
       0% { transform: translateY(-10vh) translateX(-10px); opacity: 0; }
@@ -53,19 +117,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
       pointer-events: none;
     }
   `;
-
-  // Feedback Scroll
-  const feedbackScrollRef = useRef<HTMLDivElement>(null);
-  const scrollFeedback = (direction: 'left' | 'right') => {
-      if (feedbackScrollRef.current) {
-          const scrollAmount = 320; // card width + margin
-          if (direction === 'left') {
-              feedbackScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-          } else {
-              feedbackScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-          }
-      }
-  };
 
   return (
     <div>
@@ -99,19 +150,21 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
 
                    <button
                      onClick={() => navigateTo('builder')}
-                     className="group relative h-14 w-auto min-w-[200px] bg-black rounded-full flex items-center justify-center px-6 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:w-[260px] active:scale-95 shadow-xl hover:shadow-2xl overflow-hidden"
+                     className="group relative h-16 bg-black rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl overflow-hidden transition-all duration-1000 ease-[cubic-bezier(0.19,1,0.22,1)] w-[220px] hover:w-[300px] active:scale-95"
                    >
-                     <div className="flex items-center justify-center gap-2 transition-transform duration-500 group-hover:translate-x-[-10px]">
-                        <span className="text-2xl filter drop-shadow-sm relative bottom-[1px]">🎁</span>
-                        <span className="text-white font-medium text-sm whitespace-nowrap">
+                     <div className="flex items-center justify-center gap-3 transition-transform duration-1000 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-x-4">
+                        <span className="text-2xl filter drop-shadow-sm pb-1">🎁</span>
+                        <span className="text-white font-bold text-base whitespace-nowrap tracking-wide">
                             Bắt đầu thiết kế
                         </span>
                      </div>
 
-                     <div className="absolute right-5 opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5a84b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
+                     <div className="absolute right-5 opacity-0 translate-x-12 scale-50 transition-all duration-1000 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100">
+                        <div className="bg-white/15 p-2 rounded-full backdrop-blur-md">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5a84b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </div>
                      </div>
                    </button>
                </div>
@@ -159,47 +212,44 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
         </div>
       </div>
 
-      <div className="py-12 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="flex justify-between items-end mb-8">
-              <div>
-                  <h2 className="text-3xl md:text-4xl font-script text-luvin-pink mb-2">Lời yêu thương</h2>
-                  <p className="text-gray-500 text-sm">Khách hàng nói gì về The Luvin</p>
-              </div>
-              <div className="flex gap-2">
-                  <button onClick={() => scrollFeedback('left')} className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                      &larr;
-                  </button>
-                  <button onClick={() => scrollFeedback('right')} className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                      &rarr;
-                  </button>
-              </div>
-          </div>
-          
-          <div 
-            ref={feedbackScrollRef}
-            className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory no-scrollbar"
-            style={{ scrollBehavior: 'smooth' }}
-          >
-            {displayFeedbacks.length > 0 ? (
-                displayFeedbacks.map((feedback, index) => (
-                    <div key={index} className="snap-center flex-shrink-0 w-80 bg-[#f9f4ef] p-6 rounded-2xl flex flex-col items-center border border-[#eee5db]">
-                        <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 shadow-sm bg-white">
-                            <img src={feedback.imageUrl} alt={feedback.name} className="w-full h-full object-contain"/>
-                        </div>
-                        <div className="text-center">
-                            <div className="flex items-center justify-center gap-1 mb-2">
-                                {[...Array(5)].map((_, i) => <span key={i} className="text-yellow-400 text-sm">★</span>)}
-                            </div>
-                            <p className="text-sm font-semibold text-gray-900">{feedback.name}</p>
-                            <p className="text-xs text-gray-500 italic mt-2 line-clamp-3">"{feedback.text}"</p>
+      {/* FEEDBACK SECTION */}
+      <div className="py-12 md:py-20 bg-white overflow-hidden">
+        <div className="container mx-auto px-6 mb-8 md:mb-12">
+            <h2 className="text-3xl md:text-4xl font-body font-bold text-[#3e2b25] text-left">Our feedbacks</h2>
+        </div>
+        
+        {/* JS Infinite Scroll Container */}
+        <div 
+            className="w-full overflow-x-hidden cursor-grab active:cursor-grabbing"
+            ref={scrollRef}
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeave}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => setIsHover(true)}
+        >
+            <div className="flex w-max gap-5 md:gap-8 px-4">
+                {displayFeedbacks.length > 0 ? displayFeedbacks.map((feedback, index) => (
+                    <div 
+                        key={`${feedback.id}-${index}`} 
+                        className="relative flex-shrink-0 transition-transform duration-300 hover:scale-105 hover:z-10 w-[200px] md:w-[300px]"
+                        onDragStart={(e) => e.preventDefault()} // Prevent native drag
+                    >
+                        <div className="w-full rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-white select-none">
+                            <img 
+                                src={feedback.imageUrl} 
+                                alt={feedback.name} 
+                                className="w-full h-auto object-contain block bg-[#fcfcfc] pointer-events-none"
+                                loading="lazy"
+                            />
                         </div>
                     </div>
-                ))
-            ) : (
-                <p className="text-center text-gray-500 w-full py-10">Chưa có feedback nào.</p>
-            )}
-          </div>
+                )) : (
+                    <div className="w-screen flex justify-center items-center text-gray-400 h-40">
+                        {feedbacks ? "Loading feedbacks..." : "Chưa có feedback nào để hiển thị."}
+                    </div>
+                )}
+            </div>
         </div>
       </div>
 

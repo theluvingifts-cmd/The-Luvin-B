@@ -206,7 +206,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
-                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue)}</p>
+                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'payment')}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
