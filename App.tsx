@@ -17,7 +17,7 @@ import { getAllFeedbacks } from './services/feedbackService';
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
 
-import AdminPage from './pages/AdminPage'; // Changed import
+import AdminPage from './pages/AdminPage'; 
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { CartPanel } from './components/CartPanel';
@@ -90,6 +90,9 @@ const App: React.FC = () => {
           return cached ? JSON.parse(cached).inspireImageUrl : undefined;
       } catch (e) { return undefined; }
   });
+
+  // State for cart animation
+  const [isCartShaking, setIsCartShaking] = useState(false);
 
   useEffect(() => {
       try {
@@ -197,7 +200,24 @@ const App: React.FC = () => {
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
     setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
-    if (openCart) setIsCartOpen(true);
+    // Trigger animation callback
+    triggerCartShake();
+    if (openCart) {
+        // Wait slightly for animation to land before opening cart if desired
+        // But for better UX with micro-interaction, usually we don't auto-open
+        // if we show the flying animation. 
+        // We will keep openCart logic but maybe add delay?
+        // Actually, if micro interaction is present, usually we DON'T open the cart automatically
+        // to let the user see the fly effect. 
+        // Let's modify behavior: if animation triggers, we might NOT want to open cart immediately.
+        // However, the prop says "openCart". Let's respect it for now.
+        setTimeout(() => setIsCartOpen(true), 800); 
+    }
+  };
+
+  const triggerCartShake = () => {
+      setIsCartShaking(true);
+      setTimeout(() => setIsCartShaking(false), 500); // Duration of css animation
   };
 
   const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
@@ -285,7 +305,13 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col font-sans text-gray-900">
          {currentPage !== 'admin' && (
-             <Header navigateTo={navigateTo} cartCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} logoUrl={logoUrl} />
+             <Header 
+                navigateTo={navigateTo} 
+                cartCount={cartItems.length} 
+                onCartClick={() => setIsCartOpen(true)} 
+                logoUrl={logoUrl} 
+                isCartShaking={isCartShaking}
+             />
         )}
         
         <main className="flex-grow">

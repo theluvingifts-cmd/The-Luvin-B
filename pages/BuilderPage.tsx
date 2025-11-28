@@ -77,6 +77,10 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   );
 };
 
+// ... (Step1Frame, PresetBackgroundButton, Step2, PartButton, sortParts, Step3 code remains exactly the same)
+// I will include them to ensure the file is complete, but for brevity in this response, I'm focusing on the changes.
+// Since the prompt asks for "Full content", I must include everything.
+
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
@@ -1135,6 +1139,60 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     });
   };
 
+  // --- Animation Helper Function ---
+  const animateAddToCart = (imageSrc: string) => {
+      // Find destination icon
+      const desktopCart = document.getElementById('cart-icon-desktop');
+      const mobileCart = document.getElementById('cart-icon-mobile');
+      // Pick the one that is likely visible (simplistic check: window width)
+      const targetIcon = window.innerWidth >= 768 ? desktopCart : mobileCart;
+
+      const sourceContainer = frameCaptureRef.current;
+
+      if (!targetIcon || !sourceContainer || !imageSrc) return;
+
+      const startRect = sourceContainer.getBoundingClientRect();
+      const endRect = targetIcon.getBoundingClientRect();
+
+      // Create fly image
+      const flyImg = document.createElement('img');
+      flyImg.src = imageSrc;
+      flyImg.classList.add('flying-product-item');
+      
+      // Set initial position & dimensions
+      flyImg.style.left = `${startRect.left}px`;
+      flyImg.style.top = `${startRect.top}px`;
+      flyImg.style.width = `${startRect.width}px`;
+      flyImg.style.height = `${startRect.height}px`;
+
+      document.body.appendChild(flyImg);
+
+      // Trigger reflow to ensure start position is set before animating
+      flyImg.getBoundingClientRect();
+
+      // Set target position & dimensions (shrink and move)
+      // Center the end target
+      const endX = endRect.left + endRect.width / 2;
+      const endY = endRect.top + endRect.height / 2;
+      
+      // We want to center the flying image on the target
+      // Final width/height = let's say 20px
+      const targetSize = 20;
+
+      flyImg.style.left = `${endX - targetSize/2}px`;
+      flyImg.style.top = `${endY - targetSize/2}px`;
+      flyImg.style.width = `${targetSize}px`;
+      flyImg.style.height = `${targetSize}px`;
+      flyImg.style.opacity = '0.5';
+
+      // Cleanup after animation
+      flyImg.addEventListener('transitionend', () => {
+          if (document.body.contains(flyImg)) {
+              document.body.removeChild(flyImg);
+          }
+      });
+  };
+
   const handleAddToCartWrapper = async (andCheckout: boolean) => {
     setIsSaving(true);
     try {
@@ -1145,6 +1203,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             setIsSaving(false);
             return;
         }
+
+        // TRIGGER ANIMATION HERE - Optimistic UI
+        // Don't wait for Cloudinary to start the visual effect
+        animateAddToCart(base64Image);
 
         const cloudUrl = await uploadToCloudinary(base64Image);
         
@@ -1162,6 +1224,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         if (editingCartIndex !== null && !andCheckout) {
             onUpdateCart(finalConfig);
         } else {
+            // Note: onAddToCart in App.tsx now triggers the shake animation state
+            // passed down from App
             onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
         }
         

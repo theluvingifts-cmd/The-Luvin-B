@@ -175,34 +175,64 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
       <div className="container mx-auto my-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
           <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={inspireStyle}></div>
-          <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative">
+          <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative select-none">
               {sliderProducts.length > 0 ? (
                   <>
-                    <div className="relative w-full max-w-xs aspect-square">
+                    {/* Product Image - Click to Next */}
+                    <div 
+                        className="relative w-full max-w-xs aspect-square cursor-pointer active:scale-95 transition-transform duration-300"
+                        onClick={handleNext}
+                    >
                         {sliderProducts.map((product, index) => (
                             <img 
                                 key={product.id} 
                                 src={product.imageUrl} 
                                 alt={product.name}
-                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${activeSlide === index ? 'opacity-100' : 'opacity-0'}`}
+                                className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${activeSlide === index ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-4'}`}
                             />
                         ))}
                     </div>
-                    <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&larr;</button>
-                    <button onClick={handleNext} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/50 p-2 rounded-full hover:bg-white transition-colors z-10">&rarr;</button>
-                    <div className="flex gap-3 my-6">
-                        {sliderProducts.map((_, index) => (
-                            <button 
-                                key={index}
-                                onClick={() => setActiveSlide(index)}
-                                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeSlide === index ? 'bg-gray-800 scale-125' : 'bg-gray-400 hover:bg-gray-400'}`}
-                                aria-label={`Go to slide ${index + 1}`}
-                            />
-                        ))}
+                    
+                    {/* Editorial Navigation */}
+                    <div className="w-full max-w-xs mt-10 flex items-center justify-between gap-6">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                            className="group p-2 -ml-2"
+                        >
+                            <svg width="32" height="12" viewBox="0 0 32 12" fill="none" className="text-gray-400 group-hover:text-gray-900 transition-colors">
+                                <path d="M0.46967 5.46967C0.176777 5.76256 0.176777 6.23744 0.46967 6.53033L5.24264 11.3033C5.53553 11.5962 6.01041 11.5962 6.3033 11.3033C6.59619 11.0104 6.59619 10.5355 6.3033 10.2426L2.06066 6L6.3033 1.75736C6.59619 1.46447 6.59619 0.989593 6.3033 0.696699C6.01041 0.403806 5.53553 0.403806 5.24264 0.696699L0.46967 5.46967ZM32 5.25L1 5.25V6.75L32 6.75V5.25Z" fill="currentColor"/>
+                            </svg>
+                        </button>
+
+                        <div className="flex-grow flex flex-col items-center gap-3">
+                            <span className="font-serif text-base italic text-gray-400">
+                                <span className="text-gray-900 not-italic font-sans font-bold">0{activeSlide + 1}</span> / 0{sliderProducts.length}
+                            </span>
+                            <div className="w-full h-px bg-gray-300 relative">
+                                <div 
+                                    className="absolute top-0 left-0 h-full bg-gray-900 transition-all duration-500 ease-out"
+                                    style={{ 
+                                        width: `${((activeSlide + 1) / sliderProducts.length) * 100}%` 
+                                    }}
+                                ></div>
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                            className="group p-2 -mr-2"
+                        >
+                            <svg width="32" height="12" viewBox="0 0 32 12" fill="none" className="text-gray-400 group-hover:text-gray-900 transition-colors">
+                                <path d="M31.5303 6.53033C31.8232 6.23744 31.8232 5.76256 31.5303 5.46967L26.7574 0.696699C26.4645 0.403806 25.9896 0.403806 25.6967 0.696699C25.4038 0.989593 25.4038 1.46447 25.6967 1.75736L29.9393 6L25.6967 10.2426C25.4038 10.5355 25.4038 11.0104 25.6967 11.3033C25.9896 11.5962 26.4645 11.5962 26.7574 11.3033L31.5303 6.53033ZM0 6.75H31V5.25H0V6.75Z" fill="currentColor"/>
+                            </svg>
+                        </button>
                     </div>
-                    <div className="text-center h-20">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">Featured</p>
-                        <h3 className="font-semibold text-lg mt-1">{sliderProducts[activeSlide].name}</h3>
+
+                    <div className="text-center mt-8">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mb-2">Featured</p>
+                        <h3 className="font-brand-heading text-3xl md:text-4xl text-gray-900 leading-tight">
+                            {sliderProducts[activeSlide].name}
+                        </h3>
                     </div>
                   </>
               ) : (
