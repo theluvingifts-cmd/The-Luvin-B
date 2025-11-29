@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CollectionTemplate, FeedbackItem, ThemeConfig, CustomFont } from '../../types';
 import { StoreConfig, updateStoreConfig, DEFAULT_THEME } from '../../services/configService';
-import { addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../../services/templateService';
-import { addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../../services/feedbackService';
+import { addTemplate, updateTemplate, deleteTemplate } from '../../services/templateService';
+import { addFeedback, updateFeedback, deleteFeedback } from '../../services/feedbackService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { TemplateForm } from './forms/TemplateForm';
@@ -18,7 +18,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -31,8 +31,6 @@ const GOOGLE_FONTS = [
     { name: 'Nunito', label: 'Nunito (Friendly)' },
     { name: 'Pacifico', label: 'Pacifico (Fun)' }
 ];
-
-const PREVIEW_SECTIONS = ['Header', 'Hero', 'Footer'];
 
 export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreConfig, templates, feedbacks, onRefreshTemplates, onRefreshFeedbacks }) => {
     const [activeTab, setActiveTab] = useState<ConfigTab>('branding');
@@ -50,7 +48,40 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
 
-    // Sync themeConfig when storeConfig changes (initial load)
+    // Refs for scrolling to inputs
+    const inputRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
+
+    // --- EFFECT: Load Fonts for Admin Preview ---
+    useEffect(() => {
+        const loadFonts = () => {
+            const existingStyle = document.getElementById('admin-preview-fonts');
+            if (existingStyle) existingStyle.remove();
+
+            const style = document.createElement('style');
+            style.id = 'admin-preview-fonts';
+            let css = '';
+            
+            // Load Custom Fonts
+            if (storeConfig.uploadedFonts) {
+                storeConfig.uploadedFonts.forEach(font => {
+                    css += `
+                        @font-face {
+                            font-family: '${font.name}';
+                            src: url('${font.url}');
+                            font-weight: normal;
+                            font-style: normal;
+                            font-display: swap;
+                        }
+                    `;
+                });
+            }
+            style.innerHTML = css;
+            document.head.appendChild(style);
+        };
+        loadFonts();
+    }, [storeConfig.uploadedFonts]);
+
+    // Sync themeConfig when storeConfig changes
     useEffect(() => {
         if (storeConfig.theme) {
             setThemeConfig(storeConfig.theme);
@@ -75,9 +106,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     const handleSaveConfig = async () => {
         setLoading(true);
-        const success = await updateStoreConfig({ theme: themeConfig });
+        // Save both storeConfig fields and themeConfig
+        const success = await updateStoreConfig({ 
+            ...storeConfig,
+            theme: themeConfig 
+        });
         if (success) {
-            setStoreConfig(prev => ({ ...prev, theme: themeConfig }));
             alert("Đã lưu cấu hình Theme thành công! Website sẽ tải lại để áp dụng.");
             window.location.reload();
         } else {
@@ -91,8 +125,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         try {
             const url = await uploadToCloudinary(file);
             if (url) {
-                await updateStoreConfig({ [field]: url });
-                setStoreConfig(prev => ({ ...prev, [field]: url }));
+                const updates = { [field]: url };
+                await updateStoreConfig(updates);
+                setStoreConfig(prev => ({ ...prev, ...updates }));
                 alert(`Đã cập nhật hình ảnh thành công!`);
             } else {
                 alert("Lỗi upload.");
@@ -106,11 +141,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     };
 
     // --- FONT MANAGEMENT HANDLERS ---
-    
     const handleAddNewFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!newFontName.trim()) {
             alert("Vui lòng nhập tên font trước khi chọn file.");
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
             return;
         }
 
@@ -128,11 +162,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     };
                     
                     const updatedFonts = [...(storeConfig.uploadedFonts || []), newFont];
-                    
-                    // Update StoreConfig directly
                     await updateStoreConfig({ uploadedFonts: updatedFonts });
                     setStoreConfig(prev => ({ ...prev, uploadedFonts: updatedFonts }));
-                    
                     setNewFontName('');
                     alert(`Đã thêm font "${newFont.name}" thành công!`);
                 } else {
@@ -161,13 +192,29 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
     }
 
+    // --- VISUAL EDITING HANDLER ---
+    const handleVisualEdit = (tab: ConfigTab, focusKey: string) => {
+        setActiveTab(tab);
+        // Delay scroll to ensure tab switches and DOM renders
+        setTimeout(() => {
+            const el = inputRefs.current[focusKey];
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus();
+                // Highlight effect
+                el.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500'), 2000);
+            }
+        }, 100);
+    };
+
     // Template & Feedback Handlers
     const handleSaveTemplate = async (tpl: CollectionTemplate) => { setIsEditingTemplate(false); if (editingTemplate) await updateTemplate(tpl.id, tpl); else await addTemplate(tpl); onRefreshTemplates(); setEditingTemplate(null); };
     const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); onRefreshTemplates(); } };
     const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); onRefreshFeedbacks(); setEditingFeedback(null); };
     const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); onRefreshFeedbacks(); } };
 
-    // Combine Google Fonts and Uploaded Fonts for Dropdowns
+    // Font Options
     const fontOptions = [
         { label: '--- Google Fonts ---', options: GOOGLE_FONTS.map(f => ({ value: f.name, label: f.label })) },
         { label: '--- Custom Fonts ---', options: (storeConfig.uploadedFonts || []).map(f => ({ value: f.name, label: `${f.name} (Uploaded)` })) }
@@ -188,16 +235,17 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
                     <button onClick={() => setActiveTab('branding')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'branding' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình ảnh & Logo</button>
-                    <button onClick={() => setActiveTab('theme')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'theme' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Theme Toàn Trang</button>
-                    <button onClick={() => setActiveTab('sections')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'sections' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Theme Chi tiết</button>
-                    <button onClick={() => setActiveTab('content')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'content' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nội dung & Mẫu</button>
+                    <button onClick={() => setActiveTab('theme')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'theme' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Màu & Font</button>
+                    <button onClick={() => setActiveTab('sections')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'sections' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Chi tiết</button>
+                    <button onClick={() => setActiveTab('content')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'content' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nội dung</button>
+                    <button onClick={() => setActiveTab('fonts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'fonts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Quản lý Font</button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
-                {/* --- LEFT PANEL: CONTROLS --- */}
-                <div className="lg:col-span-2 space-y-8">
+                {/* --- LEFT PANEL: CONTROLS (4 Columns) --- */}
+                <div className="lg:col-span-4 space-y-8 order-2 lg:order-1 h-[calc(100vh-180px)] overflow-y-auto pr-2 custom-scrollbar">
                     
                     {/* BRANDING TAB */}
                     {activeTab === 'branding' && (
@@ -212,154 +260,88 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
                     {/* THEME TAB */}
                     {activeTab === 'theme' && (
-                        <div className="space-y-6">
-                            <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình Giao diện Chung</h3>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Colors */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Bảng màu (Global)</h4>
-                                        <div className="space-y-3">
-                                            {[
-                                                { key: 'primary', label: 'Màu chính (Primary)', desc: 'Nút bấm, điểm nhấn, giá tiền' },
-                                                { key: 'secondary', label: 'Màu phụ (Secondary)', desc: 'Nền phụ, khối trang trí' },
-                                                { key: 'text', label: 'Màu chữ (Text)', desc: 'Văn bản chính' },
-                                                { key: 'background', label: 'Màu nền (Background)', desc: 'Nền toàn trang' },
-                                                { key: 'accent', label: 'Màu nhấn (Accent)', desc: 'Icon, chi tiết nhỏ' },
-                                            ].map((color) => (
-                                                <div key={color.key} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
-                                                    <div>
-                                                        <p className="text-sm font-bold">{color.label}</p>
-                                                        <p className="text-xs text-gray-400">{color.desc}</p>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <input 
-                                                            type="color" 
-                                                            value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
-                                                            onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
-                                                            className="w-10 h-10 rounded cursor-pointer border-none bg-transparent"
-                                                        />
-                                                        <input 
-                                                            type="text" 
-                                                            value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
-                                                            onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
-                                                            className="w-20 text-xs border rounded text-center uppercase"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Typography & Shape */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Font chữ & Kiểu dáng</h4>
-                                        <div className="space-y-4">
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình Giao diện Chung</h3>
+                            
+                            {/* Colors */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Bảng màu (Global)</h4>
+                                <div className="space-y-3">
+                                    {[
+                                        { key: 'primary', label: 'Màu chính (Primary)', desc: 'Nút bấm, điểm nhấn, giá tiền' },
+                                        { key: 'secondary', label: 'Màu phụ (Secondary)', desc: 'Nền phụ, khối trang trí' },
+                                        { key: 'text', label: 'Màu chữ (Text)', desc: 'Văn bản chính' },
+                                        { key: 'background', label: 'Màu nền (Background)', desc: 'Nền toàn trang' },
+                                        { key: 'accent', label: 'Màu nhấn (Accent)', desc: 'Icon, chi tiết nhỏ' },
+                                    ].map((color) => (
+                                        <div key={color.key} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
                                             <div>
-                                                <label className="block text-sm font-bold mb-1">Font Tiêu đề (Headings)</label>
-                                                <select 
-                                                    value={themeConfig.global.typography.headingFont} 
-                                                    onChange={(e) => handleThemeChange('global.typography.headingFont', e.target.value)}
-                                                    className="w-full p-2 border rounded bg-white text-sm"
-                                                >
-                                                    {fontOptions.map((group, idx) => (
-                                                        <optgroup key={idx} label={group.label}>
-                                                            {group.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                                        </optgroup>
-                                                    ))}
-                                                </select>
+                                                <p className="text-sm font-bold">{color.label}</p>
+                                                <p className="text-xs text-gray-400">{color.desc}</p>
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-bold mb-1">Font Nội dung (Body)</label>
-                                                <select 
-                                                    value={themeConfig.global.typography.bodyFont} 
-                                                    onChange={(e) => handleThemeChange('global.typography.bodyFont', e.target.value)}
-                                                    className="w-full p-2 border rounded bg-white text-sm"
-                                                >
-                                                    {fontOptions.map((group, idx) => (
-                                                        <optgroup key={idx} label={group.label}>
-                                                            {group.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                                        </optgroup>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-bold mb-1">Bo góc (Border Radius)</label>
-                                                <select 
-                                                    value={themeConfig.global.borderRadius} 
-                                                    onChange={(e) => handleThemeChange('global.borderRadius', e.target.value)}
-                                                    className="w-full p-2 border rounded bg-white text-sm"
-                                                >
-                                                    <option value="0px">Vuông (Square)</option>
-                                                    <option value="4px">Bo nhẹ (Small)</option>
-                                                    <option value="8px">Bo vừa (Medium - Default)</option>
-                                                    <option value="16px">Bo lớn (Large)</option>
-                                                    <option value="9999px">Tròn (Rounded)</option>
-                                                </select>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    ref={el => inputRefs.current[`global.colors.${color.key}`] = el}
+                                                    type="color" 
+                                                    value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
+                                                    onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
+                                                    className="w-10 h-10 rounded cursor-pointer border-none bg-transparent"
+                                                />
                                             </div>
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            {/* --- FONT MANAGER SECTION --- */}
-                            <div className="bg-white p-6 rounded-lg border shadow-sm">
-                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Quản lý Font chữ (Upload)</h3>
-                                <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <h4 className="text-sm font-bold mb-3">Thêm font mới</h4>
-                                    <div className="flex gap-4 items-end">
-                                        <div className="flex-grow">
-                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Tên Font (Hiển thị)</label>
-                                            <input 
-                                                type="text" 
-                                                placeholder="VD: My Brand Font" 
-                                                className="w-full p-2 border rounded text-sm"
-                                                value={newFontName}
-                                                onChange={(e) => setNewFontName(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="flex-grow">
-                                            <label className="block text-xs font-semibold text-gray-500 mb-1">File Font (.ttf, .otf, .woff)</label>
-                                            <div className="relative">
-                                                <input 
-                                                    type="file" 
-                                                    accept=".ttf,.otf,.woff,.woff2" 
-                                                    onChange={handleAddNewFont}
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                    disabled={isUploadingFont}
-                                                />
-                                                <button className={`w-full p-2 border rounded text-sm bg-white text-left ${isUploadingFont ? 'text-gray-400' : 'text-gray-700'}`}>
-                                                    {isUploadingFont ? 'Đang upload...' : 'Chọn file & Upload'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-2 italic">* Lưu ý: Đặt tên font trước khi chọn file.</p>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-sm font-bold mb-3">Danh sách Font đã upload</h4>
-                                    {storeConfig.uploadedFonts && storeConfig.uploadedFonts.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {storeConfig.uploadedFonts.map(font => (
-                                                <div key={font.id} className="flex justify-between items-center p-3 border rounded bg-gray-50">
-                                                    <div>
-                                                        <p className="font-bold text-sm">{font.name}</p>
-                                                        <a href={font.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate max-w-[200px] block">{font.url}</a>
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => handleDeleteFont(font.id)}
-                                                        className="text-red-600 hover:bg-red-100 p-2 rounded text-xs font-bold"
-                                                    >
-                                                        Xóa
-                                                    </button>
-                                                </div>
+                            {/* Typography & Shape */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Font chữ & Kiểu dáng</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold mb-1">Font Tiêu đề (Headings)</label>
+                                        <select 
+                                            ref={el => inputRefs.current['global.typography.headingFont'] = el}
+                                            value={themeConfig.global.typography.headingFont} 
+                                            onChange={(e) => handleThemeChange('global.typography.headingFont', e.target.value)}
+                                            className="w-full p-2 border rounded bg-white text-sm"
+                                        >
+                                            {fontOptions.map((group, idx) => (
+                                                <optgroup key={idx} label={group.label}>
+                                                    {group.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                </optgroup>
                                             ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-gray-500 italic">Chưa có font nào được upload.</p>
-                                    )}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold mb-1">Font Nội dung (Body)</label>
+                                        <select 
+                                            ref={el => inputRefs.current['global.typography.bodyFont'] = el}
+                                            value={themeConfig.global.typography.bodyFont} 
+                                            onChange={(e) => handleThemeChange('global.typography.bodyFont', e.target.value)}
+                                            className="w-full p-2 border rounded bg-white text-sm"
+                                        >
+                                            {fontOptions.map((group, idx) => (
+                                                <optgroup key={idx} label={group.label}>
+                                                    {group.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold mb-1">Bo góc (Border Radius)</label>
+                                        <select 
+                                            ref={el => inputRefs.current['global.borderRadius'] = el}
+                                            value={themeConfig.global.borderRadius} 
+                                            onChange={(e) => handleThemeChange('global.borderRadius', e.target.value)}
+                                            className="w-full p-2 border rounded bg-white text-sm"
+                                        >
+                                            <option value="0px">Vuông (Square)</option>
+                                            <option value="4px">Bo nhẹ (Small)</option>
+                                            <option value="8px">Bo vừa (Medium - Default)</option>
+                                            <option value="16px">Bo lớn (Large)</option>
+                                            <option value="9999px">Tròn (Rounded)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -368,23 +350,35 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     {/* SECTIONS TAB */}
                     {activeTab === 'sections' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Tùy chỉnh từng phần (Sections)</h3>
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Tùy chỉnh từng phần</h3>
                             
                             {['header', 'hero', 'footer'].map(section => (
                                 <div key={section} className="p-4 border rounded-lg bg-gray-50">
                                     <h4 className="text-md font-bold text-gray-800 capitalize mb-3">{section}</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-xs font-semibold block mb-1">Màu nền</label>
                                             <div className="flex gap-2">
-                                                <input type="color" className="h-8 w-8 rounded cursor-pointer" value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.backgroundColor || '#ffffff'} onChange={(e) => handleThemeChange(`sections.${section}.backgroundColor`, e.target.value)} />
+                                                <input 
+                                                    ref={el => inputRefs.current[`sections.${section}.backgroundColor`] = el}
+                                                    type="color" 
+                                                    className="h-8 w-8 rounded cursor-pointer" 
+                                                    value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.backgroundColor || '#ffffff'} 
+                                                    onChange={(e) => handleThemeChange(`sections.${section}.backgroundColor`, e.target.value)} 
+                                                />
                                                 <input className="text-xs border rounded w-full px-2" value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.backgroundColor || ''} onChange={(e) => handleThemeChange(`sections.${section}.backgroundColor`, e.target.value)} />
                                             </div>
                                         </div>
                                         <div>
                                             <label className="text-xs font-semibold block mb-1">Màu chữ</label>
                                             <div className="flex gap-2">
-                                                <input type="color" className="h-8 w-8 rounded cursor-pointer" value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.textColor || '#000000'} onChange={(e) => handleThemeChange(`sections.${section}.textColor`, e.target.value)} />
+                                                <input 
+                                                    ref={el => inputRefs.current[`sections.${section}.textColor`] = el}
+                                                    type="color" 
+                                                    className="h-8 w-8 rounded cursor-pointer" 
+                                                    value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.textColor || '#000000'} 
+                                                    onChange={(e) => handleThemeChange(`sections.${section}.textColor`, e.target.value)} 
+                                                />
                                                 <input className="text-xs border rounded w-full px-2" value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.textColor || ''} onChange={(e) => handleThemeChange(`sections.${section}.textColor`, e.target.value)} />
                                             </div>
                                         </div>
@@ -392,7 +386,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             <div>
                                                 <label className="text-xs font-semibold block mb-1">Màu tiêu đề lớn</label>
                                                 <div className="flex gap-2">
-                                                    <input type="color" className="h-8 w-8 rounded cursor-pointer" value={themeConfig.sections.hero?.headingColor || '#000000'} onChange={(e) => handleThemeChange(`sections.hero.headingColor`, e.target.value)} />
+                                                    <input 
+                                                        ref={el => inputRefs.current[`sections.hero.headingColor`] = el}
+                                                        type="color" 
+                                                        className="h-8 w-8 rounded cursor-pointer" 
+                                                        value={themeConfig.sections.hero?.headingColor || '#000000'} 
+                                                        onChange={(e) => handleThemeChange(`sections.hero.headingColor`, e.target.value)} 
+                                                    />
                                                 </div>
                                             </div>
                                         )}
@@ -411,24 +411,27 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Hero (Dòng 1)</label>
                                         <input 
+                                            ref={el => inputRefs.current['heroTitle'] = el}
                                             value={storeConfig.heroTitle || 'Unique for'} 
-                                            onChange={async (e) => {
+                                            onChange={(e) => {
                                                 const val = e.target.value;
                                                 setStoreConfig(prev => ({...prev, heroTitle: val}));
-                                                await updateStoreConfig({ heroTitle: val });
+                                                // Debounce saving in real app, here direct state update
                                             }}
+                                            onBlur={async (e) => await updateStoreConfig({ heroTitle: e.target.value })}
                                             className="w-full p-2 border rounded"
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Hero (Dòng 2 - Accent)</label>
                                         <input 
+                                            ref={el => inputRefs.current['heroSubtitle'] = el}
                                             value={storeConfig.heroSubtitle || 'every moment'} 
-                                            onChange={async (e) => {
+                                            onChange={(e) => {
                                                 const val = e.target.value;
                                                 setStoreConfig(prev => ({...prev, heroSubtitle: val}));
-                                                await updateStoreConfig({ heroSubtitle: val });
                                             }}
+                                            onBlur={async (e) => await updateStoreConfig({ heroSubtitle: e.target.value })}
                                             className="w-full p-2 border rounded"
                                         />
                                     </div>
@@ -473,6 +476,68 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
+                    {/* FONTS TAB */}
+                    {activeTab === 'fonts' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Quản lý Font chữ (Upload)</h3>
+                            <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <h4 className="text-sm font-bold mb-3">Thêm font mới</h4>
+                                <div className="flex gap-4 items-end">
+                                    <div className="flex-grow">
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Tên Font (Hiển thị)</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="VD: My Brand Font" 
+                                            className="w-full p-2 border rounded text-sm"
+                                            value={newFontName}
+                                            onChange={(e) => setNewFontName(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex-grow">
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">File Font (.ttf, .otf, .woff)</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="file" 
+                                                accept=".ttf,.otf,.woff,.woff2" 
+                                                onChange={handleAddNewFont}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                disabled={isUploadingFont}
+                                            />
+                                            <button className={`w-full p-2 border rounded text-sm bg-white text-left ${isUploadingFont ? 'text-gray-400' : 'text-gray-700'}`}>
+                                                {isUploadingFont ? 'Đang upload...' : 'Chọn file & Upload'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2 italic">* Lưu ý: Đặt tên font trước khi chọn file.</p>
+                            </div>
+
+                            <div>
+                                <h4 className="text-sm font-bold mb-3">Danh sách Font đã upload</h4>
+                                {storeConfig.uploadedFonts && storeConfig.uploadedFonts.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {storeConfig.uploadedFonts.map(font => (
+                                            <div key={font.id} className="flex justify-between items-center p-3 border rounded bg-gray-50">
+                                                <div>
+                                                    <p className="font-bold text-sm" style={{fontFamily: font.name}}>{font.name} (Preview)</p>
+                                                    <a href={font.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate max-w-[200px] block">{font.url}</a>
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleDeleteFont(font.id)}
+                                                    className="text-red-600 hover:bg-red-100 p-2 rounded text-xs font-bold"
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 italic">Chưa có font nào được upload.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Action Bar */}
                     <div className="flex justify-end gap-4 border-t pt-4 sticky bottom-0 bg-gray-50 p-4 -mx-4 -mb-4">
                         <button onClick={handleResetTheme} className="px-4 py-2 text-red-600 font-bold hover:bg-red-50 rounded">Reset Mặc định</button>
@@ -480,11 +545,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     </div>
                 </div>
 
-                {/* --- RIGHT PANEL: LIVE PREVIEW --- */}
-                <div className="lg:col-span-1">
-                    <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                        <div className="bg-gray-100 p-3 border-b flex justify-between items-center">
-                            <span className="text-xs font-bold text-gray-500 uppercase">Live Preview (Mô phỏng)</span>
+                {/* --- RIGHT PANEL: VISUAL PREVIEW (8 Columns) --- */}
+                <div className="lg:col-span-8 order-1 lg:order-2">
+                    <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+                        <div className="bg-gray-100 p-3 border-b flex justify-between items-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                                <span>🖥️ Live Preview</span>
+                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] normal-case">Click vào phần tử để sửa</span>
+                            </span>
                             <div className="flex gap-1">
                                 <div className="w-2 h-2 rounded-full bg-red-400"></div>
                                 <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
@@ -492,105 +560,158 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             </div>
                         </div>
                         
-                        {/* Simulated Website */}
+                        {/* Simulated Website - FULL HEIGHT PREVIEW */}
                         <div 
-                            className="p-0 overflow-y-auto max-h-[600px] no-scrollbar transition-all duration-300"
+                            className="flex-grow overflow-y-auto custom-scrollbar relative"
                             style={{ 
                                 backgroundColor: themeConfig.global.colors.background,
                                 color: themeConfig.global.colors.text,
                                 fontFamily: themeConfig.global.typography.bodyFont 
                             }}
                         >
-                            {/* Mock Header */}
+                            {/* --- HEADER PREVIEW --- */}
                             <div 
-                                className="p-4 flex justify-between items-center border-b"
+                                className="group relative border-b transition-colors cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"
+                                onClick={() => handleVisualEdit('sections', 'sections.header.backgroundColor')}
                                 style={{ 
                                     backgroundColor: themeConfig.sections.header.backgroundColor,
                                     color: themeConfig.sections.header.textColor 
                                 }}
                             >
-                                <span 
-                                    className="font-bold text-lg"
-                                    style={{ 
-                                        fontFamily: themeConfig.global.typography.headingFont,
-                                        color: themeConfig.global.colors.primary 
-                                    }}
-                                >
-                                    The Luvin
-                                </span>
-                                <div className="flex gap-3 text-xs font-bold opacity-70">
-                                    <span>Home</span>
-                                    <span>Shop</span>
-                                    <span>Contact</span>
+                                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+                                    <div 
+                                        className="font-bold text-2xl hover:opacity-80 transition-opacity"
+                                        onClick={(e) => { e.stopPropagation(); handleVisualEdit('branding', 'logoUrl'); }}
+                                    >
+                                        {storeConfig.logoUrl ? (
+                                            <img src={storeConfig.logoUrl} alt="Logo" className="h-12 object-contain" />
+                                        ) : (
+                                            <span style={{ 
+                                                fontFamily: themeConfig.global.typography.headingFont,
+                                                color: themeConfig.global.colors.primary 
+                                            }}>The Luvin</span>
+                                        )}
+                                    </div>
+                                    <div className="hidden md:flex items-center space-x-6 text-sm font-semibold opacity-80">
+                                        <span>Trang chủ</span>
+                                        <span>Thiết kế</span>
+                                        <span>Bộ sưu tập</span>
+                                        <span>Tra cứu</span>
+                                        <span>Giỏ hàng (0)</span>
+                                    </div>
                                 </div>
+                                <span className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">Sửa Header</span>
                             </div>
 
-                            {/* Mock Hero */}
+                            {/* --- HERO PREVIEW --- */}
                             <div 
-                                className="p-8 text-center"
+                                className="group relative py-16 md:py-24 text-center cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset transition-colors"
+                                onClick={() => handleVisualEdit('sections', 'sections.hero.backgroundColor')}
                                 style={{ 
                                     backgroundColor: themeConfig.sections.hero.backgroundColor,
                                     color: themeConfig.sections.hero.textColor 
                                 }}
                             >
-                                <h2 
-                                    className="text-3xl mb-2 font-bold"
-                                    style={{ 
-                                        fontFamily: themeConfig.global.typography.headingFont,
-                                        color: themeConfig.sections.hero.headingColor 
-                                    }}
-                                >
-                                    Unique Gift
-                                </h2>
-                                <p className="text-sm opacity-80 mb-4">Every moment matters</p>
-                                <button 
-                                    className="px-6 py-2 text-sm font-bold text-white shadow-md transition-transform active:scale-95"
-                                    style={{ 
-                                        backgroundColor: themeConfig.global.colors.primary,
-                                        borderRadius: themeConfig.global.borderRadius 
-                                    }}
-                                >
-                                    Mua Ngay
-                                </button>
+                                <div className="container mx-auto px-6 relative z-10 flex flex-col items-center">
+                                    <div className="mb-8">
+                                        <p className="text-[10px] font-bold opacity-60 tracking-[0.3em] uppercase mb-4">Christmas Edition</p>
+                                        <h1 
+                                            className="text-5xl md:text-7xl leading-[1.1] hover:bg-blue-100/50 rounded cursor-text transition-colors p-2 -m-2"
+                                            style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
+                                            onClick={(e) => { e.stopPropagation(); handleVisualEdit('content', 'heroTitle'); }}
+                                        >
+                                            {storeConfig.heroTitle || 'Unique for'} <br/>
+                                            <span 
+                                                className="italic font-light hover:text-blue-600 transition-colors" 
+                                                style={{ color: themeConfig.global.colors.accent }}
+                                                onClick={(e) => { e.stopPropagation(); handleVisualEdit('content', 'heroSubtitle'); }}
+                                            >
+                                                {storeConfig.heroSubtitle || 'every moment'}
+                                            </span>
+                                        </h1>
+                                    </div>
+
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleVisualEdit('theme', 'global.colors.primary'); }}
+                                        className="h-14 px-8 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95 group/btn"
+                                        style={{ 
+                                            backgroundColor: themeConfig.global.colors.primary, 
+                                            color: '#fff', // Typically white text on primary button
+                                            borderRadius: themeConfig.global.borderRadius === '9999px' ? '9999px' : themeConfig.global.borderRadius
+                                        }}
+                                    >
+                                        <span className="font-bold text-base tracking-wide">Bắt đầu thiết kế</span>
+                                    </button>
+                                </div>
+                                <span className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">Sửa Hero</span>
                             </div>
 
-                            {/* Mock Product Card */}
-                            <div className="p-6">
-                                <h3 className="text-sm font-bold mb-4 uppercase text-gray-400">Sản phẩm mẫu</h3>
-                                <div 
-                                    className="border p-4 shadow-sm"
-                                    style={{ 
-                                        backgroundColor: '#fff',
-                                        borderRadius: themeConfig.global.borderRadius,
-                                        borderColor: themeConfig.global.colors.secondary
-                                    }}
-                                >
-                                    <div className="w-full h-32 bg-gray-100 mb-3 rounded-sm flex items-center justify-center text-gray-300">Image</div>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="font-bold text-sm">Khung LEGO</p>
-                                            <p className="text-xs opacity-60">Custom</p>
+                            {/* --- PRODUCT CARD PREVIEW --- */}
+                            <div className="py-12 bg-white container mx-auto px-6">
+                                <h3 className="text-center text-2xl font-bold mb-8" style={{ fontFamily: themeConfig.global.typography.headingFont }}>Sản phẩm mẫu</h3>
+                                <div className="flex justify-center">
+                                    <div 
+                                        className="w-64 border p-4 shadow-sm group/card cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                        style={{ 
+                                            backgroundColor: '#fff',
+                                            borderRadius: themeConfig.global.borderRadius,
+                                            borderColor: themeConfig.global.colors.secondary
+                                        }}
+                                        onClick={() => handleVisualEdit('theme', 'global.borderRadius')}
+                                    >
+                                        <div className="w-full aspect-square bg-gray-100 mb-3 rounded-sm flex items-center justify-center text-gray-300">Image</div>
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-sm">Khung LEGO</p>
+                                                <p className="text-xs opacity-60">Custom</p>
+                                            </div>
+                                            <span 
+                                                className="font-bold"
+                                                style={{ color: themeConfig.global.colors.primary }}
+                                                onClick={(e) => { e.stopPropagation(); handleVisualEdit('theme', 'global.colors.primary'); }}
+                                            >
+                                                250.000đ
+                                            </span>
                                         </div>
-                                        <span 
-                                            className="font-bold"
-                                            style={{ color: themeConfig.global.colors.primary }}
-                                        >
-                                            250.000đ
-                                        </span>
+                                        <span className="opacity-0 group-hover/card:opacity-100 text-[10px] text-blue-500 block text-center mt-2">Click để sửa Shape/Color</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Mock Footer */}
+                            {/* --- FOOTER PREVIEW --- */}
                             <div 
-                                className="p-6 text-center text-xs mt-4"
+                                className="p-10 border-t mt-auto group relative cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"
+                                onClick={() => handleVisualEdit('sections', 'sections.footer.backgroundColor')}
                                 style={{ 
                                     backgroundColor: themeConfig.sections.footer.backgroundColor,
                                     color: themeConfig.sections.footer.textColor 
                                 }}
                             >
-                                <p className="font-bold mb-2">The Luvin Store</p>
-                                <p className="opacity-70">Designed for love.</p>
+                                <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
+                                    <div>
+                                        <h3 className="font-bold text-lg mb-3" style={{ color: themeConfig.global.colors.primary, fontFamily: themeConfig.global.typography.headingFont }}>The Luvin</h3>
+                                        <p className="opacity-70 text-xs">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu.</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold mb-3 uppercase opacity-90">Liên hệ</h4>
+                                        <p className="opacity-70 mb-1">Hotline: 0964 393 115</p>
+                                        <p className="opacity-70">Email: theluvin.gifts@gmail.com</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold mb-3 uppercase opacity-90">Hỗ trợ</h4>
+                                        <p className="opacity-70 mb-1">Chính sách bảo hành</p>
+                                        <p className="opacity-70">Tra cứu đơn hàng</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold mb-3 uppercase opacity-90">Social</h4>
+                                        <div className="flex gap-2">
+                                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">Sửa Footer</span>
                             </div>
                         </div>
                     </div>
