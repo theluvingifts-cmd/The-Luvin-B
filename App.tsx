@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption } from './types';
+import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
     LEGO_PARTS, 
     INITIAL_FRAME_CONFIG, 
@@ -36,36 +36,46 @@ declare var confetti: any;
 
 // Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
-    if (!fontName || fontName === 'CustomBrandFont') return;
-    const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
-    if (!document.getElementById(linkId)) {
-        const link = document.createElement('link');
-        link.id = linkId;
-        link.rel = 'stylesheet';
-        link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
-        document.head.appendChild(link);
+    if (!fontName) return;
+    // Nếu là font tùy chỉnh (đã có trong danh sách upload), không load từ Google
+    // Logic kiểm tra font tùy chỉnh sẽ được xử lý ở applyTheme
+    if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
+        const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+        if (!document.getElementById(linkId)) {
+            const link = document.createElement('link');
+            link.id = linkId;
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
+            document.head.appendChild(link);
+        }
     }
 };
 
-// Helper để load Custom Font Uploaded
-const loadCustomFont = (url: string) => {
-    if (!url) return;
-    const styleId = 'custom-font-style';
+// Helper để load Custom Fonts từ danh sách
+const loadUploadedFonts = (fonts: CustomFont[]) => {
+    const styleId = 'uploaded-custom-fonts';
     let style = document.getElementById(styleId) as HTMLStyleElement;
     if (!style) {
         style = document.createElement('style');
         style.id = styleId;
         document.head.appendChild(style);
     }
-    style.innerHTML = `
-        @font-face {
-            font-family: 'CustomBrandFont';
-            src: url('${url}') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-    `;
+    
+    let css = '';
+    fonts.forEach(font => {
+        // Simple sanitization for font name
+        const safeName = font.name.replace(/[^a-zA-Z0-9\s]/g, '');
+        css += `
+            @font-face {
+                font-family: '${safeName}';
+                src: url('${font.url}');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+        `;
+    });
+    style.innerHTML = css;
 };
 
 const App: React.FC = () => {
@@ -110,7 +120,7 @@ const App: React.FC = () => {
   const [isCartShaking, setIsCartShaking] = useState(false);
 
   // Function to apply theme variables to DOM
-  const applyTheme = (themeData: typeof DEFAULT_THEME) => {
+  const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
       const { global, sections } = themeData;
 
@@ -122,8 +132,12 @@ const App: React.FC = () => {
       root.style.setProperty('--color-accent', global.colors.accent);
 
       // Typography
-      root.style.setProperty('--font-heading', `'${global.typography.headingFont}'`);
-      root.style.setProperty('--font-body', `'${global.typography.bodyFont}'`);
+      // Remove unsafe characters from font names for CSS variables
+      const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
+      const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
+
+      root.style.setProperty('--font-heading', `'${cleanHeadingFont}'`);
+      root.style.setProperty('--font-body', `'${cleanBodyFont}'`);
       
       // Border Radius
       root.style.setProperty('--radius-global', global.borderRadius);
@@ -140,12 +154,16 @@ const App: React.FC = () => {
           }
       }
 
-      // Load Fonts
-      if (global.typography.customFontUrl) {
-          loadCustomFont(global.typography.customFontUrl);
-      }
-      loadGoogleFont(global.typography.headingFont);
-      loadGoogleFont(global.typography.bodyFont);
+      // Load Custom Fonts
+      loadUploadedFonts(uploadedFonts);
+
+      // Load Google Fonts (only if they are not custom uploaded ones)
+      // We assume if it's in uploadedFonts, it's already handled by loadUploadedFonts via @font-face
+      const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
+      const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
+
+      if (!isCustomHeading) loadGoogleFont(cleanHeadingFont);
+      if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
 
   useEffect(() => {
@@ -169,9 +187,9 @@ const App: React.FC = () => {
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
                 if (fetchedConfig.theme) {
-                    applyTheme(fetchedConfig.theme);
+                    applyTheme(fetchedConfig.theme, fetchedConfig.uploadedFonts || []);
                 } else {
-                    applyTheme(DEFAULT_THEME);
+                    applyTheme(DEFAULT_THEME, []);
                 }
 
                 if (fetchedConfig.faviconUrl) {

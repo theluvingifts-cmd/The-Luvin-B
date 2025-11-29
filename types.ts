@@ -169,6 +169,12 @@ export interface FeedbackItem {
 
 // --- THEME SYSTEM INTERFACES ---
 
+export interface CustomFont {
+    id: string;
+    name: string;
+    url: string;
+}
+
 export interface SectionStyle {
     backgroundColor?: string;
     textColor?: string;
@@ -190,7 +196,7 @@ export interface ThemeConfig {
         typography: {
             headingFont: string;
             bodyFont: string;
-            customFontUrl?: string;
+            customFontUrl?: string; // Deprecated in favor of uploadedFonts in StoreConfig
         };
         borderRadius: string; // '0px', '4px', '8px', '16px', '9999px'
     };

@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ThemeConfig } from '../types';
+import { ThemeConfig, CustomFont } from '../types';
 
 const CONFIG_DOC_ID = 'general';
 
@@ -29,6 +29,7 @@ export interface StoreConfig {
     
     // NEW: Unified Theme Config
     theme?: ThemeConfig;
+    uploadedFonts?: CustomFont[];
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -74,16 +75,20 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (!data.theme) {
                 data.theme = DEFAULT_THEME;
             }
+            // Ensure uploadedFonts exists
+            if (!data.uploadedFonts) {
+                data.uploadedFonts = [];
+            }
             return data;
         }
-        return { theme: DEFAULT_THEME };
+        return { theme: DEFAULT_THEME, uploadedFonts: [] };
     } catch (error: any) {
         if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
             console.warn("Firestore: Unable to fetch config (Permission Denied). Using default settings.");
-            return { theme: DEFAULT_THEME };
+            return { theme: DEFAULT_THEME, uploadedFonts: [] };
         }
         console.error("Error fetching config:", error);
-        return { theme: DEFAULT_THEME };
+        return { theme: DEFAULT_THEME, uploadedFonts: [] };
     }
 };
 

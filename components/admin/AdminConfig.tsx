@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { CollectionTemplate, FeedbackItem, ThemeConfig } from '../../types';
+import { CollectionTemplate, FeedbackItem, ThemeConfig, CustomFont } from '../../types';
 import { StoreConfig, updateStoreConfig, DEFAULT_THEME } from '../../services/configService';
 import { addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../../services/templateService';
 import { addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../../services/feedbackService';
@@ -39,6 +39,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [themeConfig, setThemeConfig] = useState<ThemeConfig>(storeConfig.theme || DEFAULT_THEME);
     const [uploadingField, setUploadingField] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+
+    // Font Management State
+    const [newFontName, setNewFontName] = useState('');
+    const [isUploadingFont, setIsUploadingFont] = useState(false);
 
     // Edit Modal States
     const [isEditingTemplate, setIsEditingTemplate] = useState(false);
@@ -101,22 +105,53 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
     };
 
-    const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // --- FONT MANAGEMENT HANDLERS ---
+    
+    const handleAddNewFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!newFontName.trim()) {
+            alert("Vui lòng nhập tên font trước khi chọn file.");
+            e.target.value = ''; // Reset input
+            return;
+        }
+
         if (e.target.files && e.target.files[0]) {
-            setLoading(true);
+            setIsUploadingFont(true);
             try {
-                const url = await uploadToCloudinary(e.target.files[0]);
+                const file = e.target.files[0];
+                const url = await uploadToCloudinary(file);
+                
                 if (url) {
-                    handleThemeChange('global.typography.customFontUrl', url);
-                    handleThemeChange('global.typography.headingFont', 'CustomBrandFont');
+                    const newFont: CustomFont = {
+                        id: `font_${Date.now()}`,
+                        name: newFontName.trim(),
+                        url: url
+                    };
+                    
+                    const updatedFonts = [...(storeConfig.uploadedFonts || []), newFont];
+                    
+                    // Update StoreConfig directly
+                    await updateStoreConfig({ uploadedFonts: updatedFonts });
+                    setStoreConfig(prev => ({ ...prev, uploadedFonts: updatedFonts }));
+                    
+                    setNewFontName('');
+                    alert(`Đã thêm font "${newFont.name}" thành công!`);
                 } else {
-                    alert("Lỗi upload font.");
+                    alert("Lỗi upload file font.");
                 }
             } catch (error) {
+                console.error(error);
                 alert("Lỗi upload font.");
             } finally {
-                setLoading(false);
+                setIsUploadingFont(false);
             }
+        }
+    };
+
+    const handleDeleteFont = async (fontId: string) => {
+        if(confirm("Bạn có chắc muốn xóa font này?")) {
+            const updatedFonts = (storeConfig.uploadedFonts || []).filter(f => f.id !== fontId);
+            await updateStoreConfig({ uploadedFonts: updatedFonts });
+            setStoreConfig(prev => ({ ...prev, uploadedFonts: updatedFonts }));
         }
     };
 
@@ -131,6 +166,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); onRefreshTemplates(); } };
     const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); onRefreshFeedbacks(); setEditingFeedback(null); };
     const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); onRefreshFeedbacks(); } };
+
+    // Combine Google Fonts and Uploaded Fonts for Dropdowns
+    const fontOptions = [
+        { label: '--- Google Fonts ---', options: GOOGLE_FONTS.map(f => ({ value: f.name, label: f.label })) },
+        { label: '--- Custom Fonts ---', options: (storeConfig.uploadedFonts || []).map(f => ({ value: f.name, label: `${f.name} (Uploaded)` })) }
+    ];
 
     return (
         <div className="animate-fade-in relative min-h-screen pb-20">
@@ -171,91 +212,154 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
                     {/* THEME TAB */}
                     {activeTab === 'theme' && (
-                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình Giao diện Chung</h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Colors */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Bảng màu (Global)</h4>
-                                    <div className="space-y-3">
-                                        {[
-                                            { key: 'primary', label: 'Màu chính (Primary)', desc: 'Nút bấm, điểm nhấn, giá tiền' },
-                                            { key: 'secondary', label: 'Màu phụ (Secondary)', desc: 'Nền phụ, khối trang trí' },
-                                            { key: 'text', label: 'Màu chữ (Text)', desc: 'Văn bản chính' },
-                                            { key: 'background', label: 'Màu nền (Background)', desc: 'Nền toàn trang' },
-                                            { key: 'accent', label: 'Màu nhấn (Accent)', desc: 'Icon, chi tiết nhỏ' },
-                                        ].map((color) => (
-                                            <div key={color.key} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
-                                                <div>
-                                                    <p className="text-sm font-bold">{color.label}</p>
-                                                    <p className="text-xs text-gray-400">{color.desc}</p>
+                        <div className="space-y-6">
+                            <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình Giao diện Chung</h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Colors */}
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Bảng màu (Global)</h4>
+                                        <div className="space-y-3">
+                                            {[
+                                                { key: 'primary', label: 'Màu chính (Primary)', desc: 'Nút bấm, điểm nhấn, giá tiền' },
+                                                { key: 'secondary', label: 'Màu phụ (Secondary)', desc: 'Nền phụ, khối trang trí' },
+                                                { key: 'text', label: 'Màu chữ (Text)', desc: 'Văn bản chính' },
+                                                { key: 'background', label: 'Màu nền (Background)', desc: 'Nền toàn trang' },
+                                                { key: 'accent', label: 'Màu nhấn (Accent)', desc: 'Icon, chi tiết nhỏ' },
+                                            ].map((color) => (
+                                                <div key={color.key} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                                                    <div>
+                                                        <p className="text-sm font-bold">{color.label}</p>
+                                                        <p className="text-xs text-gray-400">{color.desc}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            type="color" 
+                                                            value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
+                                                            onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
+                                                            className="w-10 h-10 rounded cursor-pointer border-none bg-transparent"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
+                                                            onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
+                                                            className="w-20 text-xs border rounded text-center uppercase"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <input 
-                                                        type="color" 
-                                                        value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
-                                                        onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
-                                                        className="w-10 h-10 rounded cursor-pointer border-none bg-transparent"
-                                                    />
-                                                    <input 
-                                                        type="text" 
-                                                        value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
-                                                        onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
-                                                        className="w-20 text-xs border rounded text-center uppercase"
-                                                    />
-                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Typography & Shape */}
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Font chữ & Kiểu dáng</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold mb-1">Font Tiêu đề (Headings)</label>
+                                                <select 
+                                                    value={themeConfig.global.typography.headingFont} 
+                                                    onChange={(e) => handleThemeChange('global.typography.headingFont', e.target.value)}
+                                                    className="w-full p-2 border rounded bg-white text-sm"
+                                                >
+                                                    {fontOptions.map((group, idx) => (
+                                                        <optgroup key={idx} label={group.label}>
+                                                            {group.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                        </optgroup>
+                                                    ))}
+                                                </select>
                                             </div>
-                                        ))}
+                                            <div>
+                                                <label className="block text-sm font-bold mb-1">Font Nội dung (Body)</label>
+                                                <select 
+                                                    value={themeConfig.global.typography.bodyFont} 
+                                                    onChange={(e) => handleThemeChange('global.typography.bodyFont', e.target.value)}
+                                                    className="w-full p-2 border rounded bg-white text-sm"
+                                                >
+                                                    {fontOptions.map((group, idx) => (
+                                                        <optgroup key={idx} label={group.label}>
+                                                            {group.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                        </optgroup>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-1">Bo góc (Border Radius)</label>
+                                                <select 
+                                                    value={themeConfig.global.borderRadius} 
+                                                    onChange={(e) => handleThemeChange('global.borderRadius', e.target.value)}
+                                                    className="w-full p-2 border rounded bg-white text-sm"
+                                                >
+                                                    <option value="0px">Vuông (Square)</option>
+                                                    <option value="4px">Bo nhẹ (Small)</option>
+                                                    <option value="8px">Bo vừa (Medium - Default)</option>
+                                                    <option value="16px">Bo lớn (Large)</option>
+                                                    <option value="9999px">Tròn (Rounded)</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Typography & Shape */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Font chữ & Kiểu dáng</h4>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-bold mb-1">Font Tiêu đề (Headings)</label>
-                                            <select 
-                                                value={themeConfig.global.typography.headingFont} 
-                                                onChange={(e) => handleThemeChange('global.typography.headingFont', e.target.value)}
-                                                className="w-full p-2 border rounded bg-white text-sm"
-                                            >
-                                                <option value="CustomBrandFont">Custom Font (Upload)</option>
-                                                {GOOGLE_FONTS.map(f => <option key={f.name} value={f.name}>{f.label}</option>)}
-                                            </select>
-                                            {themeConfig.global.typography.headingFont === 'CustomBrandFont' && (
-                                                <div className="mt-2 text-xs">
-                                                    <input type="file" accept=".ttf,.otf,.woff2" onChange={handleFontUpload} className="block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"/>
-                                                    <p className="mt-1 text-gray-400">Current: {themeConfig.global.typography.customFontUrl ? 'Uploaded' : 'None'}</p>
-                                                </div>
-                                            )}
+                            {/* --- FONT MANAGER SECTION --- */}
+                            <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Quản lý Font chữ (Upload)</h3>
+                                <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                    <h4 className="text-sm font-bold mb-3">Thêm font mới</h4>
+                                    <div className="flex gap-4 items-end">
+                                        <div className="flex-grow">
+                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Tên Font (Hiển thị)</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="VD: My Brand Font" 
+                                                className="w-full p-2 border rounded text-sm"
+                                                value={newFontName}
+                                                onChange={(e) => setNewFontName(e.target.value)}
+                                            />
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-bold mb-1">Font Nội dung (Body)</label>
-                                            <select 
-                                                value={themeConfig.global.typography.bodyFont} 
-                                                onChange={(e) => handleThemeChange('global.typography.bodyFont', e.target.value)}
-                                                className="w-full p-2 border rounded bg-white text-sm"
-                                            >
-                                                {GOOGLE_FONTS.map(f => <option key={f.name} value={f.name}>{f.label}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold mb-1">Bo góc (Border Radius)</label>
-                                            <select 
-                                                value={themeConfig.global.borderRadius} 
-                                                onChange={(e) => handleThemeChange('global.borderRadius', e.target.value)}
-                                                className="w-full p-2 border rounded bg-white text-sm"
-                                            >
-                                                <option value="0px">Vuông (Square)</option>
-                                                <option value="4px">Bo nhẹ (Small)</option>
-                                                <option value="8px">Bo vừa (Medium - Default)</option>
-                                                <option value="16px">Bo lớn (Large)</option>
-                                                <option value="9999px">Tròn (Rounded)</option>
-                                            </select>
+                                        <div className="flex-grow">
+                                            <label className="block text-xs font-semibold text-gray-500 mb-1">File Font (.ttf, .otf, .woff)</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="file" 
+                                                    accept=".ttf,.otf,.woff,.woff2" 
+                                                    onChange={handleAddNewFont}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                    disabled={isUploadingFont}
+                                                />
+                                                <button className={`w-full p-2 border rounded text-sm bg-white text-left ${isUploadingFont ? 'text-gray-400' : 'text-gray-700'}`}>
+                                                    {isUploadingFont ? 'Đang upload...' : 'Chọn file & Upload'}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
+                                    <p className="text-xs text-gray-400 mt-2 italic">* Lưu ý: Đặt tên font trước khi chọn file.</p>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-bold mb-3">Danh sách Font đã upload</h4>
+                                    {storeConfig.uploadedFonts && storeConfig.uploadedFonts.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {storeConfig.uploadedFonts.map(font => (
+                                                <div key={font.id} className="flex justify-between items-center p-3 border rounded bg-gray-50">
+                                                    <div>
+                                                        <p className="font-bold text-sm">{font.name}</p>
+                                                        <a href={font.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate max-w-[200px] block">{font.url}</a>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleDeleteFont(font.id)}
+                                                        className="text-red-600 hover:bg-red-100 p-2 rounded text-xs font-bold"
+                                                    >
+                                                        Xóa
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500 italic">Chưa có font nào được upload.</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
