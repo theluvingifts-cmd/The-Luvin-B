@@ -32,6 +32,35 @@ const GOOGLE_FONTS = [
     { name: 'Pacifico', label: 'Pacifico (Fun)' }
 ];
 
+// --- HELPER COMPONENT: EDITABLE ZONE ---
+// Đây là thành phần cốt lõi để giải quyết vấn đề "Click đâu sửa đó"
+const EditableZone: React.FC<{
+    onClick: () => void;
+    label: string;
+    children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
+}> = ({ onClick, label, children, className = '', style }) => {
+    return (
+        <div
+            className={`relative group/edit cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 hover:z-50 ${className}`}
+            style={style}
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation(); // QUAN TRỌNG: Chặn sự kiện lan ra cha
+                onClick();
+            }}
+            title={`Sửa: ${label}`}
+        >
+            {children}
+            {/* Label hiển thị khi hover */}
+            <div className="absolute -top-5 left-0 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover/edit:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[60] shadow-md font-sans">
+                🖊️ {label}
+            </div>
+        </div>
+    );
+};
+
 export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreConfig, templates, feedbacks, onRefreshTemplates, onRefreshFeedbacks }) => {
     const [activeTab, setActiveTab] = useState<ConfigTab>('branding');
     const [themeConfig, setThemeConfig] = useState<ThemeConfig>(storeConfig.theme || DEFAULT_THEME);
@@ -203,10 +232,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 element.focus();
                 
                 // Highlight visual cue
-                element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50');
                 setTimeout(() => {
-                    element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
-                }, 2000);
+                    element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50');
+                }, 1500);
             } else {
                 console.warn(`Element ref not found for key: ${fieldKey}`);
             }
@@ -256,13 +285,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     {activeTab === 'branding' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Hình ảnh thương hiệu</h3>
-                            <div ref={el => { inputRefs.current['logoUrl'] = el; }}>
+                            <div ref={(el) => { inputRefs.current['logoUrl'] = el; }}>
                                 <ConfigImageUpload label="Logo Website" description="Header & Footer (PNG trong suốt)" currentUrl={storeConfig.logoUrl} onUpload={(f) => handleConfigUpload(f, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
                             </div>
-                            <div ref={el => { inputRefs.current['faviconUrl'] = el; }}>
+                            <div ref={(el) => { inputRefs.current['faviconUrl'] = el; }}>
                                 <ConfigImageUpload label="Favicon" description="Icon tab trình duyệt (Vuông)" currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
                             </div>
-                            <div ref={el => { inputRefs.current['heroImageUrl'] = el; }}>
+                            <div ref={(el) => { inputRefs.current['heroImageUrl'] = el; }}>
                                 <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
                             </div>
                             <ConfigImageUpload label="Banner Inspire" description="Ảnh nền phần Collection" currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
@@ -292,7 +321,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             </div>
                                             <div className="flex gap-2">
                                                 <input 
-                                                    ref={el => { inputRefs.current[`global.colors.${color.key}`] = el; }}
+                                                    ref={(el) => { inputRefs.current[`global.colors.${color.key}`] = el; }}
                                                     type="color" 
                                                     value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
                                                     onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
@@ -311,7 +340,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Font Tiêu đề (Headings)</label>
                                         <select 
-                                            ref={el => { inputRefs.current['global.typography.headingFont'] = el; }}
+                                            ref={(el) => { inputRefs.current['global.typography.headingFont'] = el; }}
                                             value={themeConfig.global.typography.headingFont} 
                                             onChange={(e) => handleThemeChange('global.typography.headingFont', e.target.value)}
                                             className="w-full p-2 border rounded bg-white text-sm"
@@ -326,7 +355,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Font Nội dung (Body)</label>
                                         <select 
-                                            ref={el => { inputRefs.current['global.typography.bodyFont'] = el; }}
+                                            ref={(el) => { inputRefs.current['global.typography.bodyFont'] = el; }}
                                             value={themeConfig.global.typography.bodyFont} 
                                             onChange={(e) => handleThemeChange('global.typography.bodyFont', e.target.value)}
                                             className="w-full p-2 border rounded bg-white text-sm"
@@ -341,7 +370,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Bo góc (Border Radius)</label>
                                         <select 
-                                            ref={el => { inputRefs.current['global.borderRadius'] = el; }}
+                                            ref={(el) => { inputRefs.current['global.borderRadius'] = el; }}
                                             value={themeConfig.global.borderRadius} 
                                             onChange={(e) => handleThemeChange('global.borderRadius', e.target.value)}
                                             className="w-full p-2 border rounded bg-white text-sm"
@@ -371,7 +400,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             <label className="text-xs font-semibold block mb-1">Màu nền</label>
                                             <div className="flex gap-2">
                                                 <input 
-                                                    ref={el => { inputRefs.current[`sections.${section}.backgroundColor`] = el; }}
+                                                    ref={(el) => { inputRefs.current[`sections.${section}.backgroundColor`] = el; }}
                                                     type="color" 
                                                     className="h-8 w-8 rounded cursor-pointer" 
                                                     value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.backgroundColor || '#ffffff'} 
@@ -384,7 +413,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             <label className="text-xs font-semibold block mb-1">Màu chữ</label>
                                             <div className="flex gap-2">
                                                 <input 
-                                                    ref={el => { inputRefs.current[`sections.${section}.textColor`] = el; }}
+                                                    ref={(el) => { inputRefs.current[`sections.${section}.textColor`] = el; }}
                                                     type="color" 
                                                     className="h-8 w-8 rounded cursor-pointer" 
                                                     value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.textColor || '#000000'} 
@@ -398,7 +427,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                 <label className="text-xs font-semibold block mb-1">Màu tiêu đề lớn</label>
                                                 <div className="flex gap-2">
                                                     <input 
-                                                        ref={el => { inputRefs.current[`sections.hero.headingColor`] = el; }}
+                                                        ref={(el) => { inputRefs.current[`sections.hero.headingColor`] = el; }}
                                                         type="color" 
                                                         className="h-8 w-8 rounded cursor-pointer" 
                                                         value={themeConfig.sections.hero?.headingColor || '#000000'} 
@@ -422,12 +451,11 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Hero (Dòng 1)</label>
                                         <input 
-                                            ref={el => { inputRefs.current['heroTitle'] = el; }}
+                                            ref={(el) => { inputRefs.current['heroTitle'] = el; }}
                                             value={storeConfig.heroTitle || 'Unique for'} 
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 setStoreConfig(prev => ({...prev, heroTitle: val}));
-                                                // Debounce saving in real app, here direct state update
                                             }}
                                             onBlur={async (e) => await updateStoreConfig({ heroTitle: e.target.value })}
                                             className="w-full p-2 border rounded"
@@ -436,7 +464,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Hero (Dòng 2 - Accent)</label>
                                         <input 
-                                            ref={el => { inputRefs.current['heroSubtitle'] = el; }}
+                                            ref={(el) => { inputRefs.current['heroSubtitle'] = el; }}
                                             value={storeConfig.heroSubtitle || 'every moment'} 
                                             onChange={(e) => {
                                                 const val = e.target.value;
@@ -561,8 +589,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">
                         <div className="bg-gray-100 p-3 border-b flex justify-between items-center flex-shrink-0">
                             <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
-                                <span>🖥️ Live Preview</span>
-                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] normal-case">Click vào phần tử để sửa</span>
+                                <span>🖥️ Live Preview (Click để sửa)</span>
                             </span>
                             <div className="flex gap-1">
                                 <div className="w-2 h-2 rounded-full bg-red-400"></div>
@@ -581,145 +608,173 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             }}
                         >
                             {/* --- HEADER PREVIEW --- */}
-                            <div 
-                                className="group relative border-b transition-colors cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"
-                                onClick={() => scrollToField('sections', 'sections.header.backgroundColor')}
+                            <EditableZone 
+                                onClick={() => scrollToField('sections', 'sections.header.backgroundColor')} 
+                                label="Nền Header"
+                                className="border-b"
                                 style={{ 
                                     backgroundColor: themeConfig.sections.header.backgroundColor,
                                     color: themeConfig.sections.header.textColor 
                                 }}
                             >
-                                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                                    <div 
-                                        className="font-bold text-2xl hover:opacity-80 transition-opacity hover:ring-2 hover:ring-green-400 p-1 rounded"
-                                        onClick={(e) => { e.stopPropagation(); scrollToField('branding', 'logoUrl'); }}
-                                        title="Click để sửa Logo"
-                                    >
-                                        {storeConfig.logoUrl ? (
-                                            <img src={storeConfig.logoUrl} alt="Logo" className="h-12 object-contain" />
-                                        ) : (
-                                            <span style={{ 
-                                                fontFamily: themeConfig.global.typography.headingFont,
-                                                color: themeConfig.global.colors.primary 
-                                            }}>The Luvin</span>
-                                        )}
+                                <div className="container mx-auto px-6 py-4 flex justify-between items-center pointer-events-none">
+                                    <div className="pointer-events-auto">
+                                        <EditableZone 
+                                            onClick={() => scrollToField('branding', 'logoUrl')} 
+                                            label="Logo"
+                                        >
+                                            <div className="font-bold text-2xl">
+                                                {storeConfig.logoUrl ? (
+                                                    <img src={storeConfig.logoUrl} alt="Logo" className="h-12 object-contain" />
+                                                ) : (
+                                                    <span style={{ 
+                                                        fontFamily: themeConfig.global.typography.headingFont,
+                                                        color: themeConfig.global.colors.primary 
+                                                    }}>The Luvin</span>
+                                                )}
+                                            </div>
+                                        </EditableZone>
                                     </div>
-                                    <div 
-                                        className="hidden md:flex items-center space-x-6 text-sm font-semibold opacity-80 hover:ring-2 hover:ring-green-400 p-1 rounded"
-                                        onClick={(e) => { e.stopPropagation(); scrollToField('sections', 'sections.header.textColor'); }}
-                                        title="Click để sửa Màu chữ Header"
-                                    >
-                                        <span>Trang chủ</span>
-                                        <span>Thiết kế</span>
-                                        <span>Bộ sưu tập</span>
-                                        <span>Tra cứu</span>
-                                        <span>Giỏ hàng (0)</span>
+                                    <div className="hidden md:flex items-center space-x-6 text-sm font-semibold opacity-80 pointer-events-auto">
+                                        <EditableZone 
+                                            onClick={() => scrollToField('sections', 'sections.header.textColor')} 
+                                            label="Menu Text"
+                                        >
+                                            <div className="flex gap-6">
+                                                <span>Trang chủ</span>
+                                                <span>Thiết kế</span>
+                                                <span>Bộ sưu tập</span>
+                                                <span>Tra cứu</span>
+                                                <span>Giỏ hàng (0)</span>
+                                            </div>
+                                        </EditableZone>
                                     </div>
                                 </div>
-                                <span className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">Sửa Header</span>
-                            </div>
+                            </EditableZone>
 
                             {/* --- HERO PREVIEW --- */}
-                            <div 
-                                className="group relative py-16 md:py-24 text-center cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset transition-colors"
+                            <EditableZone
                                 onClick={() => scrollToField('sections', 'sections.hero.backgroundColor')}
+                                label="Nền Hero Section"
                                 style={{ 
                                     backgroundColor: themeConfig.sections.hero.backgroundColor,
                                     color: themeConfig.sections.hero.textColor 
                                 }}
+                                className="py-16 md:py-24 text-center"
                             >
-                                <div className="container mx-auto px-6 relative z-10 flex flex-col items-center">
-                                    <div className="mb-8">
+                                <div className="container mx-auto px-6 relative z-10 flex flex-col items-center pointer-events-none">
+                                    <div className="mb-8 pointer-events-auto">
                                         <p className="text-[10px] font-bold opacity-60 tracking-[0.3em] uppercase mb-4">Christmas Edition</p>
                                         <h1 className="text-5xl md:text-7xl leading-[1.1] rounded transition-colors -m-2">
-                                            <span 
-                                                className="hover:ring-2 hover:ring-green-400 p-1 rounded cursor-text"
-                                                style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
-                                                onClick={(e) => { e.stopPropagation(); scrollToField('content', 'heroTitle'); }}
-                                                title="Click để sửa Tiêu đề lớn"
+                                            <EditableZone 
+                                                onClick={() => scrollToField('content', 'heroTitle')} 
+                                                label="Tiêu đề chính"
+                                                className="inline-block"
                                             >
-                                                {storeConfig.heroTitle || 'Unique for'}
-                                            </span>
+                                                <span 
+                                                    style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
+                                                >
+                                                    {storeConfig.heroTitle || 'Unique for'}
+                                                </span>
+                                            </EditableZone>
                                             <br/>
-                                            <span 
-                                                className="italic font-light hover:text-blue-600 transition-colors hover:ring-2 hover:ring-green-400 p-1 rounded cursor-text" 
-                                                style={{ color: themeConfig.global.colors.accent }}
-                                                onClick={(e) => { e.stopPropagation(); scrollToField('content', 'heroSubtitle'); }}
-                                                title="Click để sửa Phụ đề"
+                                            <EditableZone 
+                                                onClick={() => scrollToField('content', 'heroSubtitle')} 
+                                                label="Phụ đề"
+                                                className="inline-block mt-2"
                                             >
-                                                {storeConfig.heroSubtitle || 'every moment'}
-                                            </span>
+                                                <span 
+                                                    className="italic font-light" 
+                                                    style={{ color: themeConfig.global.colors.accent }}
+                                                >
+                                                    {storeConfig.heroSubtitle || 'every moment'}
+                                                </span>
+                                            </EditableZone>
                                         </h1>
                                     </div>
 
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.colors.primary'); }}
-                                        className="h-14 px-8 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95 group/btn hover:ring-2 hover:ring-green-400"
-                                        title="Click để sửa Màu chính (Primary)"
-                                        style={{ 
-                                            backgroundColor: themeConfig.global.colors.primary, 
-                                            color: '#fff', 
-                                            borderRadius: themeConfig.global.borderRadius === '9999px' ? '9999px' : themeConfig.global.borderRadius
-                                        }}
-                                    >
-                                        <span className="font-bold text-base tracking-wide">Bắt đầu thiết kế</span>
-                                    </button>
+                                    <div className="pointer-events-auto">
+                                        <EditableZone 
+                                            onClick={() => scrollToField('theme', 'global.colors.primary')} 
+                                            label="Nút bấm (Primary Color)"
+                                        >
+                                            <button
+                                                className="h-14 px-8 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95"
+                                                style={{ 
+                                                    backgroundColor: themeConfig.global.colors.primary, 
+                                                    color: '#fff', 
+                                                    borderRadius: themeConfig.global.borderRadius === '9999px' ? '9999px' : themeConfig.global.borderRadius
+                                                }}
+                                            >
+                                                <span className="font-bold text-base tracking-wide">Bắt đầu thiết kế</span>
+                                            </button>
+                                        </EditableZone>
+                                    </div>
                                 </div>
-                                <span className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">Sửa Hero</span>
-                            </div>
+                            </EditableZone>
 
                             {/* --- PRODUCT CARD PREVIEW --- */}
                             <div className="py-12 bg-white container mx-auto px-6">
                                 <h3 className="text-center text-2xl font-bold mb-8" style={{ fontFamily: themeConfig.global.typography.headingFont }}>Sản phẩm mẫu</h3>
                                 <div className="flex justify-center">
-                                    <div 
-                                        className="w-64 border p-4 shadow-sm group/card cursor-pointer hover:ring-2 hover:ring-green-400"
-                                        style={{ 
-                                            backgroundColor: '#fff',
-                                            borderRadius: themeConfig.global.borderRadius,
-                                            borderColor: themeConfig.global.colors.secondary
-                                        }}
-                                        onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.borderRadius'); }}
-                                        title="Click để sửa Bo góc (Border Radius)"
+                                    <EditableZone 
+                                        onClick={() => scrollToField('theme', 'global.borderRadius')} 
+                                        label="Bo góc Card (Global Radius)"
                                     >
-                                        <div className="w-full aspect-square bg-gray-100 mb-3 rounded-sm flex items-center justify-center text-gray-300">Image</div>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-sm">Khung LEGO</p>
-                                                <p className="text-xs opacity-60">Custom</p>
+                                        <div 
+                                            className="w-64 border p-4 shadow-sm group/card cursor-pointer"
+                                            style={{ 
+                                                backgroundColor: '#fff',
+                                                borderRadius: themeConfig.global.borderRadius,
+                                                borderColor: themeConfig.global.colors.secondary
+                                            }}
+                                        >
+                                            <div className="w-full aspect-square bg-gray-100 mb-3 rounded-sm flex items-center justify-center text-gray-300">Image</div>
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-bold text-sm">Khung LEGO</p>
+                                                    <p className="text-xs opacity-60">Custom</p>
+                                                </div>
+                                                <EditableZone 
+                                                    onClick={() => scrollToField('theme', 'global.colors.primary')} 
+                                                    label="Màu giá tiền (Primary)"
+                                                >
+                                                    <span 
+                                                        className="font-bold p-1 rounded"
+                                                        style={{ color: themeConfig.global.colors.primary }}
+                                                    >
+                                                        250.000đ
+                                                    </span>
+                                                </EditableZone>
                                             </div>
-                                            <span 
-                                                className="font-bold hover:ring-2 hover:ring-green-400 p-1 rounded"
-                                                style={{ color: themeConfig.global.colors.primary }}
-                                                onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.colors.primary'); }}
-                                                title="Click để sửa Màu chính (Primary)"
-                                            >
-                                                250.000đ
-                                            </span>
                                         </div>
-                                    </div>
+                                    </EditableZone>
                                 </div>
                             </div>
 
                             {/* --- FOOTER PREVIEW --- */}
-                            <div 
-                                className="p-10 border-t mt-auto group relative cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"
+                            <EditableZone
                                 onClick={() => scrollToField('sections', 'sections.footer.backgroundColor')}
+                                label="Nền Footer"
                                 style={{ 
                                     backgroundColor: themeConfig.sections.footer.backgroundColor,
                                     color: themeConfig.sections.footer.textColor 
                                 }}
+                                className="p-10 border-t mt-auto"
                             >
-                                <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
-                                    <div>
-                                        <h3 
-                                            className="font-bold text-lg mb-3 hover:ring-2 hover:ring-green-400 p-1 rounded inline-block" 
-                                            style={{ color: themeConfig.global.colors.primary, fontFamily: themeConfig.global.typography.headingFont }}
-                                            onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.typography.headingFont'); }}
-                                            title="Click để sửa Font tiêu đề"
+                                <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-sm pointer-events-none">
+                                    <div className="pointer-events-auto">
+                                        <EditableZone 
+                                            onClick={() => scrollToField('theme', 'global.typography.headingFont')} 
+                                            label="Font Tiêu đề Footer"
                                         >
-                                            The Luvin
-                                        </h3>
+                                            <h3 
+                                                className="font-bold text-lg mb-3 inline-block" 
+                                                style={{ color: themeConfig.global.colors.primary, fontFamily: themeConfig.global.typography.headingFont }}
+                                            >
+                                                The Luvin
+                                            </h3>
+                                        </EditableZone>
                                         <p className="opacity-70 text-xs">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu.</p>
                                     </div>
                                     <div>
@@ -741,8 +796,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                         </div>
                                     </div>
                                 </div>
-                                <span className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">Sửa Footer</span>
-                            </div>
+                            </EditableZone>
                         </div>
                     </div>
                 </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption } from '../types';
 import { 
@@ -870,7 +871,7 @@ const TextEditor: React.FC<{
 }> = ({ activeText, setConfig, selectedTextId, deselect, onAddText }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
-        setConfig((prev: FrameConfig) => ({
+        setConfig((prev) => ({
             ...prev,
             texts: prev.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
         }));
@@ -1029,7 +1030,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
       
-      setConfig((prev: FrameConfig) => {
+      setConfig((prev) => {
           if (type === 'text') {
               const idToUpdate = parseInt(rawId);
               return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) };
@@ -1047,7 +1048,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       
       if (type === 'item') {
           const itemId = parseInt(rawId);
-          setConfig((prev: FrameConfig) => ({
+          setConfig((prev) => ({
               ...prev,
               draggableItems: prev.draggableItems.map(item => 
                   item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
@@ -1062,7 +1063,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       
       if (type === 'item') {
           const itemId = parseInt(rawId);
-          setConfig((prev: FrameConfig) => ({
+          setConfig((prev) => ({
               ...prev,
               draggableItems: prev.draggableItems.map(item => 
                   item.id === itemId ? { ...item, ...updates } : item
@@ -1072,7 +1073,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   }, [setConfig]);
 
   const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
-      setConfig((prev: FrameConfig) => ({
+      setConfig((prev) => ({
           ...prev,
           characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
       }));
@@ -1084,7 +1085,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     
     setSelectedItemId(null);
 
-    setConfig((prev: FrameConfig) => {
+    setConfig((prev) => {
         if (type === 'text') {
             const idToDelete = parseInt(rawId, 10);
             return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
@@ -1105,7 +1106,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const textItem = config.texts.find(t => t.id === idToUpdate);
         
         if (textItem && textItem.content && textItem.content.trim() !== '') {
-             setConfig((prev: FrameConfig) => ({
+             setConfig((prev) => ({
                 ...prev,
                 texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
             }));
@@ -1131,7 +1132,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   }, [selectedItemId, handleItemDelete, isEditingText]);
 
   const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-    setConfig((prev: FrameConfig) => ({
+    setConfig((prev) => ({
         ...prev,
         texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
     }));
@@ -1140,13 +1141,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const addText = () => {
       const newId = Date.now();
       const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
-      setConfig((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
+      setConfig((prev) => ({...prev, texts: [...prev.texts, newText]}));
       setSelectedItemId(`text-${newId}`);
   };
 
   const addCharm = (dataUrl: string) => {
       const newCharm: DraggableItem = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
-      setConfig((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
+      setConfig((prev) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
   const captureFrameAsImage = async (): Promise<string> => {
