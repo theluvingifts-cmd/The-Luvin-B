@@ -49,7 +49,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
 
     // Refs for scrolling to inputs
-    const inputRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
+    const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
     // --- EFFECT: Load Fonts for Admin Preview ---
     useEffect(() => {
@@ -193,17 +193,22 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     }
 
     // --- VISUAL EDITING HANDLER ---
-    const handleVisualEdit = (tab: ConfigTab, focusKey: string) => {
+    const scrollToField = (tab: ConfigTab, fieldKey: string) => {
         setActiveTab(tab);
-        // Delay scroll to ensure tab switches and DOM renders
+        // Wait for tab switch
         setTimeout(() => {
-            const el = inputRefs.current[focusKey];
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.focus();
-                // Highlight effect
-                el.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
-                setTimeout(() => el.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500'), 2000);
+            const element = inputRefs.current[fieldKey];
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.focus();
+                
+                // Highlight visual cue
+                element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                setTimeout(() => {
+                    element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+                }, 2000);
+            } else {
+                console.warn(`Element ref not found for key: ${fieldKey}`);
             }
         }, 100);
     };
@@ -251,9 +256,15 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     {activeTab === 'branding' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Hình ảnh thương hiệu</h3>
-                            <ConfigImageUpload label="Logo Website" description="Header & Footer (PNG trong suốt)" currentUrl={storeConfig.logoUrl} onUpload={(f) => handleConfigUpload(f, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
-                            <ConfigImageUpload label="Favicon" description="Icon tab trình duyệt (Vuông)" currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
-                            <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
+                            <div ref={el => { inputRefs.current['logoUrl'] = el; }}>
+                                <ConfigImageUpload label="Logo Website" description="Header & Footer (PNG trong suốt)" currentUrl={storeConfig.logoUrl} onUpload={(f) => handleConfigUpload(f, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
+                            </div>
+                            <div ref={el => { inputRefs.current['faviconUrl'] = el; }}>
+                                <ConfigImageUpload label="Favicon" description="Icon tab trình duyệt (Vuông)" currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
+                            </div>
+                            <div ref={el => { inputRefs.current['heroImageUrl'] = el; }}>
+                                <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
+                            </div>
                             <ConfigImageUpload label="Banner Inspire" description="Ảnh nền phần Collection" currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
                         </div>
                     )}
@@ -281,7 +292,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             </div>
                                             <div className="flex gap-2">
                                                 <input 
-                                                    ref={el => inputRefs.current[`global.colors.${color.key}`] = el}
+                                                    ref={el => { inputRefs.current[`global.colors.${color.key}`] = el; }}
                                                     type="color" 
                                                     value={themeConfig.global.colors[color.key as keyof typeof themeConfig.global.colors]} 
                                                     onChange={(e) => handleThemeChange(`global.colors.${color.key}`, e.target.value)}
@@ -300,7 +311,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Font Tiêu đề (Headings)</label>
                                         <select 
-                                            ref={el => inputRefs.current['global.typography.headingFont'] = el}
+                                            ref={el => { inputRefs.current['global.typography.headingFont'] = el; }}
                                             value={themeConfig.global.typography.headingFont} 
                                             onChange={(e) => handleThemeChange('global.typography.headingFont', e.target.value)}
                                             className="w-full p-2 border rounded bg-white text-sm"
@@ -315,7 +326,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Font Nội dung (Body)</label>
                                         <select 
-                                            ref={el => inputRefs.current['global.typography.bodyFont'] = el}
+                                            ref={el => { inputRefs.current['global.typography.bodyFont'] = el; }}
                                             value={themeConfig.global.typography.bodyFont} 
                                             onChange={(e) => handleThemeChange('global.typography.bodyFont', e.target.value)}
                                             className="w-full p-2 border rounded bg-white text-sm"
@@ -330,7 +341,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Bo góc (Border Radius)</label>
                                         <select 
-                                            ref={el => inputRefs.current['global.borderRadius'] = el}
+                                            ref={el => { inputRefs.current['global.borderRadius'] = el; }}
                                             value={themeConfig.global.borderRadius} 
                                             onChange={(e) => handleThemeChange('global.borderRadius', e.target.value)}
                                             className="w-full p-2 border rounded bg-white text-sm"
@@ -360,7 +371,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             <label className="text-xs font-semibold block mb-1">Màu nền</label>
                                             <div className="flex gap-2">
                                                 <input 
-                                                    ref={el => inputRefs.current[`sections.${section}.backgroundColor`] = el}
+                                                    ref={el => { inputRefs.current[`sections.${section}.backgroundColor`] = el; }}
                                                     type="color" 
                                                     className="h-8 w-8 rounded cursor-pointer" 
                                                     value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.backgroundColor || '#ffffff'} 
@@ -373,7 +384,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             <label className="text-xs font-semibold block mb-1">Màu chữ</label>
                                             <div className="flex gap-2">
                                                 <input 
-                                                    ref={el => inputRefs.current[`sections.${section}.textColor`] = el}
+                                                    ref={el => { inputRefs.current[`sections.${section}.textColor`] = el; }}
                                                     type="color" 
                                                     className="h-8 w-8 rounded cursor-pointer" 
                                                     value={themeConfig.sections[section as keyof typeof themeConfig.sections]?.textColor || '#000000'} 
@@ -387,7 +398,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                 <label className="text-xs font-semibold block mb-1">Màu tiêu đề lớn</label>
                                                 <div className="flex gap-2">
                                                     <input 
-                                                        ref={el => inputRefs.current[`sections.hero.headingColor`] = el}
+                                                        ref={el => { inputRefs.current[`sections.hero.headingColor`] = el; }}
                                                         type="color" 
                                                         className="h-8 w-8 rounded cursor-pointer" 
                                                         value={themeConfig.sections.hero?.headingColor || '#000000'} 
@@ -411,7 +422,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Hero (Dòng 1)</label>
                                         <input 
-                                            ref={el => inputRefs.current['heroTitle'] = el}
+                                            ref={el => { inputRefs.current['heroTitle'] = el; }}
                                             value={storeConfig.heroTitle || 'Unique for'} 
                                             onChange={(e) => {
                                                 const val = e.target.value;
@@ -425,7 +436,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Hero (Dòng 2 - Accent)</label>
                                         <input 
-                                            ref={el => inputRefs.current['heroSubtitle'] = el}
+                                            ref={el => { inputRefs.current['heroSubtitle'] = el; }}
                                             value={storeConfig.heroSubtitle || 'every moment'} 
                                             onChange={(e) => {
                                                 const val = e.target.value;
@@ -572,7 +583,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             {/* --- HEADER PREVIEW --- */}
                             <div 
                                 className="group relative border-b transition-colors cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"
-                                onClick={() => handleVisualEdit('sections', 'sections.header.backgroundColor')}
+                                onClick={() => scrollToField('sections', 'sections.header.backgroundColor')}
                                 style={{ 
                                     backgroundColor: themeConfig.sections.header.backgroundColor,
                                     color: themeConfig.sections.header.textColor 
@@ -580,8 +591,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             >
                                 <div className="container mx-auto px-6 py-4 flex justify-between items-center">
                                     <div 
-                                        className="font-bold text-2xl hover:opacity-80 transition-opacity"
-                                        onClick={(e) => { e.stopPropagation(); handleVisualEdit('branding', 'logoUrl'); }}
+                                        className="font-bold text-2xl hover:opacity-80 transition-opacity hover:ring-2 hover:ring-green-400 p-1 rounded"
+                                        onClick={(e) => { e.stopPropagation(); scrollToField('branding', 'logoUrl'); }}
+                                        title="Click để sửa Logo"
                                     >
                                         {storeConfig.logoUrl ? (
                                             <img src={storeConfig.logoUrl} alt="Logo" className="h-12 object-contain" />
@@ -592,7 +604,11 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             }}>The Luvin</span>
                                         )}
                                     </div>
-                                    <div className="hidden md:flex items-center space-x-6 text-sm font-semibold opacity-80">
+                                    <div 
+                                        className="hidden md:flex items-center space-x-6 text-sm font-semibold opacity-80 hover:ring-2 hover:ring-green-400 p-1 rounded"
+                                        onClick={(e) => { e.stopPropagation(); scrollToField('sections', 'sections.header.textColor'); }}
+                                        title="Click để sửa Màu chữ Header"
+                                    >
                                         <span>Trang chủ</span>
                                         <span>Thiết kế</span>
                                         <span>Bộ sưu tập</span>
@@ -606,7 +622,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             {/* --- HERO PREVIEW --- */}
                             <div 
                                 className="group relative py-16 md:py-24 text-center cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset transition-colors"
-                                onClick={() => handleVisualEdit('sections', 'sections.hero.backgroundColor')}
+                                onClick={() => scrollToField('sections', 'sections.hero.backgroundColor')}
                                 style={{ 
                                     backgroundColor: themeConfig.sections.hero.backgroundColor,
                                     color: themeConfig.sections.hero.textColor 
@@ -615,16 +631,21 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <div className="container mx-auto px-6 relative z-10 flex flex-col items-center">
                                     <div className="mb-8">
                                         <p className="text-[10px] font-bold opacity-60 tracking-[0.3em] uppercase mb-4">Christmas Edition</p>
-                                        <h1 
-                                            className="text-5xl md:text-7xl leading-[1.1] hover:bg-blue-100/50 rounded cursor-text transition-colors p-2 -m-2"
-                                            style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
-                                            onClick={(e) => { e.stopPropagation(); handleVisualEdit('content', 'heroTitle'); }}
-                                        >
-                                            {storeConfig.heroTitle || 'Unique for'} <br/>
+                                        <h1 className="text-5xl md:text-7xl leading-[1.1] rounded transition-colors -m-2">
                                             <span 
-                                                className="italic font-light hover:text-blue-600 transition-colors" 
+                                                className="hover:ring-2 hover:ring-green-400 p-1 rounded cursor-text"
+                                                style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
+                                                onClick={(e) => { e.stopPropagation(); scrollToField('content', 'heroTitle'); }}
+                                                title="Click để sửa Tiêu đề lớn"
+                                            >
+                                                {storeConfig.heroTitle || 'Unique for'}
+                                            </span>
+                                            <br/>
+                                            <span 
+                                                className="italic font-light hover:text-blue-600 transition-colors hover:ring-2 hover:ring-green-400 p-1 rounded cursor-text" 
                                                 style={{ color: themeConfig.global.colors.accent }}
-                                                onClick={(e) => { e.stopPropagation(); handleVisualEdit('content', 'heroSubtitle'); }}
+                                                onClick={(e) => { e.stopPropagation(); scrollToField('content', 'heroSubtitle'); }}
+                                                title="Click để sửa Phụ đề"
                                             >
                                                 {storeConfig.heroSubtitle || 'every moment'}
                                             </span>
@@ -632,11 +653,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </div>
 
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); handleVisualEdit('theme', 'global.colors.primary'); }}
-                                        className="h-14 px-8 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95 group/btn"
+                                        onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.colors.primary'); }}
+                                        className="h-14 px-8 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95 group/btn hover:ring-2 hover:ring-green-400"
+                                        title="Click để sửa Màu chính (Primary)"
                                         style={{ 
                                             backgroundColor: themeConfig.global.colors.primary, 
-                                            color: '#fff', // Typically white text on primary button
+                                            color: '#fff', 
                                             borderRadius: themeConfig.global.borderRadius === '9999px' ? '9999px' : themeConfig.global.borderRadius
                                         }}
                                     >
@@ -651,13 +673,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <h3 className="text-center text-2xl font-bold mb-8" style={{ fontFamily: themeConfig.global.typography.headingFont }}>Sản phẩm mẫu</h3>
                                 <div className="flex justify-center">
                                     <div 
-                                        className="w-64 border p-4 shadow-sm group/card cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                        className="w-64 border p-4 shadow-sm group/card cursor-pointer hover:ring-2 hover:ring-green-400"
                                         style={{ 
                                             backgroundColor: '#fff',
                                             borderRadius: themeConfig.global.borderRadius,
                                             borderColor: themeConfig.global.colors.secondary
                                         }}
-                                        onClick={() => handleVisualEdit('theme', 'global.borderRadius')}
+                                        onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.borderRadius'); }}
+                                        title="Click để sửa Bo góc (Border Radius)"
                                     >
                                         <div className="w-full aspect-square bg-gray-100 mb-3 rounded-sm flex items-center justify-center text-gray-300">Image</div>
                                         <div className="flex justify-between items-center">
@@ -666,14 +689,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                 <p className="text-xs opacity-60">Custom</p>
                                             </div>
                                             <span 
-                                                className="font-bold"
+                                                className="font-bold hover:ring-2 hover:ring-green-400 p-1 rounded"
                                                 style={{ color: themeConfig.global.colors.primary }}
-                                                onClick={(e) => { e.stopPropagation(); handleVisualEdit('theme', 'global.colors.primary'); }}
+                                                onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.colors.primary'); }}
+                                                title="Click để sửa Màu chính (Primary)"
                                             >
                                                 250.000đ
                                             </span>
                                         </div>
-                                        <span className="opacity-0 group-hover/card:opacity-100 text-[10px] text-blue-500 block text-center mt-2">Click để sửa Shape/Color</span>
                                     </div>
                                 </div>
                             </div>
@@ -681,7 +704,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             {/* --- FOOTER PREVIEW --- */}
                             <div 
                                 className="p-10 border-t mt-auto group relative cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"
-                                onClick={() => handleVisualEdit('sections', 'sections.footer.backgroundColor')}
+                                onClick={() => scrollToField('sections', 'sections.footer.backgroundColor')}
                                 style={{ 
                                     backgroundColor: themeConfig.sections.footer.backgroundColor,
                                     color: themeConfig.sections.footer.textColor 
@@ -689,7 +712,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             >
                                 <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
                                     <div>
-                                        <h3 className="font-bold text-lg mb-3" style={{ color: themeConfig.global.colors.primary, fontFamily: themeConfig.global.typography.headingFont }}>The Luvin</h3>
+                                        <h3 
+                                            className="font-bold text-lg mb-3 hover:ring-2 hover:ring-green-400 p-1 rounded inline-block" 
+                                            style={{ color: themeConfig.global.colors.primary, fontFamily: themeConfig.global.typography.headingFont }}
+                                            onClick={(e) => { e.stopPropagation(); scrollToField('theme', 'global.typography.headingFont'); }}
+                                            title="Click để sửa Font tiêu đề"
+                                        >
+                                            The Luvin
+                                        </h3>
                                         <p className="opacity-70 text-xs">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu.</p>
                                     </div>
                                     <div>
