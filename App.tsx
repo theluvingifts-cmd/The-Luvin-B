@@ -36,7 +36,7 @@ declare var confetti: any;
 
 // Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
-    if (!fontName || fontName === 'BrandFont') return;
+    if (!fontName || fontName === 'BrandFont' || fontName === 'CustomBrandFont') return;
     const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
     if (!document.getElementById(linkId)) {
         const link = document.createElement('link');
@@ -45,6 +45,26 @@ const loadGoogleFont = (fontName: string) => {
         link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;500;700&display=swap`;
         document.head.appendChild(link);
     }
+};
+
+// Helper để load Custom Font Uploaded
+const loadCustomFont = (url: string) => {
+    const styleId = 'custom-font-style';
+    let style = document.getElementById(styleId) as HTMLStyleElement;
+    if (!style) {
+        style = document.createElement('style');
+        style.id = styleId;
+        document.head.appendChild(style);
+    }
+    style.innerHTML = `
+        @font-face {
+            font-family: 'CustomBrandFont';
+            src: url('${url}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    `;
 };
 
 const App: React.FC = () => {
@@ -118,6 +138,9 @@ const App: React.FC = () => {
               if (config.primaryColor) {
                   root.style.setProperty('--color-primary', config.primaryColor);
               }
+              if (config.customFontUrl) {
+                  loadCustomFont(config.customFontUrl);
+              }
               if (config.headingFont) {
                   root.style.setProperty('--font-heading', `'${config.headingFont}'`);
                   loadGoogleFont(config.headingFont);
@@ -182,6 +205,11 @@ const App: React.FC = () => {
                 if (storeConfig.primaryColor) {
                     root.style.setProperty('--color-primary', storeConfig.primaryColor);
                 }
+                
+                if (storeConfig.customFontUrl) {
+                    loadCustomFont(storeConfig.customFontUrl);
+                }
+
                 if (storeConfig.headingFont) {
                     root.style.setProperty('--font-heading', `'${storeConfig.headingFont}'`);
                     loadGoogleFont(storeConfig.headingFont);

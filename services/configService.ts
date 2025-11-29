@@ -13,8 +13,9 @@ export interface StoreConfig {
     
     // Theme Builder Config
     primaryColor?: string;
-    headingFont?: string;
+    headingFont?: string; // Tên Google Font hoặc 'CustomBrandFont'
     bodyFont?: string;
+    customFontUrl?: string; // URL file font upload lên (.ttf, .otf, .woff2)
 }
 
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {

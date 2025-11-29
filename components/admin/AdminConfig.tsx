@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CollectionTemplate, FeedbackItem } from '../../types';
 import { StoreConfig, updateStoreConfig } from '../../services/configService';
 import { addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../../services/templateService';
@@ -21,7 +21,7 @@ interface AdminConfigProps {
 type ConfigSubTab = 'general' | 'templates' | 'feedbacks';
 
 const GOOGLE_FONTS = [
-    { name: 'BrandFont', label: 'Brand Font (Mặc định)' },
+    { name: 'BrandFont', label: 'Brand Font (Gốc)' },
     { name: 'Playfair Display', label: 'Playfair Display (Serif)' },
     { name: 'Montserrat', label: 'Montserrat (Sans)' },
     { name: 'Roboto', label: 'Roboto' },
@@ -45,6 +45,34 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     // Config form state for live editing before save
     const [tempConfig, setTempConfig] = useState<StoreConfig>(storeConfig);
+    const [fontMode, setFontMode] = useState<'google' | 'custom'>(storeConfig.customFontUrl ? 'custom' : 'google');
+    const [isUploadingFont, setIsUploadingFont] = useState(false);
+
+    useEffect(() => {
+        setTempConfig(storeConfig);
+        setFontMode(storeConfig.customFontUrl ? 'custom' : 'google');
+    }, [storeConfig]);
+
+    // Helper: Inject font immediately for preview in Admin
+    useEffect(() => {
+        if (tempConfig.customFontUrl) {
+            const styleId = 'admin-preview-font';
+            let style = document.getElementById(styleId) as HTMLStyleElement;
+            if (!style) {
+                style = document.createElement('style');
+                style.id = styleId;
+                document.head.appendChild(style);
+            }
+            style.innerHTML = `
+                @font-face {
+                    font-family: 'AdminCustomFont';
+                    src: url('${tempConfig.customFontUrl}') format('truetype');
+                    font-weight: normal;
+                    font-style: normal;
+                }
+            `;
+        }
+    }, [tempConfig.customFontUrl]);
 
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
         setUploadingField(field);
@@ -65,20 +93,47 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
     };
 
+    const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setIsUploadingFont(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    setTempConfig(prev => ({ 
+                        ...prev, 
+                        customFontUrl: url,
+                        headingFont: 'CustomBrandFont' // Đặt tên định danh
+                    }));
+                } else {
+                    alert("Lỗi upload font.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi upload font.");
+            } finally {
+                setIsUploadingFont(false);
+            }
+        }
+    };
+
     const handleThemeChange = (field: keyof StoreConfig, value: string) => {
-        setStoreConfig(prev => ({ ...prev, [field]: value }));
+        setTempConfig(prev => ({ ...prev, [field]: value }));
     };
 
     const handleSaveTheme = async () => {
         setLoading(true);
-        const success = await updateStoreConfig({
-            primaryColor: storeConfig.primaryColor,
-            headingFont: storeConfig.headingFont,
-            bodyFont: storeConfig.bodyFont
-        });
+        const configToSave = {
+            primaryColor: tempConfig.primaryColor,
+            headingFont: fontMode === 'custom' ? 'CustomBrandFont' : tempConfig.headingFont,
+            bodyFont: tempConfig.bodyFont,
+            customFontUrl: fontMode === 'custom' ? tempConfig.customFontUrl : '' // Clear custom URL if switching back to Google
+        };
+
+        const success = await updateStoreConfig(configToSave);
         if (success) {
-            alert("Đã lưu giao diện thành công!");
-            // Reload to apply fonts cleanly if needed, or rely on App.tsx effect
+            setStoreConfig(prev => ({ ...prev, ...configToSave }));
+            alert("Đã lưu giao diện thành công! Website sẽ tải lại để áp dụng.");
             window.location.reload(); 
         } else {
             alert("Lỗi lưu cấu hình.");
@@ -94,6 +149,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); onRefreshFeedbacks(); setEditingFeedback(null); };
     const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); onRefreshFeedbacks(); } };
 
+    // Get current preview font family
+    const previewHeadingFont = fontMode === 'custom' && tempConfig.customFontUrl ? 'AdminCustomFont' : tempConfig.headingFont;
+
     return (
         <div className="animate-fade-in">
             {loading && <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"><div className="bg-white p-4 rounded shadow">Loading...</div></div>}
@@ -106,82 +164,155 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
             {activeConfigSubTab === 'general' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-lg border shadow-sm">
-                        <h3 className="text-lg font-bold mb-6 text-gray-800">Hình ảnh thương hiệu</h3>
-                        <div className="space-y-6">
-                            <ConfigImageUpload 
-                                label="Logo Website" 
-                                description="Hiển thị ở Header (Khuyên dùng PNG trong suốt)"
-                                currentUrl={storeConfig.logoUrl}
-                                onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
-                                isUploading={uploadingField === 'logoUrl'}
-                            />
-                            <ConfigImageUpload 
-                                label="Favicon" 
-                                description="Icon trên tab trình duyệt (Vuông, nhỏ)"
-                                currentUrl={storeConfig.faviconUrl}
-                                onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
-                                isUploading={uploadingField === 'faviconUrl'}
-                            />
-                            <ConfigImageUpload 
-                                label="Banner Hero (Trang chủ)" 
-                                description="Ảnh lớn đầu trang chủ"
-                                currentUrl={storeConfig.heroImageUrl}
-                                onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
-                                isUploading={uploadingField === 'heroImageUrl'}
-                            />
-                            <ConfigImageUpload 
-                                label="Banner Inspire (Trang chủ)" 
-                                description="Ảnh nền phần bộ sưu tập nổi bật"
-                                currentUrl={storeConfig.inspireImageUrl}
-                                onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
-                                isUploading={uploadingField === 'inspireImageUrl'}
-                            />
+                    <div className="space-y-8">
+                        <div className="bg-white p-6 rounded-lg border shadow-sm">
+                            <h3 className="text-lg font-bold mb-6 text-gray-800">Hình ảnh thương hiệu</h3>
+                            <div className="space-y-6">
+                                <ConfigImageUpload 
+                                    label="Logo Website" 
+                                    description="Hiển thị ở Header (Khuyên dùng PNG trong suốt)"
+                                    currentUrl={storeConfig.logoUrl}
+                                    onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
+                                    isUploading={uploadingField === 'logoUrl'}
+                                />
+                                <ConfigImageUpload 
+                                    label="Favicon" 
+                                    description="Icon trên tab trình duyệt (Vuông, nhỏ)"
+                                    currentUrl={storeConfig.faviconUrl}
+                                    onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
+                                    isUploading={uploadingField === 'faviconUrl'}
+                                />
+                                <ConfigImageUpload 
+                                    label="Banner Hero (Trang chủ)" 
+                                    description="Ảnh lớn đầu trang chủ"
+                                    currentUrl={storeConfig.heroImageUrl}
+                                    onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
+                                    isUploading={uploadingField === 'heroImageUrl'}
+                                />
+                                <ConfigImageUpload 
+                                    label="Banner Inspire (Trang chủ)" 
+                                    description="Ảnh nền phần bộ sưu tập nổi bật"
+                                    currentUrl={storeConfig.inspireImageUrl}
+                                    onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
+                                    isUploading={uploadingField === 'inspireImageUrl'}
+                                />
+                            </div>
                         </div>
                     </div>
 
                     <div className="bg-white p-6 rounded-lg border shadow-sm h-fit">
                         <h3 className="text-lg font-bold mb-6 text-gray-800">Theme Builder (Giao diện)</h3>
                         <div className="space-y-6">
+                            {/* Live Preview Card */}
+                            <div className="border rounded-xl p-4 bg-gray-50">
+                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Xem trước (Live Preview)</p>
+                                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 text-center space-y-3">
+                                    <h2 
+                                        className="text-3xl font-bold" 
+                                        style={{ 
+                                            color: tempConfig.primaryColor, 
+                                            fontFamily: previewHeadingFont 
+                                        }}
+                                    >
+                                        The Luvin Demo
+                                    </h2>
+                                    <p 
+                                        className="text-gray-600 text-sm leading-relaxed"
+                                        style={{ fontFamily: tempConfig.bodyFont }}
+                                    >
+                                        Đây là đoạn văn bản mẫu để bạn hình dung font chữ nội dung sẽ hiển thị như thế nào trên website.
+                                    </p>
+                                    <button 
+                                        className="px-6 py-2 rounded-full text-white font-bold text-sm transition-opacity hover:opacity-90"
+                                        style={{ 
+                                            backgroundColor: tempConfig.primaryColor,
+                                            fontFamily: tempConfig.bodyFont
+                                        }}
+                                    >
+                                        Nút Bấm Mẫu
+                                    </button>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Màu chủ đạo (Primary Color)</label>
                                 <div className="flex items-center gap-3">
                                     <input 
                                         type="color" 
-                                        value={storeConfig.primaryColor || '#efa3b5'} 
+                                        value={tempConfig.primaryColor || '#efa3b5'} 
                                         onChange={(e) => handleThemeChange('primaryColor', e.target.value)}
                                         className="h-10 w-20 rounded border cursor-pointer"
                                     />
                                     <input 
                                         type="text" 
-                                        value={storeConfig.primaryColor || '#efa3b5'}
+                                        value={tempConfig.primaryColor || '#efa3b5'}
                                         onChange={(e) => handleThemeChange('primaryColor', e.target.value)}
                                         className="border rounded p-2 text-sm w-32 uppercase"
                                     />
-                                    <div className="w-8 h-8 rounded-full border" style={{ backgroundColor: storeConfig.primaryColor || '#efa3b5' }}></div>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">Sử dụng cho nút bấm, text nổi bật, viền...</p>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Font tiêu đề (Heading)</label>
-                                <select 
-                                    value={storeConfig.headingFont || 'BrandFont'} 
-                                    onChange={(e) => handleThemeChange('headingFont', e.target.value)}
-                                    className="w-full p-2 border rounded bg-white text-sm"
-                                >
-                                    {GOOGLE_FONTS.map(font => (
-                                        <option key={font.name} value={font.name} style={{ fontFamily: font.name }}>
-                                            {font.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex bg-gray-100 p-1 rounded-lg mb-3">
+                                    <button 
+                                        onClick={() => setFontMode('google')}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${fontMode === 'google' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Google Fonts (Có sẵn)
+                                    </button>
+                                    <button 
+                                        onClick={() => setFontMode('custom')}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${fontMode === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Upload Font Riêng
+                                    </button>
+                                </div>
+
+                                {fontMode === 'google' ? (
+                                    <select 
+                                        value={tempConfig.headingFont || 'BrandFont'} 
+                                        onChange={(e) => handleThemeChange('headingFont', e.target.value)}
+                                        className="w-full p-2 border rounded bg-white text-sm"
+                                    >
+                                        {GOOGLE_FONTS.map(font => (
+                                            <option key={font.name} value={font.name} style={{ fontFamily: font.name }}>
+                                                {font.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
+                                            <input 
+                                                type="file" 
+                                                accept=".ttf,.otf,.woff,.woff2" 
+                                                onChange={handleFontUpload}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                disabled={isUploadingFont}
+                                            />
+                                            {isUploadingFont ? (
+                                                <span className="text-xs text-blue-600 font-bold animate-pulse">Đang tải font...</span>
+                                            ) : tempConfig.customFontUrl ? (
+                                                <div className="text-green-600">
+                                                    <p className="text-xs font-bold">✓ Đã tải font lên</p>
+                                                    <p className="text-[10px] text-gray-500 truncate max-w-[200px] mx-auto">{tempConfig.customFontUrl}</p>
+                                                </div>
+                                            ) : (
+                                                <div className="text-gray-400">
+                                                    <p className="text-xs font-bold">Bấm để tải file .ttf, .otf</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 italic">Lưu ý: Chỉ sử dụng font bạn có bản quyền.</p>
+                                    </div>
+                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Font nội dung (Body)</label>
                                 <select 
-                                    value={storeConfig.bodyFont || 'Montserrat'} 
+                                    value={tempConfig.bodyFont || 'Montserrat'} 
                                     onChange={(e) => handleThemeChange('bodyFont', e.target.value)}
                                     className="w-full p-2 border rounded bg-white text-sm"
                                 >
@@ -195,7 +326,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
                             <button 
                                 onClick={handleSaveTheme} 
-                                className="w-full bg-gray-900 text-white font-bold py-2.5 rounded hover:bg-black transition-colors"
+                                disabled={isUploadingFont}
+                                className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-black transition-colors shadow-lg disabled:opacity-50"
                             >
                                 Lưu cấu hình Theme
                             </button>
