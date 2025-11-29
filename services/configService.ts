@@ -10,6 +10,11 @@ export interface StoreConfig {
     siteName?: string;
     heroImageUrl?: string;
     inspireImageUrl?: string;
+    
+    // Theme Builder Config
+    primaryColor?: string;
+    headingFont?: string;
+    bodyFont?: string;
 }
 
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -17,15 +16,15 @@
         theme: {
           extend: {
             colors: {
-              'luvin-pink': '#efa3b5',
+              'luvin-pink': 'var(--color-primary)',
               'luvin-cream': '#f4eee8',
               'luvin-light-gray': '#d8d8d8',
             },
             fontFamily: {
-              // Cấu hình BrandFont làm ưu tiên số 1
-              heading: ['BrandFont', 'Playfair Display', 'serif'],
-              body: ['Montserrat', 'sans-serif'],
-              script: ['BrandFont', 'Dancing Script', 'cursive'], 
+              // Sử dụng CSS Variable cho font
+              heading: ['var(--font-heading)', 'Playfair Display', 'serif'],
+              body: ['var(--font-body)', 'Montserrat', 'sans-serif'],
+              script: ['var(--font-heading)', 'Dancing Script', 'cursive'], 
             },
             boxShadow: {
               'top': '0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)',
@@ -46,6 +45,10 @@
     <style>
       :root {
         color-scheme: light;
+        /* Default Theme Variables */
+        --color-primary: #efa3b5;
+        --font-heading: 'BrandFont'; 
+        --font-body: 'Montserrat';
       }
       
       /* KHAI BÁO FONT CHỮ THƯƠNG HIỆU CHUẨN XÁC */
@@ -61,11 +64,11 @@
       
       /* Class ép buộc dùng font thương hiệu (độ ưu tiên cao nhất) */
       .font-brand-heading {
-        font-family: 'BrandFont', 'Playfair Display', serif !important;
+        font-family: var(--font-heading), 'Playfair Display', serif !important;
       }
       
       body {
-        font-family: 'Montserrat', sans-serif;
+        font-family: var(--font-body), 'Montserrat', sans-serif;
         background-color: #f9f4ef;
       }
       

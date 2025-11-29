@@ -20,6 +20,19 @@ interface AdminConfigProps {
 
 type ConfigSubTab = 'general' | 'templates' | 'feedbacks';
 
+const GOOGLE_FONTS = [
+    { name: 'BrandFont', label: 'Brand Font (Mặc định)' },
+    { name: 'Playfair Display', label: 'Playfair Display (Serif)' },
+    { name: 'Montserrat', label: 'Montserrat (Sans)' },
+    { name: 'Roboto', label: 'Roboto' },
+    { name: 'Open Sans', label: 'Open Sans' },
+    { name: 'Merriweather', label: 'Merriweather' },
+    { name: 'Dancing Script', label: 'Dancing Script (Cursive)' },
+    { name: 'Lora', label: 'Lora' },
+    { name: 'Nunito', label: 'Nunito' },
+    { name: 'Pacifico', label: 'Pacifico' }
+];
+
 export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreConfig, templates, feedbacks, onRefreshTemplates, onRefreshFeedbacks }) => {
     const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('general');
     const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -29,6 +42,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
     const [loading, setLoading] = useState(false);
+
+    // Config form state for live editing before save
+    const [tempConfig, setTempConfig] = useState<StoreConfig>(storeConfig);
 
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
         setUploadingField(field);
@@ -49,6 +65,27 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
     };
 
+    const handleThemeChange = (field: keyof StoreConfig, value: string) => {
+        setStoreConfig(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSaveTheme = async () => {
+        setLoading(true);
+        const success = await updateStoreConfig({
+            primaryColor: storeConfig.primaryColor,
+            headingFont: storeConfig.headingFont,
+            bodyFont: storeConfig.bodyFont
+        });
+        if (success) {
+            alert("Đã lưu giao diện thành công!");
+            // Reload to apply fonts cleanly if needed, or rely on App.tsx effect
+            window.location.reload(); 
+        } else {
+            alert("Lỗi lưu cấu hình.");
+        }
+        setLoading(false);
+    }
+
     const handleSeedTemplates = async () => { if (confirm("Reset templates về mặc định?")) { setLoading(true); await seedTemplates(); setLoading(false); onRefreshTemplates(); } };
     const handleSaveTemplate = async (tpl: CollectionTemplate) => { setIsEditingTemplate(false); if (editingTemplate) await updateTemplate(tpl.id, tpl); else await addTemplate(tpl); onRefreshTemplates(); setEditingTemplate(null); };
     const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); onRefreshTemplates(); } };
@@ -62,43 +99,107 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             {loading && <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"><div className="bg-white p-4 rounded shadow">Loading...</div></div>}
             
             <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4 overflow-x-auto no-scrollbar">
-                <button onClick={() => setActiveConfigSubTab('general')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'general' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Chung</button>
+                <button onClick={() => setActiveConfigSubTab('general')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'general' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Chung & Theme</button>
                 <button onClick={() => setActiveConfigSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Mẫu (Collection)</button>
                 <button onClick={() => setActiveConfigSubTab('feedbacks')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap ${activeConfigSubTab === 'feedbacks' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Feedbacks</button>
             </div>
 
             {activeConfigSubTab === 'general' && (
-                <div className="bg-white p-6 rounded-lg border shadow-sm max-w-2xl">
-                    <h3 className="text-lg font-bold mb-6">Cấu hình chung</h3>
-                    <div className="space-y-6">
-                        <ConfigImageUpload 
-                            label="Logo Website" 
-                            description="Hiển thị ở Header (Khuyên dùng PNG trong suốt)"
-                            currentUrl={storeConfig.logoUrl}
-                            onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
-                            isUploading={uploadingField === 'logoUrl'}
-                        />
-                        <ConfigImageUpload 
-                            label="Favicon" 
-                            description="Icon trên tab trình duyệt (Vuông, nhỏ)"
-                            currentUrl={storeConfig.faviconUrl}
-                            onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
-                            isUploading={uploadingField === 'faviconUrl'}
-                        />
-                        <ConfigImageUpload 
-                            label="Banner Hero (Trang chủ)" 
-                            description="Ảnh lớn đầu trang chủ"
-                            currentUrl={storeConfig.heroImageUrl}
-                            onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
-                            isUploading={uploadingField === 'heroImageUrl'}
-                        />
-                        <ConfigImageUpload 
-                            label="Banner Inspire (Trang chủ)" 
-                            description="Ảnh nền phần bộ sưu tập nổi bật"
-                            currentUrl={storeConfig.inspireImageUrl}
-                            onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
-                            isUploading={uploadingField === 'inspireImageUrl'}
-                        />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-lg border shadow-sm">
+                        <h3 className="text-lg font-bold mb-6 text-gray-800">Hình ảnh thương hiệu</h3>
+                        <div className="space-y-6">
+                            <ConfigImageUpload 
+                                label="Logo Website" 
+                                description="Hiển thị ở Header (Khuyên dùng PNG trong suốt)"
+                                currentUrl={storeConfig.logoUrl}
+                                onUpload={(f) => handleConfigUpload(f, 'logoUrl')}
+                                isUploading={uploadingField === 'logoUrl'}
+                            />
+                            <ConfigImageUpload 
+                                label="Favicon" 
+                                description="Icon trên tab trình duyệt (Vuông, nhỏ)"
+                                currentUrl={storeConfig.faviconUrl}
+                                onUpload={(f) => handleConfigUpload(f, 'faviconUrl')}
+                                isUploading={uploadingField === 'faviconUrl'}
+                            />
+                            <ConfigImageUpload 
+                                label="Banner Hero (Trang chủ)" 
+                                description="Ảnh lớn đầu trang chủ"
+                                currentUrl={storeConfig.heroImageUrl}
+                                onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')}
+                                isUploading={uploadingField === 'heroImageUrl'}
+                            />
+                            <ConfigImageUpload 
+                                label="Banner Inspire (Trang chủ)" 
+                                description="Ảnh nền phần bộ sưu tập nổi bật"
+                                currentUrl={storeConfig.inspireImageUrl}
+                                onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')}
+                                isUploading={uploadingField === 'inspireImageUrl'}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg border shadow-sm h-fit">
+                        <h3 className="text-lg font-bold mb-6 text-gray-800">Theme Builder (Giao diện)</h3>
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Màu chủ đạo (Primary Color)</label>
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="color" 
+                                        value={storeConfig.primaryColor || '#efa3b5'} 
+                                        onChange={(e) => handleThemeChange('primaryColor', e.target.value)}
+                                        className="h-10 w-20 rounded border cursor-pointer"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        value={storeConfig.primaryColor || '#efa3b5'}
+                                        onChange={(e) => handleThemeChange('primaryColor', e.target.value)}
+                                        className="border rounded p-2 text-sm w-32 uppercase"
+                                    />
+                                    <div className="w-8 h-8 rounded-full border" style={{ backgroundColor: storeConfig.primaryColor || '#efa3b5' }}></div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Sử dụng cho nút bấm, text nổi bật, viền...</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Font tiêu đề (Heading)</label>
+                                <select 
+                                    value={storeConfig.headingFont || 'BrandFont'} 
+                                    onChange={(e) => handleThemeChange('headingFont', e.target.value)}
+                                    className="w-full p-2 border rounded bg-white text-sm"
+                                >
+                                    {GOOGLE_FONTS.map(font => (
+                                        <option key={font.name} value={font.name} style={{ fontFamily: font.name }}>
+                                            {font.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Font nội dung (Body)</label>
+                                <select 
+                                    value={storeConfig.bodyFont || 'Montserrat'} 
+                                    onChange={(e) => handleThemeChange('bodyFont', e.target.value)}
+                                    className="w-full p-2 border rounded bg-white text-sm"
+                                >
+                                    {GOOGLE_FONTS.map(font => (
+                                        <option key={font.name} value={font.name} style={{ fontFamily: font.name }}>
+                                            {font.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <button 
+                                onClick={handleSaveTheme} 
+                                className="w-full bg-gray-900 text-white font-bold py-2.5 rounded hover:bg-black transition-colors"
+                            >
+                                Lưu cấu hình Theme
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

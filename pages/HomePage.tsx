@@ -88,7 +88,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
   useEffect(() => {
     const interval = setInterval(() => {
       handleNext();
-    }, 4000);
+    }, 5000); // Slower interval for better UX
     return () => clearInterval(interval);
   }, [sliderProducts]);
 
@@ -100,7 +100,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
   };
 
   const heroStyle = heroImage ? {backgroundImage: `url(${heroImage})`} : { backgroundColor: '#fce7f3' }; 
-  const inspireStyle = inspireImage ? {backgroundImage: `url(${inspireImage})`} : { backgroundColor: '#fce7f3' };
+  const inspireStyle = inspireImage ? {backgroundImage: `url(${inspireImage})`} : { backgroundColor: '#e5e7eb' };
 
   const snowStyle = `
     @keyframes fall {
@@ -172,78 +172,99 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
         </div>
       </div>
 
-      <div className="container mx-auto my-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-center">
-          <div className="h-[500px] md:h-[600px] bg-cover bg-center" style={inspireStyle}></div>
-          <div className="bg-gray-100 flex flex-col justify-center items-center p-8 md:p-16 h-[500px] md:h-[600px] relative select-none">
-              {sliderProducts.length > 0 ? (
-                  <>
-                    {/* Product Image - Click to Next */}
+      {/* FEATURED / INSPIRE SECTION */}
+      <div className="w-full bg-[#fffbf0] py-16 md:py-24">
+        <div className="container mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                
+                {/* Left: Mood Image */}
+                <div className="h-[400px] md:h-[600px] w-full rounded-2xl overflow-hidden shadow-lg relative group order-2 md:order-1">
+                     <div 
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105" 
+                        style={inspireStyle}
+                     ></div>
+                     <div className="absolute inset-0 bg-black/5"></div>
+                </div>
+
+                {/* Right: Product Interaction */}
+                <div className="flex flex-col items-center justify-center text-center relative order-1 md:order-2">
+                    
+                    {/* Floating Product Card */}
                     <div 
-                        className="relative w-full max-w-xs aspect-square cursor-pointer active:scale-95 transition-transform duration-300"
+                        className="relative w-64 h-64 md:w-96 md:h-96 bg-white rounded-xl shadow-xl p-6 mb-10 cursor-pointer transition-transform duration-300 hover:-translate-y-2 select-none"
                         onClick={handleNext}
                     >
-                        {sliderProducts.map((product, index) => (
-                            <img 
-                                key={product.id} 
-                                src={product.imageUrl} 
-                                alt={product.name}
-                                className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${activeSlide === index ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-4'}`}
-                            />
-                        ))}
+                        {sliderProducts.length > 0 ? sliderProducts.map((product, index) => (
+                            <div 
+                                key={product.id}
+                                className={`absolute inset-6 transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                                    activeSlide === index 
+                                        ? 'opacity-100 scale-100 translate-x-0' 
+                                        : 'opacity-0 scale-95 translate-x-4 pointer-events-none'
+                                }`}
+                            >
+                                <img 
+                                    src={product.imageUrl} 
+                                    alt={product.name}
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                        )) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">No products</div>
+                        )}
                     </div>
-                    
-                    {/* Editorial Navigation */}
-                    <div className="w-full max-w-xs mt-10 flex items-center justify-between gap-6">
+
+                    {/* Elegant Navigation Controls */}
+                    <div className="flex items-center gap-8 mb-8 select-none">
                         <button 
                             onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-                            className="group p-2 -ml-2"
+                            className="group text-gray-400 hover:text-gray-900 transition-colors p-2"
                         >
-                            <svg width="32" height="12" viewBox="0 0 32 12" fill="none" className="text-gray-400 group-hover:text-gray-900 transition-colors">
-                                <path d="M0.46967 5.46967C0.176777 5.76256 0.176777 6.23744 0.46967 6.53033L5.24264 11.3033C5.53553 11.5962 6.01041 11.5962 6.3033 11.3033C6.59619 11.0104 6.59619 10.5355 6.3033 10.2426L2.06066 6L6.3033 1.75736C6.59619 1.46447 6.59619 0.989593 6.3033 0.696699C6.01041 0.403806 5.53553 0.403806 5.24264 0.696699L0.46967 5.46967ZM32 5.25L1 5.25V6.75L32 6.75V5.25Z" fill="currentColor"/>
+                            <svg width="40" height="16" viewBox="0 0 40 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="transform group-hover:-translate-x-1 transition-transform">
+                                <path d="M0 8H40M0 8L8 1M0 8L8 15" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </button>
 
-                        <div className="flex-grow flex flex-col items-center gap-3">
-                            <span className="font-serif text-base italic text-gray-400">
-                                <span className="text-gray-900 not-italic font-sans font-bold">0{activeSlide + 1}</span> / 0{sliderProducts.length}
-                            </span>
-                            <div className="w-full h-px bg-gray-300 relative">
-                                <div 
-                                    className="absolute top-0 left-0 h-full bg-gray-900 transition-all duration-500 ease-out"
-                                    style={{ 
-                                        width: `${((activeSlide + 1) / sliderProducts.length) * 100}%` 
-                                    }}
-                                ></div>
-                            </div>
+                        <div className="font-serif text-2xl text-gray-900 tracking-wider">
+                            {String(activeSlide + 1).padStart(2, '0')}
+                            <span className="text-base text-gray-400 mx-2 font-sans italic opacity-60">/ {String(sliderProducts.length).padStart(2, '0')}</span>
                         </div>
 
                         <button 
                             onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                            className="group p-2 -mr-2"
+                            className="group text-gray-400 hover:text-gray-900 transition-colors p-2"
                         >
-                            <svg width="32" height="12" viewBox="0 0 32 12" fill="none" className="text-gray-400 group-hover:text-gray-900 transition-colors">
-                                <path d="M31.5303 6.53033C31.8232 6.23744 31.8232 5.76256 31.5303 5.46967L26.7574 0.696699C26.4645 0.403806 25.9896 0.403806 25.6967 0.696699C25.4038 0.989593 25.4038 1.46447 25.6967 1.75736L29.9393 6L25.6967 10.2426C25.4038 10.5355 25.4038 11.0104 25.6967 11.3033C25.9896 11.5962 26.4645 11.5962 26.7574 11.3033L31.5303 6.53033ZM0 6.75H31V5.25H0V6.75Z" fill="currentColor"/>
+                            <svg width="40" height="16" viewBox="0 0 40 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="transform group-hover:translate-x-1 transition-transform">
+                                <path d="M40 8H0M40 8L32 1M40 8L32 15" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </button>
                     </div>
 
-                    <div className="text-center mt-8">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mb-2">Featured</p>
-                        <h3 className="font-brand-heading text-3xl md:text-4xl text-gray-900 leading-tight">
-                            {sliderProducts[activeSlide].name}
-                        </h3>
-                    </div>
-                  </>
-              ) : (
-                  <p className="text-gray-500">Chưa có sản phẩm nổi bật.</p>
-              )}
-          </div>
+                    {/* Text Content */}
+                    {sliderProducts.length > 0 && (
+                        <div className="space-y-3 animate-fade-in">
+                            <p className="text-[10px] font-bold tracking-[0.3em] text-gray-400 uppercase">Featured Collection</p>
+                            <h3 className="font-brand-heading text-4xl md:text-5xl text-gray-800 leading-tight">
+                                {sliderProducts[activeSlide].name}
+                            </h3>
+                            <div className="pt-4">
+                                <button 
+                                    onClick={() => navigateTo('collection')}
+                                    className="text-sm border-b border-gray-800 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-all font-medium"
+                                >
+                                    Xem chi tiết
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            </div>
         </div>
       </div>
 
       {/* FEEDBACK SECTION */}
-      <div className="py-12 md:py-20 bg-white overflow-hidden">
+      <div className="py-12 md:py-20 bg-white overflow-hidden border-t border-gray-100">
         <div className="container mx-auto px-6 mb-8 md:mb-12">
             <h2 className="text-3xl md:text-4xl font-body font-bold text-[#3e2b25] text-left">Our feedbacks</h2>
         </div>

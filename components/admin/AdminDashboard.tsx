@@ -22,82 +22,32 @@ const getEndOfDay = (date: Date) => {
     return newDate;
 };
 
-// --- CHART UTILS ---
-const CHART_COLORS = [
-    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
-    '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#64748B'
-];
-
-const DonutChart = ({ data }: { data: { label: string; value: number }[] }) => {
-    const total = data.reduce((acc, item) => acc + item.value, 0);
-    
-    if (total === 0) {
-        return (
-            <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
-                <div className="w-24 h-24 rounded-full border-4 border-gray-100 mb-2"></div>
-                <span className="text-xs">Chưa có dữ liệu</span>
-            </div>
-        );
-    }
-
-    let currentAngle = 0;
-    const gradientParts = data.map((item, index) => {
-        const percentage = (item.value / total) * 100;
-        const start = currentAngle;
-        const end = currentAngle + (percentage * 3.6); // 3.6 degrees per percent
-        currentAngle = end;
-        return `${CHART_COLORS[index % CHART_COLORS.length]} ${start}deg ${end}deg`;
-    });
-
-    const gradientStyle = {
-        background: `conic-gradient(${gradientParts.join(', ')})`,
-    };
-
-    return (
-        <div className="flex gap-6 items-center">
-            <div className="relative w-32 h-32 flex-shrink-0">
-                <div className="w-full h-full rounded-full" style={gradientStyle}></div>
-                {/* Hole to make it a donut */}
-                <div className="absolute inset-0 m-auto w-20 h-20 bg-white rounded-full flex flex-col items-center justify-center">
-                    <span className="text-xl font-bold text-gray-800">{total}</span>
-                    <span className="text-[10px] text-gray-500 uppercase">Tổng</span>
-                </div>
-            </div>
-            <div className="flex-grow space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-2">
-                {data.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-2">
-                            <span 
-                                className="w-3 h-3 rounded-sm flex-shrink-0" 
-                                style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                            ></span>
-                            <span className="text-gray-700 truncate max-w-[120px]" title={item.label}>
-                                {item.label}
-                            </span>
+const TopItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full">
+        <h4 className="font-bold text-sm text-gray-700 mb-3 uppercase tracking-wider">{title}</h4>
+        {Object.keys(data).length > 0 ? (
+            <div className="space-y-2 overflow-y-auto flex-grow max-h-40 custom-scrollbar">
+                {Object.entries(data)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5)
+                    .map(([name, count], idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-gray-400 font-mono w-4 flex-shrink-0">{idx + 1}.</span>
+                                <span className="font-medium text-gray-700 truncate" title={name}>{name}</span>
+                            </div>
+                            <span className="font-bold w-6 text-right flex-shrink-0">{count}</span>
                         </div>
-                        <span className="font-bold text-gray-900">{item.value}</span>
-                    </div>
-                ))}
+                    ))
+                }
             </div>
-        </div>
-    );
-};
-
-const ChartCard = ({ title, data }: { title: string, data: Record<string, number> }) => {
-    // Transform hash map to array for chart, sort by value desc
-    const chartData = Object.entries(data)
-        .map(([label, value]) => ({ label, value }))
-        .sort((a, b) => b.value - a.value);
-
-    return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 h-full flex flex-col">
-            <h4 className="font-bold text-sm text-gray-800 mb-4 uppercase tracking-wider border-b pb-2">{title}</h4>
-            <div className="flex-grow flex items-center justify-center">
-                <DonutChart data={chartData} />
+        ) : (
+            <div className="text-center py-4 text-gray-300 text-xs italic border border-dashed rounded">
+                Chưa có dữ liệu
             </div>
-        </div>
-    );
-};
+        )}
+    </div>
+);
 
 const RevenueChart: React.FC<{ data: { date: string; revenue: number }[] }> = ({ data }) => {
     const maxRevenue = Math.max(...data.map(d => d.revenue), 100000); 
@@ -112,7 +62,7 @@ const RevenueChart: React.FC<{ data: { date: string; revenue: number }[] }> = ({
                         <div key={index} className="flex flex-col items-center flex-1 group relative">
                             {/* Tooltip */}
                             <div className="absolute bottom-full mb-2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                {formatCurrency(d.revenue, 'admin')}
+                                {formatCurrency(d.revenue)}
                             </div>
                             
                             <div 
@@ -227,39 +177,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     if (di.type === 'charm') {
                         inventory.totalCharms++;
                     } else {
-                        // Use allKnownParts to ensure counting even if product deleted from current list
-                        // but still exists in historical data (mapped by ID)
                         const part = allKnownParts[di.partId];
-                        const name = part?.name || `ID: ${di.partId}`; // Fallback if name unknown
                         if (part) {
-                             if (di.type === 'accessory') inventory.accessory[name] = (inventory.accessory[name] || 0) + 1;
-                             if (di.type === 'pet') inventory.pet[name] = (inventory.pet[name] || 0) + 1;
-                             if (di.type === 'hat') inventory.hat[name] = (inventory.hat[name] || 0) + 1;
+                             if (di.type === 'accessory') inventory.accessory[part.name] = (inventory.accessory[part.name] || 0) + 1;
+                             if (di.type === 'pet') inventory.pet[part.name] = (inventory.pet[part.name] || 0) + 1;
+                             inventory.totalCharms++;
                         }
                     }
                 });
 
                 item.characters.forEach(char => {
-                    if (char.hair) {
-                        const name = char.hair.name || `Hair ${char.hair.id}`;
-                        inventory.hair[name] = (inventory.hair[name] || 0) + 1;
-                    }
-                    if (char.face) {
-                        const name = char.face.name || `Face ${char.face.id}`;
-                        inventory.face[name] = (inventory.face[name] || 0) + 1;
-                    }
-                    if (char.shirt) {
-                        const name = char.shirt.name || `Shirt ${char.shirt.id}`;
-                        inventory.shirt[name] = (inventory.shirt[name] || 0) + 1;
-                    }
-                    if (char.pants) {
-                        const name = char.pants.name || `Pants ${char.pants.id}`;
-                        inventory.pants[name] = (inventory.pants[name] || 0) + 1;
-                    }
-                    if (char.hat) {
-                        const name = char.hat.name || `Hat ${char.hat.id}`;
-                        inventory.hat[name] = (inventory.hat[name] || 0) + 1;
-                    }
+                    if (char.hair) inventory.hair[char.hair.name] = (inventory.hair[char.hair.name] || 0) + 1;
+                    if (char.face) inventory.face[char.face.name] = (inventory.face[char.face.name] || 0) + 1;
+                    if (char.shirt) inventory.shirt[char.shirt.name] = (inventory.shirt[char.shirt.name] || 0) + 1;
+                    if (char.pants) inventory.pants[char.pants.name] = (inventory.pants[char.pants.name] || 0) + 1;
+                    if (char.hat) inventory.hat[char.hat.name] = (inventory.hat[char.hat.name] || 0) + 1;
                 });
             });
         });
@@ -348,14 +280,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <ChartCard title="Khung Ảnh" data={analytics.inventory.frames} />
-                <ChartCard title="Tóc" data={analytics.inventory.hair} />
-                <ChartCard title="Khuôn mặt" data={analytics.inventory.face} />
-                <ChartCard title="Áo" data={analytics.inventory.shirt} />
-                <ChartCard title="Quần" data={analytics.inventory.pants} />
-                <ChartCard title="Mũ" data={analytics.inventory.hat} />
-                <ChartCard title="Phụ kiện" data={analytics.inventory.accessory} />
-                <ChartCard title="Thú cưng" data={analytics.inventory.pet} />
+                <TopItemsCard title="Khung Ảnh" data={analytics.inventory.frames} />
+                <TopItemsCard title="Tóc" data={analytics.inventory.hair} />
+                <TopItemsCard title="Khuôn mặt" data={analytics.inventory.face} />
+                <TopItemsCard title="Áo" data={analytics.inventory.shirt} />
+                <TopItemsCard title="Quần" data={analytics.inventory.pants} />
+                <TopItemsCard title="Mũ" data={analytics.inventory.hat} />
+                <TopItemsCard title="Phụ kiện" data={analytics.inventory.accessory} />
+                <TopItemsCard title="Thú cưng" data={analytics.inventory.pet} />
             </div>
 
             <div className="grid grid-cols-1 gap-6">

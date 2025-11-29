@@ -34,6 +34,19 @@ import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
+// Helper để load font Google
+const loadGoogleFont = (fontName: string) => {
+    if (!fontName || fontName === 'BrandFont') return;
+    const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+    if (!document.getElementById(linkId)) {
+        const link = document.createElement('link');
+        link.id = linkId;
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;500;700&display=swap`;
+        document.head.appendChild(link);
+    }
+};
+
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
@@ -94,11 +107,26 @@ const App: React.FC = () => {
   // State for cart animation
   const [isCartShaking, setIsCartShaking] = useState(false);
 
+  // Load cached config immediately for styles
   useEffect(() => {
       try {
           const cached = localStorage.getItem('app_config');
           if (cached) {
               const config = JSON.parse(cached);
+              const root = document.documentElement;
+              
+              if (config.primaryColor) {
+                  root.style.setProperty('--color-primary', config.primaryColor);
+              }
+              if (config.headingFont) {
+                  root.style.setProperty('--font-heading', `'${config.headingFont}'`);
+                  loadGoogleFont(config.headingFont);
+              }
+              if (config.bodyFont) {
+                  root.style.setProperty('--font-body', `'${config.bodyFont}'`);
+                  loadGoogleFont(config.bodyFont);
+              }
+
               if (config.faviconUrl) {
                   const link = document.querySelector("link[rel~='icon']");
                   if (link instanceof HTMLLinkElement) {
@@ -149,6 +177,20 @@ const App: React.FC = () => {
                 if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
                 if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
                 
+                // Apply Dynamic Theme
+                const root = document.documentElement;
+                if (storeConfig.primaryColor) {
+                    root.style.setProperty('--color-primary', storeConfig.primaryColor);
+                }
+                if (storeConfig.headingFont) {
+                    root.style.setProperty('--font-heading', `'${storeConfig.headingFont}'`);
+                    loadGoogleFont(storeConfig.headingFont);
+                }
+                if (storeConfig.bodyFont) {
+                    root.style.setProperty('--font-body', `'${storeConfig.bodyFont}'`);
+                    loadGoogleFont(storeConfig.bodyFont);
+                }
+
                 if (storeConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");
                     if (link instanceof HTMLLinkElement) {
@@ -203,14 +245,6 @@ const App: React.FC = () => {
     // Trigger animation callback
     triggerCartShake();
     if (openCart) {
-        // Wait slightly for animation to land before opening cart if desired
-        // But for better UX with micro-interaction, usually we don't auto-open
-        // if we show the flying animation. 
-        // We will keep openCart logic but maybe add delay?
-        // Actually, if micro interaction is present, usually we DON'T open the cart automatically
-        // to let the user see the fly effect. 
-        // Let's modify behavior: if animation triggers, we might NOT want to open cart immediately.
-        // However, the prop says "openCart". Let's respect it for now.
         setTimeout(() => setIsCartOpen(true), 800); 
     }
   };
