@@ -11,7 +11,7 @@ import {
 import { createOrder } from './services/orderService'; 
 import { getAllParts } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
-import { getStoreConfig, DEFAULT_THEME, StoreConfig } from './services/configService'; 
+import { getStoreConfig } from './services/configService'; 
 import { getAllTemplates } from './services/templateService'; 
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
@@ -33,40 +33,6 @@ import { WarrantyPage } from './pages/WarrantyPage';
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
-
-// Helper để load font Google
-const loadGoogleFont = (fontName: string) => {
-    if (!fontName || fontName === 'CustomBrandFont') return;
-    const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
-    if (!document.getElementById(linkId)) {
-        const link = document.createElement('link');
-        link.id = linkId;
-        link.rel = 'stylesheet';
-        link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
-        document.head.appendChild(link);
-    }
-};
-
-// Helper để load Custom Font Uploaded
-const loadCustomFont = (url: string) => {
-    if (!url) return;
-    const styleId = 'custom-font-style';
-    let style = document.getElementById(styleId) as HTMLStyleElement;
-    if (!style) {
-        style = document.createElement('style');
-        style.id = styleId;
-        document.head.appendChild(style);
-    }
-    style.innerHTML = `
-        @font-face {
-            font-family: 'CustomBrandFont';
-            src: url('${url}') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
-    `;
-};
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -104,54 +70,54 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
 
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
+  const [logoUrl, setLogoUrl] = useState<string>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).logoUrl || "" : "";
+      } catch (e) { return ""; }
+  });
+  
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).heroImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
+
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          return cached ? JSON.parse(cached).inspireImageUrl : undefined;
+      } catch (e) { return undefined; }
+  });
 
   // State for cart animation
   const [isCartShaking, setIsCartShaking] = useState(false);
 
-  // Function to apply theme variables to DOM
-  const applyTheme = (themeData: typeof DEFAULT_THEME) => {
-      const root = document.documentElement;
-      const { global, sections } = themeData;
-
-      // Global Colors
-      root.style.setProperty('--color-primary', global.colors.primary);
-      root.style.setProperty('--color-secondary', global.colors.secondary);
-      root.style.setProperty('--color-text', global.colors.text);
-      root.style.setProperty('--color-bg', global.colors.background);
-      root.style.setProperty('--color-accent', global.colors.accent);
-
-      // Typography
-      root.style.setProperty('--font-heading', `'${global.typography.headingFont}'`);
-      root.style.setProperty('--font-body', `'${global.typography.bodyFont}'`);
-      
-      // Border Radius
-      root.style.setProperty('--radius-global', global.borderRadius);
-
-      // Section Specifics
-      if (sections) {
-          if (sections.header) {
-              root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
-              root.style.setProperty('--header-text', sections.header.textColor || '#1f2937');
+  useEffect(() => {
+      try {
+          const cached = localStorage.getItem('app_config');
+          if (cached) {
+              const config = JSON.parse(cached);
+              if (config.faviconUrl) {
+                  const link = document.querySelector("link[rel~='icon']");
+                  if (link instanceof HTMLLinkElement) {
+                      link.href = config.faviconUrl;
+                  } else {
+                      const newLink = document.createElement('link');
+                      newLink.rel = 'icon';
+                      newLink.href = config.faviconUrl;
+                      document.head.appendChild(newLink);
+                  }
+              }
           }
-          if (sections.footer) {
-              root.style.setProperty('--footer-bg', sections.footer.backgroundColor || '#ffffff');
-              root.style.setProperty('--footer-text', sections.footer.textColor || '#374151');
-          }
-      }
-
-      // Load Fonts
-      if (global.typography.customFontUrl) {
-          loadCustomFont(global.typography.customFontUrl);
-      }
-      loadGoogleFont(global.typography.headingFont);
-      loadGoogleFont(global.typography.bodyFont);
-  };
+      } catch(e) {}
+  }, []);
 
   useEffect(() => {
       const fetchData = async () => {
           try {
-            const [parts, bgs, fetchedConfig, tpls, fbs, fetchedFrames] = await Promise.all([
+            const [parts, bgs, storeConfig, tpls, fbs, fetchedFrames] = await Promise.all([
                 getAllParts(), 
                 getAllBackgrounds(), 
                 getStoreConfig(),
@@ -160,28 +126,37 @@ const App: React.FC = () => {
                 getAllFrames()
             ]);
             
-            if (parts && parts.length > 0) setLegoParts(categorizeParts(parts));
-            if (bgs && bgs.length > 0) setBackgrounds(bgs);
-            if (tpls && tpls.length > 0) setTemplates(tpls);
-            if (fbs && fbs.length > 0) setFeedbacks(fbs);
-            if (fetchedFrames && fetchedFrames.length > 0) setFrames(fetchedFrames);
+            if (parts && parts.length > 0) {
+                setLegoParts(categorizeParts(parts));
+            }
+            if (bgs && bgs.length > 0) {
+                setBackgrounds(bgs);
+            }
+            if (tpls && tpls.length > 0) {
+                setTemplates(tpls);
+            }
+            if (fbs && fbs.length > 0) {
+                setFeedbacks(fbs);
+            }
+            if (fetchedFrames && fetchedFrames.length > 0) {
+                setFrames(fetchedFrames);
+            }
 
-            if (fetchedConfig) {
-                setStoreConfig(fetchedConfig);
-                if (fetchedConfig.theme) {
-                    applyTheme(fetchedConfig.theme);
-                } else {
-                    applyTheme(DEFAULT_THEME);
-                }
+            if (storeConfig) {
+                localStorage.setItem('app_config', JSON.stringify(storeConfig));
 
-                if (fetchedConfig.faviconUrl) {
+                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
+                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
+                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+                
+                if (storeConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");
                     if (link instanceof HTMLLinkElement) {
-                        link.href = fetchedConfig.faviconUrl;
+                        link.href = storeConfig.faviconUrl;
                     } else {
                         const newLink = document.createElement('link');
                         newLink.rel = 'icon';
-                        newLink.href = fetchedConfig.faviconUrl;
+                        newLink.href = storeConfig.faviconUrl;
                         document.head.appendChild(newLink);
                     }
                 }
@@ -225,15 +200,24 @@ const App: React.FC = () => {
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
     setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
+    // Trigger animation callback
     triggerCartShake();
     if (openCart) {
+        // Wait slightly for animation to land before opening cart if desired
+        // But for better UX with micro-interaction, usually we don't auto-open
+        // if we show the flying animation. 
+        // We will keep openCart logic but maybe add delay?
+        // Actually, if micro interaction is present, usually we DON'T open the cart automatically
+        // to let the user see the fly effect. 
+        // Let's modify behavior: if animation triggers, we might NOT want to open cart immediately.
+        // However, the prop says "openCart". Let's respect it for now.
         setTimeout(() => setIsCartOpen(true), 800); 
     }
   };
 
   const triggerCartShake = () => {
       setIsCartShaking(true);
-      setTimeout(() => setIsCartShaking(false), 500); 
+      setTimeout(() => setIsCartShaking(false), 500); // Duration of css animation
   };
 
   const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
@@ -304,10 +288,14 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  if (isAppLoading && !storeConfig.logoUrl) {
+  if (isAppLoading && !logoUrl) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
               <div className="animate-pulse flex flex-col items-center">
+                  <svg className="w-16 h-16 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M12 1.5C12 1.5 12 5.5 15 8.5C18 11.5 22.5 12 22.5 12C22.5 12 18 12.5 15 15.5C12 18.5 12 22.5 12 22.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 22.5C12 22.5 12 18.5 9 15.5C6 12.5 1.5 12 1.5 12C1.5 12 6 11.5 9 8.5C12 5.5 12 1.5 12 1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                   <span className="font-heading text-2xl tracking-wider">The Luvin</span>
               </div>
           </div>
@@ -315,20 +303,19 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-gray-900 bg-site-bg text-site-text transition-colors duration-300">
+    <div className="min-h-screen flex flex-col font-sans text-gray-900">
          {currentPage !== 'admin' && (
              <Header 
                 navigateTo={navigateTo} 
                 cartCount={cartItems.length} 
                 onCartClick={() => setIsCartOpen(true)} 
-                logoUrl={storeConfig.logoUrl || ''} 
+                logoUrl={logoUrl} 
                 isCartShaking={isCartShaking}
-                config={storeConfig}
              />
         )}
         
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />}
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} templates={templates} />}
             {currentPage === 'builder' && (
                 <BuilderPage 
                     config={config} 
@@ -343,7 +330,7 @@ const App: React.FC = () => {
                     editingCartIndex={editingCartIndex} 
                     onCancelEdit={handleCancelEdit} 
                     onZoomImage={setZoomedImageUrl} 
-                    logoUrl={storeConfig.logoUrl}
+                    logoUrl={logoUrl}
                     initialStep={builderInitialStep}
                 />
             )}
@@ -365,7 +352,7 @@ const App: React.FC = () => {
             {currentPage === 'warranty' && <WarrantyPage />}
         </main>
 
-        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
 
         <CartPanel 
             isOpen={isCartOpen} 

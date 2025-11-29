@@ -1,5 +1,5 @@
 // config/firebase.ts
-import firebase from "firebase/compat/app";
+import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore"; 
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth"; // <--- Mới thêm cái này
@@ -15,7 +15,7 @@ const firebaseConfig = {
   measurementId: "G-1E58PMLPRP"
 };
 
-const app = firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);

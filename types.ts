@@ -166,38 +166,3 @@ export interface FeedbackItem {
     text: string;
     imageUrl: string;
 }
-
-// --- THEME SYSTEM INTERFACES ---
-
-export interface SectionStyle {
-    backgroundColor?: string;
-    textColor?: string;
-    accentColor?: string;
-    headingColor?: string;
-    paddingTop?: string;
-    paddingBottom?: string;
-}
-
-export interface ThemeConfig {
-    global: {
-        colors: {
-            primary: string; // Brand Main Color (Pink)
-            secondary: string; // Brand Secondary (Cream/Beige)
-            text: string; // Main text color
-            background: string; // Main background
-            accent: string; // Highlights
-        };
-        typography: {
-            headingFont: string;
-            bodyFont: string;
-            customFontUrl?: string;
-        };
-        borderRadius: string; // '0px', '4px', '8px', '16px', '9999px'
-    };
-    sections: {
-        header: SectionStyle;
-        hero: SectionStyle;
-        footer: SectionStyle;
-        // Add more sections as needed
-    };
-}
