@@ -16,6 +16,17 @@ export interface StoreConfig {
     headingFont?: string; // Tên Google Font hoặc 'CustomBrandFont'
     bodyFont?: string;
     customFontUrl?: string; // URL file font upload lên (.ttf, .otf, .woff2)
+
+    // Contact Info (Footer)
+    contact?: {
+        address?: string;
+        hotline?: string;
+        email?: string;
+        facebook?: string;
+        instagram?: string;
+        tiktok?: string;
+        zalo?: string;
+    }
 }
 
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {

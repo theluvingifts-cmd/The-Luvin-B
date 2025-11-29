@@ -11,7 +11,7 @@ import {
 import { createOrder } from './services/orderService'; 
 import { getAllParts } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
-import { getStoreConfig } from './services/configService'; 
+import { getStoreConfig, StoreConfig } from './services/configService'; 
 import { getAllTemplates } from './services/templateService'; 
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
@@ -102,6 +102,7 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
+  const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
 
   const [logoUrl, setLogoUrl] = useState<string>(() => {
       try {
@@ -133,6 +134,8 @@ const App: React.FC = () => {
           const cached = localStorage.getItem('app_config');
           if (cached) {
               const config = JSON.parse(cached);
+              setStoreConfig(config); // Set local state from cache too
+              
               const root = document.documentElement;
               
               if (config.primaryColor) {
@@ -168,7 +171,7 @@ const App: React.FC = () => {
   useEffect(() => {
       const fetchData = async () => {
           try {
-            const [parts, bgs, storeConfig, tpls, fbs, fetchedFrames] = await Promise.all([
+            const [parts, bgs, fetchedConfig, tpls, fbs, fetchedFrames] = await Promise.all([
                 getAllParts(), 
                 getAllBackgrounds(), 
                 getStoreConfig(),
@@ -193,40 +196,41 @@ const App: React.FC = () => {
                 setFrames(fetchedFrames);
             }
 
-            if (storeConfig) {
-                localStorage.setItem('app_config', JSON.stringify(storeConfig));
+            if (fetchedConfig) {
+                setStoreConfig(fetchedConfig);
+                localStorage.setItem('app_config', JSON.stringify(fetchedConfig));
 
-                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
-                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
-                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+                if (fetchedConfig.logoUrl) setLogoUrl(fetchedConfig.logoUrl);
+                if (fetchedConfig.heroImageUrl) setHeroImageUrl(fetchedConfig.heroImageUrl);
+                if (fetchedConfig.inspireImageUrl) setInspireImageUrl(fetchedConfig.inspireImageUrl);
                 
                 // Apply Dynamic Theme
                 const root = document.documentElement;
-                if (storeConfig.primaryColor) {
-                    root.style.setProperty('--color-primary', storeConfig.primaryColor);
+                if (fetchedConfig.primaryColor) {
+                    root.style.setProperty('--color-primary', fetchedConfig.primaryColor);
                 }
                 
-                if (storeConfig.customFontUrl) {
-                    loadCustomFont(storeConfig.customFontUrl);
+                if (fetchedConfig.customFontUrl) {
+                    loadCustomFont(fetchedConfig.customFontUrl);
                 }
 
-                if (storeConfig.headingFont) {
-                    root.style.setProperty('--font-heading', `'${storeConfig.headingFont}'`);
-                    loadGoogleFont(storeConfig.headingFont);
+                if (fetchedConfig.headingFont) {
+                    root.style.setProperty('--font-heading', `'${fetchedConfig.headingFont}'`);
+                    loadGoogleFont(fetchedConfig.headingFont);
                 }
-                if (storeConfig.bodyFont) {
-                    root.style.setProperty('--font-body', `'${storeConfig.bodyFont}'`);
-                    loadGoogleFont(storeConfig.bodyFont);
+                if (fetchedConfig.bodyFont) {
+                    root.style.setProperty('--font-body', `'${fetchedConfig.bodyFont}'`);
+                    loadGoogleFont(fetchedConfig.bodyFont);
                 }
 
-                if (storeConfig.faviconUrl) {
+                if (fetchedConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");
                     if (link instanceof HTMLLinkElement) {
-                        link.href = storeConfig.faviconUrl;
+                        link.href = fetchedConfig.faviconUrl;
                     } else {
                         const newLink = document.createElement('link');
                         newLink.rel = 'icon';
-                        newLink.href = storeConfig.faviconUrl;
+                        newLink.href = fetchedConfig.faviconUrl;
                         document.head.appendChild(newLink);
                     }
                 }
@@ -414,7 +418,7 @@ const App: React.FC = () => {
             {currentPage === 'warranty' && <WarrantyPage />}
         </main>
 
-        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig || undefined} />}
 
         <CartPanel 
             isOpen={isCartOpen} 
