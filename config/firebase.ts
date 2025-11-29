@@ -1,5 +1,5 @@
 // config/firebase.ts
-import * as firebase from "firebase/app";
+import firebase from "firebase/compat/app";
 import { getFirestore } from "firebase/firestore"; 
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth"; // <--- Mới thêm cái này
