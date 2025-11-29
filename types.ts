@@ -166,3 +166,46 @@ export interface FeedbackItem {
     text: string;
     imageUrl: string;
 }
+
+// --- THEME SYSTEM INTERFACES ---
+
+export interface ThemeColors {
+    primary: string;
+    secondary: string;
+    background: string;
+    text: string;
+    accent: string;
+}
+
+export interface ThemeTypography {
+    headingFont: string;
+    bodyFont: string;
+}
+
+export interface SectionStyle {
+    useGlobal: boolean;
+    colors?: Partial<ThemeColors>;
+    typography?: Partial<ThemeTypography>;
+}
+
+export interface CustomFont {
+    id: string;
+    name: string;
+    url: string; // Cloudinary URL
+    format: 'truetype' | 'opentype' | 'woff' | 'woff2';
+}
+
+export interface ThemeConfig {
+    global: {
+        colors: ThemeColors;
+        typography: ThemeTypography;
+    };
+    sections: {
+        header: SectionStyle;
+        hero: SectionStyle;
+        collections: SectionStyle;
+        footer: SectionStyle;
+        [key: string]: SectionStyle;
+    };
+    customFonts: CustomFont[];
+}

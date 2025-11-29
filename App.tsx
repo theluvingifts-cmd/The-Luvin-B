@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption } from './types';
+import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, ThemeConfig } from './types';
 import { 
     LEGO_PARTS, 
     INITIAL_FRAME_CONFIG, 
@@ -11,7 +11,7 @@ import {
 import { createOrder } from './services/orderService'; 
 import { getAllParts } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
-import { getStoreConfig } from './services/configService'; 
+import { getStoreConfig, DEFAULT_THEME } from './services/configService'; 
 import { getAllTemplates } from './services/templateService'; 
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
@@ -33,6 +33,53 @@ import { WarrantyPage } from './pages/WarrantyPage';
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
+
+// Helper to inject custom fonts
+const injectCustomFonts = (fonts: {name: string, url: string}[]) => {
+    const styleId = 'dynamic-fonts';
+    let style = document.getElementById(styleId);
+    if (!style) {
+        style = document.createElement('style');
+        style.id = styleId;
+        document.head.appendChild(style);
+    }
+    
+    let css = '';
+    fonts.forEach(font => {
+        css += `
+            @font-face {
+                font-family: '${font.name}';
+                src: url('${font.url}') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+        `;
+    });
+    style.innerHTML = css;
+};
+
+// Helper to apply theme to CSS variables
+const applyTheme = (theme: ThemeConfig) => {
+    const root = document.documentElement;
+    const { colors, typography } = theme.global;
+    
+    // Apply Global Colors
+    root.style.setProperty('--color-primary', colors.primary);
+    root.style.setProperty('--color-secondary', colors.secondary);
+    root.style.setProperty('--color-background', colors.background);
+    root.style.setProperty('--color-text', colors.text);
+    root.style.setProperty('--color-accent', colors.accent);
+    
+    // Apply Global Fonts
+    root.style.setProperty('--font-heading', typography.headingFont);
+    root.style.setProperty('--font-body', typography.bodyFont);
+    
+    // Inject Fonts
+    if (theme.customFonts && theme.customFonts.length > 0) {
+        injectCustomFonts(theme.customFonts);
+    }
+};
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -70,54 +117,18 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
 
-  const [logoUrl, setLogoUrl] = useState<string>(() => {
-      try {
-          const cached = localStorage.getItem('app_config');
-          return cached ? JSON.parse(cached).logoUrl || "" : "";
-      } catch (e) { return ""; }
-  });
-  
-  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(() => {
-      try {
-          const cached = localStorage.getItem('app_config');
-          return cached ? JSON.parse(cached).heroImageUrl : undefined;
-      } catch (e) { return undefined; }
-  });
-
-  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(() => {
-      try {
-          const cached = localStorage.getItem('app_config');
-          return cached ? JSON.parse(cached).inspireImageUrl : undefined;
-      } catch (e) { return undefined; }
-  });
+  const [storeConfig, setStoreConfig] = useState<any>(null);
+  const [logoUrl, setLogoUrl] = useState<string>("");
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
+  const [inspireImageUrl, setInspireImageUrl] = useState<string | undefined>(undefined);
 
   // State for cart animation
   const [isCartShaking, setIsCartShaking] = useState(false);
 
   useEffect(() => {
-      try {
-          const cached = localStorage.getItem('app_config');
-          if (cached) {
-              const config = JSON.parse(cached);
-              if (config.faviconUrl) {
-                  const link = document.querySelector("link[rel~='icon']");
-                  if (link instanceof HTMLLinkElement) {
-                      link.href = config.faviconUrl;
-                  } else {
-                      const newLink = document.createElement('link');
-                      newLink.rel = 'icon';
-                      newLink.href = config.faviconUrl;
-                      document.head.appendChild(newLink);
-                  }
-              }
-          }
-      } catch(e) {}
-  }, []);
-
-  useEffect(() => {
       const fetchData = async () => {
           try {
-            const [parts, bgs, storeConfig, tpls, fbs, fetchedFrames] = await Promise.all([
+            const [parts, bgs, fetchedConfig, tpls, fbs, fetchedFrames] = await Promise.all([
                 getAllParts(), 
                 getAllBackgrounds(), 
                 getStoreConfig(),
@@ -126,37 +137,33 @@ const App: React.FC = () => {
                 getAllFrames()
             ]);
             
-            if (parts && parts.length > 0) {
-                setLegoParts(categorizeParts(parts));
-            }
-            if (bgs && bgs.length > 0) {
-                setBackgrounds(bgs);
-            }
-            if (tpls && tpls.length > 0) {
-                setTemplates(tpls);
-            }
-            if (fbs && fbs.length > 0) {
-                setFeedbacks(fbs);
-            }
-            if (fetchedFrames && fetchedFrames.length > 0) {
-                setFrames(fetchedFrames);
-            }
+            if (parts && parts.length > 0) setLegoParts(categorizeParts(parts));
+            if (bgs && bgs.length > 0) setBackgrounds(bgs);
+            if (tpls && tpls.length > 0) setTemplates(tpls);
+            if (fbs && fbs.length > 0) setFeedbacks(fbs);
+            if (fetchedFrames && fetchedFrames.length > 0) setFrames(fetchedFrames);
 
-            if (storeConfig) {
-                localStorage.setItem('app_config', JSON.stringify(storeConfig));
-
-                if (storeConfig.logoUrl) setLogoUrl(storeConfig.logoUrl);
-                if (storeConfig.heroImageUrl) setHeroImageUrl(storeConfig.heroImageUrl);
-                if (storeConfig.inspireImageUrl) setInspireImageUrl(storeConfig.inspireImageUrl);
+            if (fetchedConfig) {
+                setStoreConfig(fetchedConfig);
+                if (fetchedConfig.logoUrl) setLogoUrl(fetchedConfig.logoUrl);
+                if (fetchedConfig.heroImageUrl) setHeroImageUrl(fetchedConfig.heroImageUrl);
+                if (fetchedConfig.inspireImageUrl) setInspireImageUrl(fetchedConfig.inspireImageUrl);
                 
-                if (storeConfig.faviconUrl) {
+                // Apply Theme
+                if (fetchedConfig.theme) {
+                    applyTheme(fetchedConfig.theme);
+                } else {
+                    applyTheme(DEFAULT_THEME);
+                }
+
+                if (fetchedConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");
                     if (link instanceof HTMLLinkElement) {
-                        link.href = storeConfig.faviconUrl;
+                        link.href = fetchedConfig.faviconUrl;
                     } else {
                         const newLink = document.createElement('link');
                         newLink.rel = 'icon';
-                        newLink.href = storeConfig.faviconUrl;
+                        newLink.href = fetchedConfig.faviconUrl;
                         document.head.appendChild(newLink);
                     }
                 }
@@ -200,24 +207,15 @@ const App: React.FC = () => {
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
     setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
-    // Trigger animation callback
     triggerCartShake();
     if (openCart) {
-        // Wait slightly for animation to land before opening cart if desired
-        // But for better UX with micro-interaction, usually we don't auto-open
-        // if we show the flying animation. 
-        // We will keep openCart logic but maybe add delay?
-        // Actually, if micro interaction is present, usually we DON'T open the cart automatically
-        // to let the user see the fly effect. 
-        // Let's modify behavior: if animation triggers, we might NOT want to open cart immediately.
-        // However, the prop says "openCart". Let's respect it for now.
         setTimeout(() => setIsCartOpen(true), 800); 
     }
   };
 
   const triggerCartShake = () => {
       setIsCartShaking(true);
-      setTimeout(() => setIsCartShaking(false), 500); // Duration of css animation
+      setTimeout(() => setIsCartShaking(false), 500); 
   };
 
   const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
@@ -256,24 +254,6 @@ const App: React.FC = () => {
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
-        
-        try {
-            const rawSaved = localStorage.getItem('my_orders');
-            let saved: { id: string; date: number }[] = [];
-            if (rawSaved) {
-                const parsed = JSON.parse(rawSaved);
-                if (Array.isArray(parsed)) {
-                    saved = parsed as { id: string; date: number }[];
-                }
-            }
-            
-            const newEntry = { id: res.data.id, date: Date.now() };
-            const updated = [newEntry, ...saved.filter((o) => o.id !== res.data.id)].slice(0, 5);
-            localStorage.setItem('my_orders', JSON.stringify(updated));
-        } catch (e) {
-            console.error("Failed to save local order history", e);
-        }
-
         setCartItems([]); 
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
@@ -286,6 +266,30 @@ const App: React.FC = () => {
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // --- Dynamic Style Wrapper ---
+  // If specific sections override styles, we apply them via style objects prop-drilled to components.
+  // For simplicity in this step, we rely on the Global Theme applied to :root. 
+  // Individual component overrides will be handled by passing the storeConfig.theme.sections[key] to the component if needed.
+  
+  const getSectionStyle = (sectionKey: string): React.CSSProperties | undefined => {
+      if (!storeConfig?.theme?.sections?.[sectionKey] || storeConfig.theme.sections[sectionKey].useGlobal) return undefined;
+      
+      const sec = storeConfig.theme.sections[sectionKey];
+      const style: any = {};
+      
+      if (sec.colors) {
+          if (sec.colors.background) style['--color-background'] = sec.colors.background;
+          if (sec.colors.text) style['--color-text'] = sec.colors.text;
+          if (sec.colors.primary) style['--color-primary'] = sec.colors.primary;
+          if (sec.colors.accent) style['--color-accent'] = sec.colors.accent;
+      }
+      if (sec.typography) {
+          if (sec.typography.headingFont) style['--font-heading'] = sec.typography.headingFont;
+          if (sec.typography.bodyFont) style['--font-body'] = sec.typography.bodyFont;
+      }
+      return style as React.CSSProperties;
   };
 
   if (isAppLoading && !logoUrl) {
@@ -303,19 +307,25 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-gray-900">
+    <div className="min-h-screen flex flex-col font-sans text-luvin-text bg-luvin-bg">
          {currentPage !== 'admin' && (
-             <Header 
-                navigateTo={navigateTo} 
-                cartCount={cartItems.length} 
-                onCartClick={() => setIsCartOpen(true)} 
-                logoUrl={logoUrl} 
-                isCartShaking={isCartShaking}
-             />
+             <div style={getSectionStyle('header')} className="contents">
+                 <Header 
+                    navigateTo={navigateTo} 
+                    cartCount={cartItems.length} 
+                    onCartClick={() => setIsCartOpen(true)} 
+                    logoUrl={logoUrl} 
+                    isCartShaking={isCartShaking}
+                 />
+             </div>
         )}
         
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} templates={templates} />}
+            {currentPage === 'home' && (
+                <div style={getSectionStyle('hero')}> {/* Also covers collections & feedbacks essentially unless split deeper */}
+                    <HomePage navigateTo={navigateTo} heroImage={heroImageUrl} inspireImage={inspireImageUrl} feedbacks={feedbacks} templates={templates} />
+                </div>
+            )}
             {currentPage === 'builder' && (
                 <BuilderPage 
                     config={config} 
@@ -334,7 +344,11 @@ const App: React.FC = () => {
                     initialStep={builderInitialStep}
                 />
             )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
+            {currentPage === 'collection' && (
+                <div style={getSectionStyle('collections')}>
+                    <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />
+                </div>
+            )}
             {currentPage === 'cart' && <CartPage 
                 cartItems={cartItems} 
                 onRemoveItem={handleRemoveCartItem} 
@@ -352,7 +366,11 @@ const App: React.FC = () => {
             {currentPage === 'warranty' && <WarrantyPage />}
         </main>
 
-        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} />}
+        {currentPage !== 'admin' && (
+            <div style={getSectionStyle('footer')}>
+                <Footer navigateTo={navigateTo} />
+            </div>
+        )}
 
         <CartPanel 
             isOpen={isCartOpen} 

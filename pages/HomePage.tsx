@@ -22,12 +22,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
   const [isHover, setIsHover] = useState(false);
 
   // Tạo danh sách lặp lại đủ dài để scroll vô tận (x3)
-  // Logic: [Set 1] [Set 2] [Set 3]
-  // Khi scroll hết Set 1, ta reset về 0. Người dùng sẽ không nhận ra vì Set 2 bắt đầu giống hệt Set 1.
   const displayFeedbacks = useMemo(() => {
       const raw = (feedbacks && feedbacks.length > 0) ? feedbacks : [];
       if (raw.length === 0) return [];
-      // Nhân 4 lần để đảm bảo luôn đủ độ dài lấp đầy màn hình trước khi logic reset hoạt động
       return [...raw, ...raw, ...raw, ...raw];
   }, [feedbacks]);
 
@@ -37,19 +34,15 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
       if (!scrollContainer || displayFeedbacks.length === 0) return;
 
       const scrollStep = () => {
-          // Chỉ tự động trượt khi không kéo chuột và không hover
           if (!isDown && !isHover) {
               if (scrollContainer.scrollLeft >= scrollContainer.scrollWidth / 2) {
-                  // Reset về đầu (hoặc vị trí tương ứng) khi đi quá nửa
-                  // Để mượt mà, ta reset về: hiện tại - (tổng / 2)
                   scrollContainer.scrollLeft = scrollContainer.scrollLeft - (scrollContainer.scrollWidth / 2);
               } else {
-                  scrollContainer.scrollLeft += 1; // Tốc độ trượt: 1px mỗi chu kỳ
+                  scrollContainer.scrollLeft += 1; 
               }
           }
       };
 
-      // Tốc độ: 30ms = ~33fps, đủ chậm để xem
       const intervalId = setInterval(scrollStep, 30);
       return () => clearInterval(intervalId);
   }, [isDown, isHover, displayFeedbacks]);
@@ -62,20 +55,13 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
       setScrollLeftState(scrollRef.current.scrollLeft);
   };
 
-  const handleMouseLeave = () => {
-      setIsDown(false);
-      setIsHover(false);
-  };
-
-  const handleMouseUp = () => {
-      setIsDown(false);
-  };
-
+  const handleMouseLeave = () => { setIsDown(false); setIsHover(false); };
+  const handleMouseUp = () => { setIsDown(false); };
   const handleMouseMove = (e: React.MouseEvent) => {
       if (!isDown || !scrollRef.current) return;
       e.preventDefault();
       const x = e.pageX - scrollRef.current.offsetLeft;
-      const walk = (x - startX) * 2; // Tốc độ kéo (x2 cho nhạy)
+      const walk = (x - startX) * 2; 
       scrollRef.current.scrollLeft = scrollLeftState - walk;
   };
 
@@ -88,16 +74,12 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
   useEffect(() => {
     const interval = setInterval(() => {
       handleNext();
-    }, 5000); // Slower interval for better UX
+    }, 5000); 
     return () => clearInterval(interval);
   }, [sliderProducts]);
 
-  const handlePrev = () => {
-    setActiveSlide(prev => (prev - 1 + sliderProducts.length) % sliderProducts.length);
-  };
-  const handleNext = () => {
-    setActiveSlide(prev => (prev + 1) % sliderProducts.length);
-  };
+  const handlePrev = () => { setActiveSlide(prev => (prev - 1 + sliderProducts.length) % sliderProducts.length); };
+  const handleNext = () => { setActiveSlide(prev => (prev + 1) % sliderProducts.length); };
 
   const heroStyle = heroImage ? {backgroundImage: `url(${heroImage})`} : { backgroundColor: '#fce7f3' }; 
   const inspireStyle = inspireImage ? {backgroundImage: `url(${inspireImage})`} : { backgroundColor: '#e5e7eb' };
@@ -119,7 +101,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
   `;
 
   return (
-    <div>
+    <div className="section-theme text-[var(--color-text)]">
       <style>{snowStyle}</style>
       <div className="flex flex-col min-h-[calc(100vh-80px)]">
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2 relative">
@@ -127,7 +109,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
           <div className="hidden md:block bg-cover bg-center relative z-10" style={heroStyle}></div>
           
           {/* Right Side */}
-          <div className="flex flex-col justify-center items-center p-12 text-center relative overflow-hidden bg-[#fffbf0]">
+          <div className="flex flex-col justify-center items-center p-12 text-center relative overflow-hidden bg-[var(--color-background)]">
                <div className="absolute inset-0 pointer-events-none overflow-hidden">
                   {[...Array(6)].map((_, i) => (
                     <div key={i} className="snowflake-minimal" style={{
@@ -142,9 +124,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
                <div className="relative z-10 flex flex-col items-center">
                    <div className="mb-10 text-center">
                        <p className="text-[10px] font-bold text-gray-400 tracking-[0.3em] uppercase mb-4">Christmas Edition</p>
-                       <h1 className="text-5xl md:text-7xl font-brand-heading text-gray-900 leading-[1.1]">
+                       <h1 className="text-5xl md:text-7xl font-heading text-[var(--color-text)] leading-[1.1]">
                           Unique for <br/>
-                          <span className="italic font-light text-[#e5a84b]">every moment</span>
+                          <span className="italic font-light text-[var(--color-accent)]">every moment</span>
                        </h1>
                    </div>
 
@@ -161,7 +143,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
 
                      <div className="absolute right-5 opacity-0 translate-x-12 scale-50 transition-all duration-1000 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100">
                         <div className="bg-white/15 p-2 rounded-full backdrop-blur-md">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5a84b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </div>
@@ -173,7 +155,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
       </div>
 
       {/* FEATURED / INSPIRE SECTION */}
-      <div className="w-full bg-[#fffbf0] py-16 md:py-24">
+      <div className="w-full bg-[var(--color-background)] py-16 md:py-24">
         <div className="container mx-auto px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 
@@ -225,7 +207,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
                             </svg>
                         </button>
 
-                        <div className="font-serif text-2xl text-gray-900 tracking-wider">
+                        <div className="font-serif text-2xl text-[var(--color-text)] tracking-wider">
                             {String(activeSlide + 1).padStart(2, '0')}
                             <span className="text-base text-gray-400 mx-2 font-sans italic opacity-60">/ {String(sliderProducts.length).padStart(2, '0')}</span>
                         </div>
@@ -244,13 +226,13 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, heroImage, inspi
                     {sliderProducts.length > 0 && (
                         <div className="space-y-3 animate-fade-in">
                             <p className="text-[10px] font-bold tracking-[0.3em] text-gray-400 uppercase">Featured Collection</p>
-                            <h3 className="font-brand-heading text-4xl md:text-5xl text-gray-800 leading-tight">
+                            <h3 className="font-heading text-4xl md:text-5xl text-[var(--color-text)] leading-tight">
                                 {sliderProducts[activeSlide].name}
                             </h3>
                             <div className="pt-4">
                                 <button 
                                     onClick={() => navigateTo('collection')}
-                                    className="text-sm border-b border-gray-800 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-all font-medium"
+                                    className="text-sm border-b border-gray-800 pb-1 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all font-medium"
                                 >
                                     Xem chi tiết
                                 </button>

@@ -36,21 +36,21 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
 
   return (
     <>
-      <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
+      <header className="section-theme bg-[var(--color-background)]/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="cursor-pointer" onClick={() => handleNav('home')}>
-              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-brand-heading text-2xl text-luvin-pink">The Luvin</span>}
+              {logoUrl ? <img src={logoUrl} alt="The Luvin" className="h-12 object-contain" /> : <span className="font-brand-heading text-2xl text-[var(--color-primary)]">The Luvin</span>}
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => (
-              <button key={item.page} onClick={() => handleNav(item.page)} className="text-gray-800 hover:text-luvin-pink transition-colors font-semibold text-sm">
+              <button key={item.page} onClick={() => handleNav(item.page)} className="text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors font-semibold text-sm">
                 {item.label}
               </button>
             ))}
             <button 
                 id="cart-icon-desktop" 
                 onClick={onCartClick} 
-                className={`relative text-gray-800 hover:text-luvin-pink transition-colors ${isCartShaking ? 'animate-cart-shake' : ''}`}
+                className={`relative text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors ${isCartShaking ? 'animate-cart-shake' : ''}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
               {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center transition-transform duration-200 transform scale-100">{cartCount}</span>}
@@ -60,12 +60,12 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
             <button 
                 id="cart-icon-mobile" 
                 onClick={onCartClick} 
-                className={`relative text-gray-800 ${isCartShaking ? 'animate-cart-shake' : ''}`}
+                className={`relative text-[var(--color-text)] ${isCartShaking ? 'animate-cart-shake' : ''}`}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
                 {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">{cartCount}</span>}
             </button>
-            <button onClick={() => setIsMenuOpen(true)} className="text-gray-800 focus:outline-none">
+            <button onClick={() => setIsMenuOpen(true)} className="text-[var(--color-text)] focus:outline-none">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
             </button>
           </div>
@@ -92,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
                     <button 
                       key={item.page} 
                       onClick={() => handleNav(item.page)} 
-                      className="text-gray-800 hover:text-luvin-pink text-xl font-semibold"
+                      className="text-gray-800 hover:text-[var(--color-primary)] text-xl font-semibold"
                     >
                       {item.label}
                     </button> 
