@@ -147,9 +147,9 @@ export const ProductForm: React.FC<{
     const canHaveColors = ['shirt', 'pants', 'accessory', 'pet', 'hair', 'hat', 'set'].includes(formData.type);
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999]" onClick={onCancel}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999]" onClick={onCancel}>
             <div 
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-[960px] max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] md:w-[90%] max-w-[960px] max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header - Fixed */}
