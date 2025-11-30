@@ -119,7 +119,7 @@ export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
 // --- DAILY ADS COSTS FUNCTIONS (SWITCHED TO LOCAL STORAGE) ---
 
 export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Record<string, number>> => {
-    // Local Storage Implementation
+    // Local Storage Implementation (No Firebase)
     try {
         const stored = localStorage.getItem('ads_costs');
         const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};
@@ -142,7 +142,7 @@ export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Recor
 };
 
 export const saveAdsCost = async (date: string, cost: number) => {
-    // Local Storage Implementation
+    // Local Storage Implementation (No Firebase)
     try {
         const stored = localStorage.getItem('ads_costs');
         const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};

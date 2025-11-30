@@ -61,7 +61,7 @@ export const AdminLogin: React.FC = () => {
                         <input type="email" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white" value={email} onChange={e => setEmail(e.target.value)} required />
                     </div>
                     <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Mật khẩu</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">{isRegistering ? 'Tạo Mật khẩu' : 'Mật khẩu'}</label>
                         <input type="password" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white" value={loginPass} onChange={e => setLoginPass(e.target.value)} required />
                     </div>
                     {loginError && <p className="text-red-600 text-sm mt-2">{loginError}</p>}
@@ -71,7 +71,7 @@ export const AdminLogin: React.FC = () => {
                 </form>
                 {isRegistering && (
                     <p className="text-xs text-gray-400 mt-4 italic">
-                        * Chỉ email được Admin cấp quyền mới có thể truy cập hệ thống sau khi đăng ký.
+                        * Chỉ email đã được Admin thêm vào danh sách Cấu hình mới có quyền truy cập sau khi đăng ký.
                     </p>
                 )}
             </div>
