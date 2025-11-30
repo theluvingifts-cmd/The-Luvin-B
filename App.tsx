@@ -30,6 +30,7 @@ import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
+import { BusinessPage } from './pages/BusinessPage'; // ADDED
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
@@ -381,6 +382,7 @@ const App: React.FC = () => {
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
+            {currentPage === 'business' && <BusinessPage config={storeConfig} />}
         </main>
 
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}

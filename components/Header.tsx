@@ -37,8 +37,8 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
     { label: 'Trang chủ', page: 'home' }, 
     { label: 'Thiết kế', page: 'builder' }, 
     { label: 'Bộ sưu tập', page: 'collection' }, 
+    { label: 'Doanh nghiệp', page: 'business' },
     { label: 'Tra cứu', page: 'order-lookup' },
-    { label: 'Về chúng tôi', page: 'about' },
   ];
   
   const handleNav = (page: Page) => { navigateTo(page); setIsMenuOpen(false); }
