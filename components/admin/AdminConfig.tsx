@@ -478,6 +478,40 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             </div>
 
                             <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h3 className="text-lg font-bold mb-4">Câu chuyện (Story Section)</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề Story</label>
+                                        <input 
+                                            ref={(el) => { inputRefs.current['homeStoryTitle'] = el; }}
+                                            value={storeConfig.homeStoryTitle || 'Hơn cả một món quà,\nđó là kỷ niệm.'} 
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setStoreConfig(prev => ({...prev, homeStoryTitle: val}));
+                                            }}
+                                            onBlur={async (e) => await updateStoreConfig({ homeStoryTitle: e.target.value })}
+                                            className="w-full p-2 border rounded"
+                                            placeholder="Tiêu đề chính..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Nội dung Story</label>
+                                        <textarea
+                                            ref={(el) => { inputRefs.current['homeStoryContent'] = el; }}
+                                            value={storeConfig.homeStoryContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất...'} 
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setStoreConfig(prev => ({...prev, homeStoryContent: val}));
+                                            }}
+                                            onBlur={async (e) => await updateStoreConfig({ homeStoryContent: e.target.value })}
+                                            className="w-full p-2 border rounded h-32"
+                                            placeholder="Nội dung câu chuyện..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-lg border shadow-sm">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-lg font-bold">Mẫu (Templates)</h3>
                                     <button onClick={() => setIsEditingTemplate(true)} className="px-3 py-1 bg-green-600 text-white rounded text-sm font-bold">+ Thêm</button>
@@ -674,7 +708,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                 <span 
                                                     style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
                                                 >
-                                                    {storeConfig.heroTitle || 'Unique for'}
+                                                    {storeConfig.heroTitle || 'Gói ghém yêu thương'}
                                                 </span>
                                             </EditableZone>
                                             <br/>
@@ -687,7 +721,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                     className="italic font-light" 
                                                     style={{ color: themeConfig.global.colors.accent }}
                                                 >
-                                                    {storeConfig.heroSubtitle || 'every moment'}
+                                                    {storeConfig.heroSubtitle || 'trong từng mảnh ghép'}
                                                 </span>
                                             </EditableZone>
                                         </h1>
@@ -713,42 +747,28 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 </div>
                             </EditableZone>
 
-                            {/* --- PRODUCT CARD PREVIEW --- */}
+                            {/* --- STORY PREVIEW --- */}
                             <div className="py-12 bg-white container mx-auto px-6">
-                                <h3 className="text-center text-2xl font-bold mb-8" style={{ fontFamily: themeConfig.global.typography.headingFont }}>Sản phẩm mẫu</h3>
-                                <div className="flex justify-center">
-                                    <EditableZone 
-                                        onClick={() => scrollToField('theme', 'global.borderRadius')} 
-                                        label="Bo góc Card (Global Radius)"
-                                    >
-                                        <div 
-                                            className="w-64 border p-4 shadow-sm group/card cursor-pointer"
-                                            style={{ 
-                                                backgroundColor: '#fff',
-                                                borderRadius: themeConfig.global.borderRadius,
-                                                borderColor: themeConfig.global.colors.secondary
-                                            }}
+                                <div className="flex gap-8 items-center">
+                                    <div className="w-1/2 aspect-square bg-gray-100 rounded-lg"></div>
+                                    <div className="w-1/2">
+                                        <EditableZone 
+                                            onClick={() => scrollToField('content', 'homeStoryTitle')} 
+                                            label="Tiêu đề Story"
                                         >
-                                            <div className="w-full aspect-square bg-gray-100 mb-3 rounded-sm flex items-center justify-center text-gray-300">Image</div>
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-bold text-sm">Khung LEGO</p>
-                                                    <p className="text-xs opacity-60">Custom</p>
-                                                </div>
-                                                <EditableZone 
-                                                    onClick={() => scrollToField('theme', 'global.colors.primary')} 
-                                                    label="Màu giá tiền (Primary)"
-                                                >
-                                                    <span 
-                                                        className="font-bold p-1 rounded"
-                                                        style={{ color: themeConfig.global.colors.primary }}
-                                                    >
-                                                        250.000đ
-                                                    </span>
-                                                </EditableZone>
-                                            </div>
-                                        </div>
-                                    </EditableZone>
+                                            <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: themeConfig.global.typography.headingFont }}>
+                                                {storeConfig.homeStoryTitle || 'Hơn cả một món quà,\nđó là kỷ niệm.'}
+                                            </h2>
+                                        </EditableZone>
+                                        <EditableZone 
+                                            onClick={() => scrollToField('content', 'homeStoryContent')} 
+                                            label="Nội dung Story"
+                                        >
+                                            <p className="text-sm opacity-80 leading-relaxed">
+                                                {storeConfig.homeStoryContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất...'}
+                                            </p>
+                                        </EditableZone>
+                                    </div>
                                 </div>
                             </div>
 

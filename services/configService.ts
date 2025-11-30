@@ -27,6 +27,10 @@ export interface StoreConfig {
     heroTitle?: string;
     heroSubtitle?: string;
     
+    // Homepage Story
+    homeStoryTitle?: string;
+    homeStoryContent?: string;
+
     // NEW: Unified Theme Config
     theme?: ThemeConfig;
     uploadedFonts?: CustomFont[];

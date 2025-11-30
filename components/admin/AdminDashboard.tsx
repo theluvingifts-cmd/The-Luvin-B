@@ -49,32 +49,65 @@ const TopItemsCard = ({ title, data }: { title: string, data: Record<string, num
     </div>
 );
 
-const RevenueChart: React.FC<{ data: { date: string; revenue: number }[] }> = ({ data }) => {
-    const maxRevenue = Math.max(...data.map(d => d.revenue), 100000); 
+const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number }[] }> = ({ data }) => {
+    // Tìm giá trị lớn nhất để scale biểu đồ (tránh chia cho 0)
+    const maxValue = Math.max(...data.map(d => d.revenue), 100000);
 
     return (
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ doanh thu (7 ngày)</h4>
-            <div className="flex items-end justify-between h-40 gap-2 sm:gap-4">
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm h-full flex flex-col">
+            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ doanh thu & Lợi nhuận (7 ngày)</h4>
+            <div className="flex-grow flex items-end justify-between gap-2 sm:gap-4 relative h-48">
+                {/* Grid Lines (Optional) */}
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10">
+                    <div className="border-t border-gray-900 w-full"></div>
+                    <div className="border-t border-gray-900 w-full"></div>
+                    <div className="border-t border-gray-900 w-full"></div>
+                    <div className="border-t border-gray-900 w-full"></div>
+                </div>
+
                 {data.map((d, index) => {
-                    const heightPercent = (d.revenue / maxRevenue) * 100;
+                    const revenueHeight = (d.revenue / maxValue) * 100;
+                    const profitHeight = (d.profit / maxValue) * 100;
+
                     return (
-                        <div key={index} className="flex flex-col items-center flex-1 group relative">
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                {formatCurrency(d.revenue)}
-                            </div>
-                            
-                            <div 
-                                className="w-full bg-blue-100 hover:bg-blue-200 rounded-t transition-all relative flex flex-col justify-end overflow-hidden" 
-                                style={{ height: `${heightPercent}%`, minHeight: '4px' }}
-                            >
-                                <div className="absolute bottom-0 left-0 w-full bg-blue-500 opacity-20 h-1"></div>
+                        <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10">
+                            {/* Bars Container */}
+                            <div className="w-full flex items-end justify-center gap-1 h-full">
+                                {/* Revenue Bar */}
+                                <div 
+                                    className="w-3 sm:w-6 bg-blue-200 hover:bg-blue-300 rounded-t transition-all duration-500 relative"
+                                    style={{ height: `${Math.max(revenueHeight, 1)}%` }} // Min height 1% to show 0
+                                >
+                                    {/* Tooltip Revenue */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                                        DT: {formatCurrency(d.revenue)}
+                                    </div>
+                                </div>
+                                {/* Profit Bar */}
+                                <div 
+                                    className="w-3 sm:w-6 bg-green-200 hover:bg-green-300 rounded-t transition-all duration-500 relative"
+                                    style={{ height: `${Math.max(profitHeight, 1)}%` }}
+                                >
+                                     {/* Tooltip Profit */}
+                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 bg-green-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                                        LN: {formatCurrency(d.profit)}
+                                    </div>
+                                </div>
                             </div>
                             <span className="text-[10px] text-gray-500 mt-2 font-medium">{d.date}</span>
                         </div>
                     );
                 })}
+            </div>
+            <div className="flex justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="w-3 h-3 bg-blue-200 rounded"></div>
+                    <span className="text-gray-600">Doanh thu</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="w-3 h-3 bg-green-200 rounded"></div>
+                    <span className="text-gray-600">Lợi nhuận</span>
+                </div>
             </div>
         </div>
     );
@@ -93,6 +126,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const defaultParts = Object.values(LEGO_PARTS).flat().reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
+
+    // Calculate profit for a single order
+    const calculateOrderProfit = (order: Order): number => {
+        let totalCost = 0;
+        
+        // Frame cost
+        order.items.forEach(item => {
+            const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
+            if (frame) totalCost += (frame.costPrice || 0);
+
+            // Parts cost (characters)
+            item.characters.forEach(char => {
+                if (char.hair) totalCost += (allKnownParts[char.hair.id]?.costPrice || 0);
+                if (char.face) totalCost += (allKnownParts[char.face.id]?.costPrice || 0);
+                if (char.shirt) totalCost += (allKnownParts[char.shirt.id]?.costPrice || 0);
+                if (char.pants) totalCost += (allKnownParts[char.pants.id]?.costPrice || 0);
+                if (char.hat) totalCost += (allKnownParts[char.hat.id]?.costPrice || 0);
+            });
+
+            // Draggable Items cost
+            item.draggableItems.forEach(di => {
+                if (di.type !== 'charm') {
+                    totalCost += (allKnownParts[di.partId]?.costPrice || 0);
+                }
+            });
+        });
+
+        // Box cost (Approximate if not tracked)
+        if (order.addGiftBox) totalCost += 15000; // Assuming box cost ~15k
+
+        return order.totalPrice - order.shipping.fee - totalCost; // Exclude shipping fee from revenue for profit calc? Actually shipping fee is paid to carrier, so we subtract it from revenue if it's included in total. But usually total includes shipping fee collected from customer.
+        // Simplified: Profit = (Order Total - Shipping Fee) - COGS.
+    };
 
     const analytics = useMemo(() => {
         let start: Date, end: Date, prevStart: Date, prevEnd: Date;
@@ -146,6 +212,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
 
         const revenue = currentOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const profit = currentOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
+        
         const prevRevenue = prevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
 
@@ -206,20 +274,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             const dStart = getStartOfDay(d);
             const dEnd = getEndOfDay(d);
             
-            const dailyRevenue = orders
-                .filter(o => {
-                    const time = o.createdAt || 0;
-                    return time >= dStart.getTime() && time <= dEnd.getTime();
-                })
-                .reduce((sum, o) => sum + o.totalPrice, 0);
+            const dailyOrders = orders.filter(o => {
+                const time = o.createdAt || 0;
+                return time >= dStart.getTime() && time <= dEnd.getTime();
+            });
+
+            const dailyRevenue = dailyOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+            const dailyProfit = dailyOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
             
             chartData.push({
                 date: `${d.getDate()}/${d.getMonth() + 1}`,
-                revenue: dailyRevenue
+                revenue: dailyRevenue,
+                profit: dailyProfit
             });
         }
 
-        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData };
+        return { revenue, profit, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData };
     }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts, frames]); 
 
     return (
@@ -261,12 +331,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'payment')}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
-                    <p className="text-3xl font-light text-gray-900">{analytics.orderCount}</p>
+                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận (Est)</p></div>
+                    <p className="text-3xl font-light text-green-600">{formatCurrency(analytics.profit, 'payment')}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tổng Charm</p>
-                    <p className="text-3xl font-light text-gray-900">{analytics.inventory.totalCharms}</p>
+                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
+                    <p className="text-3xl font-light text-gray-900">{analytics.orderCount}</p>
                 </div>
                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hiệu suất kho</p>
@@ -276,7 +346,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
             {/* CHARTS SECTION */}
             <div className="grid grid-cols-1 gap-6">
-                <RevenueChart data={analytics.chartData} />
+                <BarChart data={analytics.chartData} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

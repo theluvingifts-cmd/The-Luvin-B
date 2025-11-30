@@ -43,6 +43,10 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
   const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
   const heroSubtitle = config?.heroSubtitle || 'trong từng mảnh ghép';
   
+  // Story Config
+  const storyTitle = config?.homeStoryTitle || 'Hơn cả một món quà, <br/>đó là kỷ niệm.';
+  const storyContent = config?.homeStoryContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất, mà ở câu chuyện nó mang theo.\nTại The Luvin, mỗi khung tranh là một cuốn nhật ký mở, nơi bạn kể lại hành trình yêu thương của mình qua những mảnh ghép nhỏ bé nhưng đầy màu sắc.\n\nDù là ngày kỷ niệm, sinh nhật hay một lời xin lỗi ngọt ngào, hãy để chúng tôi giúp bạn gói ghém cảm xúc ấy một cách trọn vẹn nhất.';
+
   const displayTemplates = (templates && templates.length > 0) ? templates.slice(0, 4) : COLLECTION_TEMPLATES.slice(0, 4);
   const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
 
@@ -230,14 +234,8 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                   </div>
                   <div className="w-full md:w-1/2 text-center md:text-left">
                       <span className="text-luvin-pink font-bold tracking-widest text-xs uppercase mb-2 block">Our Story</span>
-                      <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6">Hơn cả một món quà, <br/>đó là kỷ niệm.</h2>
-                      <p className="text-gray-600 mb-6 leading-loose">
-                          Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất, mà ở câu chuyện nó mang theo. 
-                          Tại The Luvin, mỗi khung tranh là một cuốn nhật ký mở, nơi bạn kể lại hành trình yêu thương của mình qua những mảnh ghép nhỏ bé nhưng đầy màu sắc.
-                      </p>
-                      <p className="text-gray-600 mb-8 leading-loose">
-                          Dù là ngày kỷ niệm, sinh nhật hay một lời xin lỗi ngọt ngào, hãy để chúng tôi giúp bạn gói ghém cảm xúc ấy một cách trọn vẹn nhất.
-                      </p>
+                      <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6" dangerouslySetInnerHTML={{ __html: storyTitle }}></h2>
+                      <div className="text-gray-600 mb-6 leading-loose whitespace-pre-line">{storyContent}</div>
                       <button onClick={() => navigateTo('about')} className="text-gray-900 font-bold border-b-2 border-gray-900 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-colors">
                           Đọc thêm về chúng tôi
                       </button>
@@ -289,7 +287,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           </div>
       </section>
 
-      {/* 5. FEEDBACK - Infinite Step-by-Step Carousel (No Zoom, No Blur) */}
+      {/* 5. FEEDBACK - Infinite Step-by-Step Carousel */}
       <section className="py-24 bg-white border-t border-gray-100 overflow-hidden">
           <div className="container mx-auto px-6 mb-12 text-center">
               <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-3">Our feedbacks</h2>
@@ -312,7 +310,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                           className="flex-shrink-0 w-[80vw] md:w-[350px] snap-center"
                       >
                           <div className="rounded-3xl overflow-hidden bg-white shadow-lg border border-gray-100">
-                              {/* Chỉ hiển thị hình ảnh - Nguyên bản */}
+                              {/* Chỉ hiển thị hình ảnh */}
                               <img 
                                   src={fb.imageUrl} 
                                   alt={`Feedback`} 

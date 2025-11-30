@@ -12,6 +12,7 @@ export interface FrameOption {
   backgroundWidthCm: number;
   backgroundHeightCm: number;
   price: number;
+  costPrice?: number; // ADDED: Giá vốn
   imageUrl: string;
   description: string;
   stock?: number; // Số lượng tồn kho
@@ -31,6 +32,7 @@ export interface LegoPart {
   id: string;
   name: string;
   price: number; 
+  costPrice?: number; // ADDED: Giá vốn
   imageUrl: string;
   type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set'; // Added 'set'
   widthCm: number;
