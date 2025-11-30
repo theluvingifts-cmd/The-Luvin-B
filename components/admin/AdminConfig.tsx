@@ -242,7 +242,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         if (success) {
             setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
             setNewStaffEmail('');
-            alert("Đã cấp quyền thành công. Nhân viên cần vào trang Login để Đăng ký mật khẩu.");
+            alert("Đã thêm nhân viên thành công.");
         } else {
             alert("Lỗi khi thêm nhân viên.");
         }
@@ -629,14 +629,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             </button>
                                         </div>
                                     </div>
-                                    {/* Helper text for Password confusion */}
-                                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                                        <strong>Lưu ý về Mật khẩu:</strong>
-                                        <ul className="list-disc pl-4 mt-1 space-y-1">
-                                            <li>Tại đây, bạn chỉ cần nhập <strong>Email</strong> để cấp quyền truy cập.</li>
-                                            <li>Sau khi được thêm, nhân viên cần truy cập trang đăng nhập, chọn tab <strong>"Đăng ký"</strong> để tự tạo tài khoản và mật khẩu cho riêng mình.</li>
-                                        </ul>
-                                    </div>
                                 </div>
                             </div>
 
@@ -700,6 +692,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 fontFamily: themeConfig.global.typography.bodyFont 
                             }}
                         >
+                            {/* (Preview Content remains same as previous provided code) */}
                             {/* --- HEADER PREVIEW --- */}
                             <EditableZone 
                                 onClick={() => scrollToField('sections', 'sections.header.backgroundColor')} 

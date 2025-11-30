@@ -534,7 +534,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         setAddingAccessoryToItemIndex(null);
     };
 
-    const isOrderPacked = selectedOrder ? ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng'].includes(selectedOrder.status) : false;
+    const isOrderPacked = selectedOrder ? ['Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng'].includes(selectedOrder.status) : false;
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in">
@@ -619,22 +619,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                     )}
                                 </span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
-                            </div>
-                            <div className="flex gap-2 mt-2 mb-2 overflow-x-auto no-scrollbar">
-                                {order.items.map((item, idx) => (
-                                    <div key={idx} className="w-10 h-10 border rounded bg-white flex-shrink-0 relative overflow-hidden" title={`Sản phẩm ${idx + 1}`}>
-                                        {item.previewImageUrl ? (
-                                            <img src={item.previewImageUrl} className="w-full h-full object-contain" />
-                                        ) : (
-                                            <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[8px] text-gray-400">#</div>
-                                        )}
-                                        {/* Click to Zoom for Warehouse */}
-                                        <div 
-                                            className="absolute inset-0 bg-transparent cursor-zoom-in"
-                                            onClick={(e) => { e.stopPropagation(); if (item.previewImageUrl) setZoomedImageUrl(item.previewImageUrl); }}
-                                        ></div>
-                                    </div>
-                                ))}
                             </div>
                             <div className="flex justify-between items-center"><p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p><p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice)}</p></div>
                             <div className="flex justify-between items-center mt-1">
@@ -739,7 +723,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                             className={`text-xs font-bold px-3 py-1.5 rounded ${isOrderPacked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                             title={isOrderPacked ? 'Không thể sửa đơn đã đóng/giao' : ''}
                                         >
-                                            {isOrderPacked ? 'Đã khoá (Đang đóng/giao)' : 'Sửa chi tiết'}
+                                            {isOrderPacked ? 'Đã khoá' : 'Sửa chi tiết'}
                                         </button>
                                     ) : (
                                         <div className="flex gap-2">
@@ -870,7 +854,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                             {/* Top Section: Visual Editing (Only if Editing) */}
                                             {isEditingOrder && editForm && (
                                                 <div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300">
-                                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả để sửa cho khách)</p>
+                                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p>
                                                     <div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden">
                                                         <FramePreview 
                                                             config={item}
