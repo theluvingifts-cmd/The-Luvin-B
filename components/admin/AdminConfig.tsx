@@ -8,6 +8,8 @@ import { uploadToCloudinary } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { TemplateForm } from './forms/TemplateForm';
 import { FeedbackForm } from './forms/FeedbackForm';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../config/firebase';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -71,6 +73,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     // Staff Management State
     const [newStaffEmail, setNewStaffEmail] = useState('');
+    const [newStaffPassword, setNewStaffPassword] = useState('');
     const [newStaffRole, setNewStaffRole] = useState<'admin' | 'warehouse'>('warehouse');
 
     // Edit Modal States
@@ -223,33 +226,83 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             alert("Vui lòng nhập email nhân viên.");
             return;
         }
+        if (!newStaffPassword.trim() || newStaffPassword.length < 6) {
+            alert("Vui lòng nhập mật khẩu (tối thiểu 6 ký tự).");
+            return;
+        }
         
         const existing = storeConfig.staff?.find(s => s.email === newStaffEmail.trim());
         if (existing) {
-            alert("Nhân viên này đã tồn tại.");
+            alert("Nhân viên này đã tồn tại trong danh sách.");
             return;
         }
 
-        const newStaff: StaffMember = {
-            email: newStaffEmail.trim(),
-            role: newStaffRole,
-            addedAt: new Date().toISOString()
-        };
+        if (!confirm(`CẢNH BÁO: Tạo tài khoản mới sẽ tự động ĐĂNG NHẬP vào tài khoản đó (bạn sẽ bị đăng xuất). \n\nBạn có chắc chắn muốn tạo nhân viên ${newStaffEmail} không?`)) {
+            return;
+        }
 
-        const updatedStaff = [...(storeConfig.staff || []), newStaff];
-        const success = await updateStoreConfig({ staff: updatedStaff });
-        
-        if (success) {
-            setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
-            setNewStaffEmail('');
-            alert("Đã thêm nhân viên thành công.");
-        } else {
-            alert("Lỗi khi thêm nhân viên.");
+        setLoading(true);
+        try {
+            // 1. Create User in Firebase Auth
+            await createUserWithEmailAndPassword(auth, newStaffEmail.trim(), newStaffPassword.trim());
+            
+            // 2. Add to Whitelist (This happens quickly, but user is logged out right after)
+            // Note: Since createUserWithEmailAndPassword logs us in as new user, we might lose write access if rules require 'admin' role
+            // HOWEVER: We are doing this client-side. The state might act weird.
+            // Ideally, the 'staff' update should happen BEFORE creating the user if possible, 
+            // OR use a secondary app instance. But for this simple app, we accept the logout.
+            
+            // We'll update the config using the currently authenticated session *before* creating the user?
+            // No, can't. We have to create user.
+            // Wait, if we are logged out, we can't write to Firestore unless the new user has permissions.
+            // BUT the new user IS added to staff list below.
+            
+            const newStaff: StaffMember = {
+                email: newStaffEmail.trim(),
+                role: newStaffRole,
+                addedAt: new Date().toISOString()
+            };
+
+            const updatedStaff = [...(storeConfig.staff || []), newStaff];
+            
+            // CRITICAL: Update Firestore Config BEFORE creating the user auth to ensure data integrity
+            // But we can't create auth without logging out.
+            // The flow: 1. Add to whitelist (using Admin auth). 2. Create Auth User (logs out).
+            
+            await updateStoreConfig({ staff: updatedStaff });
+            
+            // Now create the Auth User
+            // This will trigger onAuthStateChanged -> switch user -> refresh app
+            await createUserWithEmailAndPassword(auth, newStaffEmail.trim(), newStaffPassword.trim());
+            
+            alert("Đã tạo nhân viên thành công! Bạn đang đăng nhập bằng tài khoản mới này.");
+            window.location.reload();
+
+        } catch (error: any) {
+            console.error("Lỗi tạo nhân viên:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                // If email exists in Auth but not in Whitelist, just add to whitelist
+                const newStaff: StaffMember = {
+                    email: newStaffEmail.trim(),
+                    role: newStaffRole,
+                    addedAt: new Date().toISOString()
+                };
+                const updatedStaff = [...(storeConfig.staff || []), newStaff];
+                await updateStoreConfig({ staff: updatedStaff });
+                setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
+                setNewStaffEmail('');
+                setNewStaffPassword('');
+                alert("Email đã có tài khoản. Đã thêm vào danh sách quản lý.");
+            } else {
+                alert(`Lỗi: ${error.message}`);
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleDeleteStaff = async (email: string) => {
-        if (confirm(`Bạn có chắc muốn xóa quyền truy cập của ${email}?`)) {
+        if (confirm(`Bạn có chắc muốn xóa quyền truy cập của ${email}? (Tài khoản đăng nhập vẫn tồn tại, chỉ mất quyền Admin/Kho)`)) {
             const updatedStaff = (storeConfig.staff || []).filter(s => s.email !== email);
             const success = await updateStoreConfig({ staff: updatedStaff });
             if (success) {
@@ -608,6 +661,17 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             onChange={(e) => setNewStaffEmail(e.target.value)}
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Mật khẩu (Để đăng nhập)</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Tối thiểu 6 ký tự" 
+                                            className="w-full p-2 border rounded text-sm"
+                                            value={newStaffPassword}
+                                            onChange={(e) => setNewStaffPassword(e.target.value)}
+                                        />
+                                        <p className="text-[10px] text-red-500 mt-1 italic">* Lưu ý: Việc tạo tài khoản mới sẽ khiến bạn bị Đăng xuất ngay lập tức.</p>
+                                    </div>
                                     <div className="flex gap-4">
                                         <div className="flex-grow">
                                             <label className="block text-xs font-semibold text-gray-500 mb-1">Quyền hạn (Role)</label>
@@ -625,7 +689,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                 onClick={handleAddStaff}
                                                 className="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
                                             >
-                                                + Thêm
+                                                + Thêm & Tạo TK
                                             </button>
                                         </div>
                                     </div>

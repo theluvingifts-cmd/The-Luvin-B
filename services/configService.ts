@@ -116,29 +116,27 @@ export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
     }
 };
 
-// --- DAILY ADS COSTS FUNCTIONS ---
+// --- DAILY ADS COSTS FUNCTIONS (Modified to use LocalStorage) ---
 
 export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Record<string, number>> => {
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
     
     try {
-        // Query ads_costs collection where date is within range
-        // Note: 'date' field in document should be stored as YYYY-MM-DD string
-        const q = query(
-            collection(db, 'ads_costs'), 
-            where('date', '>=', startStr), 
-            where('date', '<=', endStr)
-        );
+        // Ưu tiên lấy từ LocalStorage (Lưu trên máy)
+        const localData = localStorage.getItem('ads_costs');
+        const allCosts = localData ? JSON.parse(localData) : {};
         
-        const snapshot = await getDocs(q);
-        const costs: Record<string, number> = {};
+        const filteredCosts: Record<string, number> = {};
         
-        snapshot.forEach(doc => {
-            costs[doc.id] = doc.data().cost;
+        // Filter by date range
+        Object.keys(allCosts).forEach(date => {
+            if (date >= startStr && date <= endStr) {
+                filteredCosts[date] = allCosts[date];
+            }
         });
         
-        return costs;
+        return filteredCosts;
     } catch (e: any) {
         console.warn("Error fetching ads costs:", e.message);
         return {};
@@ -147,8 +145,13 @@ export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Recor
 
 export const saveAdsCost = async (date: string, cost: number) => {
     try {
-        // Use date string (YYYY-MM-DD) as document ID
-        await setDoc(doc(db, 'ads_costs', date), { date, cost });
+        // Lưu vào LocalStorage
+        const localData = localStorage.getItem('ads_costs');
+        const allCosts = localData ? JSON.parse(localData) : {};
+        
+        allCosts[date] = cost;
+        
+        localStorage.setItem('ads_costs', JSON.stringify(allCosts));
         return true;
     } catch (e) {
         console.error("Error saving ads cost:", e);
