@@ -462,24 +462,6 @@ const Step3Characters: React.FC<{
     const handleRemoveChar = (id: number) => {
         setConfig(prev => ({...prev, characters: prev.characters.filter(c => c.id !== id)}));
     };
-
-    const handleMoveChar = (index: number, direction: 'left' | 'right') => {
-        const newIndex = direction === 'left' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= config.characters.length) return;
-
-        const newChars = [...config.characters];
-        const [movedChar] = newChars.splice(index, 1);
-        newChars.splice(newIndex, 0, movedChar);
-        
-        const charA = config.characters[index];
-        const charB = config.characters[newIndex];
-        
-        const tempX = charA.x;
-        movedChar.x = charB.x;
-        newChars[index] = { ...charB, x: tempX };
-
-        setConfig(prev => ({ ...prev, characters: newChars }));
-    };
     
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
@@ -698,23 +680,13 @@ const Step3Characters: React.FC<{
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     {config.characters.map((char, index) => (
-                        <div key={char.id} className="relative flex items-center group">
-                            {index > 0 && (
-                                <button onClick={() => handleMoveChar(index, 'left')} className="absolute -left-2 z-10 bg-white border rounded-full w-4 h-4 flex items-center justify-center text-[8px] text-gray-500 hover:bg-gray-100 shadow opacity-0 group-hover:opacity-100 transition-opacity">
-                                    &lt;
-                                </button>
-                            )}
-                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium relative ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink' : 'bg-gray-200 text-gray-800'}`}>
+                        <div key={char.id} className="relative">
+                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink' : 'bg-gray-200 text-gray-800'}`}>
                                 NV {index + 1}
                             </button>
-                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold z-10">
+                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold">
                                 &times;
                             </button>
-                            {index < config.characters.length - 1 && (
-                                <button onClick={() => handleMoveChar(index, 'right')} className="absolute -right-2 z-10 bg-white border rounded-full w-4 h-4 flex items-center justify-center text-[8px] text-gray-500 hover:bg-gray-100 shadow opacity-0 group-hover:opacity-100 transition-opacity">
-                                    &gt;
-                                </button>
-                            )}
                         </div>
                     ))}
                     <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
@@ -812,7 +784,7 @@ const Step3Characters: React.FC<{
                                 <option value="price_desc">Giá giảm dần</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                             </div>
                         </div>
                     </div>
@@ -839,280 +811,676 @@ const Step3Characters: React.FC<{
     );
 };
 
-export const BuilderPage: React.FC<{
-    config: FrameConfig;
-    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
-    navigateTo: (page: Page) => void;
-    onAddToCart: (config: FrameConfig, openCart?: boolean) => void;
-    onUpdateCart: (config: FrameConfig) => void;
-    showToast: (message: string, type: 'success' | 'error') => void;
-    legoParts: typeof LEGO_PARTS;
-    backgrounds: PresetBackground[];
-    frames: FrameOption[];
-    editingCartIndex: number | null;
-    onCancelEdit: () => void;
-    onZoomImage: (url: string) => void;
-    logoUrl?: string;
-    initialStep?: number;
-}> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep = 1 }) => {
-    const [currentStep, setCurrentStep] = useState(initialStep);
-    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-    const [isEditingText, setIsEditingText] = useState(false);
-    const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
-    const previewContainerRef = useRef<HTMLDivElement>(null);
+const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: string, value: number}[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving }) => {
+  const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
-    useEffect(() => {
-        if (initialStep) setCurrentStep(initialStep);
-    }, [initialStep]);
-
-    const handleItemTransform = useCallback((id: string, newTransform: any) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfig(prev => {
-            if (type === 'character') {
-                return {
-                    ...prev,
-                    characters: prev.characters.map(c => c.id === numericId ? { ...c, ...newTransform } : c)
-                };
-            } else if (type === 'text') {
-                return {
-                    ...prev,
-                    texts: prev.texts.map(t => t.id === numericId ? { ...t, ...newTransform } : t)
-                };
-            } else if (type === 'item') {
-                return {
-                    ...prev,
-                    draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, ...newTransform } : i)
-                };
-            }
-            return prev;
-        });
-    }, [setConfig]);
-
-    const handleItemRemove = useCallback((id: string) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfig(prev => {
-            if (type === 'character') {
-                return { ...prev, characters: prev.characters.filter(c => c.id !== numericId) };
-            } else if (type === 'text') {
-                return { ...prev, texts: prev.texts.filter(t => t.id !== numericId) };
-            } else if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numericId) };
-            }
-            return prev;
-        });
-        setSelectedItemId(null);
-    }, [setConfig]);
-
-    const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-        setConfig(prev => ({
-            ...prev,
-            texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
-        }));
-    }, [setConfig]);
-
-    const handleItemUpdate = useCallback((idStrFull: string, updates: Partial<DraggableItem>) => {
-        const [type, idStr] = idStrFull.split('-');
-        const numericId = parseInt(idStr);
-        if (type === 'item') {
-            setConfig(prev => ({
-                ...prev,
-                draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, ...updates } : i)
-            }));
-        }
-    }, [setConfig]);
-
-    const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
-        setConfig(prev => ({
-            ...prev,
-            characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
-        }));
-    }, [setConfig]);
-
-    const handleItemFlip = useCallback((id: string) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-        if (type === 'item') {
-            setConfig(prev => ({
-                ...prev,
-                draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, isFlipped: !i.isFlipped } : i)
-            }));
-        }
-    }, [setConfig]);
-
-    const addText = () => {
-        const newText: TextConfig = {
-            id: Date.now(),
-            content: "Nhập chữ...",
-            font: "Montserrat",
-            size: 24,
-            color: "#000000",
-            x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 30
-        };
-        setConfig(prev => ({ ...prev, texts: [...prev.texts, newText] }));
-        setSelectedItemId(`text-${newText.id}`);
-        setIsEditingText(true);
-    };
-
-    const addCharm = (dataUrl: string) => {
-        const newItem: DraggableItem = {
-            id: Date.now(),
-            partId: dataUrl,
-            type: 'charm',
-            x: 50, y: 50, rotation: 0, scale: 1
-        };
-        setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
-    };
-
-    const capturePreview = async () => {
-        if (previewContainerRef.current) {
-             const target = previewContainerRef.current.querySelector('div > div') as HTMLElement;
-             if (target && typeof html2canvas !== 'undefined') {
-                 try {
-                     const canvas = await html2canvas(target, { 
-                         useCORS: true, 
-                         scale: 2,
-                         backgroundColor: null
-                     });
-                     return canvas.toDataURL('image/png');
-                 } catch (e) {
-                     console.error("Capture error", e);
-                     return null;
-                 }
-             }
-        }
-        return null;
-    };
-
-    const handleNextStep = async () => {
-        if (currentStep < 4) {
-            setCurrentStep(currentStep + 1);
-            window.scrollTo(0, 0);
-        } else {
-            const previewUrl = await capturePreview();
-            const configWithImage = { ...config, previewImageUrl: previewUrl || undefined };
+  return (
+    <div>
+        <div className="p-4 border border-gray-200 rounded-lg">
+            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">THÔNG TIN KHUNG</h4>
+            <div className="space-y-1 text-sm text-gray-700 mb-4">
+                <p><strong>Kích thước:</strong> {frameName}</p>
+                <p><strong>Số nhân vật:</strong> {charCount}</p>
+            </div>
             
-            if (editingCartIndex !== null) {
-                onUpdateCart(configWithImage);
-                showToast("Đã cập nhật giỏ hàng!", 'success');
-            } else {
-                onAddToCart(configWithImage);
-                showToast("Đã thêm vào giỏ hàng!", 'success');
-            }
-        }
-    };
-
-    const { totalPrice } = calculatePrice(config, 
-        Object.values(legoParts).flat().reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>), 
-        frames
-    );
-
-    return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-                <div className="w-full lg:w-1/2 lg:sticky lg:top-24">
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 preview-container-capture">
-                        <FramePreview 
-                            ref={previewContainerRef}
-                            config={config} 
-                            containerWidth={window.innerWidth < 768 ? window.innerWidth - 80 : 500}
-                            onItemTransform={handleItemTransform}
-                            onItemRemove={handleItemRemove}
-                            onTextUpdate={handleTextUpdate}
-                            onItemUpdate={handleItemUpdate}
-                            onCharacterUpdate={handleCharacterUpdate}
-                            onItemFlip={handleItemFlip}
-                            isInteractive={true}
-                            selectedItemId={selectedItemId}
-                            setSelectedItemId={setSelectedItemId}
-                            setIsEditingText={setIsEditingText}
-                            allParts={Object.values(legoParts).flat().reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>)}
-                            activePartType={activePartType}
-                            logoUrl={logoUrl}
-                        />
-                        <div className="mt-6 flex items-center justify-between text-gray-700 bg-gray-50 p-4 rounded-lg">
-                            <span className="font-bold text-lg">Tổng cộng:</span>
-                            <span className="font-bold text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span>
-                        </div>
+            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">GIÁ DỰ KIẾN</h4>
+            <div className="space-y-1 text-sm text-gray-700">
+                {priceBreakdown.map((item, index) => (
+                    <div key={index} className="flex justify-between">
+                        <span>{item.label}</span>
+                        <span className="font-medium">{item.value > 0 ? formatCurrency(item.value) : formatCurrency(0, 'price')}</span>
                     </div>
+                ))}
+                <div className="border-t border-gray-200 my-2"></div>
+                <div className="flex justify-between text-base font-bold text-gray-800">
+                    <span>Tổng cộng</span>
+                    <span>{formatCurrency(totalPrice)}</span>
                 </div>
-
-                <div className="w-full lg:w-1/2">
-                    <StepIndicator currentStep={currentStep} setStep={setCurrentStep} />
-                    
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1 min-h-[500px]">
-                        {currentStep === 1 && (
-                            <Step1Frame config={config} setConfig={setConfig} frames={frames} />
-                        )}
-                        {currentStep === 2 && (
-                            <Step2BackgroundAndDecorations 
-                                config={config} 
-                                setConfig={setConfig} 
-                                addText={addText} 
-                                addCharm={addCharm} 
-                                backgrounds={backgrounds}
-                                onZoomImage={onZoomImage}
-                            />
-                        )}
-                        {currentStep === 3 && (
-                            <Step3Characters 
-                                config={config} 
-                                setConfig={setConfig} 
-                                legoParts={legoParts}
-                                selectedItemId={selectedItemId}
-                                setSelectedItemId={setSelectedItemId}
-                                activePartType={activePartType}
-                                setActivePartType={setActivePartType}
-                            />
-                        )}
-                        {currentStep === 4 && (
-                            <div className="p-6 text-center space-y-6">
-                                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-4xl">✨</div>
-                                <h3 className="text-2xl font-bold text-gray-800">Hoàn tất thiết kế!</h3>
-                                <p className="text-gray-600">
-                                    Sản phẩm của bạn đã sẵn sàng. Hãy kiểm tra lại lần cuối trước khi thêm vào giỏ hàng nhé.
-                                </p>
-                                <div className="space-y-3 pt-4">
-                                    <button 
-                                        onClick={handleNextStep}
-                                        className="w-full bg-luvin-pink text-gray-900 font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:bg-opacity-90 transition-all transform hover:-translate-y-1"
-                                    >
-                                        {editingCartIndex !== null ? 'Cập nhật giỏ hàng' : 'Thêm vào giỏ hàng'} - {formatCurrency(totalPrice)}
-                                    </button>
-                                    
-                                    {editingCartIndex !== null && (
-                                        <button 
-                                            onClick={onCancelEdit}
-                                            className="w-full bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
-                                        >
-                                            Hủy chỉnh sửa
-                                        </button>
-                                    )}
-                                    
-                                    <button 
-                                        onClick={() => setCurrentStep(3)}
-                                        className="text-gray-500 hover:text-gray-800 text-sm font-medium underline"
-                                    >
-                                        Quay lại chỉnh sửa
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {currentStep < 4 && (
-                        <div className="mt-6 flex justify-between">
-                            {currentStep > 1 ? (
-                                <button onClick={() => setCurrentStep(currentStep - 1)} className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Quay lại</button>
-                            ) : <div></div>}
-                            <button onClick={handleNextStep} className="px-8 py-3 bg-gray-900 text-white font-bold rounded-lg hover:bg-black transition-colors shadow-lg">Tiếp tục &rarr;</button>
-                        </div>
+                
+                <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                    {remainingForFreeShip > 0 ? (
+                        <p className="text-xs text-gray-600 text-center">
+                            Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span>
+                        </p>
+                    ) : (
+                        <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1">
+                            <span>🎉</span> Đơn hàng đủ điều kiện Freeship!
+                        </p>
                     )}
                 </div>
             </div>
         </div>
+        <div className="mt-4 space-y-2">
+            <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
+            </button>
+            <button onClick={onAddToCart} disabled={isSaving} className="w-full bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg text-base hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                {isSaving ? '...' : 'Thêm vào giỏ hàng'}
+            </button>
+        </div>
+    </div>
+  );
+};
+
+const TextEditor: React.FC<{
+    activeText: TextConfig;
+    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
+    selectedTextId: number;
+    deselect: () => void;
+    onAddText: () => void;
+}> = ({ activeText, setConfig, selectedTextId, deselect, onAddText }) => {
+    
+    const updateActiveText = (updates: Partial<TextConfig>) => {
+        setConfig((prev) => ({
+            ...prev,
+            texts: prev.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
+        }));
+    }
+    
+    return (
+        <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800">CHỈNH SỬA CHỮ</h3>
+                <div className="flex gap-2">
+                    <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
+                        + Thêm chữ
+                    </button>
+                    <button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
+                        Xong
+                    </button>
+                </div>
+            </div>
+            <div className="space-y-4">
+                <div>
+                    <label className="text-sm font-bold text-gray-600 block mb-1">Nội dung</label>
+                    <textarea
+                        value={activeText.content}
+                        onChange={e => updateActiveText({ content: e.target.value })}
+                        rows={3}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                        placeholder="Nhập nội dung văn bản..."
+                    />
+                </div>
+                <div>
+                    <label className="text-sm font-bold text-gray-600 block mb-1">Cỡ chữ</label>
+                    <input 
+                      type="number" 
+                      min="8" 
+                      max="100" 
+                      value={activeText.size} 
+                      onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
+                      className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                    />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                    <button onClick={() => updateActiveText({background: !activeText.background})} className={`text-sm px-3 py-2 rounded-lg ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'}`}>
+                      {activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}
+                    </button>
+                    <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                        {(['left', 'center', 'right'] as const).map(align => (
+                           <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-3 py-1 text-sm ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'}`}>
+                             {align.charAt(0).toUpperCase()}
+                           </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
     );
+}
+
+type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
+
+interface BuilderPageProps { 
+    config: FrameConfig; 
+    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; 
+    navigateTo: (p:Page) => void; 
+    onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
+    onUpdateCart: (config: FrameConfig) => void; 
+    showToast: (message: string, type: 'success' | 'error') => void;
+    legoParts: typeof LEGO_PARTS; 
+    backgrounds: PresetBackground[]; 
+    frames: FrameOption[]; 
+    editingCartIndex: number | null; 
+    onCancelEdit: () => void; 
+    onZoomImage: (url: string) => void; 
+    logoUrl?: string; 
+    initialStep?: number; 
+}
+
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep }) => {
+  const [step, setStep] = useState(initialStep || 1); 
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const previewContainerParentRef = useRef<HTMLDivElement>(null);
+  const frameCaptureRef = useRef<HTMLDivElement>(null);
+  const [previewWidth, setPreviewWidth] = useState(480);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
+
+  useEffect(() => {
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile) {
+          const element = document.getElementById('builder-action-area');
+          if (element) {
+              const headerOffset = 100;
+              const elementPosition = element.getBoundingClientRect().top;
+              const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+              window.scrollTo({
+                  top: offsetPosition,
+                  behavior: "smooth"
+              });
+          }
+      } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+  }, [step]);
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsBottomBarVisible(false);
+      } else {
+        setIsBottomBarVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+    window.addEventListener('scroll', controlNavbar);
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, []);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(entries => {
+      if (entries[0]) {
+        const { width } = entries[0].contentRect;
+        setPreviewWidth(width > 520 ? 520 : width);
+      }
+    });
+
+    if (previewContainerParentRef.current) {
+      observer.observe(previewContainerParentRef.current);
+    }
+
+    return () => {
+      if (previewContainerParentRef.current) {
+        observer.unobserve(previewContainerParentRef.current);
+      }
+    };
+  }, []);
+  
+  const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
+  
+  const selectedText = useMemo(() => {
+    if (selectedItemId?.startsWith('text-')) {
+        const id = parseInt(selectedItemId.split('-')[1], 10);
+        return config.texts.find(t => t.id === id) || null;
+    }
+    return null;
+  }, [selectedItemId, config.texts]);
+
+  const handleItemTransform = useCallback((id: string, newTransform: Transform) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      setConfig((prev) => {
+          if (type === 'text') {
+              const idToUpdate = parseInt(rawId);
+              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) };
+          }
+          const itemId = parseInt(rawId);
+          if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
+          return prev;
+      });
+  }, [setConfig]);
+
+  const handleItemFlip = useCallback((id: string) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      if (type === 'item') {
+          const itemId = parseInt(rawId);
+          setConfig((prev) => ({
+              ...prev,
+              draggableItems: prev.draggableItems.map(item => 
+                  item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
+              )
+          }));
+      }
+  }, [setConfig]);
+
+  const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      if (type === 'item') {
+          const itemId = parseInt(rawId);
+          setConfig((prev) => ({
+              ...prev,
+              draggableItems: prev.draggableItems.map(item => 
+                  item.id === itemId ? { ...item, ...updates } : item
+              )
+          }));
+      }
+  }, [setConfig]);
+
+  const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
+      setConfig((prev) => ({
+          ...prev,
+          characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
+      }));
+  }, [setConfig]);
+
+  const handleItemRemoveCompletely = useCallback((id: string) => {
+    const [type, ...rest] = id.split('-');
+    const rawId = rest.join('-');
+    
+    setSelectedItemId(null);
+
+    setConfig((prev) => {
+        if (type === 'text') {
+            const idToDelete = parseInt(rawId, 10);
+            return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
+        }
+        const itemId = parseInt(rawId, 10);
+        if (type === 'character') return { ...prev, characters: prev.characters.filter(item => item.id !== itemId) };
+        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(item => item.id !== itemId) };
+        return prev;
+    });
+  }, [setConfig]);
+  
+  const handleItemDelete = useCallback((id: string) => {
+    const [type, ...rest] = id.split('-');
+    const rawId = rest.join('-');
+    
+    if (type === 'text') {
+        const idToUpdate = parseInt(rawId, 10);
+        const textItem = config.texts.find(t => t.id === idToUpdate);
+        
+        if (textItem && textItem.content && textItem.content.trim() !== '') {
+             setConfig((prev) => ({
+                ...prev,
+                texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
+            }));
+        } else {
+             handleItemRemoveCompletely(id);
+        }
+    } else {
+        handleItemRemoveCompletely(id);
+    }
+  }, [setConfig, handleItemRemoveCompletely, config.texts]);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isEditingText) {
+            if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+                e.preventDefault();
+            }
+            handleItemDelete(selectedItemId);
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItemId, handleItemDelete, isEditingText]);
+
+  const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
+    setConfig((prev) => ({
+        ...prev,
+        texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
+    }));
+  }, [setConfig]);
+  
+  const addText = () => {
+      const newId = Date.now();
+      const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
+      setConfig((prev) => ({...prev, texts: [...prev.texts, newText]}));
+      setSelectedItemId(`text-${newId}`);
+  };
+
+  const addCharm = (dataUrl: string) => {
+      const newCharm: DraggableItem = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
+      setConfig((prev) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
+  }
+  
+  const captureFrameAsImage = async (): Promise<string> => {
+    const originalSelectedId = selectedItemId;
+    setSelectedItemId(null); 
+
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          const container = frameCaptureRef.current;
+          if (container && typeof html2canvas !== 'undefined') {
+            const canvas = await html2canvas(container, {
+              backgroundColor: null,
+              useCORS: true, 
+              scale: 3,      
+              logging: false,
+              scrollX: 0,    
+              scrollY: 0,
+              ignoreElements: (element: Element) => element.classList.contains('watermark-layer')
+            });
+            resolve(canvas.toDataURL('image/png'));
+          } else {
+            console.error('html2canvas error');
+            resolve('');
+          }
+        } catch (error) {
+          console.error('Snapshot error:', error);
+          resolve('');
+        } finally {
+          setSelectedItemId(originalSelectedId); 
+        }
+      }, 1000); 
+    });
+  };
+
+  // --- Animation Helper Function ---
+  const animateAddToCart = (imageSrc: string) => {
+      // Find destination icon
+      const desktopCart = document.getElementById('cart-icon-desktop');
+      const mobileCart = document.getElementById('cart-icon-mobile');
+      // Pick the one that is likely visible (simplistic check: window width)
+      const targetIcon = window.innerWidth >= 768 ? desktopCart : mobileCart;
+
+      const sourceContainer = frameCaptureRef.current;
+
+      if (!targetIcon || !sourceContainer || !imageSrc) return;
+
+      const startRect = sourceContainer.getBoundingClientRect();
+      const endRect = targetIcon.getBoundingClientRect();
+
+      // Create fly image
+      const flyImg = document.createElement('img');
+      flyImg.src = imageSrc;
+      flyImg.classList.add('flying-product-item');
+      
+      // Set initial position & dimensions
+      flyImg.style.left = `${startRect.left}px`;
+      flyImg.style.top = `${startRect.top}px`;
+      flyImg.style.width = `${startRect.width}px`;
+      flyImg.style.height = `${startRect.height}px`;
+
+      document.body.appendChild(flyImg);
+
+      // Trigger reflow to ensure start position is set before animating
+      flyImg.getBoundingClientRect();
+
+      // Set target position & dimensions (shrink and move)
+      // Center the end target
+      const endX = endRect.left + endRect.width / 2;
+      const endY = endRect.top + endRect.height / 2;
+      
+      // We want to center the flying image on the target
+      // Final width/height = let's say 20px
+      const targetSize = 20;
+
+      flyImg.style.left = `${endX - targetSize/2}px`;
+      flyImg.style.top = `${endY - targetSize/2}px`;
+      flyImg.style.width = `${targetSize}px`;
+      flyImg.style.height = `${targetSize}px`;
+      flyImg.style.opacity = '0.5';
+
+      // Cleanup after animation
+      flyImg.addEventListener('transitionend', () => {
+          if (document.body.contains(flyImg)) {
+              document.body.removeChild(flyImg);
+          }
+      });
+  };
+
+  const handleAddToCartWrapper = async (andCheckout: boolean) => {
+    setIsSaving(true);
+    try {
+        const base64Image = await captureFrameAsImage();
+        
+        if (!base64Image) {
+            showToast('Lỗi tạo ảnh. Vui lòng thử lại.', 'error');
+            setIsSaving(false);
+            return;
+        }
+
+        // TRIGGER ANIMATION HERE - Optimistic UI
+        // Don't wait for Cloudinary to start the visual effect
+        animateAddToCart(base64Image);
+
+        const cloudUrl = await uploadToCloudinary(base64Image);
+        
+        if (!cloudUrl) {
+             showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error');
+             setIsSaving(false);
+             return;
+        }
+
+        const finalConfig = { 
+            ...config, 
+            previewImageUrl: cloudUrl
+        };
+
+        if (editingCartIndex !== null && !andCheckout) {
+            onUpdateCart(finalConfig);
+        } else {
+            // Note: onAddToCart in App.tsx now triggers the shake animation state
+            // passed down from App
+            onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
+        }
+        
+        if (andCheckout) {
+            navigateTo('checkout');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Đã có lỗi xảy ra.', 'error');
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleCharacterDoubleClick = (charId: number) => {
+      setStep(3); 
+      setSelectedItemId(`character-${charId}`);
+  };
+
+  const handleAutoAdvance = () => {
+      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-'))) {
+          setSelectedItemId(null);
+          return;
+      }
+
+      const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
+      let currentIndex = order.indexOf(activePartType as any);
+      
+      if (activePartType === 'set') {
+          setActivePartType('hair');
+          return;
+      }
+
+      if (currentIndex !== -1 && currentIndex < order.length - 1) {
+          setActivePartType(order[currentIndex + 1]);
+      } else {
+          setActivePartType('shirt'); 
+      }
+  };
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} onZoomImage={onZoomImage} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
+      case 4: return <Step4Summary 
+        totalPrice={totalPrice} 
+        priceBreakdown={priceBreakdown} 
+        frameName={frames.find(f => f.id === config.frameId)?.name || ''} 
+        charCount={config.characters.length} 
+        onAddToCart={() => handleAddToCartWrapper(false)} 
+        onBuyNow={() => handleAddToCartWrapper(true)}
+        isSaving={isSaving} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 py-4 sm:py-8">
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-gray-500">
+                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế & Mua hàng
+            </div>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
+            {editingCartIndex !== null ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng Khung LEGO'}
+        </h1>
+        <StepIndicator currentStep={step} setStep={setStep} />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
+          <div className="lg:col-span-7" ref={previewContainerParentRef}>
+            <div className="lg:sticky lg:top-24">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
+                </div>
+                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-12 lg:mb-0">
+                    <FramePreview 
+                        ref={frameCaptureRef}
+                        config={config} 
+                        containerWidth={previewWidth - 32} 
+                        onItemTransform={handleItemTransform} 
+                        onItemRemove={handleItemRemoveCompletely}
+                        onTextUpdate={handleTextUpdate}
+                        onItemUpdate={handleItemUpdate}
+                        onCharacterUpdate={handleCharacterUpdate} 
+                        onItemFlip={handleItemFlip}
+                        onCharacterDoubleClick={handleCharacterDoubleClick}
+                        onAutoAdvance={handleAutoAdvance} 
+                        className="w-full h-full"
+                        selectedItemId={selectedItemId}
+                        setSelectedItemId={setSelectedItemId}
+                        setIsEditingText={setIsEditingText}
+                        allParts={allParts}
+                        activePartType={activePartType} 
+                        logoUrl={logoUrl} 
+                    />
+                </div>
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
+                    <span className="text-amber-500 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                    </span>
+                    <div className="text-xs text-amber-900 leading-relaxed">
+                        <p className="font-bold mb-1">Lưu ý quan trọng:</p>
+                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
+                    </div>
+                </div>
+                <div className="h-10 mt-4 hidden lg:block"></div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> {/* ADDED ID HERE */}
+              <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  {selectedText ? (
+                      <TextEditor 
+                          activeText={selectedText}
+                          setConfig={setConfig}
+                          selectedTextId={selectedText.id}
+                          deselect={() => setSelectedItemId(null)}
+                          onAddText={addText}
+                      />
+                  ) : (
+                      <>
+                          <div className="min-h-[400px]">
+                              {renderStepContent()}
+                          </div>
+                      </>
+                  )}
+              </div>
+              
+              {!selectedText && (
+                <>
+                  <div className="mt-4 text-right font-bold text-lg text-gray-800">
+                    Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
+                  </div>
+                  {editingCartIndex !== null && step === 4 && (
+                        <div className="mt-4 mb-2">
+                            <button 
+                                onClick={onCancelEdit} 
+                                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                Hủy sửa
+                            </button>
+                        </div>
+                  )}
+                  {step === 4 && editingCartIndex !== null && (
+                        <div className="mt-2 hidden lg:flex items-center gap-4">
+                             <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
+                            </button>
+                        </div>
+                  )}
+                  
+                  {!(editingCartIndex !== null && step === 4) && (
+                      <div className="mt-2 hidden lg:flex items-center gap-4">
+                          <button
+                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              disabled={step === 1}
+                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                          >
+                              &larr; Quay lại
+                          </button>
+                          <button
+                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              disabled={step === 4}
+                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                          >
+                              Tiếp theo
+                          </button>
+                      </div>
+                  )}
+                </>
+              )}
+               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-top p-4 z-30 transition-transform duration-300 ease-in-out ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+                     <div className="text-right font-bold text-base text-gray-800 mb-2">
+                        Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
+                      </div>
+                     
+                     {editingCartIndex !== null && step === 4 ? (
+                        <div className="flex flex-col gap-2">
+                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
+                            </button>
+                            <button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">
+                                Hủy sửa
+                            </button>
+                        </div>
+                     ) : (
+                         <div className="flex items-center gap-4">
+                           <button
+                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              disabled={step === 1}
+                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                          >
+                              Quay lại
+                          </button>
+                          <button
+                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              disabled={step === 4}
+                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                          >
+                              Tiếp theo
+                          </button>
+                         </div>
+                     )}
+                </div>
+               <div className="lg:hidden h-32"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };

@@ -64,7 +64,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
-    const [zoomedImage, setZoomedImage] = useState<string | null>(null);
     
     // Filtering & Tabs
     const [orderTab, setOrderTab] = useState<OrderTab>('active');
@@ -88,12 +87,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const canCancelOrder = role === 'admin';
     const canDeleteOrder = role === 'admin';
-
-    // Lock editing if order is packed/shipped
-    const isOrderLocked = useMemo(() => {
-        if (!selectedOrder) return false;
-        return ['Đang đóng hàng', 'Chờ chuyển hàng', 'Đã giao hàng'].includes(selectedOrder.status);
-    }, [selectedOrder]);
 
     useEffect(() => {
         if (selectedOrder) {
@@ -511,15 +504,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     </div>
                 </div>
             )}
-
-            {zoomedImage && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImage(null)}>
-                    <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                    <img src={zoomedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
-                </div>
-            )}
             
             {/* Left Panel: Order List */}
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
@@ -691,18 +675,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
                                  <div className="flex gap-2 mt-1">
                                     {!isEditingOrder ? (
-                                        <button 
-                                            onClick={startEditingOrder} 
-                                            disabled={isOrderLocked && role !== 'admin'}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${
-                                                isOrderLocked && role !== 'admin' 
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                            title={isOrderLocked ? "Đơn hàng đã đóng gói, không thể sửa" : "Sửa thông tin đơn hàng"}
-                                        >
-                                            {isOrderLocked && role !== 'admin' ? 'Đã khoá (Đã đóng gói)' : 'Sửa chi tiết'}
-                                        </button>
+                                        <button onClick={startEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Sửa chi tiết</button>
                                     ) : (
                                         <div className="flex gap-2">
                                             <button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button>
@@ -722,16 +695,13 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         <span>📸</span> Ảnh xác nhận chuyển khoản
                                     </h4>
                                     <div className="flex flex-col sm:flex-row items-start gap-4">
-                                        <div className="cursor-pointer group relative" onClick={() => setZoomedImage(selectedOrder.paymentProofUrl)}>
+                                        <a href={selectedOrder.paymentProofUrl} target="_blank" rel="noopener noreferrer">
                                             <img 
                                                 src={selectedOrder.paymentProofUrl} 
                                                 alt="Payment Proof" 
-                                                className="h-32 object-contain border rounded-lg bg-white group-hover:opacity-90 transition-opacity" 
+                                                className="h-32 object-contain border rounded-lg bg-white hover:opacity-90 transition-opacity" 
                                             />
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 rounded-lg transition-opacity">
-                                                <span className="text-white text-xs font-bold bg-black/50 px-2 py-1 rounded">Phóng to</span>
-                                            </div>
-                                        </div>
+                                        </a>
                                         <div className="text-sm text-gray-600">
                                             <p>Thời gian gửi: {selectedOrder.paymentProofUploadedAt ? formatDateTime(new Date(selectedOrder.paymentProofUploadedAt).getTime()) : '---'}</p>
                                             {selectedOrder.status === 'Chờ thanh toán' && (
@@ -826,11 +796,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => (
                                         <div key={idx} className="flex gap-4 border border-gray-100 rounded-lg p-4 items-start bg-white flex-col md:flex-row">
-                                            <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer" onClick={() => item.previewImageUrl && setZoomedImage(item.previewImageUrl)}>
+                                            <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
                                                 {item.previewImageUrl ? <img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No img</span>}
-                                                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                    <span className="bg-black/50 text-white text-[10px] px-1 rounded">Zoom</span>
-                                                </div>
                                             </div>
                                             <div className="flex-grow w-full">
                                                 <div className="mb-3 pb-3 border-b border-gray-100">
