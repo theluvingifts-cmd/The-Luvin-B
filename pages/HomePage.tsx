@@ -35,11 +35,11 @@ const Icons = {
     )
 };
 
-// --- IMPROVEMENT: Component for Smooth Image Loading ---
-const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ className, style, ...props }) => {
+// Component: Smooth Image Loading
+const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ className, ...props }) => {
     const [loaded, setLoaded] = useState(false);
     return (
-        <div className={`relative overflow-hidden ${className}`} style={{ backgroundColor: '#f3f4f6', ...style }}>
+        <div className={`relative overflow-hidden ${className}`} style={{ backgroundColor: '#f0f0f0' }}>
             <img 
                 {...props} 
                 className={`transition-opacity duration-700 ease-in-out w-full h-full object-cover ${loaded ? 'opacity-100' : 'opacity-0'}`}
@@ -51,7 +51,7 @@ const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ clas
 
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedbacks, templates }) => {
   // --- CONFIG DATA ---
-  const heroImage = config?.heroImageUrl || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=2070&auto=format&fit=crop'; 
+  const heroImage = config?.heroImageUrl || 'https://res.cloudinary.com/dbdqd93km/image/upload/v1764516860/uwa2bkcqdog9yctdmett.png'; 
   const inspireImage = config?.inspireImageUrl || 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop';
   
   const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
@@ -185,12 +185,11 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
         {/* Right Image - Rounded Shape */}
         <div className="w-full lg:w-1/2 h-[50vh] lg:h-auto relative order-1 lg:order-2">
             <div className="absolute inset-0 bg-gray-100 lg:rounded-bl-[100px] overflow-hidden">
-                {/* --- IMPROVEMENT: Use FadeInImage and eager loading --- */}
                 <FadeInImage 
                     src={heroImage} 
                     alt="Hero" 
                     className="w-full h-full"
-                    loading="eager" 
+                    loading="eager" // Load immediately
                 />
                 <div className="absolute inset-0 bg-black/10 mix-blend-multiply pointer-events-none"></div>
             </div>
@@ -243,7 +242,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
               <div className="flex flex-col md:flex-row items-center gap-16">
                   <div className="w-full md:w-1/2 relative">
                       <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl relative z-10">
-                          {/* --- IMPROVEMENT: Use FadeInImage --- */}
                           <FadeInImage src={inspireImage} alt="Story" className="w-full h-full" />
                       </div>
                       <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-luvin-pink/10 rounded-full blur-3xl z-0"></div>
@@ -273,7 +271,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                   {displayTemplates.map((item, index) => (
                       <div key={item.id || index} className="group cursor-pointer" onClick={() => navigateTo('collection')}>
                           <div className="relative aspect-square overflow-hidden rounded-2xl bg-white shadow-sm mb-4">
-                              {/* --- IMPROVEMENT: Use FadeInImage --- */}
                               <FadeInImage 
                                   src={item.imageUrl} 
                                   alt={item.name} 
@@ -328,7 +325,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                           className="flex-shrink-0 w-[80vw] md:w-[350px] snap-center"
                       >
                           <div className="rounded-3xl overflow-hidden bg-white shadow-lg border border-gray-100">
-                              {/* --- IMPROVEMENT: Use FadeInImage --- */}
                               <FadeInImage 
                                   src={fb.imageUrl} 
                                   alt={`Feedback`} 
