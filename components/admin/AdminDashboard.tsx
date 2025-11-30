@@ -51,7 +51,7 @@ const TopItemsCard = ({ title, data }: { title: string, data: Record<string, num
 
 const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number }[] }> = ({ data }) => {
     // Tìm giá trị lớn nhất để scale biểu đồ (tránh chia cho 0)
-    const maxValue = Math.max(...data.map(d => d.revenue), 100000);
+    const maxValue = Math.max(...data.map(d => Math.max(d.revenue, d.profit)), 100000);
 
     return (
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm h-full flex flex-col">
@@ -80,7 +80,7 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
                                 >
                                     {/* Tooltip Revenue */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                        DT: {formatCurrency(d.revenue)}
+                                        DT: {formatCurrency(d.revenue, 'admin')}
                                     </div>
                                 </div>
                                 {/* Profit Bar */}
@@ -90,7 +90,7 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
                                 >
                                      {/* Tooltip Profit */}
                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 bg-green-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                        LN: {formatCurrency(d.profit)}
+                                        LN: {formatCurrency(d.profit, 'admin')}
                                     </div>
                                 </div>
                             </div>
@@ -156,8 +156,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         // Box cost (Approximate if not tracked)
         if (order.addGiftBox) totalCost += 15000; // Assuming box cost ~15k
 
-        return order.totalPrice - order.shipping.fee - totalCost; // Exclude shipping fee from revenue for profit calc? Actually shipping fee is paid to carrier, so we subtract it from revenue if it's included in total. But usually total includes shipping fee collected from customer.
-        // Simplified: Profit = (Order Total - Shipping Fee) - COGS.
+        return order.totalPrice - order.shipping.fee - totalCost; 
     };
 
     const analytics = useMemo(() => {
@@ -328,11 +327,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
-                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'payment')}</p>
+                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận (Est)</p></div>
-                    <p className="text-3xl font-light text-green-600">{formatCurrency(analytics.profit, 'payment')}</p>
+                    <p className="text-3xl font-light text-green-600">{formatCurrency(analytics.profit, 'admin')}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
