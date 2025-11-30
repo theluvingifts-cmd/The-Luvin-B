@@ -1,3 +1,4 @@
+
 // config/firebase.ts
 import firebase from "firebase/compat/app";
 import { getFirestore } from "firebase/firestore"; 
@@ -5,7 +6,7 @@ import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth"; // <--- Mới thêm cái này
 
 // Config của bạn (giữ nguyên)
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCEEblAsaEQPDGeEO7PLrzDLfpa7Z8O1ss",
   authDomain: "the-luvin.firebaseapp.com",
   projectId: "the-luvin",

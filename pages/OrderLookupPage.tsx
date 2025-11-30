@@ -5,7 +5,10 @@ import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderSe
 import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS } from '../constants';
 
-export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoomImage}) => {
+// Orders that can be edited by customer must not have these statuses
+const PACKED_STATUSES = ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'];
+
+export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEditOrder: (order: Order) => void}> = ({onZoomImage, onEditOrder}) => {
     const [orderCode, setOrderCode] = useState('');
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -212,7 +215,20 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = (
                         </div>
                     )}
                     {foundOrder && typeof foundOrder === 'object' && (
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md relative">
+                            {/* Allow Editing if not packed */}
+                            {!PACKED_STATUSES.includes(foundOrder.status) && (
+                                <div className="absolute top-6 right-6">
+                                    <button 
+                                        onClick={() => onEditOrder(foundOrder as Order)}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        Sửa đơn hàng
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-start">
                                 <div>
                                     <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
@@ -220,9 +236,11 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = (
                                         Ngày đặt: {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}
                                     </p>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                    {foundOrder.status}
-                                </span>
+                                <div className="mt-8 sm:mt-0">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                        {foundOrder.status}
+                                    </span>
+                                </div>
                             </div>
 
                             <StatusTracker currentStatus={foundOrder.status} />

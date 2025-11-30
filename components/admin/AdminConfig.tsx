@@ -8,6 +8,9 @@ import { uploadToCloudinary } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { TemplateForm } from './forms/TemplateForm';
 import { FeedbackForm } from './forms/FeedbackForm';
+import firebase from 'firebase/compat/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { firebaseConfig } from '../../config/firebase';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -71,6 +74,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     // Staff Management State
     const [newStaffEmail, setNewStaffEmail] = useState('');
+    const [newStaffPassword, setNewStaffPassword] = useState('');
     const [newStaffRole, setNewStaffRole] = useState<'admin' | 'warehouse'>('warehouse');
 
     // Edit Modal States
@@ -219,8 +223,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     // --- STAFF MANAGEMENT HANDLERS ---
     const handleAddStaff = async () => {
-        if (!newStaffEmail.trim()) {
-            alert("Vui lòng nhập email nhân viên.");
+        if (!newStaffEmail.trim() || !newStaffPassword.trim()) {
+            alert("Vui lòng nhập đầy đủ email và mật khẩu.");
             return;
         }
         
@@ -230,26 +234,49 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             return;
         }
 
-        const newStaff: StaffMember = {
-            email: newStaffEmail.trim(),
-            role: newStaffRole,
-            addedAt: new Date().toISOString()
-        };
+        setLoading(true);
+        // Create secondary app to create user without logging out current admin
+        const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
+        const secondaryAuth = getAuth(secondaryApp);
 
-        const updatedStaff = [...(storeConfig.staff || []), newStaff];
-        const success = await updateStoreConfig({ staff: updatedStaff });
-        
-        if (success) {
-            setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
-            setNewStaffEmail('');
-            alert("Đã thêm nhân viên thành công.");
-        } else {
-            alert("Lỗi khi thêm nhân viên.");
+        try {
+            await createUserWithEmailAndPassword(secondaryAuth, newStaffEmail.trim(), newStaffPassword.trim());
+            
+            // If successful, update Firestore config
+            const newStaff: StaffMember = {
+                email: newStaffEmail.trim(),
+                role: newStaffRole,
+                addedAt: new Date().toISOString()
+            };
+
+            const updatedStaff = [...(storeConfig.staff || []), newStaff];
+            const success = await updateStoreConfig({ staff: updatedStaff });
+            
+            if (success) {
+                setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
+                setNewStaffEmail('');
+                setNewStaffPassword('');
+                alert("Đã tạo tài khoản và thêm nhân viên thành công.");
+            } else {
+                alert("Lỗi khi lưu thông tin nhân viên.");
+            }
+        } catch (error: any) {
+            console.error("Error creating user:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                alert("Email này đã được đăng ký tài khoản Firebase.");
+            } else if (error.code === 'auth/weak-password') {
+                alert("Mật khẩu phải có ít nhất 6 ký tự.");
+            } else {
+                alert("Lỗi tạo tài khoản: " + error.message);
+            }
+        } finally {
+            await secondaryApp.delete();
+            setLoading(false);
         }
     };
 
     const handleDeleteStaff = async (email: string) => {
-        if (confirm(`Bạn có chắc muốn xóa quyền truy cập của ${email}?`)) {
+        if (confirm(`Bạn có chắc muốn xóa quyền truy cập của ${email}? (Tài khoản đăng nhập vẫn tồn tại, chỉ xóa quyền truy cập Admin)`)) {
             const updatedStaff = (storeConfig.staff || []).filter(s => s.email !== email);
             const success = await updateStoreConfig({ staff: updatedStaff });
             if (success) {
@@ -599,13 +626,23 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <h4 className="text-sm font-bold mb-3">Thêm nhân viên mới</h4>
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Email (Google Account)</label>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Email (Tài khoản)</label>
                                         <input 
                                             type="email" 
                                             placeholder="nhanvien@gmail.com" 
                                             className="w-full p-2 border rounded text-sm"
                                             value={newStaffEmail}
                                             onChange={(e) => setNewStaffEmail(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Mật khẩu</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Tối thiểu 6 ký tự" 
+                                            className="w-full p-2 border rounded text-sm"
+                                            value={newStaffPassword}
+                                            onChange={(e) => setNewStaffPassword(e.target.value)}
                                         />
                                     </div>
                                     <div className="flex gap-4">
@@ -625,7 +662,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                 onClick={handleAddStaff}
                                                 className="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
                                             >
-                                                + Thêm
+                                                + Tạo & Thêm
                                             </button>
                                         </div>
                                     </div>
@@ -692,7 +729,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 fontFamily: themeConfig.global.typography.bodyFont 
                             }}
                         >
-                            {/* (Preview Content remains same as previous provided code) */}
                             {/* --- HEADER PREVIEW --- */}
                             <EditableZone 
                                 onClick={() => scrollToField('sections', 'sections.header.backgroundColor')} 

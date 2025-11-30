@@ -10,9 +10,10 @@ interface CheckoutPageProps {
   allParts: Record<string, LegoPart>;
   onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => Promise<void>;
   onZoomImage: (url: string) => void;
+  initialOrder?: Order | null;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts, onPlaceOrder, onZoomImage }) => {
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, initialOrder }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -37,6 +38,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
+
+  // Pre-fill data if editing
+  useEffect(() => {
+      if (initialOrder) {
+          setName(initialOrder.customer.name);
+          setPhone(initialOrder.customer.phone);
+          setEmail(initialOrder.customer.email);
+          // Simple address parsing (won't be perfect for dropdowns but sets street text)
+          setStreet(initialOrder.customer.address); 
+          setDeliveryDate(initialOrder.delivery.date);
+          setNotes(initialOrder.delivery.notes);
+          setShippingOption(initialOrder.shipping.method);
+          setAddGiftBox(initialOrder.addGiftBox);
+          setPaymentMethod(initialOrder.payment.method);
+      }
+  }, [initialOrder]);
 
   useEffect(() => {
     fetch('https://provinces.open-api.vn/api/p/')
@@ -99,8 +116,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || '';
     const districtName = districts.find(d => d.code === parseInt(selectedDistrict))?.name || '';
     const wardName = wards.find(w => w.code === parseInt(selectedWard))?.name || '';
-    const fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
-    const orderId = `#TL${Date.now().toString().slice(-6)}`;
+    
+    // Construct address. If dropdowns used, use them. If not (editing mode pre-filled), use street as full address.
+    let fullAddress = street;
+    if (provinceName) {
+        fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
+    }
+
+    const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
     try {
         await onPlaceOrder({
@@ -128,7 +151,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   return (
     <div className="bg-white">
       <form onSubmit={handleSubmit} className="container mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Thông tin thanh toán</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+            {initialOrder ? 'Cập nhật đơn hàng' : 'Thông tin thanh toán'}
+        </h1>
+        {initialOrder && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg mb-6 text-center text-sm">
+                Bạn đang chỉnh sửa đơn hàng <strong>{initialOrder.id}</strong>. Sau khi cập nhật, thông tin cũ sẽ bị thay thế.
+            </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <div className="lg:col-span-7 space-y-6">
             
@@ -158,20 +188,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">2. Địa chỉ & Vận chuyển</h3>
                   <div className="space-y-4">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <select value={selectedProvince} onChange={e => setSelectedProvince(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required>
+                        <select value={selectedProvince} onChange={e => setSelectedProvince(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none">
                             <option value="">Tỉnh/Thành phố</option>
                             {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
                         </select>
-                        <select value={selectedDistrict} onChange={e => setSelectedDistrict(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required disabled={!selectedProvince}>
+                        <select value={selectedDistrict} onChange={e => setSelectedDistrict(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" disabled={!selectedProvince}>
                             <option value="">Quận/Huyện</option>
                             {districts.map(d => <option key={d.code} value={d.code}>{d.name}</option>)}
                         </select>
-                         <select value={selectedWard} onChange={e => setSelectedWard(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" required disabled={!selectedDistrict}>
+                         <select value={selectedWard} onChange={e => setSelectedWard(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" disabled={!selectedDistrict}>
                             <option value="">Phường/Xã</option>
                             {wards.map(w => <option key={w.code} value={w.code}>{w.name}</option>)}
                         </select>
                     </div>
-                     <input type="text" placeholder="Số nhà, tên đường" value={street} onChange={e => setStreet(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required />
+                     <input type="text" placeholder="Số nhà, tên đường (hoặc địa chỉ đầy đủ)" value={street} onChange={e => setStreet(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required />
                     
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -321,7 +351,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                 </div>
               </div>
               <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-wait">
-                {isSubmitting ? 'Đang xử lý...' : 'ĐẶT HÀNG'}
+                {isSubmitting ? 'Đang xử lý...' : (initialOrder ? 'CẬP NHẬT ĐƠN HÀNG' : 'ĐẶT HÀNG')}
               </button>
             </div>
           </div>

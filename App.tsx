@@ -8,7 +8,7 @@ import {
     FEEDBACK_ITEMS, 
     FRAME_OPTIONS,
 } from './constants';
-import { createOrder } from './services/orderService'; 
+import { createOrder, updateOrder } from './services/orderService'; 
 import { getAllParts } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
 import { getStoreConfig, DEFAULT_THEME, StoreConfig } from './services/configService'; 
@@ -93,6 +93,9 @@ const App: React.FC = () => {
           return [];
       }
   });
+
+  // State to track if we are editing an existing order (Order Update Mode)
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
       try {
@@ -229,6 +232,15 @@ const App: React.FC = () => {
     if (page === 'builder') {
         setBuilderInitialStep(1);
     }
+    // If navigating away from checkout/cart and we were editing an order, verify if we should clear it
+    if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
+       if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
+           setEditingOrder(null);
+           setCartItems([]);
+       } else {
+           return;
+       }
+    }
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
@@ -296,7 +308,43 @@ const App: React.FC = () => {
       setCartItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
   };
 
+  // Special Handler for "Edit Existing Order"
+  const handleEditOrder = (order: Order) => {
+      if (confirm("Bạn muốn chỉnh sửa đơn hàng này? Giỏ hàng hiện tại sẽ bị thay thế.")) {
+          setCartItems(order.items);
+          setEditingOrder(order);
+          navigateTo('cart');
+      }
+  };
+
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
+    // If editing existing order, use updateOrder
+    if (editingOrder) {
+        const success = await updateOrder(editingOrder.id, {
+            ...orderData,
+            status: 'Chờ thanh toán', // Reset status if edited? Or keep current? 
+            // Usually editing implies re-approval or payment adjustment, so forcing 'Chờ thanh toán' or 'Đã xác nhận' depends on logic.
+            // Let's keep it safe: Update info and items.
+        });
+        
+        if (success) {
+            const updatedOrder = { 
+                ...editingOrder, 
+                ...orderData,
+                status: editingOrder.status // Keep status or update? Prompt implies customization before packing. 
+            };
+            setCurrentOrder(updatedOrder);
+            setCartItems([]);
+            setEditingOrder(null);
+            navigateTo('order-confirmation');
+            // Notify customer/admin email about update?
+        } else {
+            alert("Lỗi cập nhật đơn hàng. Vui lòng thử lại.");
+        }
+        return;
+    }
+
+    // Normal Create Flow
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
@@ -376,9 +424,17 @@ const App: React.FC = () => {
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onZoomImage={setZoomedImageUrl} 
             />}
-            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'checkout' && (
+                <CheckoutPage 
+                    cartItems={cartItems} 
+                    allParts={allParts} 
+                    onPlaceOrder={handlePlaceOrder} 
+                    onZoomImage={(url) => setZoomedImageUrl(url)}
+                    initialOrder={editingOrder} // Pass existing order if editing
+                />
+            )}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />}
-            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} />}
+            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
