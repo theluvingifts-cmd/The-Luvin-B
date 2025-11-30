@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Order } from '../types';
-import { getOrderById, getOrdersByPhone } from '../services/orderService';
+import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderService';
+import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS } from '../constants';
 
 export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = ({onZoomImage}) => {
@@ -9,6 +10,10 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = (
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [savedOrders, setSavedOrders] = useState<{id: string, date: number}[]>([]);
+    
+    // Upload state
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         try {
@@ -60,6 +65,40 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = (
             }
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0] && foundOrder && typeof foundOrder === 'object') {
+            const file = e.target.files[0];
+            setIsUploading(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    const success = await updateOrder(foundOrder.id, { 
+                        paymentProofUrl: url,
+                        paymentProofUploadedAt: new Date().toISOString()
+                    });
+                    
+                    if (success) {
+                        setFoundOrder({ 
+                            ...foundOrder, 
+                            paymentProofUrl: url, 
+                            paymentProofUploadedAt: new Date().toISOString() 
+                        });
+                        alert("Đã gửi ảnh xác nhận thành công!");
+                    } else {
+                        alert("Lỗi cập nhật đơn hàng.");
+                    }
+                } else {
+                    alert("Lỗi tải ảnh lên.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Đã có lỗi xảy ra.");
+            } finally {
+                setIsUploading(false);
+            }
         }
     };
 
@@ -204,6 +243,41 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void}> = (
                                         <div className="mt-2 inline-block bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
                                             Nội dung: <span className="font-bold text-gray-900 select-all">{foundOrder.id}</span>
                                         </div>
+                                    </div>
+
+                                    {/* Upload Payment Proof Section */}
+                                    <div className="mt-6 pt-6 border-t border-gray-100 w-full max-w-sm">
+                                        {foundOrder.paymentProofUrl ? (
+                                            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                                                <p className="text-green-700 font-bold text-sm flex items-center justify-center gap-2">
+                                                    <span>✓</span> Đã gửi ảnh xác nhận
+                                                </p>
+                                                <p className="text-xs text-green-600 mt-1 mb-2">Đang chờ shop kiểm tra...</p>
+                                                <img src={foundOrder.paymentProofUrl} alt="Proof" className="h-20 object-contain mx-auto border rounded bg-white" />
+                                                <button onClick={() => fileInputRef.current?.click()} className="text-[10px] text-gray-400 underline mt-2">Gửi ảnh khác</button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center">
+                                                <p className="text-xs text-gray-500 mb-3">Đã chuyển khoản? Gửi ảnh biên lai để xác nhận nhanh hơn:</p>
+                                                <button 
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={isUploading}
+                                                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                    </svg>
+                                                    {isUploading ? 'Đang tải lên...' : 'Tải ảnh biên lai'}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            ref={fileInputRef} 
+                                            className="hidden" 
+                                            accept="image/*" 
+                                            onChange={handleFileUpload} 
+                                        />
                                     </div>
                                 </div>
                             )}

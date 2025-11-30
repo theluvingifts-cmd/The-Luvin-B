@@ -532,7 +532,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <div className="p-8 text-center text-gray-400 text-sm">Không có đơn hàng nào.</div>
                     ) : sortedOrders.map(order => (
                         <div key={order.id} onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}>
-                            <div className="flex justify-between items-start mb-1"><span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id}</span><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span></div>
+                            <div className="flex justify-between items-start mb-1">
+                                <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>
+                                    {order.id}
+                                    {order.paymentProofUrl && order.status === 'Chờ thanh toán' && (
+                                        <span className="ml-2 text-green-600 font-bold text-xs" title="Đã gửi ảnh thanh toán">📸</span>
+                                    )}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
+                            </div>
                             <div className="flex justify-between items-center"><p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p><p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice)}</p></div>
                             <div className="flex justify-between items-center mt-1">
                                 <p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>
@@ -609,6 +617,35 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-6 space-y-8">
+                            {/* PAYMENT PROOF SECTION */}
+                            {selectedOrder.paymentProofUrl && (
+                                <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                                    <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2">
+                                        <span>📸</span> Ảnh xác nhận chuyển khoản
+                                    </h4>
+                                    <div className="flex flex-col sm:flex-row items-start gap-4">
+                                        <a href={selectedOrder.paymentProofUrl} target="_blank" rel="noopener noreferrer">
+                                            <img 
+                                                src={selectedOrder.paymentProofUrl} 
+                                                alt="Payment Proof" 
+                                                className="h-32 object-contain border rounded-lg bg-white hover:opacity-90 transition-opacity" 
+                                            />
+                                        </a>
+                                        <div className="text-sm text-gray-600">
+                                            <p>Thời gian gửi: {selectedOrder.paymentProofUploadedAt ? formatDateTime(new Date(selectedOrder.paymentProofUploadedAt).getTime()) : '---'}</p>
+                                            {selectedOrder.status === 'Chờ thanh toán' && (
+                                                <button 
+                                                    onClick={() => handleUpdate(selectedOrder.id, { status: 'Đã xác nhận' })}
+                                                    className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm"
+                                                >
+                                                    Xác nhận thanh toán ngay
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {selectedOrder.packedAt && (
                                 <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shadow-sm">
                                     <div className="flex items-center gap-3">

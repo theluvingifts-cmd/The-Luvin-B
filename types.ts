@@ -150,6 +150,10 @@ export interface Order {
   // --- Warehouse Fields ---
   packedBy?: string;      // Email người đóng gói
   packedAt?: string;      // Thời gian đóng gói ISO string
+
+  // --- Payment Proof ---
+  paymentProofUrl?: string; // Link ảnh chuyển khoản
+  paymentProofUploadedAt?: string; // Thời gian up ảnh
 }
 
 // NEW INTERFACES FOR DYNAMIC CONTENT
