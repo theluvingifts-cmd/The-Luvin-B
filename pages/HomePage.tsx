@@ -43,16 +43,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
   const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
   const heroSubtitle = config?.heroSubtitle || 'trong từng mảnh ghép';
   
-  const vp1Title = config?.vp1Title || 'Cá nhân hóa độc bản';
-  const vp1Desc = config?.vp1Desc || 'Tự do tùy chỉnh nhân vật, trang phục và thông điệp riêng biệt cho người thương.';
-  const vp2Title = config?.vp2Title || 'Chất lượng cao cấp';
-  const vp2Desc = config?.vp2Desc || 'Mảnh ghép LEGO sắc nét, khung tranh gỗ bền đẹp, hoàn thiện tỉ mỉ từng chi tiết.';
-  const vp3Title = config?.vp3Title || 'Đóng gói quà tặng';
-  const vp3Desc = config?.vp3Desc || 'Hộp quà sang trọng, kèm thiệp viết tay, sẵn sàng để trao gửi ngay lập tức.';
-
-  const storyTitle = config?.storyTitle || 'Hơn cả một món quà, \nđó là kỷ niệm.';
-  const storyContent = config?.storyContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất, mà ở câu chuyện nó mang theo. Tại The Luvin, mỗi khung tranh là một cuốn nhật ký mở, nơi bạn kể lại hành trình yêu thương của mình qua những mảnh ghép nhỏ bé nhưng đầy màu sắc.';
-
   const displayTemplates = (templates && templates.length > 0) ? templates.slice(0, 4) : COLLECTION_TEMPLATES.slice(0, 4);
   const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
 
@@ -206,22 +196,22 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                       <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-2">
                           <Icons.Personalized />
                       </div>
-                      <h3 className="font-heading text-xl font-bold">{vp1Title}</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed max-w-xs">{vp1Desc}</p>
+                      <h3 className="font-heading text-xl font-bold">Cá nhân hóa độc bản</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed max-w-xs">Tự do tùy chỉnh nhân vật, trang phục và thông điệp riêng biệt cho người thương.</p>
                   </div>
                   <div className="flex flex-col items-center space-y-4">
                       <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-2">
                           <Icons.Quality />
                       </div>
-                      <h3 className="font-heading text-xl font-bold">{vp2Title}</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed max-w-xs">{vp2Desc}</p>
+                      <h3 className="font-heading text-xl font-bold">Chất lượng cao cấp</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed max-w-xs">Mảnh ghép LEGO sắc nét, khung tranh gỗ bền đẹp, hoàn thiện tỉ mỉ từng chi tiết.</p>
                   </div>
                   <div className="flex flex-col items-center space-y-4">
                       <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-2">
                           <Icons.Gift />
                       </div>
-                      <h3 className="font-heading text-xl font-bold">{vp3Title}</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed max-w-xs">{vp3Desc}</p>
+                      <h3 className="font-heading text-xl font-bold">Đóng gói quà tặng</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed max-w-xs">Hộp quà sang trọng, kèm thiệp viết tay, sẵn sàng để trao gửi ngay lập tức.</p>
                   </div>
               </div>
           </div>
@@ -240,9 +230,13 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                   </div>
                   <div className="w-full md:w-1/2 text-center md:text-left">
                       <span className="text-luvin-pink font-bold tracking-widest text-xs uppercase mb-2 block">Our Story</span>
-                      <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6 whitespace-pre-line">{storyTitle}</h2>
-                      <p className="text-gray-600 mb-6 leading-loose whitespace-pre-line">
-                          {storyContent}
+                      <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6">Hơn cả một món quà, <br/>đó là kỷ niệm.</h2>
+                      <p className="text-gray-600 mb-6 leading-loose">
+                          Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất, mà ở câu chuyện nó mang theo. 
+                          Tại The Luvin, mỗi khung tranh là một cuốn nhật ký mở, nơi bạn kể lại hành trình yêu thương của mình qua những mảnh ghép nhỏ bé nhưng đầy màu sắc.
+                      </p>
+                      <p className="text-gray-600 mb-8 leading-loose">
+                          Dù là ngày kỷ niệm, sinh nhật hay một lời xin lỗi ngọt ngào, hãy để chúng tôi giúp bạn gói ghém cảm xúc ấy một cách trọn vẹn nhất.
                       </p>
                       <button onClick={() => navigateTo('about')} className="text-gray-900 font-bold border-b-2 border-gray-900 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-colors">
                           Đọc thêm về chúng tôi

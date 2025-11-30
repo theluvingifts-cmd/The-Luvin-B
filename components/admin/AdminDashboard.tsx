@@ -49,58 +49,32 @@ const TopItemsCard = ({ title, data }: { title: string, data: Record<string, num
     </div>
 );
 
-const RevenueChart: React.FC<{ data: { date: string; revenue: number; profit: number }[] }> = ({ data }) => {
-    // Determine max value for scale (use revenue as it's generally higher than profit)
-    const maxVal = Math.max(...data.map(d => d.revenue), 100000);
+const RevenueChart: React.FC<{ data: { date: string; revenue: number }[] }> = ({ data }) => {
+    const maxRevenue = Math.max(...data.map(d => d.revenue), 100000); 
 
     return (
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm w-full">
-            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ doanh thu & Lợi nhuận (7 ngày)</h4>
-            <div className="flex items-end justify-between h-48 gap-2 sm:gap-4 w-full">
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ doanh thu (7 ngày)</h4>
+            <div className="flex items-end justify-between h-40 gap-2 sm:gap-4">
                 {data.map((d, index) => {
-                    const revHeight = Math.max(4, (d.revenue / maxVal) * 100);
-                    const profHeight = Math.max(4, (d.profit / maxVal) * 100);
-                    
+                    const heightPercent = (d.revenue / maxRevenue) * 100;
                     return (
-                        <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative">
-                            {/* Bars Container */}
-                            <div className="w-full flex justify-center items-end gap-1 flex-grow pb-1">
-                                {/* Revenue Bar */}
-                                <div 
-                                    className="w-3 sm:w-6 bg-blue-100 hover:bg-blue-200 rounded-t transition-all relative flex flex-col justify-end overflow-hidden" 
-                                    style={{ height: `${revHeight}%` }}
-                                >
-                                    <div className="absolute bottom-0 left-0 w-full bg-blue-500 opacity-20 h-1"></div>
-                                </div>
-                                {/* Profit Bar */}
-                                <div 
-                                    className="w-3 sm:w-6 bg-green-100 hover:bg-green-200 rounded-t transition-all relative flex flex-col justify-end overflow-hidden" 
-                                    style={{ height: `${profHeight}%` }}
-                                >
-                                    <div className="absolute bottom-0 left-0 w-full bg-green-500 opacity-20 h-1"></div>
-                                </div>
-                            </div>
-
+                        <div key={index} className="flex flex-col items-center flex-1 group relative">
                             {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 bg-gray-900 text-white text-[10px] py-2 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
-                                <div className="font-bold text-blue-300">Thu: {formatCurrency(d.revenue)}</div>
-                                <div className="font-bold text-green-300">Lãi: {formatCurrency(d.profit)}</div>
+                            <div className="absolute bottom-full mb-2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {formatCurrency(d.revenue)}
                             </div>
                             
-                            <span className="text-[10px] text-gray-500 font-medium h-4 block">{d.date}</span>
+                            <div 
+                                className="w-full bg-blue-100 hover:bg-blue-200 rounded-t transition-all relative flex flex-col justify-end overflow-hidden" 
+                                style={{ height: `${heightPercent}%`, minHeight: '4px' }}
+                            >
+                                <div className="absolute bottom-0 left-0 w-full bg-blue-500 opacity-20 h-1"></div>
+                            </div>
+                            <span className="text-[10px] text-gray-500 mt-2 font-medium">{d.date}</span>
                         </div>
                     );
                 })}
-            </div>
-            <div className="flex justify-center gap-6 mt-4">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-200 rounded-sm"></div>
-                    <span className="text-xs text-gray-600">Doanh thu</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-200 rounded-sm"></div>
-                    <span className="text-xs text-gray-600">Lợi nhuận</span>
-                </div>
             </div>
         </div>
     );
@@ -119,45 +93,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const defaultParts = Object.values(LEGO_PARTS).flat().reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
-
-    // Helper to calculate cost of a single order
-    const calculateOrderCost = (order: Order) => {
-        let totalCost = 0;
-        
-        if (order.addGiftBox) totalCost += 15000; // Estimated cost for box
-
-        order.items.forEach(item => {
-            // Frame Cost
-            const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
-            if (frame && frame.costPrice) totalCost += frame.costPrice;
-
-            // Characters Cost
-            item.characters.forEach(char => {
-                // Main parts cost
-                if (char.hair && allKnownParts[char.hair.id]?.costPrice) totalCost += allKnownParts[char.hair.id].costPrice!;
-                if (char.face && allKnownParts[char.face.id]?.costPrice) totalCost += allKnownParts[char.face.id].costPrice!;
-                if (char.shirt && allKnownParts[char.shirt.id]?.costPrice) totalCost += allKnownParts[char.shirt.id].costPrice!;
-                if (char.pants && allKnownParts[char.pants.id]?.costPrice) totalCost += allKnownParts[char.pants.id].costPrice!;
-                if (char.hat && allKnownParts[char.hat.id]?.costPrice) totalCost += allKnownParts[char.hat.id].costPrice!;
-
-                // Colors Cost (If defined)
-                if (char.selectedShirtColor?.costPrice) totalCost += char.selectedShirtColor.costPrice;
-                if (char.selectedPantsColor?.costPrice) totalCost += char.selectedPantsColor.costPrice;
-                if (char.selectedHairColor?.costPrice) totalCost += char.selectedHairColor.costPrice;
-            });
-
-            // Draggable Items Cost
-            item.draggableItems.forEach(di => {
-                if (di.type !== 'charm') {
-                    const part = allKnownParts[di.partId];
-                    if (part && part.costPrice) totalCost += part.costPrice;
-                    if (di.selectedColor?.costPrice) totalCost += di.selectedColor.costPrice;
-                }
-            });
-        });
-
-        return totalCost;
-    };
 
     const analytics = useMemo(() => {
         let start: Date, end: Date, prevStart: Date, prevEnd: Date;
@@ -204,29 +139,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
             const time = o.createdAt || Number(o.id.slice(3)) || 0;
-            // Exclude cancelled/deleted orders from analytics
-            return time >= s.getTime() && time <= e.getTime() && o.status !== 'Huỷ đơn' && o.status !== 'Xoá đơn';
+            return time >= s.getTime() && time <= e.getTime();
         });
 
         const currentOrders = getOrdersInPeriod(start, end);
         const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
 
-        const calculateTotalStats = (orderList: Order[]) => {
-            return orderList.reduce((acc, o) => {
-                const cost = calculateOrderCost(o);
-                const revenue = o.totalPrice;
-                return {
-                    revenue: acc.revenue + revenue,
-                    cost: acc.cost + cost,
-                    profit: acc.profit + (revenue - cost)
-                };
-            }, { revenue: 0, cost: 0, profit: 0 });
-        };
+        const revenue = currentOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const prevRevenue = prevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
 
-        const currentStats = calculateTotalStats(currentOrders);
-        const prevStats = calculateTotalStats(prevOrders);
-
-        const revenueGrowth = prevStats.revenue === 0 ? (currentStats.revenue > 0 ? 100 : 0) : ((currentStats.revenue - prevStats.revenue) / prevStats.revenue) * 100;
         const orderCount = currentOrders.length;
         const prevOrderCount = prevOrders.length;
         const orderGrowth = prevOrderCount === 0 ? (orderCount > 0 ? 100 : 0) : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
@@ -247,7 +169,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         currentOrders.forEach(order => {
             if (order.packedBy) packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
             order.items.forEach(item => {
-                const frame = frames.find(f => f.id === item.frameId);
+                const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
                 const frameName = frame ? `Khung ${frame.name}` : `Khung ${item.frameId}`; 
                 inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
                 
@@ -284,31 +206,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             const dStart = getStartOfDay(d);
             const dEnd = getEndOfDay(d);
             
-            const dailyOrders = orders.filter(o => {
-                const time = o.createdAt || 0;
-                return time >= dStart.getTime() && time <= dEnd.getTime() && o.status !== 'Huỷ đơn' && o.status !== 'Xoá đơn';
-            });
-
-            const dailyStats = calculateTotalStats(dailyOrders);
+            const dailyRevenue = orders
+                .filter(o => {
+                    const time = o.createdAt || 0;
+                    return time >= dStart.getTime() && time <= dEnd.getTime();
+                })
+                .reduce((sum, o) => sum + o.totalPrice, 0);
             
             chartData.push({
                 date: `${d.getDate()}/${d.getMonth() + 1}`,
-                revenue: dailyStats.revenue,
-                profit: dailyStats.profit
+                revenue: dailyRevenue
             });
         }
 
-        return { 
-            revenue: currentStats.revenue, 
-            profit: currentStats.profit,
-            revenueGrowth, 
-            orderCount, 
-            orderGrowth, 
-            inventory, 
-            packers, 
-            dateLabel, 
-            chartData 
-        };
+        return { revenue, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData };
     }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts, frames]); 
 
     return (
@@ -345,13 +256,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm relative overflow-hidden">
+                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
                     <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'payment')}</p>
-                    <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                        <span className="text-xs text-gray-500 font-medium">Lợi nhuận ước tính:</span>
-                        <span className="text-sm font-bold text-green-600">{formatCurrency(analytics.profit, 'payment')}</span>
-                    </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>

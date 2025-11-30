@@ -80,7 +80,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         e.preventDefault();
         const draggedId = e.dataTransfer.getData('text/plain');
         if (draggedId === targetId) return;
-        if (productCategory !== 'all' && productSearch !== '') return; 
+        if (productCategory !== 'all' && productSearch !== '') return; // Simple safety check for reordering only when full list visible
 
         const items = [...products];
         const draggedIndex = items.findIndex(p => p.id === draggedId);
@@ -90,6 +90,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         const [removed] = items.splice(draggedIndex, 1);
         items.splice(targetIndex, 0, removed);
         
+        // Optimistic UI Update might be tricky with Parent State, calling reorder service directly
         reorderParts(items).then(() => onRefreshProducts());
     };
 
@@ -155,10 +156,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     <img src={part.imageUrl} className="max-w-full max-h-full object-contain" />
                                 </div>
                                 <h4 className="font-bold text-sm truncate" title={part.name}>{part.name}</h4>
-                                <div className="flex flex-col">
-                                    <p className="text-xs text-gray-500">{formatCurrency(part.price)}</p>
-                                    {part.costPrice && <p className="text-[10px] text-red-400">Cost: {formatCurrency(part.costPrice)}</p>}
-                                </div>
+                                <p className="text-xs text-gray-500">{formatCurrency(part.price)}</p>
                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                     <button onClick={() => { setEditingPart(part); setIsEditingProduct(true); }} className="p-1 bg-blue-100 text-blue-600 rounded">✏️</button>
                                     <button onClick={() => handleDeleteProduct(part.id)} className="p-1 bg-red-100 text-red-600 rounded">🗑️</button>
@@ -185,7 +183,6 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 <div className="text-sm text-gray-600 space-y-1 mb-4">
                                     <p>Kích thước: {frame.frameWidthCm}x{frame.frameHeightCm}cm</p>
                                     <p>Giá: <span className="font-bold text-gray-900">{formatCurrency(frame.price)}</span></p>
-                                    {frame.costPrice && <p className="text-red-500 text-xs">Cost: {formatCurrency(frame.costPrice)}</p>}
                                     <p>Tồn kho: <span className="font-bold">{frame.stock}</span></p>
                                     <div className="flex gap-1 mt-1">
                                         {frame.colors.map(c => <span key={c} className="w-3 h-3 rounded-full border" style={{backgroundColor: c === 'wood' ? '#d2b48c' : c}}></span>)}
@@ -260,6 +257,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                 </>
             )}
 
+            {/* Modals */}
             {isEditingProduct && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={() => { setIsEditingProduct(false); setEditingPart(null); }} />}
             {isEditingBackground && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={() => { setIsEditingBackground(false); setEditingBg(null); }} />}
             {isEditingFrame && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={() => { setIsEditingFrame(false); setEditingFrame(null); }} />}
