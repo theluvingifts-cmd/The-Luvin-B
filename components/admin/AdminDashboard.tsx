@@ -34,26 +34,26 @@ const VALID_REVENUE_STATUSES = [
 ];
 
 const TopItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full">
-        <h4 className="font-bold text-sm text-gray-700 mb-3 uppercase tracking-wider">{title}</h4>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full hover:shadow-md transition-shadow">
+        <h4 className="font-bold text-xs text-gray-500 mb-3 uppercase tracking-wider">{title}</h4>
         {Object.keys(data).length > 0 ? (
-            <div className="space-y-2 overflow-y-auto flex-grow max-h-40 custom-scrollbar">
+            <div className="space-y-2 overflow-y-auto flex-grow max-h-40 custom-scrollbar pr-1">
                 {Object.entries(data)
                     .sort(([, a], [, b]) => b - a)
                     .slice(0, 5)
                     .map(([name, count], idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs">
+                        <div key={idx} className="flex items-center justify-between text-xs group">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="text-gray-400 font-mono w-4 flex-shrink-0">{idx + 1}.</span>
-                                <span className="font-medium text-gray-700 truncate" title={name}>{name}</span>
+                                <span className={`font-mono w-4 flex-shrink-0 text-center rounded ${idx === 0 ? 'bg-yellow-100 text-yellow-700 font-bold' : 'text-gray-400'}`}>{idx + 1}</span>
+                                <span className="font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors" title={name}>{name}</span>
                             </div>
-                            <span className="font-bold w-6 text-right flex-shrink-0">{count}</span>
+                            <span className="font-bold w-8 text-right flex-shrink-0 bg-gray-50 px-1 rounded">{count}</span>
                         </div>
                     ))
                 }
             </div>
         ) : (
-            <div className="text-center py-4 text-gray-300 text-xs italic border border-dashed rounded">
+            <div className="text-center py-4 text-gray-300 text-xs italic border border-dashed rounded bg-gray-50">
                 Chưa có dữ liệu
             </div>
         )}
@@ -63,73 +63,71 @@ const TopItemsCard = ({ title, data }: { title: string, data: Record<string, num
 const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number; ads: number }[] }> = ({ data }) => {
     // Find max value to scale chart
     const maxValue = Math.max(...data.map(d => Math.max(d.revenue, d.profit, d.ads)), 100000);
+    // Tính toán độ rộng tối thiểu để đảm bảo các cột không bị dính vào nhau khi xem 30 ngày
+    const minWidth = data.length * 50; 
 
     return (
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm h-full flex flex-col">
-            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ Tài chính</h4>
-            <div className="flex-grow flex items-end justify-between gap-2 sm:gap-4 relative h-48">
-                {/* Grid Lines */}
-                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10">
-                    <div className="border-t border-gray-100 w-full"></div>
-                    <div className="border-t border-gray-100 w-full"></div>
-                    <div className="border-t border-gray-100 w-full"></div>
-                    <div className="border-t border-gray-100 w-full"></div>
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-full flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+                <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wider">Biểu đồ Tài chính</h4>
+                <div className="flex gap-4 text-[10px] font-medium">
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-blue-400 rounded-sm"></div>Doanh thu</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-green-400 rounded-sm"></div>Lợi nhuận</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-red-400 rounded-sm"></div>Ads</div>
                 </div>
-
-                {data.map((d, index) => {
-                    const revenueHeight = (d.revenue / maxValue) * 100;
-                    const profitHeight = (d.profit / maxValue) * 100;
-                    const adsHeight = (d.ads / maxValue) * 100;
-
-                    return (
-                        <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10">
-                            {/* Bars Container */}
-                            <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-full">
-                                {/* Revenue Bar */}
-                                <div 
-                                    className="w-2 sm:w-4 bg-blue-200 hover:bg-blue-300 rounded-t transition-all duration-500 relative"
-                                    style={{ height: `${Math.max(revenueHeight, 1)}%` }}
-                                >
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                        DT: {formatCurrency(d.revenue, 'admin')}
-                                    </div>
-                                </div>
-                                {/* Ads Bar */}
-                                <div 
-                                    className="w-2 sm:w-4 bg-red-200 hover:bg-red-300 rounded-t transition-all duration-500 relative"
-                                    style={{ height: `${Math.max(adsHeight, 1)}%` }}
-                                >
-                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-red-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                        Ads: {formatCurrency(d.ads, 'admin')}
-                                    </div>
-                                </div>
-                                {/* Profit Bar */}
-                                <div 
-                                    className="w-2 sm:w-4 bg-green-200 hover:bg-green-300 rounded-t transition-all duration-500 relative"
-                                    style={{ height: `${Math.max(profitHeight, 1)}%` }}
-                                >
-                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 bg-green-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                        LN: {formatCurrency(d.profit, 'admin')}
-                                    </div>
-                                </div>
-                            </div>
-                            <span className="text-[10px] text-gray-500 mt-2 font-medium truncate w-full text-center">{d.date}</span>
-                        </div>
-                    );
-                })}
             </div>
-            <div className="flex justify-center gap-4 mt-4 flex-wrap">
-                <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 bg-blue-200 rounded"></div>
-                    <span className="text-gray-600">Doanh thu</span>
+            
+            <div className="flex-grow relative overflow-hidden">
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10 z-0">
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 bg-red-200 rounded"></div>
-                    <span className="text-gray-600">Chi phí Ads</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 bg-green-200 rounded"></div>
-                    <span className="text-gray-600">Lợi nhuận ròng</span>
+
+                {/* Scrollable Container */}
+                <div className="overflow-x-auto h-full pb-2 custom-scrollbar">
+                    <div className="h-full flex items-end justify-between gap-2 px-2" style={{ minWidth: `${minWidth}px` }}>
+                        {data.map((d, index) => {
+                            const revenueHeight = (d.revenue / maxValue) * 100;
+                            const profitHeight = (d.profit / maxValue) * 100;
+                            const adsHeight = (d.ads / maxValue) * 100;
+
+                            return (
+                                <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10 min-w-[20px]">
+                                    {/* Bars Container */}
+                                    <div className="w-full flex items-end justify-center gap-[2px] h-[85%] border-b border-gray-200 pb-1">
+                                        {/* Revenue Bar */}
+                                        <div 
+                                            className="w-1.5 sm:w-2.5 bg-blue-400 hover:bg-blue-500 rounded-t-sm transition-all duration-300 relative group-hover:scale-y-105 origin-bottom"
+                                            style={{ height: `${Math.max(revenueHeight, 1)}%` }}
+                                        ></div>
+                                        {/* Profit Bar */}
+                                        <div 
+                                            className="w-1.5 sm:w-2.5 bg-green-400 hover:bg-green-500 rounded-t-sm transition-all duration-300 relative group-hover:scale-y-105 origin-bottom"
+                                            style={{ height: `${Math.max(profitHeight, 1)}%` }}
+                                        ></div>
+                                        {/* Ads Bar */}
+                                        <div 
+                                            className="w-1.5 sm:w-2.5 bg-red-400 hover:bg-red-500 rounded-t-sm transition-all duration-300 relative group-hover:scale-y-105 origin-bottom"
+                                            style={{ height: `${Math.max(adsHeight, 1)}%` }}
+                                        ></div>
+                                    </div>
+                                    
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-[90%] left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[10px] p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none flex flex-col gap-1">
+                                        <span className="font-bold border-b border-gray-600 pb-1 mb-1 block">{d.date}</span>
+                                        <span className="text-blue-200">DT: {formatCurrency(d.revenue, 'admin')}</span>
+                                        <span className="text-green-200">LN: {formatCurrency(d.profit, 'admin')}</span>
+                                        <span className="text-red-200">Ads: {formatCurrency(d.ads, 'admin')}</span>
+                                    </div>
+
+                                    <span className="text-[9px] text-gray-500 mt-2 font-medium truncate w-full text-center rotate-0">{d.date}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>
@@ -204,8 +202,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const success = await saveAdsCost(adsDateInput, adsCostInput);
         if (success) {
             setDailyAdsCosts(prev => ({ ...prev, [adsDateInput]: adsCostInput }));
-            // Reset input to 0 to indicate success visually, or keep it. Let's keep it.
-            alert(`Đã lưu chi phí ngày ${new Date(adsDateInput).toLocaleDateString('vi-VN')}`);
+            alert("Đã lưu!");
         } else {
             alert('Lỗi lưu chi phí');
         }
@@ -375,184 +372,138 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     }, [orders, startDate, endDate, allKnownParts, frames, dailyAdsCosts]); 
 
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-6 animate-fade-in pb-12">
             {/* 1. Control Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm gap-4">
-                <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">Tổng quan {dateLabel}</h2>
-                <div className="flex flex-wrap gap-4 items-center justify-end">
-                    <div className="flex bg-gray-100 p-1 rounded-md">
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4 sticky top-16 z-20">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-lg">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-bold text-gray-900">Thời gian</h2>
+                        <p className="text-xs text-gray-500 font-medium">{dateLabel}</p>
+                    </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 items-center justify-end">
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Nhanh</button>
                         <button onClick={() => setFilterType('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
                         <button onClick={() => setFilterType('custom')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tùy chỉnh</button>
                     </div>
                     {filterType === 'period' && (
-                        <div className="flex gap-2">
-                            {(['today', 'yesterday', '7days', '30days'] as const).map(t => (
-                                <button key={t} onClick={() => setPeriod(t)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors border ${period === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t === 'today' ? 'Hôm nay' : t === 'yesterday' ? 'Hôm qua' : t === '7days' ? '7 ngày' : '30 ngày'}</button>
-                            ))}
-                        </div>
+                        <select value={period} onChange={(e: any) => setPeriod(e.target.value)} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-medium focus:ring-1 focus:ring-gray-900 outline-none">
+                            <option value="today">Hôm nay</option>
+                            <option value="yesterday">Hôm qua</option>
+                            <option value="7days">7 ngày qua</option>
+                            <option value="30days">30 ngày qua</option>
+                        </select>
                     )} 
                     {filterType === 'month' && (
-                        <div className="flex gap-2 items-center">
-                            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>Tháng {i + 1}</option>))}</select>
-                            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700 focus:ring-0 focus:border-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option></select>
+                        <div className="flex gap-1">
+                            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>T{i + 1}</option>))}</select>
+                            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option></select>
                         </div>
                     )}
                     {filterType === 'custom' && (
-                        <div className="flex gap-2 items-center">
-                            <input type="date" className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
-                            <span className="text-gray-400">-</span>
-                            <input type="date" className="p-1.5 border border-gray-300 rounded-md text-xs font-bold text-gray-700" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
+                        <div className="flex gap-2 items-center bg-white border border-gray-200 rounded-lg p-1">
+                            <input type="date" className="text-xs font-medium border-none p-0 focus:ring-0" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
+                            <span className="text-gray-300">|</span>
+                            <input type="date" className="text-xs font-medium border-none p-0 focus:ring-0" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* 2. Key Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu (Xác nhận)</p>
-                        <span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span>
+            {/* 2. Key Metrics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-white p-5 rounded-xl border border-blue-100 shadow-sm">
+                    <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Doanh thu</p>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</span>
+                        <span className={`text-xs font-bold ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.revenueGrowth).toFixed(0)}%</span>
                     </div>
-                    <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</p>
                 </div>
                 
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận ròng</p>
+                <div className="bg-gradient-to-br from-green-50 to-white p-5 rounded-xl border border-green-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute right-0 top-0 p-2 opacity-10">
+                        <svg className="w-16 h-16 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05 1.18 1.91 2.53 1.91 1.29 0 2.13-.59 2.13-1.66 0-.79-.49-1.3-2.7-1.8-2.57-.58-4.34-1.66-4.34-3.85 0-1.88 1.42-3.28 3.29-3.64V4.5h2.67v1.9c1.5.31 2.72 1.29 2.91 3.03h-1.99c-.16-.83-.97-1.52-2.18-1.52-1.2 0-1.92.59-1.92 1.5 0 .73.55 1.23 2.58 1.69 2.65.62 4.46 1.76 4.46 3.98 0 2.07-1.66 3.52-3.46 3.91z"/></svg>
                     </div>
-                    <div className="flex items-end justify-between mt-2">
-                        <p className={`text-3xl font-light ${analytics.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(analytics.profit, 'admin')}</p>
-                        <div className="text-right">
-                            <p className="text-[10px] text-gray-400">Tổng phí Ads</p>
-                            <p className="text-xs text-red-500 font-bold">-{formatCurrency(analytics.totalAdsCost, 'admin')}</p>
-                        </div>
+                    <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Lợi nhuận ròng</p>
+                    <div className="flex flex-col">
+                        <span className="text-2xl font-bold text-gray-900">{formatCurrency(analytics.profit, 'admin')}</span>
+                        <span className="text-[10px] text-gray-500 font-medium">Đã trừ Ads: {formatCurrency(analytics.totalAdsCost, 'admin')}</span>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tổng Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
-                    <p className="text-3xl font-light text-gray-900">{analytics.orderCount}</p>
+                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Tổng Đơn hàng</p>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-gray-900">{analytics.orderCount}</span>
+                        <span className={`text-xs font-bold ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.orderGrowth).toFixed(0)}%</span>
+                    </div>
                 </div>
-                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hiệu suất kho</p>
-                    <div className="flex items-end gap-2"><p className="text-3xl font-light text-gray-900">{analytics.packers.length > 0 ? analytics.packers[0].count : 0}</p><p className="text-sm font-medium text-gray-600 mb-1 truncate w-24">Top 1</p></div>
+                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Top Nhân Viên</p>
+                    <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-gray-900 truncate max-w-[120px]">{analytics.packers.length > 0 ? analytics.packers[0].email.split('@')[0] : '---'}</span>
+                        <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Top 1</span>
+                    </div>
                 </div>
             </div>
 
-            {/* 3. Inline Ads Management & Charts */}
+            {/* 3. Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                {/* Left Column: Chart & Ads */}
+                <div className="lg:col-span-2 space-y-6">
                     <BarChart data={analytics.chartData} />
-                </div>
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <h4 className="font-bold text-sm text-gray-700 mb-4 uppercase tracking-wider flex items-center gap-2">
-                        <span className="text-lg">📢</span> Quản lý Chi phí Marketing
-                    </h4>
                     
-                    <div className="space-y-4">
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                            <label className="block text-xs font-bold text-gray-500 mb-2">Cập nhật chi phí theo ngày</label>
-                            <div className="flex flex-col gap-3">
-                                <input 
-                                    type="date" 
-                                    className="w-full p-2 border rounded text-sm"
-                                    value={adsDateInput}
-                                    onChange={(e) => {
-                                        setAdsDateInput(e.target.value);
-                                        // Auto-fill cost if exists in data
-                                        if (dailyAdsCosts[e.target.value]) {
-                                            setAdsCostInput(dailyAdsCosts[e.target.value]);
-                                        } else {
-                                            setAdsCostInput(0);
-                                        }
-                                    }}
-                                />
-                                <div className="flex items-center gap-2">
-                                    <input 
-                                        type="number" 
-                                        placeholder="Số tiền (VNĐ)"
-                                        className="w-full p-2 border rounded text-sm font-semibold"
-                                        value={adsCostInput}
-                                        onChange={(e) => setAdsCostInput(Number(e.target.value))}
-                                    />
-                                    <button 
-                                        onClick={handleSaveAdsInline}
-                                        disabled={isSavingAds}
-                                        className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black disabled:opacity-50 whitespace-nowrap"
-                                    >
-                                        Lưu
-                                    </button>
-                                </div>
+                    {/* Compact Ads Management Widget */}
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-sm text-gray-800">Chi phí Ads</h4>
+                                <p className="text-[10px] text-gray-500">Nhập chi phí marketing theo ngày</p>
                             </div>
                         </div>
-
-                        <div className="mt-4">
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Chi phí gần đây</p>
-                            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                                {Object.entries(dailyAdsCosts)
-                                    .sort((a, b) => b[0].localeCompare(a[0])) // Sort date desc
-                                    .slice(0, 5) // Show top 5
-                                    .map(([date, cost]) => (
-                                        <div key={date} className="flex justify-between items-center text-sm border-b border-gray-50 pb-1">
-                                            <span className="text-gray-600">{new Date(date).toLocaleDateString('vi-VN')}</span>
-                                            <span className="font-mono font-medium">{formatCurrency(cost, 'admin')}</span>
-                                        </div>
-                                    ))}
-                                {Object.keys(dailyAdsCosts).length === 0 && <p className="text-xs text-gray-400 italic">Chưa có dữ liệu.</p>}
-                            </div>
+                        
+                        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                            <input 
+                                type="date" 
+                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-24 focus:outline-none focus:border-gray-500"
+                                value={adsDateInput}
+                                onChange={(e) => {
+                                    setAdsDateInput(e.target.value);
+                                    if (dailyAdsCosts[e.target.value]) setAdsCostInput(dailyAdsCosts[e.target.value]);
+                                    else setAdsCostInput(0);
+                                }}
+                            />
+                            <input 
+                                type="number" 
+                                placeholder="VNĐ"
+                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-24 font-bold text-gray-800 focus:outline-none focus:border-gray-500"
+                                value={adsCostInput}
+                                onChange={(e) => setAdsCostInput(Number(e.target.value))}
+                            />
+                            <button 
+                                onClick={handleSaveAdsInline}
+                                disabled={isSavingAds}
+                                className="bg-gray-900 text-white p-1.5 rounded hover:bg-black disabled:opacity-50 transition-colors"
+                                title="Lưu"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* 4. Top Items */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <TopItemsCard title="Khung Ảnh" data={analytics.inventory.frames} />
-                <TopItemsCard title="Tóc" data={analytics.inventory.hair} />
-                <TopItemsCard title="Khuôn mặt" data={analytics.inventory.face} />
-                <TopItemsCard title="Áo" data={analytics.inventory.shirt} />
-                <TopItemsCard title="Quần" data={analytics.inventory.pants} />
-                <TopItemsCard title="Mũ" data={analytics.inventory.hat} />
-                <TopItemsCard title="Phụ kiện" data={analytics.inventory.accessory} />
-                <TopItemsCard title="Thú cưng" data={analytics.inventory.pet} />
-            </div>
-
-            {/* 5. Packers */}
-            <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                    <h3 className="font-bold text-gray-800 mb-4">Bảng Xếp Hạng Đóng Gói</h3>
-                    {analytics.packers.length > 0 ? (
-                        <div className="overflow-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-500 border-b">
-                                    <tr>
-                                        <th className="py-2 px-3 text-left font-semibold">Hạng</th>
-                                        <th className="py-2 px-3 text-left font-semibold">Nhân viên</th>
-                                        <th className="py-2 px-3 text-right font-semibold">Số đơn</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analytics.packers.map((packer, idx) => (
-                                        <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
-                                            <td className="py-3 px-3">
-                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : idx === 1 ? 'bg-gray-200 text-gray-700' : idx === 2 ? 'bg-orange-100 text-orange-700' : 'text-gray-500'}`}>
-                                                    {idx + 1}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-3 font-medium text-gray-800">{packer.email}</td>
-                                            <td className="py-3 px-3 text-right font-bold">{packer.count}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
-                            Chưa có dữ liệu đóng gói trong khoảng thời gian này
-                        </div>
-                    )}
+                {/* Right Column: Top Items */}
+                <div className="space-y-6">
+                    <TopItemsCard title="Top Khung Bán Chạy" data={analytics.inventory.frames} />
+                    <TopItemsCard title="Top Phụ Kiện" data={analytics.inventory.accessory} />
                 </div>
             </div>
         </div>
