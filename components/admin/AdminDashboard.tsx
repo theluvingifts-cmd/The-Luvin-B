@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Order, LegoPart, FrameOption } from '../../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { formatCurrency } from '../../utils/pricing';
-import { getStoreConfig, updateStoreConfig } from '../../services/configService';
+import { getAdsCosts, saveAdsCost } from '../../services/configService';
 
 interface AdminDashboardProps {
     orders: Order[];
@@ -22,6 +22,16 @@ const getEndOfDay = (date: Date) => {
     newDate.setHours(23, 59, 59, 999);
     return newDate;
 };
+
+// Valid statuses for Revenue Calculation
+const VALID_REVENUE_STATUSES = [
+    'Đã xác nhận', 
+    'Ưu tiên xuất đơn', 
+    'Đang đóng hàng', 
+    'Chờ chuyển hàng', 
+    'Gửi hàng đi', 
+    'Đã giao hàng'
+];
 
 const TopItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full">
@@ -50,15 +60,15 @@ const TopItemsCard = ({ title, data }: { title: string, data: Record<string, num
     </div>
 );
 
-const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number }[] }> = ({ data }) => {
-    // Tìm giá trị lớn nhất để scale biểu đồ (tránh chia cho 0)
-    const maxValue = Math.max(...data.map(d => Math.max(d.revenue, d.profit)), 100000);
+const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number; ads: number }[] }> = ({ data }) => {
+    // Find max value to scale chart
+    const maxValue = Math.max(...data.map(d => Math.max(d.revenue, d.profit, d.ads)), 100000);
 
     return (
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm h-full flex flex-col">
-            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ doanh thu & Lợi nhuận (7 ngày)</h4>
+            <h4 className="font-bold text-sm text-gray-700 mb-6 uppercase tracking-wider">Biểu đồ Tài chính</h4>
             <div className="flex-grow flex items-end justify-between gap-2 sm:gap-4 relative h-48">
-                {/* Grid Lines (Optional) */}
+                {/* Grid Lines */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10">
                     <div className="border-t border-gray-900 w-full"></div>
                     <div className="border-t border-gray-900 w-full"></div>
@@ -69,45 +79,122 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
                 {data.map((d, index) => {
                     const revenueHeight = (d.revenue / maxValue) * 100;
                     const profitHeight = (d.profit / maxValue) * 100;
+                    const adsHeight = (d.ads / maxValue) * 100;
 
                     return (
                         <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10">
                             {/* Bars Container */}
-                            <div className="w-full flex items-end justify-center gap-1 h-full">
+                            <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-full">
                                 {/* Revenue Bar */}
                                 <div 
-                                    className="w-3 sm:w-6 bg-blue-200 hover:bg-blue-300 rounded-t transition-all duration-500 relative"
-                                    style={{ height: `${Math.max(revenueHeight, 1)}%` }} // Min height 1% to show 0
+                                    className="w-2 sm:w-4 bg-blue-200 hover:bg-blue-300 rounded-t transition-all duration-500 relative"
+                                    style={{ height: `${Math.max(revenueHeight, 1)}%` }}
                                 >
-                                    {/* Tooltip Revenue */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
                                         DT: {formatCurrency(d.revenue, 'admin')}
                                     </div>
                                 </div>
+                                {/* Ads Bar */}
+                                <div 
+                                    className="w-2 sm:w-4 bg-red-200 hover:bg-red-300 rounded-t transition-all duration-500 relative"
+                                    style={{ height: `${Math.max(adsHeight, 1)}%` }}
+                                >
+                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-red-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                                        Ads: {formatCurrency(d.ads, 'admin')}
+                                    </div>
+                                </div>
                                 {/* Profit Bar */}
                                 <div 
-                                    className="w-3 sm:w-6 bg-green-200 hover:bg-green-300 rounded-t transition-all duration-500 relative"
+                                    className="w-2 sm:w-4 bg-green-200 hover:bg-green-300 rounded-t transition-all duration-500 relative"
                                     style={{ height: `${Math.max(profitHeight, 1)}%` }}
                                 >
-                                     {/* Tooltip Profit */}
                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 bg-green-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
                                         LN: {formatCurrency(d.profit, 'admin')}
                                     </div>
                                 </div>
                             </div>
-                            <span className="text-[10px] text-gray-500 mt-2 font-medium">{d.date}</span>
+                            <span className="text-[10px] text-gray-500 mt-2 font-medium truncate w-full text-center">{d.date}</span>
                         </div>
                     );
                 })}
             </div>
-            <div className="flex justify-center gap-6 mt-4">
+            <div className="flex justify-center gap-4 mt-4 flex-wrap">
                 <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 bg-blue-200 rounded"></div>
                     <span className="text-gray-600">Doanh thu</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
+                    <div className="w-3 h-3 bg-red-200 rounded"></div>
+                    <span className="text-gray-600">Chi phí Ads</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 bg-green-200 rounded"></div>
                     <span className="text-gray-600">Lợi nhuận ròng</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- ADS COST MODAL ---
+const AdsCostModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    startDate: Date;
+    endDate: Date;
+    dailyCosts: Record<string, number>;
+    onSaveCost: (date: string, cost: number) => void;
+}> = ({ isOpen, onClose, startDate, endDate, dailyCosts, onSaveCost }) => {
+    if (!isOpen) return null;
+
+    // Generate array of dates between start and end
+    const dates: string[] = [];
+    let currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    // Sort descending
+    dates.reverse();
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                    <h3 className="font-bold text-gray-800">Quản lý Chi phí Quảng cáo</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">&times;</button>
+                </div>
+                
+                <div className="p-4 overflow-y-auto flex-grow custom-scrollbar">
+                    <p className="text-xs text-gray-500 mb-4 bg-blue-50 p-2 rounded">
+                        Nhập chi phí Marketing (Facebook Ads, Google Ads,...) cho từng ngày để tính lợi nhuận chính xác.
+                    </p>
+                    <div className="space-y-3">
+                        {dates.map(date => {
+                            const displayDate = new Date(date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+                            return (
+                                <div key={date} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0">
+                                    <span className="text-sm font-medium text-gray-700">{displayDate}</span>
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="number" 
+                                            className="border border-gray-300 rounded px-2 py-1.5 text-sm w-32 text-right focus:border-blue-500 outline-none"
+                                            placeholder="0"
+                                            defaultValue={dailyCosts[date] || ''}
+                                            onBlur={(e) => onSaveCost(date, Number(e.target.value))}
+                                        />
+                                        <span className="text-xs text-gray-500">₫</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                <div className="p-4 border-t bg-gray-50 rounded-b-xl text-right">
+                    <button onClick={onClose} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition-colors">
+                        Đóng
+                    </button>
                 </div>
             </div>
         </div>
@@ -122,23 +209,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     
-    const [dailyAdsCost, setDailyAdsCost] = useState<number>(0);
-    const [isSavingAds, setIsSavingAds] = useState(false);
+    // Daily Ads Costs State
+    const [dailyAdsCosts, setDailyAdsCosts] = useState<Record<string, number>>({});
+    const [isAdsModalOpen, setIsAdsModalOpen] = useState(false);
 
+    // Calculate start and end dates based on filter
+    const { startDate, endDate, dateLabel } = useMemo(() => {
+        let start: Date, end: Date;
+        let label = '';
+
+        if (filterType === 'month') {
+            label = `Tháng ${month + 1}/${year}`;
+            start = new Date(year, month, 1);
+            end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        } else if (filterType === 'custom') {
+            label = 'Tùy chỉnh';
+            start = customStartDate ? new Date(customStartDate) : new Date(0);
+            end = customEndDate ? new Date(customEndDate) : new Date();
+            end.setHours(23, 59, 59, 999);
+        } else {
+            const now = new Date();
+            start = getStartOfDay(now);
+            end = getEndOfDay(now);
+
+            if (period === 'yesterday') {
+                start.setDate(start.getDate() - 1); end.setDate(end.getDate() - 1);
+                label = 'Hôm qua';
+            } else if (period === '7days') {
+                start.setDate(start.getDate() - 7);
+                label = '7 ngày qua';
+            } else if (period === '30days') {
+                start.setDate(start.getDate() - 30);
+                label = '30 ngày qua';
+            } else {
+                label = 'Hôm nay';
+            }
+        }
+        return { startDate: start, endDate: end, dateLabel: label };
+    }, [filterType, period, month, year, customStartDate, customEndDate]);
+
+    // Fetch Ads Costs when date range changes
     useEffect(() => {
-        const loadAdsConfig = async () => {
-            const config = await getStoreConfig();
-            if (config?.dailyAdsBudget) {
-                setDailyAdsCost(config.dailyAdsBudget);
+        const fetchCosts = async () => {
+            if (startDate && endDate) {
+                const costs = await getAdsCosts(startDate, endDate);
+                setDailyAdsCosts(costs);
             }
         };
-        loadAdsConfig();
-    }, []);
+        fetchCosts();
+    }, [startDate, endDate]);
 
-    const updateAdsCost = async () => {
-        setIsSavingAds(true);
-        await updateStoreConfig({ dailyAdsBudget: dailyAdsCost });
-        setIsSavingAds(false);
+    const handleSaveAdsCost = async (date: string, cost: number) => {
+        const success = await saveAdsCost(date, cost);
+        if (success) {
+            setDailyAdsCosts(prev => ({ ...prev, [date]: cost }));
+        }
     };
 
     const allKnownParts = useMemo(() => {
@@ -156,7 +281,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
             if (frame) totalCost += (frame.costPrice || 0);
 
-            // Parts cost (characters)
+            // Parts cost
             item.characters.forEach(char => {
                 if (char.hair) totalCost += (allKnownParts[char.hair.id]?.costPrice || 0);
                 if (char.face) totalCost += (allKnownParts[char.face.id]?.costPrice || 0);
@@ -173,84 +298,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             });
         });
 
-        // Box cost (Approximate if not tracked)
-        if (order.addGiftBox) totalCost += 15000; // Assuming box cost ~15k
+        // Box cost (Approximate)
+        if (order.addGiftBox) totalCost += 15000; 
 
-        // Net Profit = Total Price - Shipping (User paid) - Cost - (Shipping Cost Actual - usually matched but simplified here)
-        // Note: shipping.fee is what user paid. 
+        // Profit = Revenue (User paid) - Cost - Shipping (We pay shipping carrier, assumed equal to fee collected or absorbed)
+        // Simplifying: Profit = (Order Total - Shipping Fee) - Product Cost
         return order.totalPrice - order.shipping.fee - totalCost; 
     };
 
     const analytics = useMemo(() => {
-        let start: Date, end: Date, prevStart: Date, prevEnd: Date;
-        let dateLabel = '';
-        let numberOfDays = 1;
-
-        if (filterType === 'month') {
-            dateLabel = `Tháng ${month + 1}/${year}`;
-            start = new Date(year, month, 1);
-            end = new Date(year, month + 1, 0, 23, 59, 59, 999);
-            prevStart = new Date(year, month - 1, 1);
-            prevEnd = new Date(year, month, 0, 23, 59, 59, 999);
-            numberOfDays = new Date(year, month + 1, 0).getDate();
-        } else if (filterType === 'custom') {
-            dateLabel = 'Tùy chỉnh';
-            start = customStartDate ? new Date(customStartDate) : new Date(0);
-            end = customEndDate ? new Date(customEndDate) : new Date();
-            end.setHours(23, 59, 59, 999);
-            const duration = end.getTime() - start.getTime();
-            prevEnd = new Date(start.getTime() - 1);
-            prevStart = new Date(prevEnd.getTime() - duration);
-            numberOfDays = Math.ceil(duration / (1000 * 60 * 60 * 24)) || 1;
-        } else {
-            const now = new Date();
-            start = getStartOfDay(now);
-            end = getEndOfDay(now);
-            prevStart = getStartOfDay(now);
-            prevEnd = getEndOfDay(now);
-
-            if (period === 'yesterday') {
-                start.setDate(start.getDate() - 1); end.setDate(end.getDate() - 1);
-                prevStart.setDate(prevStart.getDate() - 2); prevEnd.setDate(prevEnd.getDate() - 2);
-                dateLabel = 'Hôm qua';
-            } else if (period === '7days') {
-                start.setDate(start.getDate() - 7);
-                prevStart.setDate(prevStart.getDate() - 14); prevEnd.setDate(prevEnd.getDate() - 7);
-                dateLabel = '7 ngày qua';
-                numberOfDays = 7;
-            } else if (period === '30days') {
-                start.setDate(start.getDate() - 30);
-                prevStart.setDate(prevStart.getDate() - 60); prevEnd.setDate(prevEnd.getDate() - 30);
-                dateLabel = '30 ngày qua';
-                numberOfDays = 30;
-            } else {
-                prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1);
-                dateLabel = 'Hôm nay';
-            }
-        }
+        const prevStart = new Date(startDate);
+        const prevEnd = new Date(endDate);
+        const duration = endDate.getTime() - startDate.getTime();
+        prevStart.setTime(prevStart.getTime() - duration);
+        prevEnd.setTime(prevEnd.getTime() - duration);
 
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
             const time = o.createdAt || Number(o.id.slice(3)) || 0;
             return time >= s.getTime() && time <= e.getTime();
         });
 
-        const currentOrders = getOrdersInPeriod(start, end);
+        const allCurrentOrders = getOrdersInPeriod(startDate, endDate);
         const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
 
-        const revenue = currentOrders.reduce((sum, o) => sum + o.totalPrice, 0);
-        const grossProfit = currentOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
+        // Filter valid orders for revenue/profit
+        const validOrders = allCurrentOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
+        const validPrevOrders = prevOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
+
+        const revenue = validOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const grossProfit = validOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
         
-        // Calculate Net Profit by subtracting Ads Cost
-        const totalAdsCost = dailyAdsCost * numberOfDays;
+        // Sum ads costs for days in range
+        let totalAdsCost = 0;
+        const tempDate = new Date(startDate);
+        while (tempDate <= endDate) {
+            const dateStr = tempDate.toISOString().split('T')[0];
+            totalAdsCost += (dailyAdsCosts[dateStr] || 0);
+            tempDate.setDate(tempDate.getDate() + 1);
+        }
+
         const netProfit = grossProfit - totalAdsCost;
 
-        const prevRevenue = prevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const prevRevenue = validPrevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
 
-        const orderCount = currentOrders.length;
+        const orderCount = allCurrentOrders.length; // Count ALL orders placed, not just valid ones
         const prevOrderCount = prevOrders.length;
         const orderGrowth = prevOrderCount === 0 ? (orderCount > 0 ? 100 : 0) : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
 
+        // Inventory & Packers Stats (Use all orders to reflect activity)
         const inventory = { 
             frames: {} as Record<string, number>, 
             hair: {} as Record<string, number>,
@@ -264,7 +360,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         };
         const packerStats: Record<string, number> = {};
 
-        currentOrders.forEach(order => {
+        allCurrentOrders.forEach(order => {
             if (order.packedBy) packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
             order.items.forEach(item => {
                 const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
@@ -296,37 +392,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
         const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
 
-        // Chart Data (Last 7 days relative to 'end' date)
+        // Chart Data (Daily)
         const chartData = [];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(end);
-            d.setDate(d.getDate() - i);
-            const dStart = getStartOfDay(d);
-            const dEnd = getEndOfDay(d);
+        // Loop from start to end
+        const loopDate = new Date(startDate);
+        while (loopDate <= endDate) {
+            const dateStr = loopDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            const displayDate = `${loopDate.getDate()}/${loopDate.getMonth() + 1}`;
+            const dStart = getStartOfDay(loopDate);
+            const dEnd = getEndOfDay(loopDate);
             
             const dailyOrders = orders.filter(o => {
                 const time = o.createdAt || 0;
                 return time >= dStart.getTime() && time <= dEnd.getTime();
             });
 
-            const dailyRevenue = dailyOrders.reduce((sum, o) => sum + o.totalPrice, 0);
-            const dailyGrossProfit = dailyOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
-            const dailyNetProfit = dailyGrossProfit - dailyAdsCost;
+            // Only count revenue/profit for valid statuses
+            const dailyValidOrders = dailyOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
+
+            const dailyRevenue = dailyValidOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+            const dailyGrossProfit = dailyValidOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
+            const dailyAds = dailyAdsCosts[dateStr] || 0;
+            const dailyNetProfit = dailyGrossProfit - dailyAds;
             
             chartData.push({
-                date: `${d.getDate()}/${d.getMonth() + 1}`,
+                date: displayDate,
                 revenue: dailyRevenue,
-                profit: dailyNetProfit
+                profit: dailyNetProfit,
+                ads: dailyAds
             });
+
+            loopDate.setDate(loopDate.getDate() + 1);
         }
 
-        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData, totalAdsCost };
-    }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts, frames, dailyAdsCost]); 
+        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, packers, chartData, totalAdsCost };
+    }, [orders, startDate, endDate, allKnownParts, frames, dailyAdsCosts]); 
 
     return (
         <div className="space-y-8 animate-fade-in">
+            {/* 1. Control Bar */}
             <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg border shadow-sm gap-4">
-                <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">Tổng quan {analytics.dateLabel}</h2>
+                <h2 className="text-xl font-bold text-gray-800 whitespace-nowrap">Tổng quan {dateLabel}</h2>
                 <div className="flex flex-wrap gap-4 items-center justify-end">
                     <div className="flex bg-gray-100 p-1 rounded-md">
                         <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Nhanh</button>
@@ -356,33 +462,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
             </div>
 
+            {/* 2. Key Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu (Xác nhận)</p>
+                        <span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span>
+                    </div>
                     <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</p>
                 </div>
+                
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-                    <div className="flex justify-between items-start"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận ròng</p></div>
-                    <div className="flex items-end justify-between">
-                        <p className="text-3xl font-light text-green-600">{formatCurrency(analytics.profit, 'admin')}</p>
+                    <div className="flex justify-between items-start">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận ròng</p>
+                        <button 
+                            onClick={() => setIsAdsModalOpen(true)}
+                            className="text-[10px] bg-red-50 text-red-600 border border-red-100 px-2 py-1 rounded hover:bg-red-100 transition-colors font-bold flex items-center gap-1"
+                        >
+                            ✏️ QL Chi phí Ads
+                        </button>
+                    </div>
+                    <div className="flex items-end justify-between mt-2">
+                        <p className={`text-3xl font-light ${analytics.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(analytics.profit, 'admin')}</p>
                         <div className="text-right">
-                            <p className="text-[10px] text-gray-400">Chi phí Ads (Estimate)</p>
-                            <div className="flex items-center gap-1 justify-end">
-                                <input 
-                                    type="number" 
-                                    value={dailyAdsCost} 
-                                    onChange={(e) => setDailyAdsCost(Number(e.target.value))}
-                                    className="w-16 p-0.5 text-xs text-right border-b border-gray-300 focus:border-blue-500 outline-none"
-                                />
-                                <span className="text-[10px]">₫/ngày</span>
-                                <button onClick={updateAdsCost} className="text-[10px] text-blue-600 hover:underline">{isSavingAds ? '...' : 'Lưu'}</button>
-                            </div>
-                            <p className="text-[10px] text-red-400">-{formatCurrency(analytics.totalAdsCost, 'admin')}</p>
+                            <p className="text-[10px] text-gray-400">Tổng phí Ads</p>
+                            <p className="text-xs text-red-500 font-bold">-{formatCurrency(analytics.totalAdsCost, 'admin')}</p>
                         </div>
                     </div>
                 </div>
+
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
+                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tổng Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
                     <p className="text-3xl font-light text-gray-900">{analytics.orderCount}</p>
                 </div>
                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
@@ -391,11 +501,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
             </div>
 
-            {/* CHARTS SECTION */}
+            {/* 3. Charts */}
             <div className="grid grid-cols-1 gap-6">
                 <BarChart data={analytics.chartData} />
             </div>
 
+            {/* 4. Top Items */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <TopItemsCard title="Khung Ảnh" data={analytics.inventory.frames} />
                 <TopItemsCard title="Tóc" data={analytics.inventory.hair} />
@@ -407,6 +518,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 <TopItemsCard title="Thú cưng" data={analytics.inventory.pet} />
             </div>
 
+            {/* 5. Packers */}
             <div className="grid grid-cols-1 gap-6">
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
                     <h3 className="font-bold text-gray-800 mb-4">Bảng Xếp Hạng Đóng Gói</h3>
@@ -442,6 +554,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     )}
                 </div>
             </div>
+
+            {/* Ads Management Modal */}
+            <AdsCostModal 
+                isOpen={isAdsModalOpen}
+                onClose={() => setIsAdsModalOpen(false)}
+                startDate={startDate}
+                endDate={endDate}
+                dailyCosts={dailyAdsCosts}
+                onSaveCost={handleSaveAdsCost}
+            />
         </div>
     );
 };
