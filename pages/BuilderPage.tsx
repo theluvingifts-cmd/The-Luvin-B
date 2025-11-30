@@ -871,7 +871,7 @@ const TextEditor: React.FC<{
 }> = ({ activeText, setConfig, selectedTextId, deselect, onAddText }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
-        setConfig((prev: FrameConfig) => ({
+        setConfig((prev) => ({
             ...prev,
             texts: prev.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
         }));
@@ -1030,12 +1030,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
       
-      setConfig((prev: FrameConfig) => {
+      setConfig((prev) => {
           if (type === 'text') {
-              const idToUpdate = parseInt(rawId, 10);
+              const idToUpdate = parseInt(rawId);
               return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) };
           }
-          const itemId = parseInt(rawId, 10);
+          const itemId = parseInt(rawId);
           if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
           if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
           return prev;
@@ -1047,8 +1047,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const rawId = rest.join('-');
       
       if (type === 'item') {
-          const itemId = parseInt(rawId, 10);
-          setConfig((prev: FrameConfig) => ({
+          const itemId = parseInt(rawId);
+          setConfig((prev) => ({
               ...prev,
               draggableItems: prev.draggableItems.map(item => 
                   item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
@@ -1062,8 +1062,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const rawId = rest.join('-');
       
       if (type === 'item') {
-          const itemId = parseInt(rawId, 10);
-          setConfig((prev: FrameConfig) => ({
+          const itemId = parseInt(rawId);
+          setConfig((prev) => ({
               ...prev,
               draggableItems: prev.draggableItems.map(item => 
                   item.id === itemId ? { ...item, ...updates } : item
@@ -1073,7 +1073,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   }, [setConfig]);
 
   const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
-      setConfig((prev: FrameConfig) => ({
+      setConfig((prev) => ({
           ...prev,
           characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
       }));
@@ -1085,7 +1085,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     
     setSelectedItemId(null);
 
-    setConfig((prev: FrameConfig) => {
+    setConfig((prev) => {
         if (type === 'text') {
             const idToDelete = parseInt(rawId, 10);
             return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
@@ -1106,7 +1106,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const textItem = config.texts.find(t => t.id === idToUpdate);
         
         if (textItem && textItem.content && textItem.content.trim() !== '') {
-             setConfig((prev: FrameConfig) => ({
+             setConfig((prev) => ({
                 ...prev,
                 texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
             }));
@@ -1132,7 +1132,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   }, [selectedItemId, handleItemDelete, isEditingText]);
 
   const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-    setConfig((prev: FrameConfig) => ({
+    setConfig((prev) => ({
         ...prev,
         texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
     }));
