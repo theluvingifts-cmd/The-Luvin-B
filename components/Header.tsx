@@ -9,10 +9,11 @@ interface HeaderProps {
     onCartClick: () => void;
     logoUrl: string;
     isCartShaking?: boolean;
-    config?: StoreConfig; // Add config prop
+    config?: StoreConfig; 
+    currentPage?: Page;
 }
 
-export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartClick, logoUrl, isCartShaking, config }) => {
+export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartClick, logoUrl, isCartShaking, config, currentPage }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Dynamic Styles from Config
@@ -57,16 +58,18 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
               )}
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
-            {navItems.map(item => (
-              <button 
-                key={item.page} 
-                onClick={() => handleNav(item.page)} 
-                className="hover:text-primary transition-colors font-semibold text-sm"
-                style={{ color: 'inherit' }}
-              >
-                {item.label}
-              </button>
-            ))}
+            {navItems.map(item => {
+              const isActive = currentPage === item.page || (currentPage === 'home' && item.page === 'home' && !currentPage);
+              return (
+                <button 
+                  key={item.page} 
+                  onClick={() => handleNav(item.page)} 
+                  className={`font-semibold text-sm transition-colors duration-200 ${isActive ? 'text-primary' : 'hover:text-primary'}`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
             <button 
                 id="cart-icon-desktop" 
                 onClick={onCartClick} 
@@ -111,15 +114,18 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
                 </button>
               </div>
               <div className="flex flex-col items-start space-y-6 p-8 font-body">
-                  {navItems.map(item => ( 
-                    <button 
-                      key={item.page} 
-                      onClick={() => handleNav(item.page)} 
-                      className="hover:text-primary text-xl font-semibold w-full text-left"
-                    >
-                      {item.label}
-                    </button> 
-                  ))}
+                  {navItems.map(item => {
+                    const isActive = currentPage === item.page;
+                    return (
+                        <button 
+                          key={item.page} 
+                          onClick={() => handleNav(item.page)} 
+                          className={`text-xl font-semibold w-full text-left transition-colors ${isActive ? 'text-primary' : 'hover:text-primary'}`}
+                        >
+                          {item.label}
+                        </button> 
+                    );
+                  })}
               </div>
             </div>
         </div>

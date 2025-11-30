@@ -342,6 +342,7 @@ const App: React.FC = () => {
                 logoUrl={storeConfig.logoUrl || ''} 
                 isCartShaking={isCartShaking}
                 config={storeConfig}
+                currentPage={currentPage}
              />
         )}
         
