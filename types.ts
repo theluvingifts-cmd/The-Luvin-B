@@ -173,6 +173,15 @@ export interface FeedbackItem {
     imageUrl: string;
 }
 
+// --- STAFF & PERMISSIONS ---
+export type StaffRole = 'admin' | 'warehouse';
+
+export interface StaffMember {
+    email: string;
+    role: StaffRole;
+    addedAt?: string;
+}
+
 // --- THEME SYSTEM INTERFACES ---
 
 export interface CustomFont {

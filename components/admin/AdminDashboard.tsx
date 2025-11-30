@@ -33,21 +33,23 @@ const VALID_REVENUE_STATUSES = [
     'Đã giao hàng'
 ];
 
-const TopItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
+const FullItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full hover:shadow-md transition-shadow">
-        <h4 className="font-bold text-xs text-gray-500 mb-3 uppercase tracking-wider">{title}</h4>
+        <div className="flex justify-between items-center mb-3">
+            <h4 className="font-bold text-xs text-gray-500 uppercase tracking-wider">{title}</h4>
+            <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Tổng: {Object.keys(data).length}</span>
+        </div>
         {Object.keys(data).length > 0 ? (
-            <div className="space-y-2 overflow-y-auto flex-grow max-h-40 custom-scrollbar pr-1">
+            <div className="space-y-2 overflow-y-auto flex-grow max-h-80 custom-scrollbar pr-1">
                 {Object.entries(data)
                     .sort(([, a], [, b]) => b - a)
-                    .slice(0, 5)
                     .map(([name, count], idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs group">
+                        <div key={idx} className="flex items-center justify-between text-xs group hover:bg-gray-50 p-1 rounded">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className={`font-mono w-4 flex-shrink-0 text-center rounded ${idx === 0 ? 'bg-yellow-100 text-yellow-700 font-bold' : 'text-gray-400'}`}>{idx + 1}</span>
+                                <span className={`font-mono w-5 flex-shrink-0 text-center text-[10px] rounded ${idx < 3 ? 'bg-yellow-100 text-yellow-700 font-bold' : 'text-gray-400'}`}>{idx + 1}</span>
                                 <span className="font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors" title={name}>{name}</span>
                             </div>
-                            <span className="font-bold w-8 text-right flex-shrink-0 bg-gray-50 px-1 rounded">{count}</span>
+                            <span className="font-bold w-8 text-right flex-shrink-0 bg-gray-100 px-1 rounded text-gray-800">{count}</span>
                         </div>
                     ))
                 }
@@ -387,7 +389,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 
                 <div className="flex flex-wrap gap-2 items-center justify-end">
                     <div className="flex bg-gray-100 p-1 rounded-lg">
-                        <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Nhanh</button>
+                        <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Ngày</button>
                         <button onClick={() => setFilterType('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
                         <button onClick={() => setFilterType('custom')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tùy chỉnh</button>
                     </div>
@@ -500,10 +502,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     </div>
                 </div>
 
-                {/* Right Column: Top Items */}
-                <div className="space-y-6">
-                    <TopItemsCard title="Top Khung Bán Chạy" data={analytics.inventory.frames} />
-                    <TopItemsCard title="Top Phụ Kiện" data={analytics.inventory.accessory} />
+                {/* Right Column: Full Inventory Lists */}
+                <div className="space-y-4 h-full flex flex-col">
+                    <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Thống kê chi tiết</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1" style={{maxHeight: 'calc(100vh - 200px)'}}>
+                        <FullItemsCard title="Khung Bán Chạy" data={analytics.inventory.frames} />
+                        <FullItemsCard title="Phụ Kiện" data={analytics.inventory.accessory} />
+                        <FullItemsCard title="Thú Cưng" data={analytics.inventory.pet} />
+                        <FullItemsCard title="Tóc" data={analytics.inventory.hair} />
+                        <FullItemsCard title="Khuôn Mặt" data={analytics.inventory.face} />
+                        <FullItemsCard title="Áo" data={analytics.inventory.shirt} />
+                        <FullItemsCard title="Quần" data={analytics.inventory.pants} />
+                        <FullItemsCard title="Mũ" data={analytics.inventory.hat} />
+                    </div>
                 </div>
             </div>
         </div>

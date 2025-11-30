@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { ThemeConfig, CustomFont } from '../types';
+import { ThemeConfig, CustomFont, StaffMember } from '../types';
 
 const CONFIG_DOC_ID = 'general';
 
@@ -35,6 +35,9 @@ export interface StoreConfig {
     theme?: ThemeConfig;
     uploadedFonts?: CustomFont[];
     
+    // NEW: Staff Management
+    staff?: StaffMember[];
+
     // Ads Config (Deprecated in favor of daily collection, kept for fallback if needed)
     dailyAdsBudget?: number; 
 }
@@ -86,16 +89,20 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (!data.uploadedFonts) {
                 data.uploadedFonts = [];
             }
+            // Ensure staff exists
+            if (!data.staff) {
+                data.staff = [];
+            }
             return data;
         }
-        return { theme: DEFAULT_THEME, uploadedFonts: [] };
+        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
     } catch (error: any) {
         if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
             console.warn("Firestore: Unable to fetch config (Permission Denied). Using default settings.");
-            return { theme: DEFAULT_THEME, uploadedFonts: [] };
+            return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
         }
         console.error("Error fetching config:", error);
-        return { theme: DEFAULT_THEME, uploadedFonts: [] };
+        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
     }
 };
 
