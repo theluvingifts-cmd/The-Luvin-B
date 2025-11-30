@@ -26,6 +26,15 @@ export interface StoreConfig {
     // Homepage Texts
     heroTitle?: string;
     heroSubtitle?: string;
+
+    // Story Section
+    storyTitle?: string;
+    storyContent?: string;
+
+    // Value Props
+    vp1Title?: string; vp1Desc?: string;
+    vp2Title?: string; vp2Desc?: string;
+    vp3Title?: string; vp3Desc?: string;
     
     // NEW: Unified Theme Config
     theme?: ThemeConfig;

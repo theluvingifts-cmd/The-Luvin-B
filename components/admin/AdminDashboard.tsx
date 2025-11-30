@@ -64,7 +64,7 @@ const RevenueChart: React.FC<{ data: { date: string; revenue: number; profit: nu
                     return (
                         <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative">
                             {/* Bars Container */}
-                            <div className="w-full flex justify-center items-end gap-1 h-full">
+                            <div className="w-full flex justify-center items-end gap-1 flex-grow pb-1">
                                 {/* Revenue Bar */}
                                 <div 
                                     className="w-3 sm:w-6 bg-blue-100 hover:bg-blue-200 rounded-t transition-all relative flex flex-col justify-end overflow-hidden" 
@@ -87,7 +87,7 @@ const RevenueChart: React.FC<{ data: { date: string; revenue: number; profit: nu
                                 <div className="font-bold text-green-300">Lãi: {formatCurrency(d.profit)}</div>
                             </div>
                             
-                            <span className="text-[10px] text-gray-500 mt-2 font-medium">{d.date}</span>
+                            <span className="text-[10px] text-gray-500 font-medium h-4 block">{d.date}</span>
                         </div>
                     );
                 })}
@@ -124,11 +124,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     const calculateOrderCost = (order: Order) => {
         let totalCost = 0;
         
-        // Shipping Cost (Actual cost to shop, approximate as equal to fee charged or 0 if free ship? 
-        // For simplicity, let's assume if free ship, shop pays ~25k. If customer pays, it cancels out.
-        // Better: Assume 'fee' is what customer pays. We need a 'shippingCost' field in future. 
-        // For now, let's just count product costs.
-        // Gift box cost
         if (order.addGiftBox) totalCost += 15000; // Estimated cost for box
 
         order.items.forEach(item => {
