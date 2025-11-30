@@ -10,12 +10,12 @@ export const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: ''
+        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: ''
     });
     const [isUploading, setIsUploading] = useState(false);
     
     const [colors, setColors] = useState<OutfitColor[]>(initialData?.colors || []);
-    const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
+    const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, costPrice: 0, imageUrl: '', stock: undefined });
     const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
     const [editingColorIndex, setEditingColorIndex] = useState<number | null>(null);
     const [draggedColorIndex, setDraggedColorIndex] = useState<number | null>(null);
@@ -26,7 +26,7 @@ export const ProductForm: React.FC<{
             const stockVal = value === '' ? undefined : Number(value);
             setFormData(prev => ({ ...prev, stock: stockVal }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'widthCm' || name === 'heightCm' ? Number(value) : value }));
+            setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'costPrice' || name === 'widthCm' || name === 'heightCm' ? Number(value) : value }));
         }
     };
 
@@ -82,7 +82,7 @@ export const ProductForm: React.FC<{
             setColors([...colors, newColor]);
         }
         
-        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
+        setNewColor({ name: '', hex: '#000000', price: 0, costPrice: 0, imageUrl: '', stock: undefined });
     };
 
     const startEditColor = (index: number) => {
@@ -92,7 +92,7 @@ export const ProductForm: React.FC<{
 
     const cancelColorEdit = () => {
         setEditingColorIndex(null);
-        setNewColor({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
+        setNewColor({ name: '', hex: '#000000', price: 0, costPrice: 0, imageUrl: '', stock: undefined });
     };
 
     const removeColor = (index: number) => {
@@ -148,7 +148,7 @@ export const ProductForm: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
-            <div className="bg-white p-8 rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-y-auto border border-gray-100">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-[650px] max-h-[90vh] overflow-y-auto border border-gray-100">
                 <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{initialData ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h3>
                 <div className="space-y-5">
                     <div className="grid grid-cols-2 gap-4">
@@ -169,9 +169,16 @@ export const ProductForm: React.FC<{
                                 <option value="set">Theo bộ (Vest/Set)</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá cơ bản (VNĐ)</label>
-                            <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
+                        
+                        <div className="grid grid-cols-2 gap-2 col-span-2 sm:col-span-1">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá bán (VNĐ)</label>
+                                <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:border-gray-500 outline-none text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 text-red-500">Giá Cost (Vốn)</label>
+                                <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-red-200 rounded bg-red-50 focus:bg-white focus:border-red-500 outline-none text-sm" />
+                            </div>
                         </div>
                         
                         {(formData.type === 'accessory' || formData.type === 'pet') && (
@@ -245,6 +252,7 @@ export const ProductForm: React.FC<{
                                                 <p className="text-xs font-bold">{color.name}</p>
                                                 <div className="flex gap-2 text-[10px] text-gray-500">
                                                     <span>+{formatCurrency(color.price)}</span>
+                                                    {color.costPrice && <span className="text-red-400">(Cost: {formatCurrency(color.costPrice)})</span>}
                                                     <span className={color.stock === 0 ? 'text-red-500 font-bold' : 'text-gray-500'}>
                                                         Kho: {color.stock === undefined || color.stock === null ? '∞' : color.stock}
                                                     </span>
@@ -274,10 +282,10 @@ export const ProductForm: React.FC<{
                                     )}
                                 </div>
                                 
-                                <div className="grid grid-cols-3 gap-2 mb-2">
-                                    <div className="col-span-3 sm:col-span-1">
+                                <div className="grid grid-cols-4 gap-2 mb-2">
+                                    <div className="col-span-4 sm:col-span-1">
                                         <input 
-                                            placeholder="Tên màu (VD: Đỏ)" 
+                                            placeholder="Tên màu" 
                                             className="w-full p-1.5 text-xs border rounded"
                                             value={newColor.name}
                                             onChange={e => setNewColor({...newColor, name: e.target.value})}
@@ -285,10 +293,17 @@ export const ProductForm: React.FC<{
                                     </div>
                                     <input 
                                         type="number"
-                                        placeholder="Giá thêm (VNĐ)" 
+                                        placeholder="Thêm giá" 
                                         className="p-1.5 text-xs border rounded"
                                         value={newColor.price}
                                         onChange={e => setNewColor({...newColor, price: Number(e.target.value)})}
+                                    />
+                                    <input 
+                                        type="number"
+                                        placeholder="Cost (Vốn)" 
+                                        className="p-1.5 text-xs border border-red-200 rounded text-red-600"
+                                        value={newColor.costPrice || 0}
+                                        onChange={e => setNewColor({...newColor, costPrice: Number(e.target.value)})}
                                     />
                                     <input 
                                         type="number"
@@ -297,7 +312,7 @@ export const ProductForm: React.FC<{
                                         value={newColor.stock === undefined ? '' : newColor.stock}
                                         onChange={e => setNewColor({...newColor, stock: e.target.value === '' ? undefined : Number(e.target.value)})}
                                     />
-                                    <div className="col-span-3 flex gap-2">
+                                    <div className="col-span-4 flex gap-2">
                                         <div className="flex items-center gap-2 flex-shrink-0">
                                             <span className="text-xs text-gray-500">Mã màu:</span>
                                             <input 

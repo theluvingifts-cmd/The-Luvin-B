@@ -15,6 +15,7 @@ export const FrameForm: React.FC<{
         backgroundWidthCm: 12,
         backgroundHeightCm: 12,
         price: 0,
+        costPrice: 0,
         imageUrl: '',
         description: '',
         stock: 100,
@@ -25,7 +26,7 @@ export const FrameForm: React.FC<{
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: ['price', 'frameWidthCm', 'frameHeightCm', 'backgroundWidthCm', 'backgroundHeightCm', 'stock'].includes(name) ? Number(value) : value
+            [name]: ['price', 'costPrice', 'frameWidthCm', 'frameHeightCm', 'backgroundWidthCm', 'backgroundHeightCm', 'stock'].includes(name) ? Number(value) : value
         }));
     };
 
@@ -65,10 +66,14 @@ export const FrameForm: React.FC<{
                             <input type="number" name="backgroundHeightCm" value={formData.backgroundHeightCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá (VNĐ)</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá bán (VNĐ)</label>
                             <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
                         </div>
                         <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 text-red-500">Giá Cost (Vốn)</label>
+                            <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-red-200 rounded bg-red-50 text-sm" />
+                        </div>
+                        <div className="col-span-2">
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tồn kho</label>
                             <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
                         </div>

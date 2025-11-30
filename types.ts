@@ -12,6 +12,7 @@ export interface FrameOption {
   backgroundWidthCm: number;
   backgroundHeightCm: number;
   price: number;
+  costPrice?: number; // Added for profit calculation
   imageUrl: string;
   description: string;
   stock?: number; // Số lượng tồn kho
@@ -24,6 +25,7 @@ export interface OutfitColor {
   hex: string;
   imageUrl: string;
   price: number; 
+  costPrice?: number; // Added for profit calculation
   stock?: number; // undefined = unlimited, 0 = out of stock
 }
 
@@ -31,6 +33,7 @@ export interface LegoPart {
   id: string;
   name: string;
   price: number; 
+  costPrice?: number; // Added for profit calculation
   imageUrl: string;
   type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set'; // Added 'set'
   widthCm: number;
