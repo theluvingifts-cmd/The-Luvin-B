@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import type { Page, FeedbackItem, CollectionTemplate } from '../types';
 import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
 import { StoreConfig } from '../services/configService';
@@ -37,21 +37,92 @@ const Icons = {
 
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedbacks, templates }) => {
   // --- CONFIG DATA ---
-  const heroImage = config?.heroImageUrl || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=2070&auto=format&fit=crop'; // Fallback luxurious image
+  const heroImage = config?.heroImageUrl || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=2070&auto=format&fit=crop'; 
   const inspireImage = config?.inspireImageUrl || 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop';
   
   const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
   const heroSubtitle = config?.heroSubtitle || 'trong từng mảnh ghép';
   
   const displayTemplates = (templates && templates.length > 0) ? templates.slice(0, 4) : COLLECTION_TEMPLATES.slice(0, 4);
-  const displayFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
+  const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
 
-  // Duplicate feedbacks for smooth marquee animation if count is low
-  const marqueeFeedbacks = useMemo(() => {
-      if (displayFeedbacks.length === 0) return [];
-      // Ensure we have enough items to scroll smoothly
-      return [...displayFeedbacks, ...displayFeedbacks, ...displayFeedbacks]; 
-  }, [displayFeedbacks]);
+  // --- INFINITE AUTO SLIDE LOGIC (STEPPED) ---
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef<any>(null);
+
+  // 1. Tạo danh sách lặp đủ dài (4 bộ) để giả lập vô tận
+  const infiniteFeedbacks = useMemo(() => {
+      if (rawFeedbacks.length === 0) return [];
+      // Bộ 1, Bộ 2, Bộ 3, Bộ 4
+      return [...rawFeedbacks, ...rawFeedbacks, ...rawFeedbacks, ...rawFeedbacks];
+  }, [rawFeedbacks]);
+
+  // 2. Xử lý khởi tạo vị trí (Bắt đầu ở giữa)
+  useEffect(() => {
+      const container = carouselRef.current;
+      if (container && infiniteFeedbacks.length > 0) {
+          // Tính toán vị trí phần tử giữa của danh sách
+          // Ví dụ: 20 phần tử, bắt đầu ở index 10
+          const middleIndex = Math.floor(infiniteFeedbacks.length / 2);
+          const firstCard = container.firstElementChild as HTMLElement;
+          
+          if (firstCard) {
+              const cardWidth = firstCard.offsetWidth + 32; // width + gap
+              const centerOffset = (container.clientWidth / 2) - (firstCard.offsetWidth / 2);
+              const startScroll = (middleIndex * cardWidth) - centerOffset;
+              
+              // Scroll ngay lập tức không animation
+              container.scrollTo({ left: startScroll, behavior: 'instant' as any });
+          }
+      }
+  }, [infiniteFeedbacks]);
+
+  // 3. Xử lý Auto-Slide từng bước (Step by Step)
+  useEffect(() => {
+      const container = carouselRef.current;
+      if (!container || infiniteFeedbacks.length === 0) return;
+
+      const slideNext = () => {
+          if (isPaused) return;
+
+          const firstCard = container.firstElementChild as HTMLElement;
+          if (!firstCard) return;
+
+          const cardWidth = firstCard.offsetWidth + 32; // width + gap (gap-8 = 32px)
+          const currentScroll = container.scrollLeft;
+          const maxScroll = container.scrollWidth;
+          const oneSetWidth = (maxScroll / 4); // Chiều dài 1 bộ gốc
+
+          // Logic Reset Vô Tận:
+          // Nếu đã cuộn quá bộ thứ 3 (gần hết), nhảy lùi về bộ thứ 2 (vị trí tương đương) ngay lập tức
+          if (currentScroll >= oneSetWidth * 3) {
+              container.scrollTo({ left: currentScroll - oneSetWidth, behavior: 'instant' as any });
+              setTimeout(() => {
+                  container.scrollBy({ left: cardWidth, behavior: 'smooth' });
+              }, 20);
+          } 
+          // Ngược lại, nếu đang ở đầu (bộ 1), nhảy tới bộ 2
+          else if (currentScroll <= oneSetWidth) {
+               container.scrollTo({ left: currentScroll + oneSetWidth, behavior: 'instant' as any });
+               setTimeout(() => {
+                  container.scrollBy({ left: cardWidth, behavior: 'smooth' });
+              }, 20);
+          }
+          else {
+              // Bình thường: Trượt sang phải 1 card
+              container.scrollBy({ left: cardWidth, behavior: 'smooth' });
+          }
+      };
+
+      // Set interval 3 giây trượt 1 lần
+      intervalRef.current = setInterval(slideNext, 3000);
+
+      return () => {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+  }, [isPaused, infiniteFeedbacks]);
+
 
   return (
     <div className="font-body text-gray-800 overflow-x-hidden">
@@ -218,26 +289,36 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           </div>
       </section>
 
-      {/* 5. FEEDBACK MARQUEE */}
-      <section className="py-24 bg-white overflow-hidden">
-          <div className="container mx-auto px-6 text-center mb-12">
-              <h2 className="font-heading text-4xl font-bold text-gray-900">Lời yêu thương</h2>
-              <p className="text-gray-500 mt-2">Khách hàng nói gì về The Luvin</p>
+      {/* 5. FEEDBACK - Infinite Step-by-Step Carousel (No Zoom, No Blur) */}
+      <section className="py-24 bg-white border-t border-gray-100 overflow-hidden">
+          <div className="container mx-auto px-6 mb-12 text-center">
+              <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-3">Our feedbacks</h2>
+              <p className="text-sm text-gray-500 tracking-wide uppercase">Khách hàng nói gì về The Luvin</p>
           </div>
 
-          <div className="relative w-full overflow-hidden">
-              <div className="flex w-max animate-marquee hover:[animation-play-state:paused]">
-                  {marqueeFeedbacks.map((fb, idx) => (
-                      <div key={idx} className="mx-4 w-[300px] md:w-[350px] flex-shrink-0">
-                          <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 h-full flex flex-col items-center text-center shadow-sm hover:shadow-md transition-shadow">
-                              <div className="w-16 h-16 rounded-full overflow-hidden mb-4 border-2 border-white shadow-sm">
-                                  <img src={fb.imageUrl} alt={fb.name} className="w-full h-full object-cover" />
-                              </div>
-                              <p className="text-gray-600 italic text-sm mb-4 leading-relaxed">"{fb.text}"</p>
-                              <h4 className="font-bold text-gray-900 text-sm">{fb.name}</h4>
-                              <div className="flex text-yellow-400 text-xs mt-1 gap-0.5">
-                                  <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
-                              </div>
+          <div 
+              className="w-full overflow-hidden py-10"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+          >
+              <div 
+                  ref={carouselRef}
+                  className="flex gap-8 overflow-x-auto no-scrollbar w-full px-[50vw] snap-x snap-mandatory" 
+                  style={{ whiteSpace: 'nowrap' }}
+              >
+                  {infiniteFeedbacks.map((fb, idx) => (
+                      <div 
+                          key={idx} 
+                          className="flex-shrink-0 w-[80vw] md:w-[350px] snap-center"
+                      >
+                          <div className="rounded-3xl overflow-hidden bg-white shadow-lg border border-gray-100">
+                              {/* Chỉ hiển thị hình ảnh - Nguyên bản */}
+                              <img 
+                                  src={fb.imageUrl} 
+                                  alt={`Feedback`} 
+                                  className="w-full h-auto object-cover pointer-events-none select-none"
+                                  loading="lazy"
+                              />
                           </div>
                       </div>
                   ))}
