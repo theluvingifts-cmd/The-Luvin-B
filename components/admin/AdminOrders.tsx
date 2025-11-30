@@ -1,11 +1,13 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem } from '../../types';
+import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
 import { calculateOrderTotal, formatCurrency } from '../../utils/pricing';
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
+import { ZoomIcon } from '../ZoomIcon';
+import FramePreview from '../FramePreview'; // VISUAL EDITING
 
 // CONSTANTS
 const STATUS_CONFIG = [
@@ -65,6 +67,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
     
+    // Zoom State
+    const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+
     // Filtering & Tabs
     const [orderTab, setOrderTab] = useState<OrderTab>('active');
     const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -87,6 +92,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const canCancelOrder = role === 'admin';
     const canDeleteOrder = role === 'admin';
+
+    // Editing State for Visual Preview
+    const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
     useEffect(() => {
         if (selectedOrder) {
@@ -324,6 +332,36 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         printWindow.print();
     };
 
+    // --- VISUAL TRANSFORM HANDLERS ---
+    const handleVisualTransform = (itemIndex: number, itemId: string, newTransform: any) => {
+        if (!editForm) return;
+        
+        const [type, ...rest] = itemId.split('-');
+        const rawId = rest.join('-');
+
+        setEditForm(prev => {
+            if (!prev) return null;
+            let newOrder = { ...prev };
+            const newItems = [...newOrder.items];
+            const currentItem = { ...newItems[itemIndex] };
+
+            if (type === 'text') {
+                const idToUpdate = parseInt(rawId);
+                currentItem.texts = currentItem.texts.map(t => t.id === idToUpdate ? { ...t, ...newTransform } : t);
+            } else {
+                const idToUpdate = parseInt(rawId);
+                if (type === 'character') {
+                    currentItem.characters = currentItem.characters.map(c => c.id === idToUpdate ? { ...c, ...newTransform } : c);
+                } else if (type === 'item') {
+                    currentItem.draggableItems = currentItem.draggableItems.map(i => i.id === idToUpdate ? { ...i, ...newTransform } : i);
+                }
+            }
+            newItems[itemIndex] = currentItem;
+            newOrder.items = newItems;
+            return newOrder;
+        });
+    };
+
     // --- EDITING LOGIC ---
     const startEditingOrder = () => {
         if (!selectedOrder) return;
@@ -335,6 +373,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         setEditForm(null);
         setIsEditingOrder(false);
         setAddingAccessoryToItemIndex(null);
+        setEditingItemId(null);
     };
 
     const saveOrderChanges = async () => {
@@ -359,6 +398,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         await handleUpdate(selectedOrder.id, editForm, false);
         setIsEditingOrder(false);
         setEditForm(null);
+        setEditingItemId(null);
         setIsLoading(false);
         alert("Đã lưu thay đổi!");
     };
@@ -493,6 +533,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
         setAddingAccessoryToItemIndex(null);
     };
+
+    const isOrderPacked = selectedOrder ? ['Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng'].includes(selectedOrder.status) : false;
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in">
@@ -675,7 +717,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
                                  <div className="flex gap-2 mt-1">
                                     {!isEditingOrder ? (
-                                        <button onClick={startEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Sửa chi tiết</button>
+                                        <button 
+                                            onClick={startEditingOrder} 
+                                            disabled={isOrderPacked}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded ${isOrderPacked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                            title={isOrderPacked ? 'Không thể sửa đơn đã đóng/giao' : ''}
+                                        >
+                                            {isOrderPacked ? 'Đã khoá' : 'Sửa chi tiết'}
+                                        </button>
                                     ) : (
                                         <div className="flex gap-2">
                                             <button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button>
@@ -695,13 +744,19 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         <span>📸</span> Ảnh xác nhận chuyển khoản
                                     </h4>
                                     <div className="flex flex-col sm:flex-row items-start gap-4">
-                                        <a href={selectedOrder.paymentProofUrl} target="_blank" rel="noopener noreferrer">
+                                        <div 
+                                            className="h-32 w-auto border rounded-lg bg-white overflow-hidden cursor-pointer relative group"
+                                            onClick={() => setZoomedImageUrl(selectedOrder.paymentProofUrl || null)}
+                                        >
                                             <img 
                                                 src={selectedOrder.paymentProofUrl} 
                                                 alt="Payment Proof" 
-                                                className="h-32 object-contain border rounded-lg bg-white hover:opacity-90 transition-opacity" 
+                                                className="h-full w-full object-contain" 
                                             />
-                                        </a>
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <ZoomIcon className="text-white w-6 h-6" />
+                                            </div>
+                                        </div>
                                         <div className="text-sm text-gray-600">
                                             <p>Thời gian gửi: {selectedOrder.paymentProofUploadedAt ? formatDateTime(new Date(selectedOrder.paymentProofUploadedAt).getTime()) : '---'}</p>
                                             {selectedOrder.status === 'Chờ thanh toán' && (
@@ -790,122 +845,161 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 </div>
                             </div>
 
-                            {/* Same product details rendering as previously provided */}
+                            {/* Product Details & Editing */}
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => (
-                                        <div key={idx} className="flex gap-4 border border-gray-100 rounded-lg p-4 items-start bg-white flex-col md:flex-row">
-                                            <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                                                {item.previewImageUrl ? <img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No img</span>}
-                                            </div>
-                                            <div className="flex-grow w-full">
-                                                <div className="mb-3 pb-3 border-b border-gray-100">
-                                                    <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
-                                                    <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                                    {item.characters.map((char, charIdx) => (
-                                                        <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
-                                                            <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
-                                                            {isEditingOrder && editForm && (
-                                                                <button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>
-                                                            )}
-                                                            {isEditingOrder && editForm ? (
-                                                                <div className="space-y-1">
-                                                                    {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (
-                                                                        <div key={partType} className="flex flex-col">
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className="text-gray-500 capitalize w-16">{partType}</span>
-                                                                                <select 
-                                                                                    className="border rounded p-1 text-xs flex-grow"
-                                                                                    value={char[partType]?.id || ''}
-                                                                                    onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}
-                                                                                >
-                                                                                    <option value="">None</option>
-                                                                                    {partsByType[partType]?.map(part => (
-                                                                                        <option key={part.id} value={part.id}>{part.name}</option>
-                                                                                    ))}
-                                                                                </select>
-                                                                            </div>
-                                                                            {['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (
-                                                                                <div className="flex gap-1 mt-1 ml-16">
-                                                                                    {char[partType]!.colors!.map(c => (
-                                                                                        <button 
-                                                                                            key={c.hex}
-                                                                                            onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)}
-                                                                                            className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`}
-                                                                                            style={{backgroundColor: c.hex}}
-                                                                                            title={c.name}
-                                                                                        />
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <ul className="text-gray-600 space-y-0.5 mt-1">
-                                                                    {char.hair && <li>Tóc: {char.hair.name}</li>}
-                                                                    {char.face && <li>Mặt: {char.face.name}</li>}
-                                                                    {char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}
-                                                                    {char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}
-                                                                    {char.hat && <li>Mũ: {char.hat.name}</li>}
-                                                                    {char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice)}</li>}
-                                                                </ul>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                    {isEditingOrder && editForm && (
-                                                        <button onClick={() => handleAddCharacter(idx)} className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-sm font-bold">
-                                                            + Thêm NV
-                                                        </button>
-                                                    )}
-                                                </div>
-
-                                                {item.draggableItems.length > 0 && (
-                                                    <div className="mt-3 pt-3 border-t border-gray-100">
-                                                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Phụ kiện & Thú cưng</p>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {item.draggableItems.map((di, diIdx) => {
-                                                               const part = allKnownParts[di.partId];
-                                                               return (
-                                                                    <div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
-                                                                        {di.type === 'charm' ? (
-                                                                             <span>Charm (Ảnh)</span>
-                                                                        ) : (
-                                                                            <span>{part?.name || 'Unknown'} {di.selectedColor ? `(${di.selectedColor.name})` : ''}</span>
-                                                                        )}
-                                                                        {isEditingOrder && editForm && (
-                                                                            <button onClick={() => handleRemoveDraggable(idx, diIdx)} className="text-red-500 font-bold hover:text-red-700">×</button>
-                                                                        )}
-                                                                    </div>
-                                                               );
-                                                            })}
-                                                        </div>
+                                        <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white">
+                                            {/* Top Section: Visual Editing (Only if Editing) */}
+                                            {isEditingOrder && editForm && (
+                                                <div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300">
+                                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p>
+                                                    <div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden">
+                                                        <FramePreview 
+                                                            config={item}
+                                                            containerWidth={400}
+                                                            // We hijack onItemTransform to update our local form state
+                                                            onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)}
+                                                            onItemRemove={() => {}} // No removing from preview, use UI buttons
+                                                            onTextUpdate={() => {}}
+                                                            selectedItemId={editingItemId}
+                                                            setSelectedItemId={setEditingItemId}
+                                                            isInteractive={true}
+                                                            setIsEditingText={() => {}}
+                                                            allParts={allKnownParts}
+                                                            // Mock props to satisfy TS
+                                                            onItemUpdate={() => {}}
+                                                            onCharacterUpdate={() => {}}
+                                                        />
                                                     </div>
-                                                )}
-                                                 {isEditingOrder && editForm && (
-                                                    <div className="mt-2">
-                                                        <button 
-                                                            onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)}
-                                                            className="text-xs text-blue-600 hover:underline font-semibold"
-                                                        >
-                                                            + Thêm phụ kiện/thú cưng
-                                                        </button>
-                                                        {addingAccessoryToItemIndex === idx && (
-                                                            <div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                                                                {[...products.filter(p => p.type === 'accessory' || p.type === 'pet')].map(p => (
-                                                                    <button key={p.id} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500">
-                                                                        <img src={p.imageUrl} className="w-8 h-8 object-contain" />
-                                                                        <span className="text-[10px] text-gray-500">{p.name}</span>
-                                                                    </button>
-                                                                ))}
+                                                </div>
+                                            )}
+
+                                            <div className="flex gap-4 items-start flex-col md:flex-row">
+                                                <div 
+                                                    className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer"
+                                                    onClick={() => !isEditingOrder && item.previewImageUrl && setZoomedImageUrl(item.previewImageUrl)}
+                                                >
+                                                    {item.previewImageUrl ? (
+                                                        <>
+                                                            <img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" />
+                                                            {!isEditingOrder && (
+                                                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                    <ZoomIcon className="text-white w-6 h-6" />
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : <span className="text-xs text-gray-400">No img</span>}
+                                                </div>
+                                                <div className="flex-grow w-full">
+                                                    <div className="mb-3 pb-3 border-b border-gray-100">
+                                                        <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
+                                                        <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                                        {item.characters.map((char, charIdx) => (
+                                                            <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
+                                                                <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
+                                                                {isEditingOrder && editForm && (
+                                                                    <button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>
+                                                                )}
+                                                                {isEditingOrder && editForm ? (
+                                                                    <div className="space-y-1">
+                                                                        {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (
+                                                                            <div key={partType} className="flex flex-col">
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span className="text-gray-500 capitalize w-16">{partType}</span>
+                                                                                    <select 
+                                                                                        className="border rounded p-1 text-xs flex-grow"
+                                                                                        value={char[partType]?.id || ''}
+                                                                                        onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}
+                                                                                    >
+                                                                                        <option value="">None</option>
+                                                                                        {partsByType[partType]?.map(part => (
+                                                                                            <option key={part.id} value={part.id}>{part.name}</option>
+                                                                                        ))}
+                                                                                    </select>
+                                                                                </div>
+                                                                                {['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (
+                                                                                    <div className="flex gap-1 mt-1 ml-16">
+                                                                                        {char[partType]!.colors!.map(c => (
+                                                                                            <button 
+                                                                                                key={c.hex}
+                                                                                                onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)}
+                                                                                                className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`}
+                                                                                                style={{backgroundColor: c.hex}}
+                                                                                                title={c.name}
+                                                                                            />
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <ul className="text-gray-600 space-y-0.5 mt-1">
+                                                                        {char.hair && <li>Tóc: {char.hair.name}</li>}
+                                                                        {char.face && <li>Mặt: {char.face.name}</li>}
+                                                                        {char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}
+                                                                        {char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}
+                                                                        {char.hat && <li>Mũ: {char.hat.name}</li>}
+                                                                        {char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice)}</li>}
+                                                                    </ul>
+                                                                )}
                                                             </div>
+                                                        ))}
+                                                        {isEditingOrder && editForm && (
+                                                            <button onClick={() => handleAddCharacter(idx)} className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-sm font-bold">
+                                                                + Thêm NV
+                                                            </button>
                                                         )}
                                                     </div>
-                                                )}
+
+                                                    {item.draggableItems.length > 0 && (
+                                                        <div className="mt-3 pt-3 border-t border-gray-100">
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Phụ kiện & Thú cưng</p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {item.draggableItems.map((di, diIdx) => {
+                                                                const part = allKnownParts[di.partId];
+                                                                return (
+                                                                        <div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
+                                                                            {di.type === 'charm' ? (
+                                                                                <span>Charm (Ảnh)</span>
+                                                                            ) : (
+                                                                                <span>{part?.name || 'Unknown'} {di.selectedColor ? `(${di.selectedColor.name})` : ''}</span>
+                                                                            )}
+                                                                            {isEditingOrder && editForm && (
+                                                                                <button onClick={() => handleRemoveDraggable(idx, diIdx)} className="text-red-500 font-bold hover:text-red-700">×</button>
+                                                                            )}
+                                                                        </div>
+                                                                );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {isEditingOrder && editForm && (
+                                                        <div className="mt-2">
+                                                            <button 
+                                                                onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)}
+                                                                className="text-xs text-blue-600 hover:underline font-semibold"
+                                                            >
+                                                                + Thêm phụ kiện/thú cưng
+                                                            </button>
+                                                            {addingAccessoryToItemIndex === idx && (
+                                                                <div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                                                                    {[...products.filter(p => p.type === 'accessory' || p.type === 'pet')].map(p => (
+                                                                        <button key={p.id} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500">
+                                                                            <img src={p.imageUrl} className="w-8 h-8 object-contain" />
+                                                                            <span className="text-[10px] text-gray-500">{p.name}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -917,6 +1011,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     <div className="flex-grow flex items-center justify-center text-gray-400 text-sm">Chọn một đơn hàng để xem chi tiết</div>
                 )}
             </div>
+
+            {/* ZOOM LIGHTBOX */}
+            {zoomedImageUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fade-in" onClick={() => setZoomedImageUrl(null)}>
+                    <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
         </div>
     );
 };
