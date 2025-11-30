@@ -364,7 +364,13 @@ const PartButton: React.FC<{
             {isClicked && (
                 <div className="absolute inset-0 bg-luvin-pink opacity-20 z-10 animate-ping rounded-lg"></div>
             )}
-            <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+            {/* HOT BADGE */}
+            {part.isHot && (
+                <div className="absolute top-0 right-0 z-20">
+                    <span className="text-xs">🔥</span>
+                </div>
+            )}
+            <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
                 {!imgError && part.imageUrl ? (
                     <img 
                         src={part.imageUrl} 
@@ -705,9 +711,9 @@ const Step3Characters: React.FC<{
             {activeCharacter && (
                 <div className="p-4 border border-gray-200 rounded-lg relative">
                     <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
-                        <div className="flex flex-wrap gap-2 overflow-x-auto no-scrollbar items-center">
+                        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1">
                             {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
                                     {pt.label}
                                 </button>
                             ))}
@@ -784,7 +790,7 @@ const Step3Characters: React.FC<{
                                 <option value="price_desc">Giá giảm dần</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
                             </div>
                         </div>
                     </div>
@@ -1166,7 +1172,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               logging: false,
               scrollX: 0,    
               scrollY: 0,
-              ignoreElements: (element: Element) => element.classList.contains('watermark-layer')
+              // REMOVED ignoreElements filter to KEEP WATERMARK
             });
             resolve(canvas.toDataURL('image/png'));
           } else {
@@ -1345,7 +1351,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
                 </div>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-12 lg:mb-0">
+                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-32 lg:mb-0">
                     <FramePreview 
                         ref={frameCaptureRef}
                         config={config} 

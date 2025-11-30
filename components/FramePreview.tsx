@@ -579,25 +579,27 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Toolbar - FIX MOBILE ALIGNMENT */}
         {isInteractive && selectedItemId && (
-            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-fade-in transform-handle">
+            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-full max-w-[350px] pointer-events-none">
                 {activeColors && activeColors.length > 0 && (
-                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-2 overflow-x-auto max-w-[90vw] no-scrollbar">
-                        {activeColors.map((color: OutfitColor, idx: number) => (
-                            <button
-                                key={idx}
-                                onClick={() => handleColorSelect(color)}
-                                className={`w-6 h-6 rounded-full border relative flex-shrink-0 ${getActiveColorHex(color) === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
-                                style={{ backgroundColor: color.hex }}
-                                title={`${color.name}`}
-                            >
-                                {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
-                            </button>
-                        ))}
+                    <div className="pointer-events-auto w-fit max-w-[90vw] mx-auto bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar">
+                        <div className="flex gap-2 min-w-max px-2">
+                            {activeColors.map((color: OutfitColor, idx: number) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => handleColorSelect(color)}
+                                    className={`w-6 h-6 rounded-full border relative flex-shrink-0 ${getActiveColorHex(color) === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
+                                    style={{ backgroundColor: color.hex }}
+                                    title={`${color.name}`}
+                                >
+                                    {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
-                <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
+                <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
                     {selectedItemDetails?.canFlip && (
                         <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
