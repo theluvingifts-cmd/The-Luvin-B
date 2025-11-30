@@ -113,7 +113,7 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
 
-  // Initialize StoreConfig from LocalStorage to prevent flicker (FOUC)
+  // --- IMPROVEMENT: Initialize from LocalStorage to prevent FOUC (Flash of Unstyled Content) ---
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
       try {
           const savedConfig = localStorage.getItem('store_config');
@@ -171,7 +171,7 @@ const App: React.FC = () => {
       if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
 
-  // useLayoutEffect runs before browser paint, preventing theme flicker
+  // --- IMPROVEMENT: useLayoutEffect runs BEFORE browser paint, preventing theme flicker ---
   useLayoutEffect(() => {
       if (storeConfig.theme) {
           applyTheme(storeConfig.theme, storeConfig.uploadedFonts || []);
@@ -200,7 +200,7 @@ const App: React.FC = () => {
 
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
-                // Cache config to LocalStorage for next visit
+                // --- IMPROVEMENT: Cache config to LocalStorage for next visit ---
                 localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
 
                 if (fetchedConfig.faviconUrl) {
