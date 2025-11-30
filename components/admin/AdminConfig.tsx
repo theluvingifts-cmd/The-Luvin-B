@@ -645,7 +645,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             <EditableZone 
                                 onClick={() => scrollToField('sections', 'sections.header.backgroundColor')} 
                                 label="Nền Header"
-                                className="border-b"
+                                className="border-b sticky top-0 z-20"
                                 style={{ 
                                     backgroundColor: themeConfig.sections.header.backgroundColor,
                                     color: themeConfig.sections.header.textColor 
@@ -686,7 +686,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 </div>
                             </EditableZone>
 
-                            {/* --- HERO PREVIEW --- */}
+                            {/* --- HERO PREVIEW (SPLIT LAYOUT) --- */}
                             <EditableZone
                                 onClick={() => scrollToField('sections', 'sections.hero.backgroundColor')}
                                 label="Nền Hero Section"
@@ -694,16 +694,21 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     backgroundColor: themeConfig.sections.hero.backgroundColor,
                                     color: themeConfig.sections.hero.textColor 
                                 }}
-                                className="py-16 md:py-24 text-center"
+                                className="relative flex flex-col md:flex-row min-h-[400px]"
                             >
-                                <div className="container mx-auto px-6 relative z-10 flex flex-col items-center pointer-events-none">
-                                    <div className="mb-8 pointer-events-auto">
-                                        <p className="text-[10px] font-bold opacity-60 tracking-[0.3em] uppercase mb-4">Christmas Edition</p>
-                                        <h1 className="text-5xl md:text-7xl leading-[1.1] rounded transition-colors -m-2">
+                                {/* Left Content */}
+                                <div className="w-full md:w-1/2 flex flex-col justify-center px-6 md:px-12 py-12 z-10 pointer-events-none">
+                                    <div className="pointer-events-auto">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <span className="h-px w-12" style={{backgroundColor: themeConfig.global.colors.primary}}></span>
+                                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-60">The Luvin Gifts</span>
+                                        </div>
+                                        
+                                        <h1 className="text-4xl md:text-5xl leading-[1.1] mb-6">
                                             <EditableZone 
                                                 onClick={() => scrollToField('content', 'heroTitle')} 
                                                 label="Tiêu đề chính"
-                                                className="inline-block"
+                                                className="block"
                                             >
                                                 <span 
                                                     style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.sections.hero.headingColor }}
@@ -711,52 +716,81 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                                     {storeConfig.heroTitle || 'Gói ghém yêu thương'}
                                                 </span>
                                             </EditableZone>
-                                            <br/>
                                             <EditableZone 
                                                 onClick={() => scrollToField('content', 'heroSubtitle')} 
                                                 label="Phụ đề"
-                                                className="inline-block mt-2"
+                                                className="block mt-2"
                                             >
                                                 <span 
                                                     className="italic font-light" 
-                                                    style={{ color: themeConfig.global.colors.accent }}
+                                                    style={{ color: themeConfig.global.colors.primary }}
                                                 >
                                                     {storeConfig.heroSubtitle || 'trong từng mảnh ghép'}
                                                 </span>
                                             </EditableZone>
                                         </h1>
-                                    </div>
+                                        
+                                        <p className="text-sm opacity-70 mb-8 max-w-sm">Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn.</p>
 
-                                    <div className="pointer-events-auto">
                                         <EditableZone 
                                             onClick={() => scrollToField('theme', 'global.colors.primary')} 
                                             label="Nút bấm (Primary Color)"
+                                            className="inline-block"
                                         >
                                             <button
-                                                className="h-14 px-8 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95"
+                                                className="px-8 py-3 rounded-full flex items-center justify-center shadow-lg transition-all"
                                                 style={{ 
                                                     backgroundColor: themeConfig.global.colors.primary, 
                                                     color: '#fff', 
                                                     borderRadius: themeConfig.global.borderRadius === '9999px' ? '9999px' : themeConfig.global.borderRadius
                                                 }}
                                             >
-                                                <span className="font-bold text-base tracking-wide">Bắt đầu thiết kế</span>
+                                                <span className="font-bold text-sm tracking-wide">Bắt đầu thiết kế</span>
                                             </button>
                                         </EditableZone>
                                     </div>
                                 </div>
+
+                                {/* Right Image */}
+                                <div className="w-full md:w-1/2 relative min-h-[300px] pointer-events-auto">
+                                    <EditableZone 
+                                        onClick={() => scrollToField('branding', 'heroImageUrl')} 
+                                        label="Ảnh Hero (Banner)"
+                                        className="absolute inset-0 md:rounded-bl-[80px] overflow-hidden"
+                                    >
+                                        {storeConfig.heroImageUrl ? (
+                                            <img src={storeConfig.heroImageUrl} className="w-full h-full object-cover" alt="Hero" />
+                                        ) : (
+                                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">Hero Image</div>
+                                        )}
+                                        <div className="absolute inset-0 bg-black/5"></div>
+                                    </EditableZone>
+                                </div>
                             </EditableZone>
 
                             {/* --- STORY PREVIEW --- */}
-                            <div className="py-12 bg-white container mx-auto px-6">
-                                <div className="flex gap-8 items-center">
-                                    <div className="w-1/2 aspect-square bg-gray-100 rounded-lg"></div>
-                                    <div className="w-1/2">
+                            <div className="py-16 bg-white container mx-auto px-6">
+                                <div className="flex flex-col md:flex-row gap-12 items-center">
+                                    <div className="w-full md:w-1/2 pointer-events-auto">
+                                        <EditableZone 
+                                            onClick={() => scrollToField('branding', 'inspireImageUrl')} 
+                                            label="Ảnh Inspire (Story)"
+                                            className="aspect-[4/5] rounded-2xl overflow-hidden shadow-xl bg-gray-100"
+                                        >
+                                            {storeConfig.inspireImageUrl ? (
+                                                <img src={storeConfig.inspireImageUrl} className="w-full h-full object-cover" alt="Inspire" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-400">Inspire Image</div>
+                                            )}
+                                        </EditableZone>
+                                    </div>
+                                    <div className="w-full md:w-1/2 text-center md:text-left pointer-events-auto">
+                                        <span className="font-bold tracking-widest text-xs uppercase mb-2 block" style={{color: themeConfig.global.colors.primary}}>Our Story</span>
                                         <EditableZone 
                                             onClick={() => scrollToField('content', 'homeStoryTitle')} 
                                             label="Tiêu đề Story"
                                         >
-                                            <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: themeConfig.global.typography.headingFont }}>
+                                            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900" style={{ fontFamily: themeConfig.global.typography.headingFont }}>
                                                 {storeConfig.homeStoryTitle || 'Hơn cả một món quà,\nđó là kỷ niệm.'}
                                             </h2>
                                         </EditableZone>
@@ -764,7 +798,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             onClick={() => scrollToField('content', 'homeStoryContent')} 
                                             label="Nội dung Story"
                                         >
-                                            <p className="text-sm opacity-80 leading-relaxed">
+                                            <p className="text-sm text-gray-600 leading-loose whitespace-pre-line">
                                                 {storeConfig.homeStoryContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất...'}
                                             </p>
                                         </EditableZone>

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
     LEGO_PARTS, 
@@ -38,7 +38,6 @@ declare var confetti: any;
 const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
     // Nếu là font tùy chỉnh (đã có trong danh sách upload), không load từ Google
-    // Logic kiểm tra font tùy chỉnh sẽ được xử lý ở applyTheme
     if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
         const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
         if (!document.getElementById(linkId)) {
@@ -105,7 +104,7 @@ const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-  const [isAppLoading, setIsAppLoading] = useState(true); 
+  
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); 
   
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
@@ -114,7 +113,15 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
 
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
+  // Initialize StoreConfig from LocalStorage to prevent flicker (FOUC)
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
+      try {
+          const savedConfig = localStorage.getItem('store_config');
+          return savedConfig ? JSON.parse(savedConfig) : {};
+      } catch (e) {
+          return {};
+      }
+  });
 
   // State for cart animation
   const [isCartShaking, setIsCartShaking] = useState(false);
@@ -132,7 +139,6 @@ const App: React.FC = () => {
       root.style.setProperty('--color-accent', global.colors.accent);
 
       // Typography
-      // Remove unsafe characters from font names for CSS variables
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
 
@@ -157,14 +163,22 @@ const App: React.FC = () => {
       // Load Custom Fonts
       loadUploadedFonts(uploadedFonts);
 
-      // Load Google Fonts (only if they are not custom uploaded ones)
-      // We assume if it's in uploadedFonts, it's already handled by loadUploadedFonts via @font-face
+      // Load Google Fonts
       const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
       const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
 
       if (!isCustomHeading) loadGoogleFont(cleanHeadingFont);
       if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
+
+  // useLayoutEffect runs before browser paint, preventing theme flicker
+  useLayoutEffect(() => {
+      if (storeConfig.theme) {
+          applyTheme(storeConfig.theme, storeConfig.uploadedFonts || []);
+      } else {
+          applyTheme(DEFAULT_THEME, []);
+      }
+  }, [storeConfig]);
 
   useEffect(() => {
       const fetchData = async () => {
@@ -186,11 +200,8 @@ const App: React.FC = () => {
 
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
-                if (fetchedConfig.theme) {
-                    applyTheme(fetchedConfig.theme, fetchedConfig.uploadedFonts || []);
-                } else {
-                    applyTheme(DEFAULT_THEME, []);
-                }
+                // Cache config to LocalStorage for next visit
+                localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
 
                 if (fetchedConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");
@@ -206,8 +217,6 @@ const App: React.FC = () => {
             }
           } catch (error) {
               console.error("Initial fetch error:", error);
-          } finally {
-              setIsAppLoading(false);
           }
       };
       fetchData();
@@ -321,16 +330,6 @@ const App: React.FC = () => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
-
-  if (isAppLoading && !storeConfig.logoUrl) {
-      return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 text-luvin-pink">
-              <div className="animate-pulse flex flex-col items-center">
-                  <span className="font-heading text-2xl tracking-wider">The Luvin</span>
-              </div>
-          </div>
-      )
-  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-gray-900 bg-site-bg text-site-text transition-colors duration-300">
