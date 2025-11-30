@@ -34,6 +34,9 @@ export interface StoreConfig {
     // NEW: Unified Theme Config
     theme?: ThemeConfig;
     uploadedFonts?: CustomFont[];
+    
+    // Ads Config
+    dailyAdsBudget?: number; // Cost per day for marketing
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

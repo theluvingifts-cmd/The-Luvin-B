@@ -147,21 +147,28 @@ export const ProductForm: React.FC<{
     const canHaveColors = ['shirt', 'pants', 'accessory', 'pet', 'hair', 'hat', 'set'].includes(formData.type);
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999]" onClick={onCancel}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+            {/* Backdrop with Blur */}
             <div 
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] md:w-[90%] max-w-[960px] max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+                onClick={onCancel}
+            ></div>
+
+            {/* Modal Content - Centered via Flexbox */}
+            <div 
+                className="relative w-full max-w-[960px] max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 animate-fade-in-up"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header - Fixed */}
-                <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-                    <h3 className="text-2xl font-bold text-gray-800">{initialData ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h3>
+                <div className="px-6 py-4 sm:px-8 sm:py-5 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0 z-10">
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800">{initialData ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h3>
                     <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
                 
                 {/* Scrollable Content */}
-                <div className="flex-grow overflow-y-auto p-8 custom-scrollbar bg-gray-50/30">
+                <div className="flex-grow overflow-y-auto p-6 sm:p-8 custom-scrollbar bg-gray-50/30">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                         {/* Left Column - Main Info */}
                         <div className="lg:col-span-8 space-y-6">
@@ -198,7 +205,7 @@ export const ProductForm: React.FC<{
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Giá vốn (VNĐ)</label>
-                                        <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base text-gray-500" />
+                                        <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base text-red-600 font-medium" />
                                     </div>
                                     <div className="col-span-2">
                                          <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
@@ -381,7 +388,7 @@ export const ProductForm: React.FC<{
                 </div>
 
                 {/* Footer Actions - Fixed */}
-                <div className="px-8 py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-4 flex-shrink-0 rounded-b-xl">
+                <div className="px-6 py-4 sm:px-8 sm:py-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-4 flex-shrink-0 rounded-b-xl">
                     <button onClick={onCancel} className="px-6 py-3 text-sm font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors">Hủy bỏ</button>
                     <button onClick={handleSave} disabled={isUploading} className="px-8 py-3 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                         {isUploading ? (

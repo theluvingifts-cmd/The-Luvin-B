@@ -36,84 +36,93 @@ export const FrameForm: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 font-sans p-4">
-            <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-100">
-                <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+            <div 
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+                onClick={onCancel}
+            ></div>
+            <div 
+                className="relative bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-6 border-b pb-4 flex-shrink-0">
                     <h3 className="text-2xl font-bold text-gray-800">{initialData ? 'Chỉnh sửa Khung' : 'Thêm Khung Mới'}</h3>
                     <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-5">
-                        <h4 className="font-bold text-gray-700 border-b pb-2 mb-4">Thông tin cơ bản</h4>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">ID (Unique)</label>
-                            <input name="id" value={formData.id} onChange={handleChange} disabled={!!initialData} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm disabled:bg-gray-100 disabled:text-gray-500" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tên Khung</label>
-                            <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm focus:border-gray-500 outline-none" placeholder="15x15cm..." />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+                <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-5">
+                            <h4 className="font-bold text-gray-700 border-b pb-2 mb-4">Thông tin cơ bản</h4>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá bán (VNĐ)</label>
-                                <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm font-bold text-gray-800" />
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">ID (Unique)</label>
+                                <input name="id" value={formData.id} onChange={handleChange} disabled={!!initialData} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm disabled:bg-gray-100 disabled:text-gray-500" />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá vốn (VNĐ)</label>
-                                <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm text-red-600" />
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tên Khung</label>
+                                <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm focus:border-gray-500 outline-none" placeholder="15x15cm..." />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá bán (VNĐ)</label>
+                                    <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm font-bold text-gray-800" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá vốn (VNĐ)</label>
+                                    <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-red-200 rounded bg-red-50 text-sm text-red-600 font-bold" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tồn kho</label>
+                                <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Mô tả ngắn</label>
+                                <input name="description" value={formData.description} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" placeholder="Nhỏ gọn, tinh tế..." />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tồn kho</label>
-                            <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Mô tả ngắn</label>
-                            <input name="description" value={formData.description} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" placeholder="Nhỏ gọn, tinh tế..." />
-                        </div>
-                    </div>
 
-                    <div className="space-y-5">
-                        <h4 className="font-bold text-gray-700 border-b pb-2 mb-4">Thông số & Màu sắc</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rộng Khung (cm)</label>
-                                <input type="number" name="frameWidthCm" value={formData.frameWidthCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                        <div className="space-y-5">
+                            <h4 className="font-bold text-gray-700 border-b pb-2 mb-4">Thông số & Màu sắc</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rộng Khung (cm)</label>
+                                    <input type="number" name="frameWidthCm" value={formData.frameWidthCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cao Khung (cm)</label>
+                                    <input type="number" name="frameHeightCm" value={formData.frameHeightCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rộng Nền (cm)</label>
+                                    <input type="number" name="backgroundWidthCm" value={formData.backgroundWidthCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cao Nền (cm)</label>
+                                    <input type="number" name="backgroundHeightCm" value={formData.backgroundHeightCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cao Khung (cm)</label>
-                                <input type="number" name="frameHeightCm" value={formData.frameHeightCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rộng Nền (cm)</label>
-                                <input type="number" name="backgroundWidthCm" value={formData.backgroundWidthCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cao Nền (cm)</label>
-                                <input type="number" name="backgroundHeightCm" value={formData.backgroundHeightCm} onChange={handleChange} step="0.1" className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Màu sắc (Phân cách dấu phẩy)</label>
-                            <input 
-                                value={formData.colors.join(', ')} 
-                                onChange={handleColorChange} 
-                                className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" 
-                                placeholder="black, white, wood..." 
-                            />
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                                {formData.colors.map(c => (
-                                    <span key={c} className="px-2 py-1 bg-gray-100 border rounded text-xs font-medium">{c}</span>
-                                ))}
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Màu sắc (Phân cách dấu phẩy)</label>
+                                <input 
+                                    value={formData.colors.join(', ')} 
+                                    onChange={handleColorChange} 
+                                    className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" 
+                                    placeholder="black, white, wood..." 
+                                />
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                    {formData.colors.map(c => (
+                                        <span key={c} className="px-2 py-1 bg-gray-100 border rounded text-xs font-medium">{c}</span>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100 flex-shrink-0">
                     <button onClick={onCancel} className="px-6 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">Hủy bỏ</button>
                     <button onClick={() => onSave(formData)} className="px-6 py-2.5 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors shadow-lg">Lưu Khung</button>
                 </div>

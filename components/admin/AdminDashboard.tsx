@@ -1,8 +1,9 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Order, LegoPart, FrameOption } from '../../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { formatCurrency } from '../../utils/pricing';
+import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 
 interface AdminDashboardProps {
     orders: Order[];
@@ -106,7 +107,7 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 bg-green-200 rounded"></div>
-                    <span className="text-gray-600">Lợi nhuận</span>
+                    <span className="text-gray-600">Lợi nhuận ròng</span>
                 </div>
             </div>
         </div>
@@ -120,6 +121,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     const [year, setYear] = useState<number>(new Date().getFullYear());
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
+    
+    const [dailyAdsCost, setDailyAdsCost] = useState<number>(0);
+    const [isSavingAds, setIsSavingAds] = useState(false);
+
+    useEffect(() => {
+        const loadAdsConfig = async () => {
+            const config = await getStoreConfig();
+            if (config?.dailyAdsBudget) {
+                setDailyAdsCost(config.dailyAdsBudget);
+            }
+        };
+        loadAdsConfig();
+    }, []);
+
+    const updateAdsCost = async () => {
+        setIsSavingAds(true);
+        await updateStoreConfig({ dailyAdsBudget: dailyAdsCost });
+        setIsSavingAds(false);
+    };
 
     const allKnownParts = useMemo(() => {
         const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
@@ -156,12 +176,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         // Box cost (Approximate if not tracked)
         if (order.addGiftBox) totalCost += 15000; // Assuming box cost ~15k
 
+        // Net Profit = Total Price - Shipping (User paid) - Cost - (Shipping Cost Actual - usually matched but simplified here)
+        // Note: shipping.fee is what user paid. 
         return order.totalPrice - order.shipping.fee - totalCost; 
     };
 
     const analytics = useMemo(() => {
         let start: Date, end: Date, prevStart: Date, prevEnd: Date;
         let dateLabel = '';
+        let numberOfDays = 1;
 
         if (filterType === 'month') {
             dateLabel = `Tháng ${month + 1}/${year}`;
@@ -169,6 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             end = new Date(year, month + 1, 0, 23, 59, 59, 999);
             prevStart = new Date(year, month - 1, 1);
             prevEnd = new Date(year, month, 0, 23, 59, 59, 999);
+            numberOfDays = new Date(year, month + 1, 0).getDate();
         } else if (filterType === 'custom') {
             dateLabel = 'Tùy chỉnh';
             start = customStartDate ? new Date(customStartDate) : new Date(0);
@@ -177,6 +201,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             const duration = end.getTime() - start.getTime();
             prevEnd = new Date(start.getTime() - 1);
             prevStart = new Date(prevEnd.getTime() - duration);
+            numberOfDays = Math.ceil(duration / (1000 * 60 * 60 * 24)) || 1;
         } else {
             const now = new Date();
             start = getStartOfDay(now);
@@ -192,10 +217,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 start.setDate(start.getDate() - 7);
                 prevStart.setDate(prevStart.getDate() - 14); prevEnd.setDate(prevEnd.getDate() - 7);
                 dateLabel = '7 ngày qua';
+                numberOfDays = 7;
             } else if (period === '30days') {
                 start.setDate(start.getDate() - 30);
                 prevStart.setDate(prevStart.getDate() - 60); prevEnd.setDate(prevEnd.getDate() - 30);
                 dateLabel = '30 ngày qua';
+                numberOfDays = 30;
             } else {
                 prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1);
                 dateLabel = 'Hôm nay';
@@ -211,8 +238,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
 
         const revenue = currentOrders.reduce((sum, o) => sum + o.totalPrice, 0);
-        const profit = currentOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
+        const grossProfit = currentOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
         
+        // Calculate Net Profit by subtracting Ads Cost
+        const totalAdsCost = dailyAdsCost * numberOfDays;
+        const netProfit = grossProfit - totalAdsCost;
+
         const prevRevenue = prevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
 
@@ -279,17 +310,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             });
 
             const dailyRevenue = dailyOrders.reduce((sum, o) => sum + o.totalPrice, 0);
-            const dailyProfit = dailyOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
+            const dailyGrossProfit = dailyOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
+            const dailyNetProfit = dailyGrossProfit - dailyAdsCost;
             
             chartData.push({
                 date: `${d.getDate()}/${d.getMonth() + 1}`,
                 revenue: dailyRevenue,
-                profit: dailyProfit
+                profit: dailyNetProfit
             });
         }
 
-        return { revenue, profit, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData };
-    }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts, frames]); 
+        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, packers, dateLabel, chartData, totalAdsCost };
+    }, [orders, filterType, period, month, year, customStartDate, customEndDate, allKnownParts, frames, dailyAdsCost]); 
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -329,9 +361,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Doanh thu</p><span className={`text-xs font-bold flex items-center ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}%</span></div>
                     <p className="text-3xl font-light text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</p>
                 </div>
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận (Est)</p></div>
-                    <p className="text-3xl font-light text-green-600">{formatCurrency(analytics.profit, 'admin')}</p>
+                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-start"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận ròng</p></div>
+                    <div className="flex items-end justify-between">
+                        <p className="text-3xl font-light text-green-600">{formatCurrency(analytics.profit, 'admin')}</p>
+                        <div className="text-right">
+                            <p className="text-[10px] text-gray-400">Chi phí Ads (Estimate)</p>
+                            <div className="flex items-center gap-1 justify-end">
+                                <input 
+                                    type="number" 
+                                    value={dailyAdsCost} 
+                                    onChange={(e) => setDailyAdsCost(Number(e.target.value))}
+                                    className="w-16 p-0.5 text-xs text-right border-b border-gray-300 focus:border-blue-500 outline-none"
+                                />
+                                <span className="text-[10px]">₫/ngày</span>
+                                <button onClick={updateAdsCost} className="text-[10px] text-blue-600 hover:underline">{isSavingAds ? '...' : 'Lưu'}</button>
+                            </div>
+                            <p className="text-[10px] text-red-400">-{formatCurrency(analytics.totalAdsCost, 'admin')}</p>
+                        </div>
+                    </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn hàng</p><span className={`text-xs font-bold flex items-center ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.orderGrowth).toFixed(1)}%</span></div>
