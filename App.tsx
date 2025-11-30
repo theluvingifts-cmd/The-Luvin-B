@@ -379,8 +379,8 @@ const App: React.FC = () => {
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} />}
             {currentPage === 'admin' && <AdminPage />}
-            {currentPage === 'about' && <AboutPage />}
-            {currentPage === 'warranty' && <WarrantyPage />}
+            {currentPage === 'about' && <AboutPage config={storeConfig} />}
+            {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
         </main>
 
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}

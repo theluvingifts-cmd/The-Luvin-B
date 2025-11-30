@@ -70,10 +70,10 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
             <div className="flex-grow flex items-end justify-between gap-2 sm:gap-4 relative h-48">
                 {/* Grid Lines */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10">
-                    <div className="border-t border-gray-900 w-full"></div>
-                    <div className="border-t border-gray-900 w-full"></div>
-                    <div className="border-t border-gray-900 w-full"></div>
-                    <div className="border-t border-gray-900 w-full"></div>
+                    <div className="border-t border-gray-100 w-full"></div>
+                    <div className="border-t border-gray-100 w-full"></div>
+                    <div className="border-t border-gray-100 w-full"></div>
+                    <div className="border-t border-gray-100 w-full"></div>
                 </div>
 
                 {data.map((d, index) => {
@@ -136,71 +136,6 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
     );
 };
 
-// --- ADS COST MODAL ---
-const AdsCostModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    startDate: Date;
-    endDate: Date;
-    dailyCosts: Record<string, number>;
-    onSaveCost: (date: string, cost: number) => void;
-}> = ({ isOpen, onClose, startDate, endDate, dailyCosts, onSaveCost }) => {
-    if (!isOpen) return null;
-
-    // Generate array of dates between start and end
-    const dates: string[] = [];
-    let currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-        dates.push(currentDate.toISOString().split('T')[0]);
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
-    // Sort descending
-    dates.reverse();
-
-    return (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                    <h3 className="font-bold text-gray-800">Quản lý Chi phí Quảng cáo</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800">&times;</button>
-                </div>
-                
-                <div className="p-4 overflow-y-auto flex-grow custom-scrollbar">
-                    <p className="text-xs text-gray-500 mb-4 bg-blue-50 p-2 rounded">
-                        Nhập chi phí Marketing (Facebook Ads, Google Ads,...) cho từng ngày để tính lợi nhuận chính xác.
-                    </p>
-                    <div className="space-y-3">
-                        {dates.map(date => {
-                            const displayDate = new Date(date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
-                            return (
-                                <div key={date} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0">
-                                    <span className="text-sm font-medium text-gray-700">{displayDate}</span>
-                                    <div className="flex items-center gap-2">
-                                        <input 
-                                            type="number" 
-                                            className="border border-gray-300 rounded px-2 py-1.5 text-sm w-32 text-right focus:border-blue-500 outline-none"
-                                            placeholder="0"
-                                            defaultValue={dailyCosts[date] || ''}
-                                            onBlur={(e) => onSaveCost(date, Number(e.target.value))}
-                                        />
-                                        <span className="text-xs text-gray-500">₫</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-                
-                <div className="p-4 border-t bg-gray-50 rounded-b-xl text-right">
-                    <button onClick={onClose} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition-colors">
-                        Đóng
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products, frames }) => {
     const [filterType, setFilterType] = useState<'period' | 'month' | 'custom'>('period');
     const [period, setPeriod] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
@@ -211,7 +146,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     
     // Daily Ads Costs State
     const [dailyAdsCosts, setDailyAdsCosts] = useState<Record<string, number>>({});
-    const [isAdsModalOpen, setIsAdsModalOpen] = useState(false);
+    
+    // Inline Ads Management State
+    const [adsDateInput, setAdsDateInput] = useState(new Date().toISOString().split('T')[0]);
+    const [adsCostInput, setAdsCostInput] = useState<number>(0);
+    const [isSavingAds, setIsSavingAds] = useState(false);
 
     // Calculate start and end dates based on filter
     const { startDate, endDate, dateLabel } = useMemo(() => {
@@ -259,11 +198,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         fetchCosts();
     }, [startDate, endDate]);
 
-    const handleSaveAdsCost = async (date: string, cost: number) => {
-        const success = await saveAdsCost(date, cost);
+    const handleSaveAdsInline = async () => {
+        if (!adsDateInput) return;
+        setIsSavingAds(true);
+        const success = await saveAdsCost(adsDateInput, adsCostInput);
         if (success) {
-            setDailyAdsCosts(prev => ({ ...prev, [date]: cost }));
+            setDailyAdsCosts(prev => ({ ...prev, [adsDateInput]: adsCostInput }));
+            // Reset input to 0 to indicate success visually, or keep it. Let's keep it.
+            alert(`Đã lưu chi phí ngày ${new Date(adsDateInput).toLocaleDateString('vi-VN')}`);
+        } else {
+            alert('Lỗi lưu chi phí');
         }
+        setIsSavingAds(false);
     };
 
     const allKnownParts = useMemo(() => {
@@ -475,12 +421,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lợi nhuận ròng</p>
-                        <button 
-                            onClick={() => setIsAdsModalOpen(true)}
-                            className="text-[10px] bg-red-50 text-red-600 border border-red-100 px-2 py-1 rounded hover:bg-red-100 transition-colors font-bold flex items-center gap-1"
-                        >
-                            ✏️ QL Chi phí Ads
-                        </button>
                     </div>
                     <div className="flex items-end justify-between mt-2">
                         <p className={`text-3xl font-light ${analytics.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(analytics.profit, 'admin')}</p>
@@ -501,9 +441,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
             </div>
 
-            {/* 3. Charts */}
-            <div className="grid grid-cols-1 gap-6">
-                <BarChart data={analytics.chartData} />
+            {/* 3. Inline Ads Management & Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <BarChart data={analytics.chartData} />
+                </div>
+                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-bold text-sm text-gray-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <span className="text-lg">📢</span> Quản lý Chi phí Marketing
+                    </h4>
+                    
+                    <div className="space-y-4">
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                            <label className="block text-xs font-bold text-gray-500 mb-2">Cập nhật chi phí theo ngày</label>
+                            <div className="flex flex-col gap-3">
+                                <input 
+                                    type="date" 
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={adsDateInput}
+                                    onChange={(e) => {
+                                        setAdsDateInput(e.target.value);
+                                        // Auto-fill cost if exists in data
+                                        if (dailyAdsCosts[e.target.value]) {
+                                            setAdsCostInput(dailyAdsCosts[e.target.value]);
+                                        } else {
+                                            setAdsCostInput(0);
+                                        }
+                                    }}
+                                />
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        placeholder="Số tiền (VNĐ)"
+                                        className="w-full p-2 border rounded text-sm font-semibold"
+                                        value={adsCostInput}
+                                        onChange={(e) => setAdsCostInput(Number(e.target.value))}
+                                    />
+                                    <button 
+                                        onClick={handleSaveAdsInline}
+                                        disabled={isSavingAds}
+                                        className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black disabled:opacity-50 whitespace-nowrap"
+                                    >
+                                        Lưu
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Chi phí gần đây</p>
+                            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                {Object.entries(dailyAdsCosts)
+                                    .sort((a, b) => b[0].localeCompare(a[0])) // Sort date desc
+                                    .slice(0, 5) // Show top 5
+                                    .map(([date, cost]) => (
+                                        <div key={date} className="flex justify-between items-center text-sm border-b border-gray-50 pb-1">
+                                            <span className="text-gray-600">{new Date(date).toLocaleDateString('vi-VN')}</span>
+                                            <span className="font-mono font-medium">{formatCurrency(cost, 'admin')}</span>
+                                        </div>
+                                    ))}
+                                {Object.keys(dailyAdsCosts).length === 0 && <p className="text-xs text-gray-400 italic">Chưa có dữ liệu.</p>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* 4. Top Items */}
@@ -554,16 +555,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     )}
                 </div>
             </div>
-
-            {/* Ads Management Modal */}
-            <AdsCostModal 
-                isOpen={isAdsModalOpen}
-                onClose={() => setIsAdsModalOpen(false)}
-                startDate={startDate}
-                endDate={endDate}
-                dailyCosts={dailyAdsCosts}
-                onSaveCost={handleSaveAdsCost}
-            />
         </div>
     );
 };
