@@ -58,14 +58,23 @@ interface AdminOrdersProps {
     onRefreshProducts: () => void;
 }
 
+type OrderTab = 'active' | 'history';
+
 export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
     
+    // Filtering & Tabs
+    const [orderTab, setOrderTab] = useState<OrderTab>('active');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [orderSearch, setOrderSearch] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
+    
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(20);
+
     const [noteInput, setNoteInput] = useState('');
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [addingAccessoryToItemIndex, setAddingAccessoryToItemIndex] = useState<number | null>(null);
@@ -86,6 +95,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         }
     }, [selectedOrder]);
 
+    // Reset pagination on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [orderTab, filterStatus, orderSearch, itemsPerPage]);
+
     const allKnownParts = useMemo(() => {
         const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
         const defaultParts = Object.values(LEGO_PARTS).flat().reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
@@ -101,9 +115,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         return types;
     }, [products]);
 
-    const sortedOrders = useMemo(() => {
+    const filteredOrders = useMemo(() => {
         let result = [...orders];
 
+        // 1. Tab Filter
+        if (orderTab === 'active') {
+            result = result.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status));
+        } else {
+            result = result.filter(o => ['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status));
+        }
+
+        // 2. Search
         if (orderSearch.trim()) {
             const searchLower = orderSearch.trim().toLowerCase();
             result = result.filter(o => 
@@ -112,23 +134,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             );
         }
 
+        // 3. Status Filter (Internal within tab)
         if (filterStatus !== 'all') {
             result = result.filter(o => o.status === filterStatus);
         }
 
+        // 4. Sort
         if (sortMode === 'urgent') {
             result.sort((a, b) => {
                 if (a.isUrgent !== b.isUrgent) return a.isUrgent ? -1 : 1;
-
                 const getTargetTime = (o: Order) => {
                     if (o.adminDeadline) return new Date(o.adminDeadline).getTime();
                     if (o.delivery.date) return new Date(o.delivery.date).getTime();
                     return 9999999999999; 
                 };
-
                 const timeA = getTargetTime(a);
                 const timeB = getTargetTime(b);
-
                 if (timeA !== timeB) return timeA - timeB; 
                 return (a.createdAt || 0) - (b.createdAt || 0);
             });
@@ -136,7 +157,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
-    }, [orders, sortMode, filterStatus, orderSearch]);
+    }, [orders, orderTab, sortMode, filterStatus, orderSearch]);
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+    const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!scrollContainerRef.current) return;
@@ -207,7 +232,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const handlePrintOrder = () => {
         if (!selectedOrder) return;
-        
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
@@ -227,9 +251,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     .item-table { w-full; width: 100%; border-collapse: collapse; margin-top: 20px; }
                     .item-table th, .item-table td { border: 1px solid #000; padding: 8px; text-align: left; }
                     .item-table th { background: #f0f0f0; }
-                    .total-section { margin-top: 20px; text-align: right; font-size: 16px; }
                     .footer { margin-top: 40px; text-align: center; font-size: 12px; font-style: italic; }
-                    .qr-code { text-align: center; margin-top: 20px; }
                     @media print {
                         @page { margin: 0.5cm; }
                         body { -webkit-print-color-adjust: exact; }
@@ -241,7 +263,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     <h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1>
                     <p class="subtitle">Hotline: 0964 393 115 - Facebook: The Luvin</p>
                 </div>
-
                 <div class="info-grid">
                     <div class="box">
                         <span class="box-title">Người nhận</span>
@@ -258,7 +279,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.amountToPay)}</strong></p>
                     </div>
                 </div>
-
                 <table class="item-table">
                     <thead>
                         <tr>
@@ -292,7 +312,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         ` : ''}
                     </tbody>
                 </table>
-
                 <div class="footer">
                     <p>Cảm ơn quý khách đã tin tưởng The Luvin!</p>
                     <p>Vui lòng quay video khi mở hàng để được hỗ trợ đổi trả tốt nhất.</p>
@@ -300,7 +319,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             </body>
             </html>
         `;
-
         printWindow.document.write(html);
         printWindow.document.close();
         printWindow.print();
@@ -321,32 +339,23 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const saveOrderChanges = async () => {
         if (!editForm || !selectedOrder) return;
-        
         setIsLoading(true);
-
         const oldParts = countPartsInOrder(selectedOrder.items);
         const newParts = countPartsInOrder(editForm.items);
-        
         const stockAdjustments: Record<string, number> = {};
-        
         Object.keys(oldParts).forEach(partId => {
             const oldQty = oldParts[partId] || 0;
             const newQty = newParts[partId] || 0;
             const diff = oldQty - newQty;
             if (diff !== 0) stockAdjustments[partId] = diff;
         });
-
         Object.keys(newParts).forEach(partId => {
-            if (!oldParts[partId]) {
-                stockAdjustments[partId] = -(newParts[partId]);
-            }
+            if (!oldParts[partId]) stockAdjustments[partId] = -(newParts[partId]);
         });
-
         if (Object.keys(stockAdjustments).length > 0) {
             await adjustStock(stockAdjustments);
             onRefreshProducts();
         }
-
         await handleUpdate(selectedOrder.id, editForm, false);
         setIsEditingOrder(false);
         setEditForm(null);
@@ -495,9 +504,28 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     </div>
                 </div>
             )}
+            
+            {/* Left Panel: Order List */}
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
+                {/* 1. Header & Filters */}
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
-                    <div className="relative w-full">
+                    {/* Main Tabs */}
+                    <div className="flex gap-2 p-1 bg-gray-200 rounded-lg">
+                        <button 
+                            onClick={() => setOrderTab('active')} 
+                            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})
+                        </button>
+                        <button 
+                            onClick={() => setOrderTab('history')} 
+                            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Lịch sử ({orders.filter(o => ['Đã giao hàng', 'Huỷ đơn'].includes(o.status)).length})
+                        </button>
+                    </div>
+
+                    <div className="relative w-full mt-2">
                         <input
                             type="text"
                             placeholder="Tìm mã đơn hoặc SĐT..."
@@ -509,12 +537,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
-                    <div className="flex gap-2 w-full">
-                        <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
-                        <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
-                    </div>
+
+                    {orderTab === 'active' && (
+                        <div className="flex gap-2 w-full mt-1">
+                            <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
+                            <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
+                        </div>
+                    )}
+
                     <div 
-                        className="flex gap-1 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing"
+                        className="flex gap-1 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing mt-1"
                         ref={scrollContainerRef}
                         onMouseDown={handleMouseDown}
                         onMouseLeave={handleMouseLeave}
@@ -522,15 +554,20 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         onMouseMove={handleMouseMove}
                     >
                         <button onClick={() => setFilterStatus('all')} className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>Tất cả</button>
-                        {STATUS_CONFIG.filter(s => !s.isAction).map(status => (
-                            <button key={status.label} onClick={() => setFilterStatus(status.label)} className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === status.label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>{status.label}</button>
-                        ))}
+                        {STATUS_CONFIG
+                            .filter(s => !s.isAction)
+                            .filter(s => orderTab === 'active' ? !['Đã giao hàng', 'Huỷ đơn'].includes(s.label) : ['Đã giao hàng', 'Huỷ đơn'].includes(s.label))
+                            .map(status => (
+                                <button key={status.label} onClick={() => setFilterStatus(status.label)} className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === status.label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>{status.label}</button>
+                            ))}
                     </div>
                 </div>
+
+                {/* 2. Order List */}
                 <div className="overflow-y-auto flex-grow divide-y divide-gray-100">
-                    {sortedOrders.length === 0 ? (
+                    {paginatedOrders.length === 0 ? (
                         <div className="p-8 text-center text-gray-400 text-sm">Không có đơn hàng nào.</div>
-                    ) : sortedOrders.map(order => (
+                    ) : paginatedOrders.map(order => (
                         <div key={order.id} onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}>
                             <div className="flex justify-between items-start mb-1">
                                 <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>
@@ -554,8 +591,42 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
                     ))}
                 </div>
+
+                {/* 3. Pagination Footer */}
+                <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Hiển thị:</span>
+                        <select 
+                            value={itemsPerPage} 
+                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                            className="bg-white border border-gray-300 rounded text-xs p-1 focus:outline-none"
+                        >
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <button 
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-100 disabled:opacity-50"
+                        >
+                            &lt;
+                        </button>
+                        <span className="text-xs font-medium px-2">Trang {currentPage} / {totalPages || 1}</span>
+                        <button 
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            className="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-100 disabled:opacity-50"
+                        >
+                            &gt;
+                        </button>
+                    </div>
+                </div>
             </div>
 
+            {/* Right Panel: Order Detail (Existing logic) */}
             <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                 {selectedOrder ? (
                     <div className="flex flex-col h-full relative">
@@ -617,7 +688,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-6 space-y-8">
-                            {/* PAYMENT PROOF SECTION */}
+                            {/* Detailed content remains same as previous */}
                             {selectedOrder.paymentProofUrl && (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                                     <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2">
@@ -719,6 +790,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 </div>
                             </div>
 
+                            {/* Same product details rendering as previously provided */}
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
