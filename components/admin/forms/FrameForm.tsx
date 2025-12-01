@@ -62,8 +62,8 @@ export const FrameForm: React.FC<{
                                 <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm font-bold text-gray-800" />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá vốn (VNĐ)</label>
-                                <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-red-200 rounded bg-red-50 text-sm text-red-600 font-bold" />
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 text-red-600">Giá vốn (VNĐ)</label>
+                                <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-red-200 rounded bg-red-50 text-sm text-red-600 font-bold focus:ring-1 focus:ring-red-500" />
                             </div>
                         </div>
                         <div>

@@ -285,6 +285,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p>
                         <p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p>
                         <p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.amountToPay)}</strong></p>
+                        ${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount)}</p>` : ''}
                     </div>
                 </div>
                 <table class="item-table">
@@ -405,7 +406,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const updateEditFormWithPrice = (newOrder: Order) => {
         const { totalPrice, amountToPay } = calculateOrderTotal(newOrder, products, frames);
-        return { ...newOrder, totalPrice, amountToPay };
+        // Note: We need to subtract existing discountAmount if we want to keep it consistent, 
+        // or recalculate discount. For simplicity in Admin Edit, we keep discountAmount as is
+        // unless manually changed (which is not implemented in UI yet). 
+        // Recalculating base price is enough.
+        const discount = newOrder.discountAmount || 0;
+        const finalPrice = Math.max(0, totalPrice - discount);
+        const finalAmountToPay = newOrder.payment.method === 'deposit' ? Math.round(finalPrice * 0.7) : finalPrice;
+
+        return { ...newOrder, totalPrice: finalPrice, amountToPay: finalAmountToPay };
     };
 
     const handleEditFormChange = (field: string, value: any, nestedField?: string, itemIndex?: number) => {
@@ -839,6 +848,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 <>
                                                     <p><span className="text-gray-500 w-24 inline-block">Tổng đơn:</span> <span className="font-bold">{formatCurrency(selectedOrder.totalPrice)}</span></p>
                                                     <p><span className="text-gray-500 w-24 inline-block">Cần thu:</span> <span className="font-bold text-red-600">{formatCurrency(selectedOrder.amountToPay)}</span></p>
+                                                    {selectedOrder.discountAmount ? <p><span className="text-gray-500 w-24 inline-block">Giảm giá:</span> <span className="font-bold text-green-600">-{formatCurrency(selectedOrder.discountAmount)}</span></p> : null}
                                                 </>
                                             )}
                                         </div>
@@ -902,7 +912,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 </div>
                                                 <div className="flex-grow w-full">
                                                     <div className="mb-3 pb-3 border-b border-gray-100">
-                                                        <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
+                                                        {isEditingOrder && editForm ? (
+                                                            <div className="flex gap-2 items-center mb-1">
+                                                                <span className="font-bold text-gray-800 text-sm">Khung:</span>
+                                                                <select 
+                                                                    className="border rounded p-1 text-sm bg-gray-50"
+                                                                    value={item.frameId}
+                                                                    onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}
+                                                                >
+                                                                    {frames.map(f => (
+                                                                        <option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price)}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
+                                                        )}
                                                         <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
                                                     </div>
 

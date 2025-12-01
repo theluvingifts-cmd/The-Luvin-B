@@ -193,8 +193,8 @@ export const ProductForm: React.FC<{
                                     <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base font-bold" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Giá vốn (VNĐ)</label>
-                                    <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base text-red-600 font-medium" />
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2 text-red-600">Giá vốn (VNĐ)</label>
+                                    <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-base text-red-600 font-medium" />
                                 </div>
                                 <div className="col-span-2">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
