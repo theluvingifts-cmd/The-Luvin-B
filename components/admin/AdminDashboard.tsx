@@ -375,8 +375,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
     return (
         <div className="space-y-6 animate-fade-in pb-12">
-            {/* 1. Control Bar */}
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4 sticky top-16 z-20">
+            {/* 1. Control Bar - Stacked on Mobile */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4 sticky top-14 sm:top-16 z-20">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gray-100 rounded-lg">
                         <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -387,14 +387,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     </div>
                 </div>
                 
-                <div className="flex flex-wrap gap-2 items-center justify-end">
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
-                        <button onClick={() => setFilterType('period')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Ngày</button>
-                        <button onClick={() => setFilterType('month')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
-                        <button onClick={() => setFilterType('custom')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tùy chỉnh</button>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-center w-full sm:w-auto">
+                    <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
+                        <button onClick={() => setFilterType('period')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Ngày</button>
+                        <button onClick={() => setFilterType('month')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
+                        <button onClick={() => setFilterType('custom')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tùy chỉnh</button>
                     </div>
                     {filterType === 'period' && (
-                        <select value={period} onChange={(e: any) => setPeriod(e.target.value)} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-medium focus:ring-1 focus:ring-gray-900 outline-none">
+                        <select value={period} onChange={(e: any) => setPeriod(e.target.value)} className="w-full sm:w-auto p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-medium focus:ring-1 focus:ring-gray-900 outline-none">
                             <option value="today">Hôm nay</option>
                             <option value="yesterday">Hôm qua</option>
                             <option value="7days">7 ngày qua</option>
@@ -402,54 +402,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                         </select>
                     )} 
                     {filterType === 'month' && (
-                        <div className="flex gap-1">
-                            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>T{i + 1}</option>))}</select>
-                            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option></select>
+                        <div className="flex gap-1 w-full sm:w-auto">
+                            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="flex-1 sm:flex-none p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>T{i + 1}</option>))}</select>
+                            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="flex-1 sm:flex-none p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option></select>
                         </div>
                     )}
                     {filterType === 'custom' && (
-                        <div className="flex gap-2 items-center bg-white border border-gray-200 rounded-lg p-1">
-                            <input type="date" className="text-xs font-medium border-none p-0 focus:ring-0" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
-                            <span className="text-gray-300">|</span>
-                            <input type="date" className="text-xs font-medium border-none p-0 focus:ring-0" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
+                        <div className="flex flex-col sm:flex-row gap-2 bg-white border border-gray-200 rounded-lg p-2 w-full sm:w-auto">
+                            <input type="date" className="text-xs font-medium border rounded p-1 w-full sm:w-auto" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
+                            <span className="text-gray-300 hidden sm:inline">|</span>
+                            <input type="date" className="text-xs font-medium border rounded p-1 w-full sm:w-auto" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* 2. Key Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-white p-5 rounded-xl border border-blue-100 shadow-sm">
-                    <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Doanh thu</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</span>
-                        <span className={`text-xs font-bold ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.revenueGrowth).toFixed(0)}%</span>
+            {/* 2. Key Metrics Cards - Grid 2 cols on mobile */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-white p-4 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+                    <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Doanh thu</p>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</span>
+                        <span className={`text-[10px] sm:text-xs font-bold ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.revenueGrowth).toFixed(0)}%</span>
                     </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-green-50 to-white p-5 rounded-xl border border-green-100 shadow-sm relative overflow-hidden">
-                    <div className="absolute right-0 top-0 p-2 opacity-10">
-                        <svg className="w-16 h-16 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05 1.18 1.91 2.53 1.91 1.29 0 2.13-.59 2.13-1.66 0-.79-.49-1.3-2.7-1.8-2.57-.58-4.34-1.66-4.34-3.85 0-1.88 1.42-3.28 3.29-3.64V4.5h2.67v1.9c1.5.31 2.72 1.29 2.91 3.03h-1.99c-.16-.83-.97-1.52-2.18-1.52-1.2 0-1.92.59-1.92 1.5 0 .73.55 1.23 2.58 1.69 2.65.62 4.46 1.76 4.46 3.98 0 2.07-1.66 3.52-3.46 3.91z"/></svg>
-                    </div>
-                    <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Lợi nhuận ròng</p>
+                <div className="bg-gradient-to-br from-green-50 to-white p-4 sm:p-5 rounded-xl border border-green-100 shadow-sm relative overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Lợi nhuận ròng</p>
                     <div className="flex flex-col">
-                        <span className="text-2xl font-bold text-gray-900">{formatCurrency(analytics.profit, 'admin')}</span>
-                        <span className="text-[10px] text-gray-500 font-medium">Đã trừ Ads: {formatCurrency(analytics.totalAdsCost, 'admin')}</span>
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{formatCurrency(analytics.profit, 'admin')}</span>
+                        <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium">Đã trừ Ads: {formatCurrency(analytics.totalAdsCost, 'admin')}</span>
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Tổng Đơn hàng</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-gray-900">{analytics.orderCount}</span>
-                        <span className={`text-xs font-bold ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.orderGrowth).toFixed(0)}%</span>
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Đơn hàng</p>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{analytics.orderCount}</span>
+                        <span className={`text-[10px] sm:text-xs font-bold ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.orderGrowth).toFixed(0)}%</span>
                     </div>
                 </div>
-                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Top Nhân Viên</p>
+                 <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
+                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Top Staff</p>
                     <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-gray-900 truncate max-w-[120px]">{analytics.packers.length > 0 ? analytics.packers[0].email.split('@')[0] : '---'}</span>
-                        <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Top 1</span>
+                        <span className="text-sm sm:text-lg font-bold text-gray-900 truncate max-w-[80px] sm:max-w-[120px]">{analytics.packers.length > 0 ? analytics.packers[0].email.split('@')[0] : '---'}</span>
+                        <span className="text-[9px] sm:text-xs font-bold bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full">Top 1</span>
                     </div>
                 </div>
             </div>
@@ -458,24 +455,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column: Chart & Ads */}
                 <div className="lg:col-span-2 space-y-6">
-                    <BarChart data={analytics.chartData} />
+                    <div className="h-64 sm:h-80">
+                        <BarChart data={analytics.chartData} />
+                    </div>
                     
                     {/* Compact Ads Management Widget */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
                             </div>
                             <div>
                                 <h4 className="font-bold text-sm text-gray-800">Chi phí Ads</h4>
-                                <p className="text-[10px] text-gray-500">Nhập chi phí marketing theo ngày</p>
+                                <p className="text-[10px] text-gray-500">Nhập chi phí marketing</p>
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 w-full sm:w-auto">
                             <input 
                                 type="date" 
-                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-24 focus:outline-none focus:border-gray-500"
+                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-full sm:w-24 focus:outline-none focus:border-gray-500"
                                 value={adsDateInput}
                                 onChange={(e) => {
                                     setAdsDateInput(e.target.value);
@@ -486,14 +485,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                             <input 
                                 type="number" 
                                 placeholder="VNĐ"
-                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-24 font-bold text-gray-800 focus:outline-none focus:border-gray-500"
+                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-full sm:w-24 font-bold text-gray-800 focus:outline-none focus:border-gray-500"
                                 value={adsCostInput}
                                 onChange={(e) => setAdsCostInput(Number(e.target.value))}
                             />
                             <button 
                                 onClick={handleSaveAdsInline}
                                 disabled={isSavingAds}
-                                className="bg-gray-900 text-white p-1.5 rounded hover:bg-black disabled:opacity-50 transition-colors"
+                                className="bg-gray-900 text-white p-1.5 rounded hover:bg-black disabled:opacity-50 transition-colors flex-shrink-0"
                                 title="Lưu"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>

@@ -1,21 +1,21 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { getAllOrders } from '../services/orderService';
-import { getAllParts } from '../services/productService';
-import { getAllBackgrounds } from '../services/backgroundService';
-import { getAllTemplates } from '../services/templateService';
-import { getAllFeedbacks } from '../services/feedbackService';
-import { getAllFrames } from '../services/frameService';
-import { getStoreConfig, StoreConfig } from '../services/configService';
-import { auth } from '../config/firebase';
+import { getAllOrders } from '../../services/orderService';
+import { getAllParts } from '../../services/productService';
+import { getAllBackgrounds } from '../../services/backgroundService';
+import { getAllTemplates } from '../../services/templateService';
+import { getAllFeedbacks } from '../../services/feedbackService';
+import { getAllFrames } from '../../services/frameService';
+import { getStoreConfig, StoreConfig } from '../../services/configService';
+import { auth } from '../../config/firebase';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, StaffRole } from '../types';
+import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, StaffRole } from '../../types';
 
-import { AdminLogin } from '../components/admin/AdminLogin';
-import { AdminDashboard } from '../components/admin/AdminDashboard';
-import { AdminOrders } from '../components/admin/AdminOrders';
-import { AdminProducts } from '../components/admin/AdminProducts';
-import { AdminConfig } from '../components/admin/AdminConfig';
+import { AdminLogin } from '../admin/AdminLogin';
+import { AdminDashboard } from '../admin/AdminDashboard';
+import { AdminOrders } from '../admin/AdminOrders';
+import { AdminProducts } from '../admin/AdminProducts';
+import { AdminConfig } from '../admin/AdminConfig';
 
 type MainTab = 'dashboard' | 'orders' | 'products' | 'config';
 
@@ -113,9 +113,12 @@ const AdminPage: React.FC = () => {
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
             <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
-                    <div className="h-16 flex justify-between items-center">
+                    <div className="h-14 sm:h-16 flex justify-between items-center">
                         <div className="flex items-center gap-4 lg:gap-8">
-                            <div className="text-xl font-bold tracking-tight whitespace-nowrap">The Luvin <span className="font-normal text-gray-400 text-sm sm:text-base hidden sm:inline">| Quản lý</span></div>
+                            <div className="text-lg sm:text-xl font-bold tracking-tight whitespace-nowrap flex items-center gap-2">
+                                <span>The Luvin</span>
+                                <span className="font-normal text-gray-400 text-xs sm:text-sm bg-gray-100 px-2 py-0.5 rounded-full">Quản lý</span>
+                            </div>
                             <nav className="hidden md:flex gap-6">
                                  {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
                                 <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
@@ -123,12 +126,14 @@ const AdminPage: React.FC = () => {
                                 {canManageConfig && <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>}
                             </nav>
                         </div>
-                        <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4">
                             <div className="flex flex-col items-end leading-tight">
                                 <span className="text-xs text-gray-500 font-medium hidden sm:block">{currentUser.email}</span>
-                                <span className={`text-[10px] font-bold uppercase ${role === 'admin' ? 'text-red-600' : 'text-blue-600'}`}>{role === 'admin' ? '(Admin)' : '(Kho/NV)'}</span>
+                                <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${role === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                    {role === 'admin' ? 'Admin' : 'Staff'}
+                                </span>
                             </div>
-                            <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors" title="Đăng xuất">
+                            <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-2 hover:bg-gray-100 rounded-full transition-colors" title="Đăng xuất">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                                 </svg>
@@ -136,17 +141,44 @@ const AdminPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+                {/* Mobile Navigation */}
                 <div className="md:hidden border-t border-gray-100 overflow-x-auto no-scrollbar bg-white">
-                    <nav className="flex px-4 gap-6 min-w-max">
-                         {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
-                        <button onClick={() => setActiveTab('orders')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
-                        {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
-                        {canManageConfig && <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>}
+                    <nav className="flex px-4 gap-4 min-w-max">
+                         {canViewDashboard && (
+                            <button 
+                                onClick={() => setActiveTab('dashboard')} 
+                                className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
+                            >
+                                Dashboard
+                            </button>
+                         )}
+                        <button 
+                            onClick={() => setActiveTab('orders')} 
+                            className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
+                        >
+                            Đơn hàng
+                        </button>
+                        {canManageProducts && (
+                            <button 
+                                onClick={() => setActiveTab('products')} 
+                                className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
+                            >
+                                Sản phẩm
+                            </button>
+                        )}
+                        {canManageConfig && (
+                            <button 
+                                onClick={() => setActiveTab('config')} 
+                                className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
+                            >
+                                Cấu hình
+                            </button>
+                        )}
                     </nav>
                 </div>
             </header>
 
-            <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-4 sm:px-6">
+            <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
                 {activeTab === 'dashboard' && canViewDashboard && <AdminDashboard orders={orders} products={products} frames={frames} />}
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
                 {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} />}

@@ -133,29 +133,32 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in relative">
             {loading && <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"><div className="bg-white p-4 rounded shadow">Loading...</div></div>}
             
             {/* View Mode Switching Logic */}
             {viewMode === 'edit' ? (
-                <div className="w-full">
+                <div className="w-full h-full fixed inset-0 sm:relative sm:inset-auto bg-gray-50 z-40 overflow-y-auto sm:overflow-visible p-2 sm:p-0">
+                    <div className="sm:hidden mb-2">
+                        <button onClick={switchToList} className="text-sm text-gray-500 font-bold">&larr; Quay lại danh sách</button>
+                    </div>
                     {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
                     {activeProductSubTab === 'backgrounds' && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />}
                     {activeProductSubTab === 'frames' && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={switchToList} />}
                 </div>
             ) : (
                 <>
-                    <div className="flex gap-4 mb-6 border-b border-gray-200 pb-4">
-                        <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Linh kiện LEGO</button>
-                        <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Khung Tranh</button>
-                        <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Hình nền</button>
+                    <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-4 overflow-x-auto no-scrollbar">
+                        <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Linh kiện</button>
+                        <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Khung</button>
+                        <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền</button>
                     </div>
 
                     {activeProductSubTab === 'parts' && (
                         <>
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-4">
                                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                    <input placeholder="Tìm kiếm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                                    <input placeholder="Tìm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
                                     <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
                                         <option value="all">Tất cả loại</option>
                                         <option value="hair">Tóc</option>
@@ -173,11 +176,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     <button onClick={() => switchToEdit(null, 'parts')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
                                 {filteredProducts.map(part => (
                                     <div 
                                         key={part.id} 
-                                        className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all"
+                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all"
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, part.id)}
                                         onDragOver={handleDragOver}
@@ -186,11 +189,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <div className="aspect-square bg-gray-50 rounded mb-2 flex items-center justify-center p-2">
                                             <img src={part.imageUrl} className="max-w-full max-h-full object-contain" />
                                         </div>
-                                        <h4 className="font-bold text-sm truncate" title={part.name}>{part.name}</h4>
-                                        <p className="text-xs text-gray-500">{formatCurrency(part.price)}</p>
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                            <button onClick={() => switchToEdit(part, 'parts')} className="p-1 bg-blue-100 text-blue-600 rounded">✏️</button>
-                                            <button onClick={() => handleDeleteProduct(part.id)} className="p-1 bg-red-100 text-red-600 rounded">🗑️</button>
+                                        <h4 className="font-bold text-xs sm:text-sm truncate" title={part.name}>{part.name}</h4>
+                                        <p className="text-[10px] sm:text-xs text-gray-500">{formatCurrency(part.price)}</p>
+                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => switchToEdit(part, 'parts')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
+                                            <button onClick={() => handleDeleteProduct(part.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
                                         </div>
                                     </div>
                                 ))}
@@ -204,11 +207,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 <button onClick={handleSeedFrames} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Frames</button>
                                 <button onClick={() => switchToEdit(null, 'frames')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm Khung</button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                                 {frames.map(frame => (
                                     <div key={frame.id} className="bg-white border rounded-lg p-4 shadow-sm relative group">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-bold text-lg">{frame.name}</h4>
+                                            <h4 className="font-bold text-base sm:text-lg">{frame.name}</h4>
                                             <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">{frame.id}</span>
                                         </div>
                                         <div className="text-sm text-gray-600 space-y-1 mb-4">
@@ -219,7 +222,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 {frame.colors.map(c => <span key={c} className="w-3 h-3 rounded-full border" style={{backgroundColor: c === 'wood' ? '#d2b48c' : c}}></span>)}
                                             </div>
                                         </div>
-                                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                        <div className="absolute top-4 right-4 flex gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => switchToEdit(frame, 'frames')} className="px-3 py-1 bg-blue-100 text-blue-600 rounded text-xs font-bold">Sửa</button>
                                             <button onClick={() => handleDeleteFrame(frame.id)} className="px-3 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">Xóa</button>
                                         </div>
@@ -263,11 +266,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     ))}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
                                 {filteredBackgrounds.map(bg => (
                                     <div 
                                         key={bg.id} 
-                                        className="bg-white border rounded-lg p-3 group relative hover:shadow-md transition-all cursor-move"
+                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all cursor-move"
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, bg.id)}
                                         onDragOver={handleDragOver}
@@ -280,11 +283,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <img src={bg.url} className="w-full h-full object-cover" />
                                             )}
                                         </div>
-                                        <h4 className="font-bold text-sm truncate" title={bg.name}>{bg.name}</h4>
-                                        <p className="text-xs text-gray-500">{bg.category}</p>
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1 bg-blue-100 text-blue-600 rounded">✏️</button>
-                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1 bg-red-100 text-red-600 rounded">🗑️</button>
+                                        <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
+                                        <p className="text-[10px] sm:text-xs text-gray-500">{bg.category}</p>
+                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
+                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
                                         </div>
                                     </div>
                                 ))}
