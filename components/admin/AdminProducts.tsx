@@ -273,10 +273,14 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDragOver={handleDragOver}
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
-                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden`}>
-                                            <img src={bg.url} className="w-full h-full object-cover" />
+                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
+                                            {bg.url.startsWith('#') ? (
+                                                <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
+                                            ) : (
+                                                <img src={bg.url} className="w-full h-full object-cover" />
+                                            )}
                                         </div>
-                                        <h4 className="font-bold text-sm truncate">{bg.name}</h4>
+                                        <h4 className="font-bold text-sm truncate" title={bg.name}>{bg.name}</h4>
                                         <p className="text-xs text-gray-500">{bg.category}</p>
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                             <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1 bg-blue-100 text-blue-600 rounded">✏️</button>

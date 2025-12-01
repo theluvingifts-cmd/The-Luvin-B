@@ -164,6 +164,7 @@ const PresetBackgroundButton: React.FC<{
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
+    const isColor = bg.url.startsWith('#');
     let line1 = bg.name;
     let line2 = '';
 
@@ -189,21 +190,27 @@ const PresetBackgroundButton: React.FC<{
                     : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
         >
-            <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
-                <img
-                    src={bg.url}
-                    alt={bg.name}
-                    className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
-                    <div 
-                        className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
-                        title="Zoom"
-                    >
-                        <ZoomIcon className="w-4 h-4" />
-                    </div>
-                </div>
+            <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
+                {isColor ? (
+                    <div className="w-full h-full" style={{ backgroundColor: bg.url }}></div>
+                ) : (
+                    <>
+                        <img
+                            src={bg.url}
+                            alt={bg.name}
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
+                            <div 
+                                className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
+                                title="Zoom"
+                            >
+                                <ZoomIcon className="w-4 h-4" />
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-9 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-700">{line1}</span>
@@ -297,15 +304,18 @@ const Step2BackgroundAndDecorations: React.FC<{
 
         <div className="grid grid-cols-3 gap-2 min-h-[150px]">
           {filteredBackgrounds.length > 0 ? (
-            filteredBackgrounds.map((bg) => (
-              <PresetBackgroundButton
-                key={bg.id}
-                bg={bg}
-                isSelected={config.background.value === bg.url}
-                onClick={() => setConfig({ ...config, background: { type: 'image', value: bg.url } })}
-                onZoom={onZoomImage}
-              />
-            ))
+            filteredBackgrounds.map((bg) => {
+              const isColor = bg.url.startsWith('#');
+              return (
+                <PresetBackgroundButton
+                  key={bg.id}
+                  bg={bg}
+                  isSelected={config.background.value === bg.url}
+                  onClick={() => setConfig({ ...config, background: { type: isColor ? 'color' : 'image', value: bg.url } })}
+                  onZoom={onZoomImage}
+                />
+              );
+            })
           ) : (
             <p className="col-span-3 text-center text-sm text-gray-500 py-10">
               {backgrounds.length === 0 ? "Đang tải dữ liệu..." : "Không có mẫu nào phù hợp."}

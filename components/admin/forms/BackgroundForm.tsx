@@ -8,6 +8,11 @@ export const BackgroundForm: React.FC<{
     onSave: (bg: PresetBackground) => void;
     onCancel: () => void;
 }> = ({ initialData, onSave, onCancel }) => {
+    // Detect mode based on existing URL (if it starts with #, it's a color)
+    const [mode, setMode] = useState<'image' | 'color'>(
+        initialData?.url?.startsWith('#') ? 'color' : 'image'
+    );
+
     const [formData, setFormData] = useState<PresetBackground>(initialData || {
         id: `bg_${Date.now()}`, name: '', url: '', category: 'Khác', type: 'square'
     });
@@ -53,10 +58,10 @@ export const BackgroundForm: React.FC<{
                 </div>
                 <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Danh mục</label>
-                    <input name="category" value={formData.category} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white text-sm" placeholder="Kỷ niệm, Sinh nhật,..." />
+                    <input name="category" value={formData.category} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white text-sm" placeholder="Kỷ niệm, Sinh nhật, Màu trơn..." />
                 </div>
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Loại khung</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Loại khung áp dụng</label>
                     <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white text-sm">
                         <option value="square">Vuông (15x15, 23x23)</option>
                         <option value="rectangle">Chữ nhật (A5)</option>
@@ -64,17 +69,52 @@ export const BackgroundForm: React.FC<{
                 </div>
                 
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh</label>
-                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
-                        <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
-                        {isUploading ? (
-                            <span className="text-xs text-gray-500">Đang tải...</span>
-                        ) : formData.url ? (
-                            <img src={formData.url} alt="Preview" className="max-h-64 object-contain mx-auto rounded" />
-                        ) : (
-                            <span className="text-xs text-gray-400">Chọn ảnh</span>
-                        )}
+                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Loại nền</label>
+                    <div className="flex bg-gray-100 p-1 rounded-lg w-max mb-3">
+                        <button 
+                            onClick={() => { setMode('image'); if(formData.url.startsWith('#')) setFormData({...formData, url: ''}); }}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${mode === 'image' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            🖼️ Hình ảnh
+                        </button>
+                        <button 
+                            onClick={() => { setMode('color'); if(!formData.url.startsWith('#')) setFormData({...formData, url: '#ffffff'}); }}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${mode === 'color' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            🎨 Màu sắc
+                        </button>
                     </div>
+
+                    {mode === 'image' ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
+                            {isUploading ? (
+                                <span className="text-xs text-gray-500">Đang tải...</span>
+                            ) : formData.url && !formData.url.startsWith('#') ? (
+                                <img src={formData.url} alt="Preview" className="max-h-64 object-contain mx-auto rounded" />
+                            ) : (
+                                <span className="text-xs text-gray-400">Bấm để tải ảnh lên</span>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex gap-4 items-center p-4 border rounded-lg bg-gray-50">
+                            <input 
+                                type="color" 
+                                className="w-16 h-16 rounded border-0 cursor-pointer"
+                                value={formData.url.startsWith('#') ? formData.url : '#ffffff'}
+                                onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+                            />
+                            <div className="flex-grow">
+                                <label className="text-xs text-gray-500 mb-1 block">Mã màu (Hex)</label>
+                                <input 
+                                    className="w-full p-2 border rounded text-sm uppercase font-mono"
+                                    value={formData.url}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+                                    placeholder="#RRGGBB"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
