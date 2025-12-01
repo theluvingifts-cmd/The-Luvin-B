@@ -54,8 +54,8 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
   const heroImage = config?.heroImageUrl || 'https://res.cloudinary.com/dbdqd93km/image/upload/v1764516860/uwa2bkcqdog9yctdmett.png'; 
   const inspireImage = config?.inspireImageUrl || 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop';
   
-  const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
-  const heroSubtitle = config?.heroSubtitle || 'trong từng mảnh ghép';
+  const heroTitle = config?.heroTitle || 'Unique for';
+  const heroSubtitle = config?.heroSubtitle || 'every momment';
   
   // Story Config
   const storyTitle = config?.homeStoryTitle || 'Hơn cả một món quà, <br/>đó là kỷ niệm.';
