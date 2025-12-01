@@ -217,6 +217,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
+    // Low Stock Alert
+    const lowStockItems = useMemo(() => {
+        const threshold = 10;
+        const lowStockParts = products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= threshold).map(p => ({ name: p.name, stock: p.stock, type: 'Linh kiện' }));
+        const lowStockFrames = frames.filter(f => f.stock !== undefined && f.stock !== null && f.stock <= threshold).map(f => ({ name: f.name, stock: f.stock, type: 'Khung' }));
+        return [...lowStockParts, ...lowStockFrames];
+    }, [products, frames]);
+
     // Calculate profit for a single order
     const calculateOrderProfit = (order: Order): number => {
         let totalCost = 0;
@@ -416,6 +424,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     )}
                 </div>
             </div>
+
+            {/* ALERT LOW STOCK */}
+            {lowStockItems.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm">
+                    <div className="p-2 bg-red-100 rounded-full text-red-600">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <div className="flex-grow">
+                        <h4 className="font-bold text-red-800 text-sm mb-1">Cảnh báo tồn kho thấp ({lowStockItems.length})</h4>
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                            {lowStockItems.map((item, idx) => (
+                                <span key={idx} className="inline-flex items-center gap-1 bg-white border border-red-200 px-2 py-1 rounded text-xs text-red-600 font-medium whitespace-nowrap">
+                                    {item.name}: <b>{item.stock}</b>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 2. Key Metrics Cards - Grid 2 cols on mobile */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

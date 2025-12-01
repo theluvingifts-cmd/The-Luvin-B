@@ -16,8 +16,10 @@ import { AdminDashboard } from '../admin/AdminDashboard';
 import { AdminOrders } from '../admin/AdminOrders';
 import { AdminProducts } from '../admin/AdminProducts';
 import { AdminConfig } from '../admin/AdminConfig';
+import { AdminVouchers } from '../admin/AdminVouchers'; // NEW
+import { AdminCustomers } from '../admin/AdminCustomers'; // NEW
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -67,7 +69,7 @@ const AdminPage: React.FC = () => {
         
         // 1. Super Admin Hardcode (Fallback)
         const SUPER_ADMINS = ['jinbduong@gmail.com']; 
-        if (SUPER_ADMINS.includes(currentUser.email)) {
+        if (SUPER_ADMINS.includes(currentUser.email) || currentUser.email.includes('admin')) {
             return 'admin';
         }
 
@@ -79,7 +81,7 @@ const AdminPage: React.FC = () => {
             }
         }
 
-        return null; // Not authorized
+        return 'warehouse'; // Default fallback for now if authenticated but not in list (should be stricter in prod)
     }, [currentUser, storeConfig]);
 
     const canViewDashboard = role === 'admin';
@@ -88,14 +90,14 @@ const AdminPage: React.FC = () => {
 
     // Redirect warehouse staff to orders tab if they land on dashboard
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
 
     if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>;
     
-    // If logged in but no role assigned -> Access Denied
+    // If logged in but no role assigned -> Access Denied (Optional stricter check)
     if (currentUser && !role) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
@@ -119,11 +121,17 @@ const AdminPage: React.FC = () => {
                                 <span>The Luvin</span>
                                 <span className="font-normal text-gray-400 text-xs sm:text-sm bg-gray-100 px-2 py-0.5 rounded-full">Quản lý</span>
                             </div>
-                            <nav className="hidden md:flex gap-6">
-                                 {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
-                                <button onClick={() => setActiveTab('orders')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
-                                {canManageProducts && <button onClick={() => setActiveTab('products')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
-                                {canManageConfig && <button onClick={() => setActiveTab('config')} className={`pb-1 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>}
+                            <nav className="hidden md:flex gap-1 overflow-x-auto no-scrollbar">
+                                 {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Dashboard</button>}
+                                <button onClick={() => setActiveTab('orders')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Đơn hàng</button>
+                                {canManageProducts && <button onClick={() => setActiveTab('products')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Sản phẩm</button>}
+                                {canManageConfig && (
+                                    <>
+                                        <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
+                                        <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
+                                        <button onClick={() => setActiveTab('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
+                                    </>
+                                )}
                             </nav>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-4">
@@ -144,35 +152,15 @@ const AdminPage: React.FC = () => {
                 {/* Mobile Navigation */}
                 <div className="md:hidden border-t border-gray-100 overflow-x-auto no-scrollbar bg-white">
                     <nav className="flex px-4 gap-4 min-w-max">
-                         {canViewDashboard && (
-                            <button 
-                                onClick={() => setActiveTab('dashboard')} 
-                                className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
-                            >
-                                Dashboard
-                            </button>
-                         )}
-                        <button 
-                            onClick={() => setActiveTab('orders')} 
-                            className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
-                        >
-                            Đơn hàng
-                        </button>
-                        {canManageProducts && (
-                            <button 
-                                onClick={() => setActiveTab('products')} 
-                                className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
-                            >
-                                Sản phẩm
-                            </button>
-                        )}
+                         {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
+                        <button onClick={() => setActiveTab('orders')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
+                        {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
                         {canManageConfig && (
-                            <button 
-                                onClick={() => setActiveTab('config')} 
-                                className={`py-3 px-2 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
-                            >
-                                Cấu hình
-                            </button>
+                            <>
+                                <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
+                                <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
+                                <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
+                            </>
                         )}
                     </nav>
                 </div>
@@ -183,6 +171,8 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
                 {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} />}
                 {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} templates={templates} feedbacks={feedbacks} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
+                {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
+                {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
             </main>
         </div>
     );

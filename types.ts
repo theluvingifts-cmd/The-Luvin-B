@@ -157,6 +157,10 @@ export interface Order {
   // --- Payment Proof ---
   paymentProofUrl?: string; // Link ảnh chuyển khoản
   paymentProofUploadedAt?: string; // Thời gian up ảnh
+
+  // --- Discounts ---
+  discountCode?: string;
+  discountAmount?: number;
 }
 
 // NEW INTERFACES FOR DYNAMIC CONTENT
@@ -181,6 +185,32 @@ export interface StaffMember {
     email: string;
     role: StaffRole;
     addedAt?: string;
+}
+
+// --- VOUCHERS ---
+export interface Voucher {
+    id: string; // The actual code, e.g., "LUVIN10"
+    code: string;
+    type: 'percent' | 'fixed'; // percent (%), fixed (VND)
+    value: number; // 10 (for 10%) or 20000 (for 20k)
+    minOrderValue: number; // 0 if none
+    maxUsage?: number; // Limit total global uses
+    usedCount: number;
+    expiryDate?: string; // ISO Date string
+    isActive: boolean;
+    description?: string;
+}
+
+// --- CRM / CUSTOMERS ---
+export interface CustomerStats {
+    phone: string;
+    name: string;
+    email?: string;
+    address?: string;
+    totalOrders: number;
+    totalSpent: number;
+    lastOrderDate: number;
+    orders: Order[]; // Reference to orders for detail view
 }
 
 // --- THEME SYSTEM INTERFACES ---

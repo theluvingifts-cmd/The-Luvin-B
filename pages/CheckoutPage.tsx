@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { FrameConfig, LegoPart, Order } from '../types';
+import { FrameConfig, LegoPart, Order, Voucher } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
+import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
 
 interface CheckoutPageProps {
   cartItems: FrameConfig[];
@@ -39,6 +40,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState('');
 
+  // Voucher State
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [voucherError, setVoucherError] = useState('');
+  const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
   const EARLY_BIRD_THRESHOLD = 20; // 20 days threshold for pre-order discount
@@ -50,13 +57,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setName(initialOrder.customer.name);
           setPhone(initialOrder.customer.phone);
           setEmail(initialOrder.customer.email);
-          // Simple address parsing (won't be perfect for dropdowns but sets street text)
           setStreet(initialOrder.customer.address); 
           setDeliveryDate(initialOrder.delivery.date);
           setNotes(initialOrder.delivery.notes);
           setShippingOption(initialOrder.shipping.method);
           setAddGiftBox(initialOrder.addGiftBox);
           setPaymentMethod(initialOrder.payment.method);
+          // Vouchers cannot be re-applied in edit mode automatically for simplicity, or we could fetch again.
+          // For now, let's assume editing resets voucher or requires re-entry.
       }
   }, [initialOrder]);
 
@@ -115,10 +123,48 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }, [deliveryDate]);
 
   const isEarlyBird = daysDifference >= EARLY_BIRD_THRESHOLD;
-  const discountAmount = isEarlyBird ? Math.round(subtotal * EARLY_BIRD_DISCOUNT_PERCENT) : 0;
+  // If early bird applies, we don't apply other discounts? Or stack? 
+  // Let's decide: Voucher priority or stack. Here: Stack.
+  const earlyBirdDiscountAmount = isEarlyBird ? Math.round(subtotal * EARLY_BIRD_DISCOUNT_PERCENT) : 0;
 
-  const totalPrice = subtotal + shippingFee + giftBoxFee - discountAmount;
+  // Voucher Logic
+  let voucherDiscountAmount = 0;
+  if (appliedVoucher) {
+      if (appliedVoucher.type === 'percent') {
+          voucherDiscountAmount = Math.round(subtotal * (appliedVoucher.value / 100));
+      } else {
+          voucherDiscountAmount = appliedVoucher.value;
+      }
+      // Ensure discount doesn't exceed total
+      if (voucherDiscountAmount > subtotal) voucherDiscountAmount = subtotal;
+  }
+
+  const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount;
+  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee - totalDiscount);
   const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
+
+  const handleApplyVoucher = async () => {
+      if (!voucherCode.trim()) return;
+      setIsCheckingVoucher(true);
+      setVoucherError('');
+      
+      const result = await validateVoucher(voucherCode, subtotal);
+      
+      if (result.isValid && result.voucher) {
+          setAppliedVoucher(result.voucher);
+          setVoucherError('');
+      } else {
+          setAppliedVoucher(null);
+          setVoucherError(result.message || 'Mã không hợp lệ');
+      }
+      setIsCheckingVoucher(false);
+  };
+
+  const handleRemoveVoucher = () => {
+      setAppliedVoucher(null);
+      setVoucherCode('');
+      setVoucherError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +182,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     const districtName = districts.find(d => d.code === parseInt(selectedDistrict))?.name || '';
     const wardName = wards.find(w => w.code === parseInt(selectedWard))?.name || '';
     
-    // Construct address. If dropdowns used, use them. If not (editing mode pre-filled), use street as full address.
     let fullAddress = street;
     if (provinceName) {
         fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
@@ -144,7 +189,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
-    const finalNotes = isEarlyBird ? `[ƯU ĐÃI ĐẶT SỚM 5%] ${notes}` : notes;
+    const finalNotes = (isEarlyBird ? `[ƯU ĐÃI ĐẶT SỚM 5%] ` : '') + (appliedVoucher ? `[VOUCHER: ${appliedVoucher.code}] ` : '') + notes;
 
     try {
         await onPlaceOrder({
@@ -157,7 +202,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           payment: { method: paymentMethod },
           totalPrice,
           amountToPay,
+          discountCode: appliedVoucher?.code,
+          discountAmount: totalDiscount
         });
+
+        // Increment usage if voucher used
+        if (appliedVoucher) {
+            await incrementVoucherUsage(appliedVoucher.code);
+        }
+
     } catch (error) {
         console.error("Order submission error:", error);
         setIsSubmitting(false);
@@ -364,10 +417,41 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                 {isEarlyBird && (
                     <div className="flex justify-between text-green-700 font-bold">
                         <span>Ưu đãi đặt sớm (5%)</span>
-                        <span>-{formatCurrency(discountAmount)}</span>
+                        <span>-{formatCurrency(earlyBirdDiscountAmount)}</span>
+                    </div>
+                )}
+                {appliedVoucher && (
+                    <div className="flex justify-between text-blue-600 font-bold">
+                        <span>Voucher ({appliedVoucher.code})</span>
+                        <span>-{formatCurrency(voucherDiscountAmount)}</span>
                     </div>
                 )}
               </div>
+
+              {/* Voucher Input */}
+              <div className="mt-4 pt-2 border-t border-dashed">
+                  <p className="text-xs font-bold text-gray-500 mb-2">Mã giảm giá</p>
+                  <div className="flex gap-2">
+                      <input 
+                          type="text" 
+                          placeholder="Nhập mã" 
+                          value={voucherCode} 
+                          onChange={e => setVoucherCode(e.target.value.toUpperCase())}
+                          disabled={!!appliedVoucher}
+                          className="flex-grow p-2 border rounded-lg text-sm uppercase"
+                      />
+                      {appliedVoucher ? (
+                          <button onClick={handleRemoveVoucher} className="bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200">Xóa</button>
+                      ) : (
+                          <button onClick={handleApplyVoucher} disabled={isCheckingVoucher || !voucherCode} className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-black disabled:opacity-50">
+                              {isCheckingVoucher ? '...' : 'Áp dụng'}
+                          </button>
+                      )}
+                  </div>
+                  {voucherError && <p className="text-xs text-red-500 mt-1">{voucherError}</p>}
+                  {appliedVoucher && <p className="text-xs text-green-600 mt-1">Đã áp dụng mã: {appliedVoucher.description || appliedVoucher.code}</p>}
+              </div>
+
               <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
                 <span>Tổng cộng</span>
                 <span>{formatCurrency(totalPrice)}</span>

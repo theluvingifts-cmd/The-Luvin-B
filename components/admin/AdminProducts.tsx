@@ -28,6 +28,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     // Product Filters
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
+    const [showLowStockOnly, setShowLowStockOnly] = useState(false); // NEW Filter
     
     // Background Filters
     const [bgSearch, setBgSearch] = useState('');
@@ -40,10 +41,19 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const [editingFrame, setEditingFrame] = useState<FrameOption | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // Quick Stock Edit State
+    const [quickStockEditId, setQuickStockEditId] = useState<string | null>(null);
+    const [quickStockValue, setQuickStockValue] = useState<number>(0);
+
     // Filter Logic
     const filteredProducts = useMemo(() => 
-        products.filter(p => (productCategory === 'all' || p.type === productCategory) && p.name.toLowerCase().includes(productSearch.toLowerCase())), 
-    [products, productSearch, productCategory]);
+        products.filter(p => {
+            const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
+            const matchesCategory = productCategory === 'all' || p.type === productCategory;
+            const matchesStock = showLowStockOnly ? (p.stock !== undefined && p.stock !== null && p.stock <= 10) : true;
+            return matchesSearch && matchesCategory && matchesStock;
+        }), 
+    [products, productSearch, productCategory, showLowStockOnly]);
 
     const bgCategories = useMemo(() => {
         return ['all', ...Array.from(new Set(backgrounds.map(bg => bg.category)))];
@@ -95,6 +105,23 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         onRefreshFrames(); switchToList(); 
     };
     const handleDeleteFrame = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFrame(id); onRefreshFrames(); } };
+
+    // Quick Stock Edit Handlers
+    const startQuickStockEdit = (id: string, currentStock: number | undefined) => {
+        setQuickStockEditId(id);
+        setQuickStockValue(currentStock || 0);
+    };
+
+    const saveQuickStock = async (id: string, type: 'part' | 'frame') => {
+        if (type === 'part') {
+            await updatePart(id, { stock: quickStockValue });
+            onRefreshProducts();
+        } else {
+            await updateFrame(id, { stock: quickStockValue });
+            onRefreshFrames();
+        }
+        setQuickStockEditId(null);
+    };
 
     const handleDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; };
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
@@ -157,8 +184,8 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                     {activeProductSubTab === 'parts' && (
                         <>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-4">
-                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                    <input placeholder="Tìm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-wrap">
+                                    <input placeholder="Tìm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-48" />
                                     <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
                                         <option value="all">Tất cả loại</option>
                                         <option value="hair">Tóc</option>
@@ -170,6 +197,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <option value="pet">Thú cưng</option>
                                         <option value="set">Theo bộ</option>
                                     </select>
+                                    <button 
+                                        onClick={() => setShowLowStockOnly(!showLowStockOnly)}
+                                        className={`px-3 py-2 text-xs font-bold rounded border transition-colors ${showLowStockOnly ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                        {showLowStockOnly ? 'Đang lọc: Sắp hết' : 'Lọc: Sắp hết'}
+                                    </button>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
                                     <button onClick={handleSeedData} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Data</button>
@@ -190,7 +223,33 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             <img src={part.imageUrl} className="max-w-full max-h-full object-contain" />
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={part.name}>{part.name}</h4>
-                                        <p className="text-[10px] sm:text-xs text-gray-500">{formatCurrency(part.price)}</p>
+                                        <div className="flex justify-between items-center text-[10px] sm:text-xs text-gray-500 mt-1">
+                                            <span>{formatCurrency(part.price)}</span>
+                                            {/* Quick Stock Edit */}
+                                            {quickStockEditId === part.id ? (
+                                                <div className="flex items-center gap-1 absolute bottom-1 right-1 bg-white border p-1 rounded shadow-lg z-10">
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-12 border rounded px-1 text-xs" 
+                                                        value={quickStockValue}
+                                                        onChange={(e) => setQuickStockValue(Number(e.target.value))}
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={() => saveQuickStock(part.id, 'part')} className="text-green-600 font-bold">✓</button>
+                                                    <button onClick={() => setQuickStockEditId(null)} className="text-red-500 font-bold">×</button>
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); startQuickStockEdit(part.id, part.stock); }}
+                                                    className={`px-1.5 py-0.5 rounded font-bold cursor-pointer hover:bg-gray-100 ${
+                                                        (part.stock !== undefined && part.stock <= 10) ? 'text-red-600 bg-red-50' : 'text-gray-500'
+                                                    }`}
+                                                    title="Click để sửa nhanh tồn kho"
+                                                >
+                                                    Kho: {part.stock === undefined || part.stock === null ? '∞' : part.stock}
+                                                </button>
+                                            )}
+                                        </div>
                                         <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => switchToEdit(part, 'parts')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
                                             <button onClick={() => handleDeleteProduct(part.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
@@ -217,7 +276,31 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <div className="text-sm text-gray-600 space-y-1 mb-4">
                                             <p>Kích thước: {frame.frameWidthCm}x{frame.frameHeightCm}cm</p>
                                             <p>Giá: <span className="font-bold text-gray-900">{formatCurrency(frame.price)}</span></p>
-                                            <p>Tồn kho: <span className="font-bold">{frame.stock}</span></p>
+                                            <div className="flex items-center gap-2">
+                                                <span>Tồn kho:</span>
+                                                {/* Quick Stock Edit for Frames */}
+                                                {quickStockEditId === frame.id ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-16 border rounded px-1 text-xs" 
+                                                            value={quickStockValue}
+                                                            onChange={(e) => setQuickStockValue(Number(e.target.value))}
+                                                            autoFocus
+                                                        />
+                                                        <button onClick={() => saveQuickStock(frame.id, 'frame')} className="text-green-600 font-bold px-1">✓</button>
+                                                        <button onClick={() => setQuickStockEditId(null)} className="text-red-500 font-bold px-1">×</button>
+                                                    </div>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => startQuickStockEdit(frame.id, frame.stock)}
+                                                        className={`font-bold hover:underline ${(frame.stock !== undefined && frame.stock <= 10) ? 'text-red-600' : 'text-gray-900'}`}
+                                                        title="Click sửa nhanh"
+                                                    >
+                                                        {frame.stock}
+                                                    </button>
+                                                )}
+                                            </div>
                                             <div className="flex gap-1 mt-1">
                                                 {frame.colors.map(c => <span key={c} className="w-3 h-3 rounded-full border" style={{backgroundColor: c === 'wood' ? '#d2b48c' : c}}></span>)}
                                             </div>
