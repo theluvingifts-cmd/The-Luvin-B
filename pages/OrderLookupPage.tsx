@@ -4,6 +4,7 @@ import { Order } from '../types';
 import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderService';
 import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS } from '../constants';
+import { formatCurrency } from '../utils/pricing';
 
 // Orders that can be edited by customer must not have these statuses
 const PACKED_STATUSES = ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'];
@@ -131,17 +132,17 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                 <div className="flex justify-between items-start">
                     {steps.map((step, index) => (
                         <div key={step} className="z-10 text-center" style={ { width: `${100 / steps.length}%` }}>
-                             <div className={`w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-colors duration-500 relative ${index <= currentStepIndex ? 'bg-luvin-pink' : 'bg-gray-300'}`}>
+                             <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto transition-all duration-500 relative border-2 ${index <= currentStepIndex ? 'bg-luvin-pink border-luvin-pink shadow-md scale-110' : 'bg-white border-gray-300'}`}>
                                 {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                             </div>
-                            <p className={`mt-2 text-[10px] sm:text-xs font-semibold ${index <= currentStepIndex ? 'text-luvin-pink' : 'text-gray-500'}`}>{step}</p>
+                            <p className={`mt-2 text-[10px] sm:text-xs font-bold transition-colors ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>{step}</p>
                         </div>
                     ))}
                 </div>
-                <div className="absolute top-3 left-0 right-0 h-0.5 -z-0" style={{ padding: '0 10%' }}>
-                    <div className="w-full h-full bg-gray-200"></div>
+                <div className="absolute top-4 left-0 right-0 h-1 -z-0" style={{ padding: '0 10%' }}>
+                    <div className="w-full h-full bg-gray-200 rounded-full"></div>
                      <div 
-                        className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-500"
+                        className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-700 ease-out rounded-full"
                         style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
                     ></div>
                 </div>
@@ -159,69 +160,89 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
     };
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 py-8 min-h-[60vh]">
-            <div className="max-w-3xl mx-auto">
-                <div className="text-center">
-                    <h1 className="text-4xl sm:text-5xl font-heading text-luvin-pink mb-4">Tra cứu đơn hàng</h1>
-                    <form onSubmit={handleSearch} className="flex gap-2 max-w-md mx-auto mt-6">
-                        <input
-                            type="text"
-                            value={orderCode}
-                            onChange={(e) => setOrderCode(e.target.value)}
-                            placeholder="#TLxxxxxx hoặc SĐT"
-                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center uppercase"
-                        />
-                        <button type="submit" disabled={isLoading} className="bg-luvin-pink text-gray-800 font-bold px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50">
-                            {isLoading ? '...' : 'Tra cứu'}
-                        </button>
-                    </form>
-                    <p className="text-xs text-gray-500 mt-2">Nhập mã đơn hàng (có dấu #) hoặc số điện thoại đặt hàng</p>
-                    
-                    {savedOrders.length > 0 && !foundOrder && (
-                        <div className="mt-8 max-w-md mx-auto">
-                            <p className="text-sm text-gray-500 mb-3 font-medium">Đơn hàng của bạn (trên thiết bị này):</p>
-                            <div className="space-y-2">
-                                {savedOrders.map((item, idx) => (
-                                    <div 
-                                        key={idx} 
-                                        onClick={() => handleSearch(undefined, item.id)}
-                                        className="bg-white border border-gray-200 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors group"
-                                    >
-                                        <div className="text-left">
-                                            <p className="font-bold text-gray-800">{item.id}</p>
-                                            <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('vi-VN')}</p>
-                                        </div>
-                                        <span className="text-xs font-bold text-luvin-pink group-hover:underline">Xem ngay &rarr;</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+        <div className="min-h-screen bg-[#fcf9f6] font-body text-gray-800">
+            {/* Hero Section */}
+            <div className="bg-white border-b border-gray-100 py-16 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-pink-50 rounded-full blur-3xl opacity-60 pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-60 pointer-events-none -translate-x-1/3 translate-y-1/3"></div>
+                <div className="container mx-auto px-4 relative z-10 text-center">
+                    <h1 className="text-4xl md:text-5xl font-heading font-bold text-gray-900 mb-4">Tra Cứu Đơn Hàng</h1>
+                    <p className="text-gray-500">Theo dõi hành trình món quà của bạn.</p>
                 </div>
+            </div>
 
-                <div className="mt-10 min-h-[300px]">
-                    {isLoading && <p className="text-center">Đang tìm kiếm...</p>}
+            <div className="container mx-auto px-4 sm:px-6 py-12 -mt-8">
+                <div className="max-w-3xl mx-auto space-y-8">
+                    
+                    {/* Search Card */}
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 transform -translate-y-4">
+                        <form onSubmit={handleSearch} className="flex gap-3 max-w-lg mx-auto">
+                            <input
+                                type="text"
+                                value={orderCode}
+                                onChange={(e) => setOrderCode(e.target.value)}
+                                placeholder="Mã đơn (#TLxxxxxx) hoặc SĐT"
+                                className="flex-grow p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-luvin-pink focus:border-luvin-pink text-center uppercase font-bold text-lg outline-none bg-gray-50 focus:bg-white transition-colors"
+                            />
+                            <button type="submit" disabled={isLoading} className="bg-gray-900 text-white font-bold px-8 py-4 rounded-xl hover:bg-luvin-pink hover:text-gray-900 transition-all shadow-lg disabled:opacity-50 active:scale-95">
+                                {isLoading ? '...' : 'Tìm kiếm'}
+                            </button>
+                        </form>
+                        
+                        {savedOrders.length > 0 && !foundOrder && (
+                            <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 text-center">Đơn hàng gần đây</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {savedOrders.map((item, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            onClick={() => handleSearch(undefined, item.id)}
+                                            className="bg-gray-50 border border-gray-100 p-3 rounded-xl flex justify-between items-center cursor-pointer hover:bg-white hover:shadow-md hover:border-luvin-pink/30 transition-all group"
+                                        >
+                                            <div className="text-left">
+                                                <p className="font-bold text-gray-800 text-sm">{item.id}</p>
+                                                <p className="text-[10px] text-gray-500">{new Date(item.date).toLocaleDateString('vi-VN')}</p>
+                                            </div>
+                                            <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-400 group-hover:text-luvin-pink shadow-sm">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Loading & Errors */}
+                    {isLoading && <div className="text-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-luvin-pink mx-auto"></div><p className="mt-4 text-gray-500 font-medium">Đang tìm dữ liệu...</p></div>}
+                    
                     {foundOrder === 'not_found' && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center">
-                            Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã đơn hàng hoặc số điện thoại.
+                        <div className="bg-red-50 border border-red-100 text-red-700 p-6 rounded-2xl text-center shadow-sm">
+                            <div className="text-3xl mb-2">🤔</div>
+                            <p className="font-bold">Không tìm thấy đơn hàng</p>
+                            <p className="text-sm mt-1">Vui lòng kiểm tra lại mã đơn hàng hoặc số điện thoại.</p>
                         </div>
                     )}
+                    
                     {foundOrder === 'permission_error' && (
-                        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg text-center">
+                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-6 rounded-2xl text-center shadow-sm">
+                            <div className="text-3xl mb-2">🚧</div>
                             <p className="font-bold">Hệ thống đang bảo trì</p>
                             <p className="text-sm mt-1">
-                                Tính năng tra cứu đang được nâng cấp. Vui lòng inbox Fanpage hoặc gọi Hotline <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap font-bold hover:text-luvin-pink transition-colors">0964 393 115</a> để được hỗ trợ kiểm tra đơn hàng nhanh nhất.
+                                Vui lòng liên hệ Hotline <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap font-bold hover:text-luvin-pink underline">0964 393 115</a> để được hỗ trợ nhanh nhất.
                             </p>
                         </div>
                     )}
+
+                    {/* Order Details */}
                     {foundOrder && typeof foundOrder === 'object' && (
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md relative">
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-lg animate-fade-in-up">
                             {/* Allow Editing if not packed */}
                             {!PACKED_STATUSES.includes(foundOrder.status) && (
                                 <div className="absolute top-6 right-6">
                                     <button 
                                         onClick={() => onEditOrder(foundOrder as Order)}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                                        className="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-2"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         Sửa đơn hàng
@@ -229,15 +250,16 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                 </div>
                             )}
 
-                            <div className="flex justify-between items-start">
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                                 <div>
-                                    <h2 className="font-bold text-lg">Chi tiết đơn hàng <span className="text-luvin-pink">{foundOrder.id}</span></h2>
-                                    <p className="text-sm text-gray-500">
-                                        Ngày đặt: {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}
+                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Đơn hàng</p>
+                                    <h2 className="font-heading font-bold text-3xl text-gray-900">{foundOrder.id}</h2>
+                                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                                        <span>📅 {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}</span>
                                     </p>
                                 </div>
-                                <div className="mt-8 sm:mt-0">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                <div className="mt-2 sm:mt-0">
+                                    <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : foundOrder.status === 'Huỷ đơn' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                         {foundOrder.status}
                                     </span>
                                 </div>
@@ -246,41 +268,45 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                             <StatusTracker currentStatus={foundOrder.status} />
 
                             {foundOrder.status === 'Chờ thanh toán' && (
-                                <div className="mt-6 bg-white border border-yellow-200 rounded-lg p-6 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400"></div>
-                                    <h3 className="font-bold text-gray-800 mb-1">Đơn hàng chưa thanh toán</h3>
-                                    <p className="text-sm text-gray-500 mb-4">Quét mã QR để thanh toán ngay</p>
-                                    
-                                    <div className="bg-white p-2 border rounded-xl shadow-sm inline-block">
-                                        <img src={getVietQR(foundOrder)} alt="Mã QR Thanh toán" className="w-48 h-48 object-contain rounded-lg" />
+                                <div className="mt-8 bg-gradient-to-br from-yellow-50 to-white border border-yellow-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-8 items-center">
+                                    <div className="flex-1 text-center md:text-left">
+                                        <h3 className="font-bold text-gray-900 text-lg mb-2">Đơn hàng chưa thanh toán</h3>
+                                        <p className="text-sm text-gray-600 mb-4">Vui lòng quét mã QR hoặc chuyển khoản để chúng tôi tiến hành làm đơn ngay cho bạn nhé.</p>
+                                        
+                                        <div className="space-y-2 bg-white/50 p-4 rounded-xl border border-yellow-100 inline-block md:block w-full">
+                                            <p className="text-sm"><span className="text-gray-500">Ngân hàng:</span> <span className="font-bold">Techcombank</span></p>
+                                            <p className="text-sm"><span className="text-gray-500">STK:</span> <span className="font-bold">65838666666</span></p>
+                                            <p className="text-sm"><span className="text-gray-500">Chủ TK:</span> <span className="font-bold">NGO TRONG DUONG</span></p>
+                                            <div className="mt-2 pt-2 border-t border-yellow-100">
+                                                <p className="text-xs text-gray-500">Nội dung CK:</p>
+                                                <p className="font-mono font-bold text-lg text-luvin-pink select-all">{foundOrder.id}</p>
+                                            </div>
+                                        </div>
                                     </div>
                                     
-                                    <div className="mt-4 space-y-1">
-                                        <p className="text-sm font-bold text-gray-800">Techcombank - 65838666666</p>
-                                        <p className="text-sm">Chủ TK: NGO TRONG DUONG</p>
-                                        <div className="mt-2 inline-block bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
-                                            Nội dung: <span className="font-bold text-gray-900 select-all">{foundOrder.id}</span>
-                                        </div>
+                                    <div className="flex-shrink-0 bg-white p-2 border rounded-xl shadow-sm">
+                                        <img src={getVietQR(foundOrder)} alt="Mã QR Thanh toán" className="w-40 h-40 object-contain rounded-lg" />
                                     </div>
 
                                     {/* Upload Payment Proof Section */}
-                                    <div className="mt-6 pt-6 border-t border-gray-100 w-full max-w-sm">
+                                    <div className="flex-1 w-full border-t md:border-t-0 md:border-l border-yellow-200 pt-6 md:pt-0 md:pl-8">
                                         {foundOrder.paymentProofUrl ? (
-                                            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                                                <p className="text-green-700 font-bold text-sm flex items-center justify-center gap-2">
-                                                    <span>✓</span> Đã gửi ảnh xác nhận
+                                            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                                                <p className="text-green-700 font-bold text-sm flex items-center justify-center gap-2 mb-2">
+                                                    <span className="bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</span> 
+                                                    Đã gửi ảnh xác nhận
                                                 </p>
-                                                <p className="text-xs text-green-600 mt-1 mb-2">Đang chờ shop kiểm tra...</p>
-                                                <img src={foundOrder.paymentProofUrl} alt="Proof" className="h-20 object-contain mx-auto border rounded bg-white" />
-                                                <button onClick={() => fileInputRef.current?.click()} className="text-[10px] text-gray-400 underline mt-2">Gửi ảnh khác</button>
+                                                <img src={foundOrder.paymentProofUrl} alt="Proof" className="h-24 object-contain mx-auto border rounded bg-white shadow-sm" />
+                                                <button onClick={() => fileInputRef.current?.click()} className="text-[10px] text-gray-400 hover:text-gray-600 underline mt-2">Gửi ảnh khác</button>
                                             </div>
                                         ) : (
                                             <div className="text-center">
-                                                <p className="text-xs text-gray-500 mb-3">Đã chuyển khoản? Gửi ảnh biên lai để xác nhận nhanh hơn:</p>
+                                                <p className="text-sm font-bold text-gray-700 mb-2">Đã chuyển khoản?</p>
+                                                <p className="text-xs text-gray-500 mb-4">Gửi ảnh biên lai để đơn được xác nhận nhanh hơn.</p>
                                                 <button 
                                                     onClick={() => fileInputRef.current?.click()}
                                                     disabled={isUploading}
-                                                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                                    className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2 mx-auto disabled:opacity-50"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -300,32 +326,35 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 pt-8 border-t border-gray-100">
                                 <div>
-                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Thông tin nhận hàng</h3>
-                                    <p><span className="font-semibold">Người nhận:</span> {foundOrder.customer.name}</p>
-                                    <p><span className="font-semibold">SĐT:</span> {foundOrder.customer.phone}</p>
-                                    <p><span className="font-semibold">Địa chỉ:</span> {foundOrder.customer.address}</p>
+                                    <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-3 mb-4 uppercase text-xs tracking-wider">Thông tin nhận hàng</h3>
+                                    <div className="space-y-3 text-sm text-gray-600">
+                                        <div className="flex gap-3"><span className="w-5 text-gray-400">👤</span> <span className="font-medium text-gray-900">{foundOrder.customer.name}</span></div>
+                                        <div className="flex gap-3"><span className="w-5 text-gray-400">📞</span> <span className="font-medium">{foundOrder.customer.phone}</span></div>
+                                        <div className="flex gap-3"><span className="w-5 text-gray-400">📍</span> <span>{foundOrder.customer.address}</span></div>
+                                    </div>
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-800 border-b pb-2 mb-3">Đơn hàng</h3>
-                                    <div className="space-y-2">
+                                    <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-3 mb-4 uppercase text-xs tracking-wider">Chi tiết sản phẩm</h3>
+                                    <div className="space-y-4">
                                         {foundOrder.items.map((item, idx) => (
-                                            <div key={idx} className="flex items-center gap-3">
-                                                <div className="w-12 h-12 bg-gray-100 rounded border overflow-hidden cursor-pointer" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                                            <div key={idx} className="flex items-start gap-4 bg-gray-50 p-3 rounded-xl">
+                                                <div className="w-16 h-16 bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
                                                     {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-semibold">Khung thiết kế</p>
-                                                    <p className="text-xs text-gray-500">{item.characters.length} nhân vật</p>
+                                                    <p className="text-sm font-bold text-gray-800">Khung thiết kế riêng</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{item.characters.length} nhân vật • Khung {item.frameId}</p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                             <div className="mt-6 pt-4 border-t text-right">
-                                <p className="text-lg">Tổng tiền: <span className="font-bold text-luvin-pink">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(foundOrder.totalPrice)}</span></p>
+                             <div className="mt-8 pt-4 border-t border-dashed border-gray-200 flex justify-between items-center">
+                                <span className="text-gray-500 text-sm font-medium">Tổng thanh toán</span>
+                                <span className="text-2xl font-bold text-luvin-pink">{formatCurrency(foundOrder.totalPrice)}</span>
                             </div>
                         </div>
                     )}

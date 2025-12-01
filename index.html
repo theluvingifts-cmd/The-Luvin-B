@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>The Luvin - Thương hiệu quà tặng tinh tế</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,6 +42,7 @@
             animation: {
               marquee: 'marquee 80s linear infinite',
               'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'bounce-small': 'bounceSmall 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
             },
             keyframes: {
               marquee: {
@@ -52,6 +52,10 @@
               fadeIn: {
                 '0%': { opacity: '0', transform: 'translateY(10px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              bounceSmall: {
+                '0%, 100%': { transform: 'scale(1)' },
+                '50%': { transform: 'scale(0.95)' },
               }
             },
           }
@@ -62,9 +66,6 @@
       :root {
         color-scheme: light;
         /* --- DEFAULT THEME VARIABLES --- */
-        /* Will be overwritten by App.tsx from Firestore Config */
-        
-        /* Global Colors */
         --color-primary: #efa3b5;
         --color-secondary: #f9f4ef;
         --color-text: #3a2a28;
@@ -86,10 +87,9 @@
         --footer-text: #374151;
       }
       
-      /* Placeholder for Custom Uploaded Font */
       @font-face {
         font-family: 'CustomBrandFont';
-        src: local('Arial'); /* Fallback until loaded */
+        src: local('Arial');
         font-display: swap;
       }
       
@@ -99,7 +99,6 @@
         color: var(--color-text);
       }
       
-      /* Typography Classes */
       h1, h2, h3, h4, h5, h6 {
         font-family: var(--font-heading), serif;
       }
@@ -113,6 +112,17 @@
         scrollbar-width: none;
       }
       
+      /* Skeleton Loading */
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+      }
+      .skeleton {
+        animation: shimmer 2s infinite linear;
+        background: linear-gradient(to right, #f6f7f8 4%, #edeef1 25%, #f6f7f8 36%);
+        background-size: 1000px 100%;
+      }
+
       /* Form Elements */
       input, select, textarea {
         background-color: #ffffff !important;
@@ -139,6 +149,11 @@
         border-radius: 8px;
         transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
         opacity: 1;
+      }
+      
+      /* Mobile adjustments */
+      .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
       }
     </style>
   <script type="importmap">

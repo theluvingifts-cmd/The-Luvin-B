@@ -11,6 +11,7 @@ import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
+import { getAllOrders } from '../services/orderService';
 
 declare var html2canvas: any;
 
@@ -77,16 +78,16 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   );
 };
 
-const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
+const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
       if (selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0) {
           if (!config.frameColor || !selectedFrame.colors.includes(config.frameColor)) {
-              setConfig(prev => ({ ...prev, frameColor: selectedFrame.colors[0] }));
+              setConfig({ ...config, frameColor: selectedFrame.colors[0] });
           }
       }
-  }, [selectedFrame, config.frameColor, setConfig]);
+  }, [selectedFrame, config.frameColor]);
 
   return (
     <div className="space-y-4">
@@ -96,10 +97,10 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
           {frames.map(frame => (
             <button
               key={frame.id}
-              onClick={() => setConfig(prev => ({ ...prev, frameId: frame.id }))}
+              onClick={() => setConfig({ ...config, frameId: frame.id })}
               disabled={frame.stock === 0}
-              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative ${
-                config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-50'
+              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative hover:scale-105 active:scale-95 ${
+                config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink shadow-md' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-50'
               } ${frame.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span>{frame.name}</span>
@@ -126,8 +127,8 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: React.Dispatch<Reac
                         return (
                             <button 
                                 key={color}
-                                onClick={() => setConfig(prev => ({ ...prev, frameColor: color }))}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all capitalize ${isSelected ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                                onClick={() => setConfig({ ...config, frameColor: color })}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all capitalize hover:shadow-sm ${isSelected ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
                             >
                                 <div 
                                     className="w-4 h-4 rounded-full shadow-sm border" 
@@ -182,7 +183,7 @@ const PresetBackgroundButton: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`border-2 rounded-xl p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative group ${
+            className={`border-2 rounded-xl p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative group hover:shadow-md ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -214,7 +215,7 @@ const PresetBackgroundButton: React.FC<{
 
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
-  setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
+  setConfig: (c: FrameConfig) => void;
   addText: () => void;
   addCharm: (dataUrl: string) => void;
   backgrounds: PresetBackground[];
@@ -252,7 +253,7 @@ const Step2BackgroundAndDecorations: React.FC<{
       const fileReader = new FileReader();
       fileReader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
-          setConfig((prev) => ({ ...prev, background: { type: 'upload', value: event.target.result as string } }));
+          setConfig({ ...config, background: { type: 'upload', value: event.target.result as string } });
         }
       };
       fileReader.readAsDataURL(e.target.files[0]);
@@ -301,7 +302,7 @@ const Step2BackgroundAndDecorations: React.FC<{
                 key={bg.id}
                 bg={bg}
                 isSelected={config.background.value === bg.url}
-                onClick={() => setConfig((prev) => ({ ...prev, background: { type: 'image', value: bg.url } }))}
+                onClick={() => setConfig({ ...config, background: { type: 'image', value: bg.url } })}
                 onZoom={onZoomImage}
               />
             ))
@@ -314,7 +315,7 @@ const Step2BackgroundAndDecorations: React.FC<{
       </div>
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">B. HOẶC TẢI ẢNH CỦA BẠN</h4>
-        <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300">
+        <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
           Tải ảnh nền
         </button>
       </div>
@@ -323,10 +324,10 @@ const Step2BackgroundAndDecorations: React.FC<{
         <h4 className="font-bold text-gray-800 mb-2">C. THÊM CHỮ & TRANG TRÍ</h4>
         <p className="text-sm text-gray-600 mb-3">Chỉnh sửa trực tiếp trên khung xem trước.</p>
         <div className="flex gap-2">
-            <button onClick={addText} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300">
+            <button onClick={addText} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
               + Thêm chữ mới
             </button>
-            <button onClick={() => charmUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300">
+            <button onClick={() => charmUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
               Tải ảnh nhỏ
             </button>
         </div>
@@ -342,7 +343,8 @@ const PartButton: React.FC<{
     isSelected: boolean;
     onClick: () => void;
     priceToDisplay: number; 
-}> = ({ part, isSelected, onClick, priceToDisplay }) => {
+    isHot?: boolean;
+}> = ({ part, isSelected, onClick, priceToDisplay, isHot }) => {
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -359,15 +361,15 @@ const PartButton: React.FC<{
                 isSelected
                     ? 'border-luvin-pink bg-pink-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
-            } ${isClicked ? 'ring-2 ring-luvin-pink ring-opacity-50 scale-95' : ''}`}
+            } ${isClicked ? 'ring-2 ring-luvin-pink ring-opacity-50 scale-95' : 'hover:scale-[1.02]'}`}
         >
             {isClicked && (
                 <div className="absolute inset-0 bg-luvin-pink opacity-20 z-10 animate-ping rounded-lg"></div>
             )}
             {/* HOT BADGE */}
-            {part.isHot && (
-                <div className="absolute top-0 right-0 z-20">
-                    <span className="text-xs">🔥</span>
+            {isHot && (
+                <div className="absolute top-0 right-0 z-20 bg-red-500 text-white text-[10px] px-1 rounded-bl shadow-sm" title="Hot Trend - Được chọn nhiều nhất tuần qua">
+                    🔥
                 </div>
             )}
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
@@ -377,13 +379,14 @@ const PartButton: React.FC<{
                         alt={part.name} 
                         className="w-full h-full object-contain" 
                         onError={() => setImgError(true)}
+                        loading="lazy"
                     />
                 ) : (
                     <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
                 )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
-                <span className="text-[11px] font-semibold text-gray-800">{part.name}</span>
+                <span className="text-[11px] font-semibold text-gray-800 line-clamp-1">{part.name}</span>
                 <span className={`text-[11px] font-bold ${isSelected && priceToDisplay > part.price ? 'text-red-600' : 'text-luvin-pink'}`}>
                     {formatCurrency(priceToDisplay)}
                 </span>
@@ -403,13 +406,14 @@ const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_des
 
 const Step3Characters: React.FC<{ 
     config: FrameConfig; 
-    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
+    setConfig: (c: FrameConfig) => void;
     legoParts: typeof LEGO_PARTS;
     selectedItemId?: string | null;
     setSelectedItemId: (id: string | null) => void;
     activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType }) => {
+    hotPartIds: string[];
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -458,7 +462,7 @@ const Step3Characters: React.FC<{
             selectedPantsColor: availablePants[0]?.colors?.[0],
             selectedHairColor: availableHairs[0]?.colors?.[0],
         };
-        setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
+        setConfig({ ...config, characters: [...config.characters, newCharacter] });
         setActiveCharId(newId);
         
         setSelectedItemId(`character-${newId}`);
@@ -466,7 +470,7 @@ const Step3Characters: React.FC<{
     };
     
     const handleRemoveChar = (id: number) => {
-        setConfig(prev => ({...prev, characters: prev.characters.filter(c => c.id !== id)}));
+        setConfig({...config, characters: config.characters.filter(c => c.id !== id)});
     };
     
     const addDraggableItem = (part: LegoPart) => {
@@ -494,7 +498,7 @@ const Step3Characters: React.FC<{
             isFlipped: false, 
             selectedColor: part.colors?.[0]
         };
-        setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
+        setConfig({...config, draggableItems: [...config.draggableItems, newItem]});
     }
 
     const handlePartSelect = (part: LegoPart | undefined) => {
@@ -505,9 +509,9 @@ const Step3Characters: React.FC<{
             return;
         }
 
-        setConfig(prev => ({
-            ...prev,
-            characters: prev.characters.map(c => {
+        setConfig({
+            ...config,
+            characters: config.characters.map(c => {
                 if (c.id === activeCharId) {
                     const newChar = { ...c };
                     
@@ -537,33 +541,33 @@ const Step3Characters: React.FC<{
                 }
                 return c;
             })
-        }));
+        });
     };
 
     const handlePartDeselect = (partType: 'hair' | 'hat') => {
       if (!activeCharId) return;
       if (partType === 'hat') return;
 
-      setConfig(prev => ({
-        ...prev,
-        characters: prev.characters.map(c => {
+      setConfig({
+        ...config,
+        characters: config.characters.map(c => {
             if (c.id === activeCharId) {
                 const updatedChar = { ...c, [partType]: undefined };
                 return updatedChar;
             }
             return c;
         })
-      }));
+      });
     }
     
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
-      setConfig(prev => ({
-        ...prev,
-        characters: prev.characters.map(c => 
+      setConfig({
+        ...config,
+        characters: config.characters.map(c => 
           c.id === printDialogCharId ? { ...c, customPrintPrice: price } : c
         )
-      }));
+      });
       setPrintDialogCharId(null);
     };
 
@@ -588,9 +592,9 @@ const Step3Characters: React.FC<{
         const randomShirt = getRandomItem(availableShirt);
         const randomPants = getRandomItem(availablePants);
 
-        setConfig(prev => ({
-            ...prev,
-            characters: prev.characters.map(c => {
+        setConfig({
+            ...config,
+            characters: config.characters.map(c => {
                 if (c.id === activeCharId) {
                     const newChar: LegoCharacterConfig = { ...c };
                     
@@ -619,7 +623,7 @@ const Step3Characters: React.FC<{
                 }
                 return c;
             })
-        }));
+        });
     };
     
     const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set', label: string }[] = [
@@ -676,7 +680,7 @@ const Step3Characters: React.FC<{
                     {activeCharacter && (
                         <button 
                             onClick={handleRandomizeOutfit}
-                            className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors"
+                            className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
                             title="Chọn ngẫu nhiên trang phục"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
@@ -687,15 +691,15 @@ const Step3Characters: React.FC<{
                 <div className="flex items-center gap-2 flex-wrap">
                     {config.characters.map((char, index) => (
                         <div key={char.id} className="relative">
-                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink' : 'bg-gray-200 text-gray-800'}`}>
+                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
                                 NV {index + 1}
                             </button>
-                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold">
+                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">
                                 &times;
                             </button>
                         </div>
                     ))}
-                    <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
+                    <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
                 </div>
                 {activeCharacter && 
                   <div className="mt-4 pt-4 border-t flex items-center justify-start">
@@ -713,7 +717,7 @@ const Step3Characters: React.FC<{
                     <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
                         <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1">
                             {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
                                     {pt.label}
                                 </button>
                             ))}
@@ -798,7 +802,14 @@ const Step3Characters: React.FC<{
 
                 <div className="grid grid-cols-4 gap-2">
                     {filteredAccessories.length > 0 ? filteredAccessories.map(part => (
-                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
+                        <PartButton 
+                            key={part.id} 
+                            part={part} 
+                            isSelected={false} 
+                            onClick={() => addDraggableItem(part)} 
+                            priceToDisplay={part.price} 
+                            isHot={hotPartIds.includes(part.id)}
+                        />
                     )) : (
                         <p className="col-span-4 text-center text-sm text-gray-400 py-4">Không tìm thấy phụ kiện nào.</p>
                     )}
@@ -809,7 +820,14 @@ const Step3Characters: React.FC<{
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => (
-                        <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={part.price} />
+                        <PartButton 
+                            key={part.id} 
+                            part={part} 
+                            isSelected={false} 
+                            onClick={() => addDraggableItem(part)} 
+                            priceToDisplay={part.price}
+                            isHot={hotPartIds.includes(part.id)}
+                        />
                     ))}
                 </div>
             </div>
@@ -870,17 +888,18 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
 
 const TextEditor: React.FC<{
     activeText: TextConfig;
-    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
+    setConfig: (c: FrameConfig) => void;
+    config: FrameConfig;
     selectedTextId: number;
     deselect: () => void;
     onAddText: () => void;
-}> = ({ activeText, setConfig, selectedTextId, deselect, onAddText }) => {
+}> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
-        setConfig((prev) => ({
-            ...prev,
-            texts: prev.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
-        }));
+        setConfig({
+            ...config,
+            texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
+        });
     }
     
     return (
@@ -964,7 +983,115 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
-  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt'); 
+  const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
+  const [hotPartIds, setHotPartIds] = useState<string[]>([]);
+  
+  // Undo/Redo State
+  const [history, setHistory] = useState<FrameConfig[]>([config]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchHotTrends = async () => {
+        try {
+            const orders = await getAllOrders();
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            const recentOrders = orders.filter(o => (o.createdAt || 0) > sevenDaysAgo);
+            
+            const counts: Record<string, number> = {};
+            recentOrders.forEach(o => {
+                o.items.forEach(item => {
+                    // Count draggable items (Accessories, Pets)
+                    item.draggableItems.forEach(d => {
+                        if (d.type !== 'charm') { // Ignore custom uploads
+                            counts[d.partId] = (counts[d.partId] || 0) + 1;
+                        }
+                    });
+                    // Count worn items if needed (Hats)
+                    item.characters.forEach(c => {
+                        if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
+                    });
+                });
+            });
+
+            // Get Top 3
+            const top3 = Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 3)
+                .map(([id]) => id);
+            
+            setHotPartIds(top3);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    fetchHotTrends();
+  }, []);
+
+  // Wrapper for setConfig to handle history
+  const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
+      setConfig(prev => {
+          const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
+          
+          // Only add to history if it's different
+          if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
+              const newHistory = history.slice(0, historyIndex + 1);
+              newHistory.push(newConfig);
+              // Limit history size to 20
+              if (newHistory.length > 20) newHistory.shift();
+              setHistory(newHistory);
+              setHistoryIndex(newHistory.length - 1);
+          }
+          return newConfig;
+      });
+  }, [history, historyIndex, setConfig]);
+
+  const handleUndo = () => {
+      if (historyIndex > 0) {
+          const newIndex = historyIndex - 1;
+          setHistoryIndex(newIndex);
+          setConfig(history[newIndex]);
+      }
+  };
+
+  const handleRedo = () => {
+      if (historyIndex < history.length - 1) {
+          const newIndex = historyIndex + 1;
+          setHistoryIndex(newIndex);
+          setConfig(history[newIndex]);
+      }
+  };
+
+  const handleShare = async () => {
+      setIsSaving(true);
+      const image = await captureFrameAsImage();
+      setIsSaving(false);
+      
+      if (!image) return;
+
+      if (navigator.share) {
+          try {
+              const blob = await (await fetch(image)).blob();
+              const file = new File([blob], "the-luvin-design.png", { type: blob.type });
+              await navigator.share({
+                  title: 'My LEGO Frame Design',
+                  text: 'Check out my custom LEGO frame design from The Luvin!',
+                  files: [file]
+              });
+          } catch (e) {
+              // Share cancelled or failed, fallback to download
+              const link = document.createElement('a');
+              link.href = image;
+              link.download = 'the-luvin-design.png';
+              link.click();
+          }
+      } else {
+          // Fallback
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = 'the-luvin-design.png';
+          link.click();
+      }
+  };
 
   useEffect(() => {
       const isMobile = window.innerWidth < 1024;
@@ -1036,17 +1163,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
       
-      setConfig((prev) => {
+      setConfigWithHistory((prev: FrameConfig) => {
           if (type === 'text') {
               const idToUpdate = parseInt(rawId);
               return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) };
           }
           const itemId = parseInt(rawId);
-          if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
-          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...newTransform } : item) };
           return prev;
       });
-  }, [setConfig]);
+  }, [setConfigWithHistory]);
 
   const handleItemFlip = useCallback((id: string) => {
       const [type, ...rest] = id.split('-');
@@ -1054,14 +1181,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       
       if (type === 'item') {
           const itemId = parseInt(rawId);
-          setConfig((prev) => ({
+          setConfigWithHistory((prev: FrameConfig) => ({
               ...prev,
-              draggableItems: prev.draggableItems.map(item => 
+              draggableItems: prev.draggableItems.map((item: DraggableItem) => 
                   item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
               )
           }));
       }
-  }, [setConfig]);
+  }, [setConfigWithHistory]);
 
   const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
       const [type, ...rest] = id.split('-');
@@ -1069,21 +1196,21 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       
       if (type === 'item') {
           const itemId = parseInt(rawId);
-          setConfig((prev) => ({
+          setConfigWithHistory((prev: FrameConfig) => ({
               ...prev,
-              draggableItems: prev.draggableItems.map(item => 
+              draggableItems: prev.draggableItems.map((item: DraggableItem) => 
                   item.id === itemId ? { ...item, ...updates } : item
               )
           }));
       }
-  }, [setConfig]);
+  }, [setConfigWithHistory]);
 
   const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
-      setConfig((prev) => ({
+      setConfigWithHistory((prev: FrameConfig) => ({
           ...prev,
-          characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
+          characters: prev.characters.map((c: LegoCharacterConfig) => c.id === id ? { ...c, ...updates } : c)
       }));
-  }, [setConfig]);
+  }, [setConfigWithHistory]);
 
   const handleItemRemoveCompletely = useCallback((id: string) => {
     const [type, ...rest] = id.split('-');
@@ -1091,17 +1218,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     
     setSelectedItemId(null);
 
-    setConfig((prev) => {
+    setConfigWithHistory((prev: FrameConfig) => {
         if (type === 'text') {
             const idToDelete = parseInt(rawId, 10);
             return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
         }
         const itemId = parseInt(rawId, 10);
-        if (type === 'character') return { ...prev, characters: prev.characters.filter(item => item.id !== itemId) };
-        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(item => item.id !== itemId) };
+        if (type === 'character') return { ...prev, characters: prev.characters.filter((item: LegoCharacterConfig) => item.id !== itemId) };
+        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: DraggableItem) => item.id !== itemId) };
         return prev;
     });
-  }, [setConfig]);
+  }, [setConfigWithHistory]);
   
   const handleItemDelete = useCallback((id: string) => {
     const [type, ...rest] = id.split('-');
@@ -1112,7 +1239,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const textItem = config.texts.find(t => t.id === idToUpdate);
         
         if (textItem && textItem.content && textItem.content.trim() !== '') {
-             setConfig((prev) => ({
+             setConfigWithHistory((prev: FrameConfig) => ({
                 ...prev,
                 texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
             }));
@@ -1122,7 +1249,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     } else {
         handleItemRemoveCompletely(id);
     }
-  }, [setConfig, handleItemRemoveCompletely, config.texts]);
+  }, [setConfigWithHistory, handleItemRemoveCompletely, config.texts]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1132,28 +1259,34 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             }
             handleItemDelete(selectedItemId);
         }
+        // Undo/Redo Shortcuts
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) handleRedo();
+            else handleUndo();
+        }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItemId, handleItemDelete, isEditingText]);
+  }, [selectedItemId, handleItemDelete, isEditingText, handleUndo, handleRedo]);
 
   const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-    setConfig((prev) => ({
+    setConfigWithHistory((prev: FrameConfig) => ({
         ...prev,
         texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
     }));
-  }, [setConfig]);
+  }, [setConfigWithHistory]);
   
   const addText = () => {
       const newId = Date.now();
       const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
-      setConfig((prev) => ({...prev, texts: [...prev.texts, newText]}));
+      setConfigWithHistory((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
       setSelectedItemId(`text-${newId}`);
   };
 
   const addCharm = (dataUrl: string) => {
       const newCharm: DraggableItem = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
-      setConfig((prev) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
+      setConfigWithHistory((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
   const captureFrameAsImage = async (): Promise<string> => {
@@ -1168,11 +1301,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             const canvas = await html2canvas(container, {
               backgroundColor: null,
               useCORS: true, 
+              allowTaint: true, // Added to allow cross-origin tainting if needed
               scale: 3,      
               logging: false,
               scrollX: 0,    
               scrollY: 0,
-              // REMOVED ignoreElements filter to KEEP WATERMARK
+              // Explicitly ensuring no ignore logic that might hide watermark
+              ignoreElements: (element: Element) => false
             });
             resolve(canvas.toDataURL('image/png'));
           } else {
@@ -1191,12 +1326,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   // --- Animation Helper Function ---
   const animateAddToCart = (imageSrc: string) => {
-      // Find destination icon
       const desktopCart = document.getElementById('cart-icon-desktop');
       const mobileCart = document.getElementById('cart-icon-mobile');
-      // Pick the one that is likely visible (simplistic check: window width)
       const targetIcon = window.innerWidth >= 768 ? desktopCart : mobileCart;
-
       const sourceContainer = frameCaptureRef.current;
 
       if (!targetIcon || !sourceContainer || !imageSrc) return;
@@ -1204,29 +1336,20 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const startRect = sourceContainer.getBoundingClientRect();
       const endRect = targetIcon.getBoundingClientRect();
 
-      // Create fly image
       const flyImg = document.createElement('img');
       flyImg.src = imageSrc;
       flyImg.classList.add('flying-product-item');
       
-      // Set initial position & dimensions
       flyImg.style.left = `${startRect.left}px`;
       flyImg.style.top = `${startRect.top}px`;
       flyImg.style.width = `${startRect.width}px`;
       flyImg.style.height = `${startRect.height}px`;
 
       document.body.appendChild(flyImg);
-
-      // Trigger reflow to ensure start position is set before animating
       flyImg.getBoundingClientRect();
 
-      // Set target position & dimensions (shrink and move)
-      // Center the end target
       const endX = endRect.left + endRect.width / 2;
       const endY = endRect.top + endRect.height / 2;
-      
-      // We want to center the flying image on the target
-      // Final width/height = let's say 20px
       const targetSize = 20;
 
       flyImg.style.left = `${endX - targetSize/2}px`;
@@ -1235,7 +1358,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       flyImg.style.height = `${targetSize}px`;
       flyImg.style.opacity = '0.5';
 
-      // Cleanup after animation
       flyImg.addEventListener('transitionend', () => {
           if (document.body.contains(flyImg)) {
               document.body.removeChild(flyImg);
@@ -1254,8 +1376,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             return;
         }
 
-        // TRIGGER ANIMATION HERE - Optimistic UI
-        // Don't wait for Cloudinary to start the visual effect
         animateAddToCart(base64Image);
 
         const cloudUrl = await uploadToCloudinary(base64Image);
@@ -1274,8 +1394,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         if (editingCartIndex !== null && !andCheckout) {
             onUpdateCart(finalConfig);
         } else {
-            // Note: onAddToCart in App.tsx now triggers the shake animation state
-            // passed down from App
             onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
         }
         
@@ -1318,9 +1436,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   const renderStepContent = () => {
     switch (step) {
-      case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} addText={addText} addCharm={addCharm} backgrounds={backgrounds} onZoomImage={onZoomImage} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} />;
+      case 1: return <Step1Frame config={config} setConfig={setConfigWithHistory} frames={frames} />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfigWithHistory} addText={addText} addCharm={addCharm} backgrounds={backgrounds} onZoomImage={onZoomImage} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
@@ -1334,24 +1452,51 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   return (
-    <div className="bg-gray-50 py-4 sm:py-8">
+    <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-500">
-                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế & Mua hàng
+                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
             </div>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
-            {editingCartIndex !== null ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng Khung LEGO'}
+            {editingCartIndex !== null ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                        ẢNH XEM TRƯỚC
+                    </h3>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={handleUndo} 
+                            disabled={historyIndex <= 0}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            title="Hoàn tác (Undo)"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                        </button>
+                        <button 
+                            onClick={handleRedo} 
+                            disabled={historyIndex >= history.length - 1}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            title="Làm lại (Redo)"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
+                        </button>
+                        <button 
+                            onClick={handleShare}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+                            title="Chia sẻ thiết kế"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        </button>
+                    </div>
                 </div>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-32 lg:mb-0">
+                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-32 lg:mb-0 shadow-inner">
                     <FramePreview 
                         ref={frameCaptureRef}
                         config={config} 
@@ -1373,7 +1518,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         logoUrl={logoUrl} 
                     />
                 </div>
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm">
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                             <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
@@ -1388,12 +1533,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             </div>
           </div>
 
-          <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> {/* ADDED ID HERE */}
-              <div className="bg-white p-4 rounded-xl border border-gray-200">
+          <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> 
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                   {selectedText ? (
                       <TextEditor 
                           activeText={selectedText}
-                          setConfig={setConfig}
+                          setConfig={setConfigWithHistory}
+                          config={config}
                           selectedTextId={selectedText.id}
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
@@ -1409,7 +1555,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               
               {!selectedText && (
                 <>
-                  <div className="mt-4 text-right font-bold text-lg text-gray-800">
+                  <div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">
                     Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
                   </div>
                   {editingCartIndex !== null && step === 4 && (
@@ -1442,7 +1588,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                           <button
                               onClick={() => setStep(s => Math.min(4, s + 1))}
                               disabled={step === 4}
-                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md"
                           >
                               Tiếp theo
                           </button>
@@ -1450,40 +1596,43 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   )}
                 </>
               )}
-               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-top p-4 z-30 transition-transform duration-300 ease-in-out ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
-                     <div className="text-right font-bold text-base text-gray-800 mb-2">
-                        Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
+               
+               {/* STICKY BOTTOM BAR FOR MOBILE */}
+               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+                     <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-medium text-gray-500">Tạm tính:</span>
+                        <span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span>
                       </div>
                      
                      {editingCartIndex !== null && step === 4 ? (
-                        <div className="flex flex-col gap-2">
-                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
+                        <div className="flex gap-2">
+                            <button onClick={onCancelEdit} className="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                                Hủy
                             </button>
-                            <button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">
-                                Hủy sửa
+                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">
+                                {isSaving ? '...' : 'Cập nhật'}
                             </button>
                         </div>
                      ) : (
-                         <div className="flex items-center gap-4">
+                         <div className="flex gap-3">
                            <button
                               onClick={() => setStep(s => Math.max(1, s - 1))}
                               disabled={step === 1}
-                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                              className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm"
                           >
                               Quay lại
                           </button>
                           <button
                               onClick={() => setStep(s => Math.min(4, s + 1))}
                               disabled={step === 4}
-                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors"
+                              className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm"
                           >
                               Tiếp theo
                           </button>
                          </div>
                      )}
                 </div>
-               <div className="lg:hidden h-32"></div>
+               <div className="lg:hidden h-24"></div>
           </div>
         </div>
       </div>

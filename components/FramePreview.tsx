@@ -32,17 +32,30 @@ interface FramePreviewProps {
   logoUrl?: string;
 }
 
-// 1. SafeImage Component: Bắt buộc thêm crossOrigin và referrerPolicy để tránh lỗi CORS khi vẽ canvas
+// 1. SafeImage Component with Skeleton Loading
 const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
+    const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+
     if (hasError) return null;
+
     return (
-        <img 
-            crossOrigin="anonymous" 
-            referrerPolicy="no-referrer"
-            {...props} 
-            onError={() => setHasError(true)} 
-        />
+        <>
+            {isLoading && (
+                <div 
+                    className="skeleton absolute inset-0 rounded-sm" 
+                    style={{ zIndex: 0, ...props.style }} // Matches skeleton size to image
+                ></div>
+            )}
+            <img 
+                crossOrigin="anonymous" 
+                referrerPolicy="no-referrer"
+                {...props} 
+                onLoad={() => setIsLoading(false)}
+                onError={() => { setIsLoading(false); setHasError(true); }} 
+                className={`${props.className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+            />
+        </>
     );
 };
 
@@ -518,10 +531,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     />
                 )}
 
-                {/* 4. Watermark Layer (Layer 1) */}
+                {/* 4. Watermark Layer - Removed mix-blend-mode for better html2canvas capture */}
                 {logoUrl && (
-                    <div className="watermark-layer" style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', mixBlendMode: 'multiply' }}>
-                        <svg width="100%" height="100%" style={{ opacity: 0.12 }} fill="transparent">
+                    <div className="watermark-layer" style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
+                        <svg width="100%" height="100%" style={{ opacity: 0.15 }} fill="transparent">
                             <defs>
                                 <pattern id={patternId} x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
                                     <image href={logoUrl} x="40" y="40" width="40" height="40" preserveAspectRatio="xMidYMid meet" />
@@ -579,17 +592,17 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             </div>
         </div>
 
-        {/* Toolbar - FIX MOBILE ALIGNMENT */}
+        {/* Toolbar - FIXED MOBILE ALIGNMENT & REMOVED NUDGE CONTROLS */}
         {isInteractive && selectedItemId && (
-            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-full max-w-[350px] pointer-events-none">
+            <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none">
                 {activeColors && activeColors.length > 0 && (
-                    <div className="pointer-events-auto w-fit max-w-[90vw] mx-auto bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar">
-                        <div className="flex gap-2 min-w-max px-2">
+                    <div className="pointer-events-auto w-fit bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto">
+                        <div className="flex gap-2 w-max px-2">
                             {activeColors.map((color: OutfitColor, idx: number) => (
                                 <button
                                     key={idx}
                                     onClick={() => handleColorSelect(color)}
-                                    className={`w-6 h-6 rounded-full border relative flex-shrink-0 ${getActiveColorHex(color) === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
+                                    className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex(color) === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
                                     style={{ backgroundColor: color.hex }}
                                     title={`${color.name}`}
                                 >
@@ -599,25 +612,25 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         </div>
                     </div>
                 )}
-                <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5">
+                <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5 mx-auto">
                     {selectedItemDetails?.canFlip && (
-                        <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Lật">
+                        <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors active:scale-90" title="Lật">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         </button>
                     )}
-                    <button onClick={() => onItemRemove(selectedItemId)} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Xóa">
+                    <button onClick={() => onItemRemove(selectedItemId)} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     {onAutoAdvance && (
                         <>
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                            <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors" title="Xong (Tiếp)">
+                            <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors active:scale-90" title="Xong (Tiếp)">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </button>
                         </>
                     )}
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors" title="Bỏ chọn">
+                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Bỏ chọn">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>

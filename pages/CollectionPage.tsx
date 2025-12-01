@@ -53,7 +53,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             
             <div className="container mx-auto text-center relative z-10">
                 <h1 className="text-4xl md:text-6xl font-heading font-bold mb-4 text-gray-900">
-                    Bộ Sưu Tập <span className="text-primary italic font-light">Thiết Kế</span>
+                    Bộ Sưu Tập <span className="text-luvin-pink">Thiết Kế</span>
                 </h1>
                 <p className="text-gray-500 max-w-xl mx-auto text-sm md:text-base leading-relaxed">
                     Khám phá những mẫu khung tranh LEGO được yêu thích nhất. Bạn có thể chọn một mẫu và tùy chỉnh lại theo ý thích của mình.
