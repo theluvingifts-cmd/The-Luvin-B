@@ -19,7 +19,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
   const [notes, setNotes] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState('');
+  // Initialize with a default date (tomorrow)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const [deliveryDate, setDeliveryDate] = useState(tomorrow.toISOString().split("T")[0]);
   
   const [provinces, setProvinces] = useState<{ name: string; code: number }[]>([]);
   const [districts, setDistricts] = useState<{ name: string; code: number }[]>([]);
@@ -38,6 +41,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
+  const EARLY_BIRD_THRESHOLD = 20; // 20 days threshold for pre-order discount
+  const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; // 5%
 
   // Pre-fill data if editing
   useEffect(() => {
@@ -98,8 +103,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   
   const shippingFee = calculatedShippingFee;
   const giftBoxFee = addGiftBox ? GIFT_BOX_PRICE : 0;
-  const totalPrice = subtotal + shippingFee + giftBoxFee;
-  const amountToPay = paymentMethod === 'deposit' ? totalPrice * 0.7 : totalPrice;
+  
+  // Early Bird Logic
+  const daysDifference = useMemo(() => {
+      if (!deliveryDate) return 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const delivery = new Date(deliveryDate);
+      delivery.setHours(0, 0, 0, 0);
+      return Math.ceil((delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }, [deliveryDate]);
+
+  const isEarlyBird = daysDifference >= EARLY_BIRD_THRESHOLD;
+  const discountAmount = isEarlyBird ? Math.round(subtotal * EARLY_BIRD_DISCOUNT_PERCENT) : 0;
+
+  const totalPrice = subtotal + shippingFee + giftBoxFee - discountAmount;
+  const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,11 +144,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
+    const finalNotes = isEarlyBird ? `[ƯU ĐÃI ĐẶT SỚM 5%] ${notes}` : notes;
+
     try {
         await onPlaceOrder({
           id: orderId,
           customer: { name, phone, email, address: fullAddress },
-          delivery: { date: deliveryDate, notes },
+          delivery: { date: deliveryDate, notes: finalNotes },
           items: cartItems,
           addGiftBox,
           shipping: { method: shippingOption, fee: shippingFee },
@@ -207,13 +228,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <div>
                           <label className="text-sm font-semibold text-gray-700 block mb-1">Ngày nhận hàng mong muốn</label>
                           <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required min={new Date().toISOString().split("T")[0]} />
+                          
+                          {/* EARLY BIRD NOTIFICATION */}
+                          {isEarlyBird ? (
+                              <p className="text-xs text-green-600 font-bold mt-1 animate-pulse">
+                                  ✓ Đặt trước {daysDifference} ngày: Giảm 5%
+                              </p>
+                          ) : (
+                              <p className="text-xs text-gray-500 mt-1">
+                                  Mẹo: Đặt trước 20 ngày để được giảm ngay 5%.
+                              </p>
+                          )}
+                          <p className="text-[10px] text-gray-400 mt-0.5 italic">Thời gian hoàn thiện đơn hàng khoảng 1-3 ngày.</p>
                         </div>
                         <div>
                             <h3 className="font-semibold text-sm mb-2 text-gray-700">Phương thức vận chuyển</h3>
                             <div className="space-y-2">
                                 <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="standard" checked={shippingOption === 'standard'} onChange={() => setShippingOption('standard')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
-                                    <span className="ml-2 text-sm flex-grow text-gray-700">Giao hàng thường</span>
+                                    <span className="ml-2 text-sm flex-grow text-gray-700">Giao hàng thường (3-5 ngày)</span>
                                     {isFreeShippingEligible ? (
                                         <div className="text-right">
                                             <span className="text-xs text-gray-400 line-through mr-1">{formatCurrency(SHIPPING_FEES.standard)}</span>
@@ -225,7 +258,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="express" checked={shippingOption === 'express'} onChange={() => setShippingOption('express')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
-                                    <span className="ml-2 text-sm flex-grow text-gray-700">Giao hàng nhanh</span>
+                                    <span className="ml-2 text-sm flex-grow text-gray-700">Giao hàng nhanh (1-3 ngày)</span>
                                      <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.express)}</span>
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
@@ -328,6 +361,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <span>{shippingOption === 'bookship' ? 'Tự thỏa thuận' : formatCurrency(shippingFee)}</span>
                     )}
                 </div>
+                {isEarlyBird && (
+                    <div className="flex justify-between text-green-700 font-bold">
+                        <span>Ưu đãi đặt sớm (5%)</span>
+                        <span>-{formatCurrency(discountAmount)}</span>
+                    </div>
+                )}
               </div>
               <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
                 <span>Tổng cộng</span>

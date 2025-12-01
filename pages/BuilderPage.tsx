@@ -874,6 +874,20 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
                 </div>
             </div>
         </div>
+
+        {/* EARLY BIRD PROMO NOTIFICATION */}
+        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in">
+            <span className="text-xl">📅</span>
+            <div>
+                <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
+                <p className="text-xs text-indigo-700 leading-relaxed">
+                    Sản phẩm thủ công cần <strong>1-3 ngày hoàn thiện</strong> và 2-4 ngày vận chuyển.
+                    <br/>
+                    Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <strong>sau 20 ngày</strong> ở bước thanh toán để được <strong>Giảm ngay 5%</strong>!
+                </p>
+            </div>
+        </div>
+
         <div className="mt-4 space-y-2">
             <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
                 {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
@@ -989,6 +1003,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   // Undo/Redo State
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), frames), [config, legoParts, frames]);
+  const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
+  const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
   useEffect(() => {
     const fetchHotTrends = async () => {
@@ -1149,8 +1167,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   
   const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
-  
   const selectedText = useMemo(() => {
     if (selectedItemId?.startsWith('text-')) {
         const id = parseInt(selectedItemId.split('-')[1], 10);
@@ -1534,6 +1550,28 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
 
           <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> 
+              {/* SLIM FREE SHIP PROGRESS BAR */}
+              {(step === 2 || step === 3) && (
+                  <div className="mb-3 px-1 animate-fade-in">
+                      <div className="flex justify-between items-center text-[10px] mb-1">
+                          <span className="text-gray-500 font-medium">
+                              {remainingForFreeShip > 0 ? (
+                                <>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>
+                              ) : (
+                                <b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>
+                              )}
+                          </span>
+                          <span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span>
+                      </div>
+                      <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                              className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" 
+                              style={{ width: `${freeShipPercent}%` }}
+                          ></div>
+                      </div>
+                  </div>
+              )}
+
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                   {selectedText ? (
                       <TextEditor 
