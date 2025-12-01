@@ -721,7 +721,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         {isEditingOrder ? (
                             <input 
                                 type="number" 
-                                className="border border-green-300 rounded p-1 w-28 text-right font-bold text-green-700 bg-white" 
+                                className="border border-green-300 rounded p-1 w-28 text-right font-bold text-green-700 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                 value={amountPaidInput}
                                 onChange={(e) => setAmountPaidInput(Number(e.target.value))}
                             />

@@ -20,10 +20,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
   const [notes, setNotes] = useState('');
-  // Initialize with a default date (tomorrow)
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const [deliveryDate, setDeliveryDate] = useState(tomorrow.toISOString().split("T")[0]);
+  
+  // Changed: Start with empty string to force user selection
+  const [deliveryDate, setDeliveryDate] = useState('');
   
   const [provinces, setProvinces] = useState<{ name: string; code: number }[]>([]);
   const [districts, setDistricts] = useState<{ name: string; code: number }[]>([]);
@@ -176,6 +175,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         return;
     }
 
+    // Double check delivery date
+    if (!deliveryDate) {
+        alert("Vui lòng chọn ngày nhận hàng mong muốn.");
+        return;
+    }
+
     setIsSubmitting(true);
 
     const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || '';
@@ -280,7 +285,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <label className="text-sm font-semibold text-gray-700 block mb-1">Ngày nhận hàng mong muốn</label>
-                          <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required min={new Date().toISOString().split("T")[0]} />
+                          <input 
+                            type="date" 
+                            value={deliveryDate} 
+                            onChange={e => setDeliveryDate(e.target.value)} 
+                            className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                            required 
+                            min={new Date().toISOString().split("T")[0]} 
+                          />
                           
                           {/* EARLY BIRD NOTIFICATION */}
                           {isEarlyBird ? (

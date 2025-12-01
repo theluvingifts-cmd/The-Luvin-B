@@ -326,18 +326,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     } else {
                         const part = allKnownParts[di.partId];
                         if (part) {
-                             if (di.type === 'accessory') inventory.accessory[part.name] = (inventory.accessory[part.name] || 0) + 1;
-                             if (di.type === 'pet') inventory.pet[part.name] = (inventory.pet[part.name] || 0) + 1;
+                             if (di.type === 'accessory') {
+                                 const key = di.selectedColor ? `${part.name} (${di.selectedColor.name})` : part.name;
+                                 inventory.accessory[key] = (inventory.accessory[key] || 0) + 1;
+                             }
+                             if (di.type === 'pet') {
+                                 const key = di.selectedColor ? `${part.name} (${di.selectedColor.name})` : part.name;
+                                 inventory.pet[key] = (inventory.pet[key] || 0) + 1;
+                             }
                              inventory.totalCharms++;
                         }
                     }
                 });
 
                 item.characters.forEach(char => {
-                    if (char.hair) inventory.hair[char.hair.name] = (inventory.hair[char.hair.name] || 0) + 1;
+                    if (char.hair) {
+                        const key = char.selectedHairColor ? `${char.hair.name} (${char.selectedHairColor.name})` : char.hair.name;
+                        inventory.hair[key] = (inventory.hair[key] || 0) + 1;
+                    }
                     if (char.face) inventory.face[char.face.name] = (inventory.face[char.face.name] || 0) + 1;
-                    if (char.shirt) inventory.shirt[char.shirt.name] = (inventory.shirt[char.shirt.name] || 0) + 1;
-                    if (char.pants) inventory.pants[char.pants.name] = (inventory.pants[char.pants.name] || 0) + 1;
+                    if (char.shirt) {
+                        const key = char.selectedShirtColor ? `${char.shirt.name} (${char.selectedShirtColor.name})` : char.shirt.name;
+                        inventory.shirt[key] = (inventory.shirt[key] || 0) + 1;
+                    }
+                    if (char.pants) {
+                        const key = char.selectedPantsColor ? `${char.pants.name} (${char.selectedPantsColor.name})` : char.pants.name;
+                        inventory.pants[key] = (inventory.pants[key] || 0) + 1;
+                    }
                     if (char.hat) inventory.hat[char.hat.name] = (inventory.hat[char.hat.name] || 0) + 1;
                 });
             });
