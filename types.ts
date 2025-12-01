@@ -12,11 +12,11 @@ export interface FrameOption {
   backgroundWidthCm: number;
   backgroundHeightCm: number;
   price: number;
-  costPrice?: number; // ADDED: Giá vốn
+  costPrice?: number;
   imageUrl: string;
   description: string;
-  stock?: number; // Số lượng tồn kho
-  colors: string[]; // Danh sách màu: ['black', 'white', 'wood'...]
+  stock?: number;
+  colors: string[];
   order?: number;
 }
 
@@ -25,16 +25,16 @@ export interface OutfitColor {
   hex: string;
   imageUrl: string;
   price: number; 
-  stock?: number; // undefined = unlimited, 0 = out of stock
+  stock?: number;
 }
 
 export interface LegoPart {
   id: string;
   name: string;
   price: number; 
-  costPrice?: number; // ADDED: Giá vốn
+  costPrice?: number;
   imageUrl: string;
-  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set'; // Added 'set'
+  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set';
   widthCm: number;
   heightCm: number;
   colors?: OutfitColor[];
@@ -42,20 +42,19 @@ export interface LegoPart {
   slices?: boolean; 
   dx?: number; 
   dy?: number; 
-  stock?: number; // undefined = unlimited, 0 = out of stock
-  order?: number; // Position for sorting
-  category?: string; // ADDED: Dịp / Danh mục (Ví dụ: Noel, Sinh nhật)
-  isHot?: boolean; // ADDED: Đánh dấu sản phẩm HOT
+  stock?: number;
+  order?: number;
+  category?: string;
+  isHot?: boolean;
 }
 
-// Interface mới cho Background
 export interface PresetBackground {
     id: string;
     name: string;
     url: string;
     category: string;
-    type: 'square' | 'rectangle'; // Phân loại cho khung vuông hoặc chữ nhật
-    order?: number; // Position for sorting
+    type: 'square' | 'rectangle';
+    order?: number;
 }
 
 export interface LegoCharacterConfig {
@@ -64,10 +63,10 @@ export interface LegoCharacterConfig {
   face?: LegoPart;
   shirt?: LegoPart;
   pants?: LegoPart;
-  hat?: LegoPart; // Deprecated in UI logic, kept for type safety
+  hat?: LegoPart;
   selectedShirtColor?: OutfitColor; 
   selectedPantsColor?: OutfitColor;
-  selectedHairColor?: OutfitColor; // Added hair color selection
+  selectedHairColor?: OutfitColor;
   customPrintPrice?: number;
   x: number; 
   y: number; 
@@ -94,13 +93,13 @@ export interface TextConfig {
 export interface DraggableItem {
     id: number;
     partId: string; 
-    type: 'accessory' | 'pet' | 'charm' | 'hat'; // Added 'hat'
+    type: 'accessory' | 'pet' | 'charm' | 'hat';
     x: number; 
     y: number; 
     rotation: number; 
     scale: number; 
-    isFlipped?: boolean; // Added for flip functionality
-    selectedColor?: OutfitColor; // Added for accessory color variants
+    isFlipped?: boolean;
+    selectedColor?: OutfitColor;
 }
 
 export interface BackgroundConfig {
@@ -110,18 +109,18 @@ export interface BackgroundConfig {
 
 export interface FrameConfig {
   frameId: string;
-  frameColor?: string; // Changed to string to support dynamic colors from DB
+  frameColor?: string;
   background: BackgroundConfig;
   characters: LegoCharacterConfig[];
   texts: TextConfig[];
   draggableItems: DraggableItem[];
   previewImageUrl?: string;
-  quantity?: number; // Added quantity field
+  quantity?: number;
 }
 
 export interface Order {
   id: string;
-  createdAt: number; // Timestamp chính xác khi tạo đơn
+  createdAt: number;
   status: string;
   customer: {
     name: string;
@@ -146,24 +145,21 @@ export interface Order {
   amountToPay: number;
   
   // --- Admin Fields ---
-  internalNotes?: string; // Ghi chú nội bộ của Admin
-  isUrgent?: boolean;     // Cờ đánh dấu đơn gấp thủ công
-  adminDeadline?: string; // Deadline do admin đặt
-  
-  // --- Warehouse Fields ---
-  packedBy?: string;      // Email người đóng gói
-  packedAt?: string;      // Thời gian đóng gói ISO string
+  internalNotes?: string;
+  isUrgent?: boolean;
+  adminDeadline?: string;
+  packedBy?: string;
+  packedAt?: string;
 
   // --- Payment Proof ---
-  paymentProofUrl?: string; // Link ảnh chuyển khoản
-  paymentProofUploadedAt?: string; // Thời gian up ảnh
+  paymentProofUrl?: string;
+  paymentProofUploadedAt?: string;
 
   // --- Discounts ---
-  discountCode?: string;
-  discountAmount?: number;
+  discountCode?: string; // Mã giảm giá đã dùng
+  discountAmount?: number; // Số tiền được giảm
 }
 
-// NEW INTERFACES FOR DYNAMIC CONTENT
 export interface CollectionTemplate {
     id: string;
     name: string;
@@ -178,7 +174,6 @@ export interface FeedbackItem {
     imageUrl: string;
 }
 
-// --- STAFF & PERMISSIONS ---
 export type StaffRole = 'admin' | 'warehouse';
 
 export interface StaffMember {
@@ -189,31 +184,29 @@ export interface StaffMember {
 
 // --- VOUCHERS ---
 export interface Voucher {
-    id: string; // The actual code, e.g., "LUVIN10"
-    code: string;
-    type: 'percent' | 'fixed'; // percent (%), fixed (VND)
-    value: number; // 10 (for 10%) or 20000 (for 20k)
-    minOrderValue: number; // 0 if none
-    maxUsage?: number; // Limit total global uses
-    usedCount: number;
-    expiryDate?: string; // ISO Date string
+    id: string;
+    code: string; // Mã nhập vào (VD: SALE10)
+    type: 'percent' | 'fixed'; // percent (%) hoặc fixed (số tiền)
+    value: number; // 10 (nếu %) hoặc 20000 (nếu fixed)
+    minOrderValue: number; // Đơn tối thiểu để dùng
+    maxUsage?: number; // Giới hạn số lượt dùng toàn hệ thống
+    usedCount: number; // Số lượt đã dùng
+    expiryDate?: string; // Ngày hết hạn (ISO string)
     isActive: boolean;
     description?: string;
 }
 
 // --- CRM / CUSTOMERS ---
 export interface CustomerStats {
-    phone: string;
+    phone: string; // Key chính để định danh
     name: string;
     email?: string;
     address?: string;
     totalOrders: number;
     totalSpent: number;
     lastOrderDate: number;
-    orders: Order[]; // Reference to orders for detail view
+    orders: Order[]; // Danh sách các đơn đã đặt
 }
-
-// --- THEME SYSTEM INTERFACES ---
 
 export interface CustomFont {
     id: string;
@@ -233,23 +226,22 @@ export interface SectionStyle {
 export interface ThemeConfig {
     global: {
         colors: {
-            primary: string; // Brand Main Color (Pink)
-            secondary: string; // Brand Secondary (Cream/Beige)
-            text: string; // Main text color
-            background: string; // Main background
-            accent: string; // Highlights
+            primary: string;
+            secondary: string;
+            text: string;
+            background: string;
+            accent: string;
         };
         typography: {
             headingFont: string;
             bodyFont: string;
-            customFontUrl?: string; // Deprecated in favor of uploadedFonts in StoreConfig
+            customFontUrl?: string;
         };
-        borderRadius: string; // '0px', '4px', '8px', '16px', '9999px'
+        borderRadius: string;
     };
     sections: {
         header: SectionStyle;
         hero: SectionStyle;
         footer: SectionStyle;
-        // Add more sections as needed
     };
 }

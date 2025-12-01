@@ -21,7 +21,7 @@ export const getAllVouchers = async (): Promise<Voucher[]> => {
 
 export const addVoucher = async (voucher: Voucher) => {
     try {
-        // Use code as ID for uniqueness check
+        // Dùng code làm ID luôn để đảm bảo duy nhất
         const id = voucher.code.toUpperCase().trim();
         await setDoc(doc(db, COLLECTION_NAME, id), { ...voucher, id, code: id });
         return true;

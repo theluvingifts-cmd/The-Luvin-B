@@ -217,7 +217,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
-    // Low Stock Alert
+    // Low Stock Alert (Threshold < 10)
     const lowStockItems = useMemo(() => {
         const threshold = 10;
         const lowStockParts = products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= threshold).map(p => ({ name: p.name, stock: p.stock, type: 'Linh kiện' }));
@@ -254,8 +254,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         // Box cost (Approximate)
         if (order.addGiftBox) totalCost += 15000; 
 
-        // Profit = Revenue (User paid) - Cost - Shipping (We pay shipping carrier, assumed equal to fee collected or absorbed)
-        // Simplifying: Profit = (Order Total - Shipping Fee) - Product Cost
+        // Profit = Revenue (User paid) - Cost - Shipping - Discounts
+        // Note: totalPrice already includes subtraction of discounts
         return order.totalPrice - order.shipping.fee - totalCost; 
     };
 
@@ -427,7 +427,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
             {/* ALERT LOW STOCK */}
             {lowStockItems.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm animate-pulse">
                     <div className="p-2 bg-red-100 rounded-full text-red-600">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     </div>
