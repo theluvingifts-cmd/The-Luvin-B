@@ -142,7 +142,8 @@ export interface Order {
     method: 'deposit' | 'full';
   };
   totalPrice: number;
-  amountToPay: number;
+  amountToPay: number; // Initially the intended amount to pay (COD or Deposit)
+  amountPaid?: number; // Actual amount received/confirmed by admin
   
   // --- Admin Fields ---
   internalNotes?: string;

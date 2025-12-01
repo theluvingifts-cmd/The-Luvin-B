@@ -191,7 +191,21 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         scrollContainerRef.current.scrollLeft = scrollLeft - walk;
     };
 
-    const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => { 
+    const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => {
+        // Special logic for status change to "Đã xác nhận" (Confirmed)
+        if (updates.status === 'Đã xác nhận') {
+            const currentOrder = orders.find(o => o.id === orderId);
+            if (currentOrder && (!currentOrder.amountPaid || currentOrder.amountPaid === 0)) {
+                // Calculate expected payment
+                const expectedPayment = currentOrder.payment.method === 'deposit'
+                    ? Math.round(currentOrder.totalPrice * 0.7)
+                    : currentOrder.totalPrice;
+                
+                updates.amountPaid = expectedPayment;
+                updates.amountToPay = currentOrder.totalPrice - expectedPayment;
+            }
+        }
+
         const success = await updateOrder(orderId, updates); 
         if (success) { 
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); 
@@ -241,6 +255,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         }
     };
 
+    // Confirm Payment Logic (Button)
+    const handleConfirmPayment = async () => {
+        if (!selectedOrder) return;
+        
+        // Determine expected payment
+        const expectedPayment = selectedOrder.payment.method === 'deposit' 
+            ? Math.round(selectedOrder.totalPrice * 0.7) 
+            : selectedOrder.totalPrice;
+
+        await handleUpdate(selectedOrder.id, { 
+            status: 'Đã xác nhận',
+            amountPaid: expectedPayment,
+            amountToPay: selectedOrder.totalPrice - expectedPayment
+        }, true);
+    };
+
     const handlePrintOrder = () => {
         if (!selectedOrder) return;
         const printWindow = window.open('', '_blank');
@@ -287,8 +317,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <p>Mã đơn: <strong>${selectedOrder.id}</strong></p>
                         <p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p>
                         <p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p>
-                        <p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.amountToPay)}</strong></p>
-                        ${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount)}</p>` : ''}
+                        <p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>
+                        ${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}
                     </div>
                 </div>
                 <table class="item-table">
@@ -369,9 +399,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     // --- EDITING LOGIC ---
     const startEditingOrder = () => {
         if (!selectedOrder) return;
-        setEditForm(JSON.parse(JSON.stringify(selectedOrder)));
-        // Initialize Amount Paid based on current values
-        setAmountPaidInput(selectedOrder.totalPrice - selectedOrder.amountToPay); 
+        const form = JSON.parse(JSON.stringify(selectedOrder));
+        setEditForm(form);
+        // Initialize Amount Paid Input with existing value or 0
+        setAmountPaidInput(form.amountPaid || 0); 
         setIsEditingOrder(true);
     };
 
@@ -403,9 +434,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         }
         
         // Final Payment Calculation before save
-        const finalTotalPrice = editForm.totalPrice; // Already updated in handleEditFormChange
-        const finalAmountToPay = Math.max(0, finalTotalPrice - amountPaidInput);
-        const finalOrder = { ...editForm, amountToPay: finalAmountToPay };
+        // We use the manually input amountPaid from state
+        const finalTotalPrice = editForm.totalPrice; 
+        const finalAmountPaid = amountPaidInput;
+        const finalAmountToPay = Math.max(0, finalTotalPrice - finalAmountPaid);
+        
+        const finalOrder = { 
+            ...editForm, 
+            amountPaid: finalAmountPaid,
+            amountToPay: finalAmountToPay 
+        };
 
         await handleUpdate(selectedOrder.id, finalOrder, false);
         setIsEditingOrder(false);
@@ -448,8 +486,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         const discount = newOrder.discountAmount || 0;
         
         const finalPrice = Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
-        // Do NOT update amountToPay here based on percentage anymore if we are manually tracking 'amountPaid'.
-        // amountToPay will be calculated dynamically from (finalPrice - amountPaidInput) during render/save
         
         return { ...newOrder, totalPrice: finalPrice };
     };
@@ -485,6 +521,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
     };
 
+    // ... (Character editing functions: handleAddCharacter, handleRemoveCharacter, etc. - kept same)
     const handleAddCharacter = (itemIndex: number) => {
         if (!editForm) return;
         const newChar: LegoCharacterConfig = {
@@ -600,11 +637,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         const giftBoxFee = order.addGiftBox ? 30000 : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
-        const totalPrice = order.totalPrice; // Should match calculation
+        const totalPrice = order.totalPrice; 
         
-        // Calculate Amount Paid (Derived for display)
-        // If editing, use local state input. If viewing, calculate derived from (Total - AmountToPay)
-        const amountPaid = isEditingOrder ? amountPaidInput : (totalPrice - order.amountToPay);
+        // Calculate Amount Paid
+        // If editing, use local state input. 
+        // If viewing, use order.amountPaid (defaults to 0 if undefined)
+        const amountPaid = isEditingOrder ? amountPaidInput : (order.amountPaid || 0);
+        
+        // Remaining (COD) = Total - Paid
         const remaining = Math.max(0, totalPrice - amountPaid);
 
         return (
@@ -616,7 +656,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 <div className="space-y-2 text-sm text-gray-700">
                     <div className="flex justify-between">
                         <span className="text-gray-500">Tiền hàng:</span>
-                        <span className="font-medium">{formatCurrency(subtotal)}</span>
+                        <span className="font-medium">{formatCurrency(subtotal, 'admin')}</span>
                     </div>
                     
                     {/* Gift Box Row */}
@@ -633,7 +673,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             )}
                         </div>
                         <span className={`font-medium ${order.addGiftBox ? 'text-gray-900' : 'text-gray-400'}`}>
-                            {formatCurrency(giftBoxFee)}
+                            {formatCurrency(giftBoxFee, 'admin')}
                         </span>
                     </div>
 
@@ -648,7 +688,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 onChange={(e) => handleEditFormChange('shipping', Number(e.target.value), 'fee')}
                             />
                         ) : (
-                            <span className="font-medium">{formatCurrency(shippingFee)}</span>
+                            <span className="font-medium">{formatCurrency(shippingFee, 'admin')}</span>
                         )}
                     </div>
 
@@ -663,7 +703,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 onChange={(e) => handleEditFormChange('discountAmount', Number(e.target.value))}
                             />
                         ) : (
-                            <span className="font-medium text-green-600">-{formatCurrency(discount)}</span>
+                            <span className="font-medium text-green-600">-{formatCurrency(discount, 'admin')}</span>
                         )}
                     </div>
 
@@ -672,7 +712,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     {/* Total Row */}
                     <div className="flex justify-between items-center text-base">
                         <span className="font-bold text-gray-800">Tổng giá trị đơn:</span>
-                        <span className="font-bold text-gray-900">{formatCurrency(totalPrice)}</span>
+                        <span className="font-bold text-gray-900">{formatCurrency(totalPrice, 'admin')}</span>
                     </div>
 
                     {/* Paid Row */}
@@ -686,14 +726,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 onChange={(e) => setAmountPaidInput(Number(e.target.value))}
                             />
                         ) : (
-                            <span className="font-bold text-green-700">{formatCurrency(amountPaid)}</span>
+                            <span className="font-bold text-green-700">{formatCurrency(amountPaid, 'admin')}</span>
                         )}
                     </div>
 
                     {/* Remaining Row */}
                     <div className="flex justify-between items-center bg-red-50 p-2 rounded -mx-2">
                         <span className="text-red-700 font-medium">Còn lại (COD):</span>
-                        <span className="font-bold text-red-700 text-lg">{formatCurrency(remaining)}</span>
+                        <span className="font-bold text-red-700 text-lg">{formatCurrency(remaining, 'admin')}</span>
                     </div>
                 </div>
             </div>
@@ -713,7 +753,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             
             {/* Left Panel: Order List */}
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-10 ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
-                {/* ... (Search, Tabs, Pagination code remains same) ... */}
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
                     <div className="flex gap-2 p-1 bg-gray-200 rounded-lg">
                         <button onClick={() => setOrderTab('active')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})</button>
@@ -743,7 +782,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id} {order.paymentProofUrl && order.status === 'Chờ thanh toán' && <span className="ml-2 text-green-600 font-bold text-xs">📸</span>}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
                             </div>
-                            <div className="flex justify-between items-center"><p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p><p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice)}</p></div>
+                            <div className="flex justify-between items-center"><p className="text-sm text-gray-600 truncate max-w-[150px]">{order.customer.name}</p><p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice, 'admin')}</p></div>
                             <div className="flex justify-between items-center mt-1"><p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>{(order.adminDeadline || order.delivery.date) && (<div className="text-right"><p className="text-xs text-gray-500">{order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}</p>{order.delivery.date && getCountdownText(order.delivery.date)}</div>)}</div>
                         </div>
                     ))}
@@ -784,7 +823,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                     <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2"><span>📸</span> Ảnh xác nhận chuyển khoản</h4>
                                     <div className="flex flex-col sm:flex-row items-start gap-4">
                                         <div className="h-32 w-auto border rounded-lg bg-white overflow-hidden cursor-pointer relative group" onClick={() => setZoomedImageUrl(selectedOrder.paymentProofUrl || null)}><img src={selectedOrder.paymentProofUrl} alt="Payment Proof" className="h-full w-full object-contain" /><div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div></div>
-                                        <div className="text-sm text-gray-600"><p>Thời gian gửi: {selectedOrder.paymentProofUploadedAt ? formatDateTime(new Date(selectedOrder.paymentProofUploadedAt).getTime()) : '---'}</p>{selectedOrder.status === 'Chờ thanh toán' && (<button onClick={() => handleUpdate(selectedOrder.id, { status: 'Đã xác nhận' })} className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm">Xác nhận thanh toán ngay</button>)}</div>
+                                        <div className="text-sm text-gray-600">
+                                            <p>Thời gian gửi: {selectedOrder.paymentProofUploadedAt ? formatDateTime(new Date(selectedOrder.paymentProofUploadedAt).getTime()) : '---'}</p>
+                                            {selectedOrder.status === 'Chờ thanh toán' && (
+                                                <button onClick={handleConfirmPayment} className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm">Xác nhận thanh toán ngay</button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -828,7 +872,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                     {/* Detailed Billing Table */}
                                     <BillingBreakdown />
                                     
-                                    {!isEditingOrder && selectedOrder.amountToPay > 0 && selectedOrder.status !== 'Đã giao hàng' && (
+                                    {!isEditingOrder && (selectedOrder.totalPrice - (selectedOrder.amountPaid || 0)) > 0 && selectedOrder.status !== 'Đã giao hàng' && (
                                         <div className="mt-4 pt-4 border-t border-gray-100">
                                             <p className="text-xs font-bold text-gray-500 uppercase mb-2">Mã QR Thanh toán (VietQR)</p>
                                             <img src={getVietQR(selectedOrder)} alt="VietQR" className="w-32 h-32 border rounded-lg" />
@@ -894,7 +938,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                                     onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}
                                                                 >
                                                                     {frames.map(f => (
-                                                                        <option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price)}</option>
+                                                                        <option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>
                                                                     ))}
                                                                 </select>
                                                             </div>
@@ -951,7 +995,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                                         {char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}
                                                                         {char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}
                                                                         {char.hat && <li>Mũ: {char.hat.name}</li>}
-                                                                        {char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice)}</li>}
+                                                                        {char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}
                                                                     </ul>
                                                                 )}
                                                             </div>

@@ -55,7 +55,8 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'admin' = 'price') => {
   if (amount === 0) {
       if (context === 'price') return 'Miễn phí';
-      if (context === 'admin') return '0 ₫';
+      // For payment/admin/input contexts, we want to show 0 ₫ explicitly
+      return '0 ₫';
   }
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
