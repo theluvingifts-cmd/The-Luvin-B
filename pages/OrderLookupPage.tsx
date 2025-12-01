@@ -129,21 +129,20 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
         return (
             <div className="relative my-8">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start relative z-10">
                     {steps.map((step, index) => (
-                        <div key={step} className="z-10 text-center" style={ { width: `${100 / steps.length}%` }}>
-                             <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto transition-all duration-500 relative border-2 ${index <= currentStepIndex ? 'bg-luvin-pink border-luvin-pink shadow-md scale-110' : 'bg-white border-gray-300'}`}>
+                        <div key={step} className="flex flex-col items-center" style={{ width: '20%' }}>
+                             <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${index <= currentStepIndex ? 'bg-luvin-pink border-luvin-pink shadow-md scale-110' : 'bg-white border-gray-300'}`}>
                                 {index <= currentStepIndex && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                             </div>
-                            <p className={`mt-2 text-[10px] sm:text-xs font-bold transition-colors ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>{step}</p>
+                            <p className={`mt-2 text-[10px] sm:text-xs font-bold text-center transition-colors ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>{step}</p>
                         </div>
                     ))}
                 </div>
-                <div className="absolute top-4 left-0 right-0 h-1 -z-0" style={{ padding: '0 10%' }}>
-                    <div className="w-full h-full bg-gray-200 rounded-full"></div>
+                <div className="absolute top-4 left-0 right-0 h-1 bg-gray-200 rounded-full -z-0">
                      <div 
-                        className="absolute left-0 top-0 h-full bg-luvin-pink transition-all duration-700 ease-out rounded-full"
-                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                        className="h-full bg-luvin-pink transition-all duration-700 ease-out rounded-full"
+                        style={{ width: `${Math.max(0, Math.min(100, (currentStepIndex / (steps.length - 1)) * 100))}%` }}
                     ></div>
                 </div>
             </div>
@@ -257,6 +256,11 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                     <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                                         <span>📅 {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}</span>
                                     </p>
+                                    {foundOrder.trackingCode && (
+                                        <p className="mt-2 text-sm">
+                                            Mã vận đơn: <span className="bg-orange-100 text-orange-800 font-mono font-bold px-2 py-0.5 rounded">{foundOrder.trackingCode}</span>
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="mt-2 sm:mt-0">
                                     <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm ${foundOrder.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : foundOrder.status === 'Huỷ đơn' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>

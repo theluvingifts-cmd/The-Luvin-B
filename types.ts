@@ -127,6 +127,7 @@ export interface Order {
     phone: string;
     email: string;
     address: string;
+    socialLink?: string; // Link liên hệ (FB/Insta/Zalo)
   };
   delivery: {
     date: string;
@@ -151,6 +152,7 @@ export interface Order {
   adminDeadline?: string;
   packedBy?: string;
   packedAt?: string;
+  trackingCode?: string; // Mã vận đơn
 
   // --- Payment Proof ---
   paymentProofUrl?: string;

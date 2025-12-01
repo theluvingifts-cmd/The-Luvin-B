@@ -319,6 +319,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p>
                         <p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>
                         ${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}
+                        ${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}
                     </div>
                 </div>
                 <table class="item-table">
@@ -854,6 +855,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div>
                                                 <div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div>
                                                 <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-20 text-gray-500">Liên hệ:</span> 
+                                                    <input 
+                                                        className="border rounded p-1 w-full placeholder-gray-400 text-xs" 
+                                                        value={editForm.customer.socialLink || ''} 
+                                                        onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')}
+                                                        placeholder="Link Facebook/Zalo..."
+                                                    />
+                                                </div>
                                                 <div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div>
                                                 <div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div>
                                             </>
@@ -862,6 +872,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 <p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p>
                                                 <p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
                                                 <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
+                                                {selectedOrder.customer.socialLink && (
+                                                    <p className="flex items-center">
+                                                        <span className="text-gray-500 w-20 inline-block">Liên hệ:</span>
+                                                        <a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">
+                                                            Mở liên kết ↗
+                                                        </a>
+                                                    </p>
+                                                )}
                                                 <p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p>
                                                 <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p>
                                             </>
@@ -879,6 +897,43 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                             <p className="text-[10px] text-gray-400 mt-1">TCB: 65838666666</p>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Shipping Info with Tracking Code */}
+                            <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
+                                <h3 className="text-sm font-bold text-orange-800 mb-2 uppercase tracking-wider flex items-center gap-2">
+                                    🚚 Thông tin vận chuyển
+                                </h3>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm text-gray-600">Phương thức: <span className="font-bold text-gray-900">{selectedOrder.shipping.method}</span></p>
+                                        <p className="text-sm text-gray-600 mt-1">Phí vận chuyển: <span className="font-medium">{formatCurrency(selectedOrder.shipping.fee, 'admin')}</span></p>
+                                    </div>
+                                    <div className="flex-1 border-t sm:border-t-0 sm:border-l border-orange-200 pt-2 sm:pt-0 sm:pl-4">
+                                        {isEditingOrder && editForm ? (
+                                            <div>
+                                                <label className="block text-xs font-bold text-orange-700 mb-1">Mã Vận Đơn (Tracking Code)</label>
+                                                <input 
+                                                    className="w-full p-2 border border-orange-300 rounded text-sm uppercase font-mono"
+                                                    value={editForm.trackingCode || ''}
+                                                    onChange={(e) => handleEditFormChange('trackingCode', e.target.value.toUpperCase())}
+                                                    placeholder="VD: SPEVN..."
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <span className="text-xs font-bold text-gray-500 uppercase block mb-1">Mã Vận Đơn</span>
+                                                {selectedOrder.trackingCode ? (
+                                                    <span className="text-lg font-mono font-bold text-orange-700 bg-white px-2 py-1 rounded border border-orange-200 inline-block select-all">
+                                                        {selectedOrder.trackingCode}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-sm text-gray-400 italic">Chưa có mã vận đơn</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
