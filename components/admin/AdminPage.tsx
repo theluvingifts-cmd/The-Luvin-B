@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { getAllOrders } from '../../services/orderService';
 import { getAllParts } from '../../services/productService';
@@ -169,8 +168,8 @@ const AdminPage: React.FC = () => {
             <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
                 {activeTab === 'dashboard' && canViewDashboard && <AdminDashboard orders={orders} products={products} frames={frames} />}
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
-                {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} />}
-                {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} templates={templates} feedbacks={feedbacks} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
+                {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} />}
+                {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
             </main>

@@ -1,34 +1,38 @@
 
 import React, { useState, useMemo } from 'react';
-import { LegoPart, FrameOption, PresetBackground } from '../../types';
+import { LegoPart, FrameOption, PresetBackground, CollectionTemplate } from '../../types';
 import { addPart, updatePart, deletePart, seedDatabase, reorderParts } from '../../services/productService';
 import { addFrame, updateFrame, deleteFrame, seedFrames } from '../../services/frameService';
 import { addBackground, updateBackground, deleteBackground, seedBackgrounds, reorderBackgrounds } from '../../services/backgroundService';
+import { addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../../services/templateService';
 import { ProductForm } from './forms/ProductForm';
 import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
+import { TemplateForm } from './forms/TemplateForm';
 import { formatCurrency } from '../../utils/pricing';
 
 interface AdminProductsProps {
     products: LegoPart[];
     frames: FrameOption[];
     backgrounds: PresetBackground[];
+    templates: CollectionTemplate[];
     onRefreshProducts: () => void;
     onRefreshFrames: () => void;
     onRefreshBackgrounds: () => void;
+    onRefreshTemplates: () => void;
 }
 
-type ProductSubTab = 'parts' | 'backgrounds' | 'frames';
+type ProductSubTab = 'parts' | 'backgrounds' | 'frames' | 'templates';
 type ViewMode = 'list' | 'edit';
 
-export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds }) => {
+export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, templates, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds, onRefreshTemplates }) => {
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     
     // Product Filters
     const [productSearch, setProductSearch] = useState('');
     const [productCategory, setProductCategory] = useState('all');
-    const [showLowStockOnly, setShowLowStockOnly] = useState(false); // NEW Filter
+    const [showLowStockOnly, setShowLowStockOnly] = useState(false);
     
     // Background Filters
     const [bgSearch, setBgSearch] = useState('');
@@ -39,6 +43,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
     const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
     const [editingFrame, setEditingFrame] = useState<FrameOption | null>(null);
+    const [editingTemplate, setEditingTemplate] = useState<CollectionTemplate | null>(null);
     const [loading, setLoading] = useState(false);
 
     // Quick Stock Edit State
@@ -73,6 +78,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         if (type === 'parts') setEditingPart(item);
         if (type === 'backgrounds') setEditingBg(item);
         if (type === 'frames') setEditingFrame(item);
+        if (type === 'templates') setEditingTemplate(item);
         setViewMode('edit');
     };
 
@@ -80,6 +86,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         setEditingPart(null);
         setEditingBg(null);
         setEditingFrame(null);
+        setEditingTemplate(null);
         setViewMode('list');
     };
 
@@ -87,6 +94,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); onRefreshProducts(); } };
     const handleSeedFrames = async () => { if (confirm("Reset Frames về mặc định?")) { setLoading(true); await seedFrames(); setLoading(false); onRefreshFrames(); } };
     const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); onRefreshBackgrounds(); } };
+    const handleSeedTemplates = async () => { if (confirm("Reset templates về mặc định?")) { setLoading(true); await seedTemplates(); setLoading(false); onRefreshTemplates(); } };
 
     const handleSaveProduct = async (part: LegoPart) => { 
         if (editingPart) await updatePart(part.id, part); else await addPart(part); 
@@ -105,6 +113,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         onRefreshFrames(); switchToList(); 
     };
     const handleDeleteFrame = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFrame(id); onRefreshFrames(); } };
+
+    const handleSaveTemplate = async (tpl: CollectionTemplate) => { 
+        if (editingTemplate) await updateTemplate(tpl.id, tpl); else await addTemplate(tpl); 
+        onRefreshTemplates(); switchToList(); 
+    };
+    const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); onRefreshTemplates(); } };
 
     // Quick Stock Edit Handlers
     const startQuickStockEdit = (id: string, currentStock: number | undefined) => {
@@ -172,6 +186,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                     {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
                     {activeProductSubTab === 'backgrounds' && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />}
                     {activeProductSubTab === 'frames' && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={switchToList} />}
+                    {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={switchToList} />}
                 </div>
             ) : (
                 <>
@@ -179,6 +194,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                         <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Linh kiện</button>
                         <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Khung</button>
                         <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền</button>
+                        <button onClick={() => setActiveProductSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Mẫu thiết kế</button>
                     </div>
 
                     {activeProductSubTab === 'parts' && (
@@ -374,6 +390,35 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </>
+                    )}
+
+                    {activeProductSubTab === 'templates' && (
+                        <>
+                            <div className="flex justify-end gap-2 mb-4">
+                                <button onClick={handleSeedTemplates} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Mẫu</button>
+                                <button onClick={() => switchToEdit(null, 'templates')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm Mẫu</button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {templates.map(tpl => (
+                                    <div key={tpl.id} className="bg-white border rounded-lg overflow-hidden group relative shadow-sm hover:shadow-md transition-all">
+                                        <img src={tpl.imageUrl} className="w-full h-48 object-cover" />
+                                        <div className="p-3">
+                                            <h4 className="font-bold text-gray-800">{tpl.name}</h4>
+                                            <p className="text-xs text-gray-500 mt-1">{tpl.config.characters.length} Nhân vật</p>
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                            <button onClick={() => switchToEdit(tpl, 'templates')} className="px-3 py-1 bg-white text-gray-900 rounded font-bold text-sm hover:bg-gray-100">Sửa</button>
+                                            <button onClick={() => handleDeleteTemplate(tpl.id)} className="px-3 py-1 bg-red-600 text-white rounded font-bold text-sm hover:bg-red-700">Xóa</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {templates.length === 0 && (
+                                    <div className="col-span-3 text-center py-10 text-gray-400">
+                                        Chưa có mẫu nào.
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
