@@ -106,15 +106,7 @@ const getFontFamily = (fontName: string) => {
         case 'Anniversary': return '"Dancing Script", cursive';
         case 'Serif': return '"Noto Serif", serif';
         case 'Playfair Display': return '"Playfair Display", serif';
-        case 'Montserrat': return '"Montserrat", sans-serif';
-        case 'Roboto': return '"Roboto", sans-serif';
-        case 'Open Sans': return '"Open Sans", sans-serif';
-        case 'Merriweather': return '"Merriweather", serif';
-        case 'Dancing Script': return '"Dancing Script", cursive';
-        case 'Lora': return '"Lora", serif';
-        case 'Nunito': return '"Nunito", sans-serif';
-        case 'Pacifico': return '"Pacifico", cursive';
-        default: return `"${fontName}", sans-serif`;
+        default: return '"Montserrat", sans-serif';
     }
 };
 

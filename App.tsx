@@ -322,24 +322,21 @@ const App: React.FC = () => {
     if (editingOrder) {
         const success = await updateOrder(editingOrder.id, {
             ...orderData,
-            status: 'Chờ thanh toán', // Reset status if edited? Or keep current? 
-            // Usually editing implies re-approval or payment adjustment, so forcing 'Chờ thanh toán' or 'Đã xác nhận' depends on logic.
-            // Let's keep it safe: Update info and items.
+            status: 'Chờ thanh toán', // Reset status if edited
         });
         
         if (success) {
             const updatedOrder = { 
                 ...editingOrder, 
                 ...orderData,
-                status: editingOrder.status // Keep status or update? Prompt implies customization before packing. 
+                status: editingOrder.status 
             };
             setCurrentOrder(updatedOrder);
             setCartItems([]);
             setEditingOrder(null);
             navigateTo('order-confirmation');
-            // Notify customer/admin email about update?
         } else {
-            alert("Lỗi cập nhật đơn hàng. Vui lòng thử lại.");
+            throw new Error("Không thể cập nhật đơn hàng. Vui lòng thử lại.");
         }
         return;
     }
@@ -370,7 +367,11 @@ const App: React.FC = () => {
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
     } else {
-        alert("Lỗi đặt hàng. Vui lòng thử lại.");
+        // IMPROVED: Throw exact error to CheckoutPage to display
+        const errMsg = res.error && typeof res.error === 'object' && 'message' in res.error 
+            ? (res.error as any).message 
+            : "Lỗi kết nối cơ sở dữ liệu.";
+        throw new Error(errMsg);
     }
   };
 

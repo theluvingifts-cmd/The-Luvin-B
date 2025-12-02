@@ -40,6 +40,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         const itemsWithImages = await Promise.all(order.items.map(async (item) => {
             if (item.previewImageUrl && item.previewImageUrl.startsWith('data:')) {
                 const cloudUrl = await uploadToCloudinary(item.previewImageUrl);
+                if (!cloudUrl) throw new Error("Lỗi upload ảnh thiết kế. Vui lòng kiểm tra kết nối mạng.");
                 return { ...item, previewImageUrl: cloudUrl || item.previewImageUrl };
             }
             return item; 
@@ -74,9 +75,16 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         adjustStock(stockAdjustments);
 
         return { success: true, data: finalOrder };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Lỗi tạo đơn hàng:", error);
-        return { success: false, error };
+        
+        // Return structured error
+        let errorMessage = "Đã có lỗi xảy ra.";
+        if (error.code === 'permission-denied') errorMessage = "Lỗi quyền truy cập hệ thống. Vui lòng liên hệ Admin.";
+        else if (error.code === 'unavailable') errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.";
+        else if (error.message) errorMessage = error.message;
+
+        return { success: false, error: { message: errorMessage, original: error } };
     }
 };
 
