@@ -432,6 +432,7 @@ const App: React.FC = () => {
                     onPlaceOrder={handlePlaceOrder} 
                     onZoomImage={(url) => setZoomedImageUrl(url)}
                     initialOrder={editingOrder} // Pass existing order if editing
+                    storeConfig={storeConfig} // PASS CONFIG HERE
                 />
             )}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />}
