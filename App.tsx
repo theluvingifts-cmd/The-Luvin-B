@@ -1,5 +1,6 @@
-
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
+import ReactDOM from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async'; // Imported HelmetProvider
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
     LEGO_PARTS, 
@@ -30,7 +31,7 @@ import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
-import { BusinessPage } from './pages/BusinessPage'; // ADDED
+import { BusinessPage } from './pages/BusinessPage'; 
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
@@ -38,7 +39,6 @@ declare var confetti: any;
 // Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
-    // Nếu là font tùy chỉnh (đã có trong danh sách upload), không load từ Google
     if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
         const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
         if (!document.getElementById(linkId)) {
@@ -63,7 +63,6 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     
     let css = '';
     fonts.forEach(font => {
-        // Simple sanitization for font name
         const safeName = font.name.replace(/[^a-zA-Z0-9\s]/g, '');
         css += `
             @font-face {
@@ -94,7 +93,6 @@ const App: React.FC = () => {
       }
   });
 
-  // State to track if we are editing an existing order (Order Update Mode)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
@@ -117,7 +115,6 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
 
-  // Initialize StoreConfig from LocalStorage to prevent flicker (FOUC)
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
       try {
           const savedConfig = localStorage.getItem('store_config');
@@ -127,32 +124,26 @@ const App: React.FC = () => {
       }
   });
 
-  // State for cart animation
   const [isCartShaking, setIsCartShaking] = useState(false);
 
-  // Function to apply theme variables to DOM
   const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
       const { global, sections } = themeData;
 
-      // Global Colors
       root.style.setProperty('--color-primary', global.colors.primary);
       root.style.setProperty('--color-secondary', global.colors.secondary);
       root.style.setProperty('--color-text', global.colors.text);
       root.style.setProperty('--color-bg', global.colors.background);
       root.style.setProperty('--color-accent', global.colors.accent);
 
-      // Typography
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
 
       root.style.setProperty('--font-heading', `'${cleanHeadingFont}'`);
       root.style.setProperty('--font-body', `'${cleanBodyFont}'`);
       
-      // Border Radius
       root.style.setProperty('--radius-global', global.borderRadius);
 
-      // Section Specifics
       if (sections) {
           if (sections.header) {
               root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
@@ -164,10 +155,8 @@ const App: React.FC = () => {
           }
       }
 
-      // Load Custom Fonts
       loadUploadedFonts(uploadedFonts);
 
-      // Load Google Fonts
       const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
       const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
 
@@ -175,7 +164,6 @@ const App: React.FC = () => {
       if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
 
-  // useLayoutEffect runs before browser paint, preventing theme flicker
   useLayoutEffect(() => {
       if (storeConfig.theme) {
           applyTheme(storeConfig.theme, storeConfig.uploadedFonts || []);
@@ -204,7 +192,6 @@ const App: React.FC = () => {
 
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
-                // Cache config to LocalStorage for next visit
                 localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
 
                 if (fetchedConfig.faviconUrl) {
@@ -232,7 +219,6 @@ const App: React.FC = () => {
     if (page === 'builder') {
         setBuilderInitialStep(1);
     }
-    // If navigating away from checkout/cart and we were editing an order, verify if we should clear it
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
        if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
            setEditingOrder(null);
@@ -308,7 +294,6 @@ const App: React.FC = () => {
       setCartItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
   };
 
-  // Special Handler for "Edit Existing Order"
   const handleEditOrder = (order: Order) => {
       if (confirm("Bạn muốn chỉnh sửa đơn hàng này? Giỏ hàng hiện tại sẽ bị thay thế.")) {
           setCartItems(order.items);
@@ -318,33 +303,28 @@ const App: React.FC = () => {
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
-    // If editing existing order, use updateOrder
     if (editingOrder) {
         const success = await updateOrder(editingOrder.id, {
             ...orderData,
-            status: 'Chờ thanh toán', // Reset status if edited? Or keep current? 
-            // Usually editing implies re-approval or payment adjustment, so forcing 'Chờ thanh toán' or 'Đã xác nhận' depends on logic.
-            // Let's keep it safe: Update info and items.
+            status: 'Chờ thanh toán', 
         });
         
         if (success) {
             const updatedOrder = { 
                 ...editingOrder, 
                 ...orderData,
-                status: editingOrder.status // Keep status or update? Prompt implies customization before packing. 
+                status: editingOrder.status 
             };
             setCurrentOrder(updatedOrder);
             setCartItems([]);
             setEditingOrder(null);
             navigateTo('order-confirmation');
-            // Notify customer/admin email about update?
         } else {
             alert("Lỗi cập nhật đơn hàng. Vui lòng thử lại.");
         }
         return;
     }
 
-    // Normal Create Flow
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
@@ -381,95 +361,97 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-gray-900 bg-site-bg text-site-text transition-colors duration-300">
-         {currentPage !== 'admin' && (
-             <Header 
-                navigateTo={navigateTo} 
-                cartCount={cartItems.length} 
-                onCartClick={() => setIsCartOpen(true)} 
-                logoUrl={storeConfig.logoUrl || ''} 
-                isCartShaking={isCartShaking}
-                config={storeConfig}
-                currentPage={currentPage}
-             />
-        )}
-        
-        <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />}
-            {currentPage === 'builder' && (
-                <BuilderPage 
-                    config={config} 
-                    setConfig={setConfig} 
+    <HelmetProvider>
+        <div className="min-h-screen flex flex-col font-sans text-gray-900 bg-site-bg text-site-text transition-colors duration-300">
+            {currentPage !== 'admin' && (
+                <Header 
                     navigateTo={navigateTo} 
-                    onAddToCart={handleAddToCart} 
-                    onUpdateCart={handleUpdateCartItem} 
-                    showToast={showToast}
-                    legoParts={legoParts}
-                    backgrounds={backgrounds}
-                    frames={frames}
-                    editingCartIndex={editingCartIndex} 
-                    onCancelEdit={handleCancelEdit} 
-                    onZoomImage={setZoomedImageUrl} 
-                    logoUrl={storeConfig.logoUrl}
-                    initialStep={builderInitialStep}
+                    cartCount={cartItems.length} 
+                    onCartClick={() => setIsCartOpen(true)} 
+                    logoUrl={storeConfig.logoUrl || ''} 
+                    isCartShaking={isCartShaking}
+                    config={storeConfig}
+                    currentPage={currentPage}
                 />
             )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
-            {currentPage === 'cart' && <CartPage 
+            
+            <main className="flex-grow">
+                {currentPage === 'home' && <HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />}
+                {currentPage === 'builder' && (
+                    <BuilderPage 
+                        config={config} 
+                        setConfig={setConfig} 
+                        navigateTo={navigateTo} 
+                        onAddToCart={handleAddToCart} 
+                        onUpdateCart={handleUpdateCartItem} 
+                        showToast={showToast}
+                        legoParts={legoParts}
+                        backgrounds={backgrounds}
+                        frames={frames}
+                        editingCartIndex={editingCartIndex} 
+                        onCancelEdit={handleCancelEdit} 
+                        onZoomImage={setZoomedImageUrl} 
+                        logoUrl={storeConfig.logoUrl}
+                        initialStep={builderInitialStep}
+                    />
+                )}
+                {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
+                {currentPage === 'cart' && <CartPage 
+                    cartItems={cartItems} 
+                    onRemoveItem={handleRemoveCartItem} 
+                    onEditItem={handleEditCartItem} 
+                    allParts={allParts} 
+                    navigateTo={navigateTo}
+                    onUpdateQuantity={handleUpdateCartQuantity}
+                    onZoomImage={setZoomedImageUrl} 
+                />}
+                {currentPage === 'checkout' && (
+                    <CheckoutPage 
+                        cartItems={cartItems} 
+                        allParts={allParts} 
+                        onPlaceOrder={handlePlaceOrder} 
+                        onZoomImage={(url) => setZoomedImageUrl(url)}
+                        initialOrder={editingOrder} 
+                    />
+                )}
+                {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />}
+                {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
+                {currentPage === 'admin' && <AdminPage />}
+                {currentPage === 'about' && <AboutPage config={storeConfig} />}
+                {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
+                {currentPage === 'business' && <BusinessPage config={storeConfig} />}
+            </main>
+
+            {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
+
+            <CartPanel 
+                isOpen={isCartOpen} 
+                onClose={() => setIsCartOpen(false)} 
                 cartItems={cartItems} 
                 onRemoveItem={handleRemoveCartItem} 
-                onEditItem={handleEditCartItem} 
+                onEditItem={handleEditCartItem}
                 allParts={allParts} 
                 navigateTo={navigateTo}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onZoomImage={setZoomedImageUrl} 
-            />}
-            {currentPage === 'checkout' && (
-                <CheckoutPage 
-                    cartItems={cartItems} 
-                    allParts={allParts} 
-                    onPlaceOrder={handlePlaceOrder} 
-                    onZoomImage={(url) => setZoomedImageUrl(url)}
-                    initialOrder={editingOrder} // Pass existing order if editing
-                />
+            />
+
+            {zoomedImageUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
+                    <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                </div>
             )}
-            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />}
-            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
-            {currentPage === 'admin' && <AdminPage />}
-            {currentPage === 'about' && <AboutPage config={storeConfig} />}
-            {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
-            {currentPage === 'business' && <BusinessPage config={storeConfig} />}
-        </main>
 
-        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
-
-        <CartPanel 
-            isOpen={isCartOpen} 
-            onClose={() => setIsCartOpen(false)} 
-            cartItems={cartItems} 
-            onRemoveItem={handleRemoveCartItem} 
-            onEditItem={handleEditCartItem}
-            allParts={allParts} 
-            navigateTo={navigateTo}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onZoomImage={setZoomedImageUrl} 
-        />
-
-        {zoomedImageUrl && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
-                <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-                <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
-            </div>
-        )}
-
-        {toast && (
-            <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 animate-fade-in-down ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-                {toast.message}
-            </div>
-        )}
-    </div>
+            {toast && (
+                <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 animate-fade-in-down ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+                    {toast.message}
+                </div>
+            )}
+        </div>
+    </HelmetProvider>
   );
 };
 

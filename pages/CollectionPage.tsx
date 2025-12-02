@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo } from 'react';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page } from '../types';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
+import { SEO } from '../components/SEO';
 
 interface CollectionPageProps {
     navigateTo: (page: Page) => void, 
@@ -46,6 +46,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     return ( 
       <div className="min-h-screen bg-[#fcf9f6] pb-20 font-body text-site-text">
+        <SEO 
+            title="Bộ Sưu Tập Mẫu Thiết Kế" 
+            description="Khám phá hàng trăm mẫu khung tranh LEGO thiết kế sẵn cho mọi dịp: Sinh nhật, Tình yêu, Kỷ niệm." 
+        />
         {/* Header Hero Section */}
         <div className="bg-white border-b border-gray-100 pt-24 pb-12 px-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 rounded-full blur-3xl opacity-60 pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
