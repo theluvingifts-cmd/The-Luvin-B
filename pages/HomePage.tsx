@@ -1,9 +1,9 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import type { Page, FeedbackItem, CollectionTemplate } from '../types';
 import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
 import { StoreConfig } from '../services/configService';
 import { formatCurrency } from '../utils/pricing';
-import { SEO } from '../components/SEO';
 
 interface HomePageProps {
     navigateTo: (page: Page) => void;
@@ -12,6 +12,7 @@ interface HomePageProps {
     templates?: CollectionTemplate[];
 }
 
+// SVG Icons for Value Props
 const Icons = {
     Personalized: () => (
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-luvin-pink">
@@ -34,6 +35,7 @@ const Icons = {
     )
 };
 
+// Component: Smooth Image Loading
 const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ className, ...props }) => {
     const [loaded, setLoaded] = useState(false);
     return (
@@ -48,43 +50,53 @@ const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ clas
 };
 
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedbacks, templates }) => {
+  // --- CONFIG DATA ---
   const heroImage = config?.heroImageUrl || 'https://res.cloudinary.com/dbdqd93km/image/upload/v1764516860/uwa2bkcqdog9yctdmett.png'; 
   const inspireImage = config?.inspireImageUrl || 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop';
   
   const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
   const heroSubtitle = config?.heroSubtitle || 'trong từng mảnh ghép';
   
+  // Story Config
   const storyTitle = config?.homeStoryTitle || 'Hơn cả một món quà, <br/>đó là kỷ niệm.';
   const storyContent = config?.homeStoryContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất, mà ở câu chuyện nó mang theo.\nTại The Luvin, mỗi khung tranh là một cuốn nhật ký mở, nơi bạn kể lại hành trình yêu thương của mình qua những mảnh ghép nhỏ bé nhưng đầy màu sắc.\n\nDù là ngày kỷ niệm, sinh nhật hay một lời xin lỗi ngọt ngào, hãy để chúng tôi giúp bạn gói ghém cảm xúc ấy một cách trọn vẹn nhất.';
 
   const displayTemplates = (templates && templates.length > 0) ? templates.slice(0, 4) : COLLECTION_TEMPLATES.slice(0, 4);
   const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
 
+  // --- INFINITE AUTO SLIDE LOGIC (STEPPED) ---
   const carouselRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<any>(null);
 
+  // 1. Tạo danh sách lặp đủ dài (4 bộ) để giả lập vô tận
   const infiniteFeedbacks = useMemo(() => {
       if (rawFeedbacks.length === 0) return [];
+      // Bộ 1, Bộ 2, Bộ 3, Bộ 4
       return [...rawFeedbacks, ...rawFeedbacks, ...rawFeedbacks, ...rawFeedbacks];
   }, [rawFeedbacks]);
 
+  // 2. Xử lý khởi tạo vị trí (Bắt đầu ở giữa)
   useEffect(() => {
       const container = carouselRef.current;
       if (container && infiniteFeedbacks.length > 0) {
+          // Tính toán vị trí phần tử giữa của danh sách
+          // Ví dụ: 20 phần tử, bắt đầu ở index 10
           const middleIndex = Math.floor(infiniteFeedbacks.length / 2);
           const firstCard = container.firstElementChild as HTMLElement;
           
           if (firstCard) {
-              const cardWidth = firstCard.offsetWidth + 32; 
+              const cardWidth = firstCard.offsetWidth + 32; // width + gap
               const centerOffset = (container.clientWidth / 2) - (firstCard.offsetWidth / 2);
               const startScroll = (middleIndex * cardWidth) - centerOffset;
               
+              // Scroll ngay lập tức không animation
               container.scrollTo({ left: startScroll, behavior: 'instant' as any });
           }
       }
   }, [infiniteFeedbacks]);
 
+  // 3. Xử lý Auto-Slide từng bước (Step by Step)
   useEffect(() => {
       const container = carouselRef.current;
       if (!container || infiniteFeedbacks.length === 0) return;
@@ -95,17 +107,20 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           const firstCard = container.firstElementChild as HTMLElement;
           if (!firstCard) return;
 
-          const cardWidth = firstCard.offsetWidth + 32; 
+          const cardWidth = firstCard.offsetWidth + 32; // width + gap (gap-8 = 32px)
           const currentScroll = container.scrollLeft;
           const maxScroll = container.scrollWidth;
-          const oneSetWidth = (maxScroll / 4); 
+          const oneSetWidth = (maxScroll / 4); // Chiều dài 1 bộ gốc
 
+          // Logic Reset Vô Tận:
+          // Nếu đã cuộn quá bộ thứ 3 (gần hết), nhảy lùi về bộ thứ 2 (vị trí tương đương) ngay lập tức
           if (currentScroll >= oneSetWidth * 3) {
               container.scrollTo({ left: currentScroll - oneSetWidth, behavior: 'instant' as any });
               setTimeout(() => {
                   container.scrollBy({ left: cardWidth, behavior: 'smooth' });
               }, 20);
           } 
+          // Ngược lại, nếu đang ở đầu (bộ 1), nhảy tới bộ 2
           else if (currentScroll <= oneSetWidth) {
                container.scrollTo({ left: currentScroll + oneSetWidth, behavior: 'instant' as any });
                setTimeout(() => {
@@ -113,10 +128,12 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
               }, 20);
           }
           else {
+              // Bình thường: Trượt sang phải 1 card
               container.scrollBy({ left: cardWidth, behavior: 'smooth' });
           }
       };
 
+      // Set interval 3 giây trượt 1 lần
       intervalRef.current = setInterval(slideNext, 3000);
 
       return () => {
@@ -127,14 +144,11 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
 
   return (
     <div className="font-body text-gray-800 overflow-x-hidden">
-      <SEO 
-        title="Trang Chủ" 
-        description="The Luvin - Nơi những mảnh ghép LEGO kể câu chuyện tình yêu của bạn. Quà tặng cá nhân hóa độc đáo cho sinh nhật, kỷ niệm." 
-        image={heroImage}
-      />
       
-      {/* 1. HERO SECTION */}
+      {/* 1. HERO SECTION - Split Layout */}
       <section className="relative min-h-[90vh] flex flex-col lg:flex-row bg-[#fffbf0]">
+        
+        {/* Left Content */}
         <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 lg:py-0 z-10 order-2 lg:order-1">
             <div className="animate-fade-in space-y-6">
                 <div className="flex items-center gap-3">
@@ -168,17 +182,19 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
             </div>
         </div>
 
+        {/* Right Image - Rounded Shape */}
         <div className="w-full lg:w-1/2 h-[50vh] lg:h-auto relative order-1 lg:order-2">
             <div className="absolute inset-0 bg-gray-100 lg:rounded-bl-[100px] overflow-hidden">
                 <FadeInImage 
                     src={heroImage} 
                     alt="Hero" 
                     className="w-full h-full"
-                    loading="eager"
+                    loading="eager" // Load immediately
                 />
                 <div className="absolute inset-0 bg-black/10 mix-blend-multiply pointer-events-none"></div>
             </div>
             
+            {/* Floating Badge */}
             <div className="absolute bottom-8 left-8 lg:bottom-16 lg:-left-16 bg-white p-4 rounded-2xl shadow-xl animate-bounce hidden md:block max-w-[200px]">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center text-xl">🎁</div>
@@ -220,7 +236,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           </div>
       </section>
 
-      {/* 3. BRAND STORY */}
+      {/* 3. BRAND STORY - Emotional Connection */}
       <section className="py-24 bg-white overflow-hidden">
           <div className="container mx-auto px-6">
               <div className="flex flex-col md:flex-row items-center gap-16">
@@ -243,7 +259,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           </div>
       </section>
 
-      {/* 4. FEATURED COLLECTION */}
+      {/* 4. FEATURED COLLECTION - Grid Layout */}
       <section className="py-24 bg-gray-50">
           <div className="container mx-auto px-6">
               <div className="text-center mb-16">
@@ -260,6 +276,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                                   alt={item.name} 
                                   className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110" 
                               />
+                              {/* Hover Overlay */}
                               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                   <button className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                                       Tùy chỉnh ngay
@@ -285,7 +302,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           </div>
       </section>
 
-      {/* 5. FEEDBACK */}
+      {/* 5. FEEDBACK - Infinite Step-by-Step Carousel */}
       <section className="py-24 bg-white border-t border-gray-100 overflow-hidden">
           <div className="container mx-auto px-6 mb-12 text-center">
               <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-3">Our feedbacks</h2>

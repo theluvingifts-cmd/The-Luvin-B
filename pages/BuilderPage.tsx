@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption } from '../types';
 import { 
@@ -11,7 +12,6 @@ import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
-import { SEO } from '../components/SEO';
 
 declare var html2canvas: any;
 
@@ -77,10 +77,6 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
     </div>
   );
 };
-
-// ... (Step1Frame, PresetBackgroundButton, Step2, PartButton, Step3, Step4, TextEditor are unchanged, included below for context) ...
-// To save space in XML, I will copy them verbatim but if any logic needed change I would apply it. 
-// Since only SEO and sticky logic changes, I will focus on the main BuilderPage component.
 
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
@@ -1008,6 +1004,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const frameCaptureRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(480);
   const [isSaving, setIsSaving] = useState(false);
+  const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
@@ -1030,17 +1028,20 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             const counts: Record<string, number> = {};
             recentOrders.forEach(o => {
                 o.items.forEach(item => {
+                    // Count draggable items (Accessories, Pets)
                     item.draggableItems.forEach(d => {
-                        if (d.type !== 'charm') { 
+                        if (d.type !== 'charm') { // Ignore custom uploads
                             counts[d.partId] = (counts[d.partId] || 0) + 1;
                         }
                     });
+                    // Count worn items if needed (Hats)
                     item.characters.forEach(c => {
                         if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
                     });
                 });
             });
 
+            // Get Top 3
             const top3 = Object.entries(counts)
                 .sort(([, a], [, b]) => b - a)
                 .slice(0, 3)
@@ -1054,13 +1055,16 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     fetchHotTrends();
   }, []);
 
+  // Wrapper for setConfig to handle history
   const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
       setConfig(prev => {
           const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
           
+          // Only add to history if it's different
           if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
               const newHistory = history.slice(0, historyIndex + 1);
               newHistory.push(newConfig);
+              // Limit history size to 20
               if (newHistory.length > 20) newHistory.shift();
               setHistory(newHistory);
               setHistoryIndex(newHistory.length - 1);
@@ -1102,12 +1106,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   files: [file]
               });
           } catch (e) {
+              // Share cancelled or failed, fallback to download
               const link = document.createElement('a');
               link.href = image;
               link.download = 'the-luvin-design.png';
               link.click();
           }
       } else {
+          // Fallback
           const link = document.createElement('a');
           link.href = image;
           link.download = 'the-luvin-design.png';
@@ -1133,6 +1139,22 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           window.scrollTo({ top: 0, behavior: 'smooth' });
       }
   }, [step]);
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsBottomBarVisible(false);
+      } else {
+        setIsBottomBarVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+    window.addEventListener('scroll', controlNavbar);
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, []);
 
   useEffect(() => {
     const observer = new ResizeObserver(entries => {
@@ -1305,11 +1327,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             const canvas = await html2canvas(container, {
               backgroundColor: null,
               useCORS: true, 
-              allowTaint: true, 
+              allowTaint: true, // Added to allow cross-origin tainting if needed
               scale: 3,      
               logging: false,
               scrollX: 0,    
               scrollY: 0,
+              // Explicitly ensuring no ignore logic that might hide watermark
               ignoreElements: (element: Element) => false
             });
             resolve(canvas.toDataURL('image/png'));
@@ -1327,6 +1350,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     });
   };
 
+  // --- Animation Helper Function ---
   const animateAddToCart = (imageSrc: string) => {
       const desktopCart = document.getElementById('cart-icon-desktop');
       const mobileCart = document.getElementById('cart-icon-mobile');
@@ -1455,10 +1479,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   return (
     <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
-      <SEO 
-        title="Thiết kế Khung tranh LEGO" 
-        description="Tự tay thiết kế món quà LEGO độc bản. Chọn nhân vật, phụ kiện, và lời nhắn gửi yêu thương." 
-      />
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-500">
@@ -1524,11 +1544,23 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         logoUrl={logoUrl} 
                     />
                 </div>
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
+                    <span className="text-amber-500 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                    </span>
+                    <div className="text-xs text-amber-900 leading-relaxed">
+                        <p className="font-bold mb-1">Lưu ý quan trọng:</p>
+                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
+                    </div>
+                </div>
                 <div className="h-10 mt-4 hidden lg:block"></div>
             </div>
           </div>
 
           <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> 
+              {/* SLIM FREE SHIP PROGRESS BAR */}
               {(step === 2 || step === 3) && (
                   <div className="mb-3 px-1 animate-fade-in">
                       <div className="flex justify-between items-center text-[10px] mb-1">
@@ -1613,8 +1645,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 </>
               )}
                
-               {/* OPTIMIZED STICKY BOTTOM BAR FOR MOBILE - ALWAYS VISIBLE */}
-               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.1)] p-4 z-50 transition-all duration-300 ease-in-out safe-bottom`}>
+               {/* STICKY BOTTOM BAR FOR MOBILE */}
+               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
                      <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-medium text-gray-500">Tạm tính:</span>
                         <span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span>
@@ -1634,14 +1666,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                            <button
                               onClick={() => setStep(s => Math.max(1, s - 1))}
                               disabled={step === 1}
-                              className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm hover:bg-gray-50"
+                              className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm"
                           >
                               Quay lại
                           </button>
                           <button
                               onClick={() => setStep(s => Math.min(4, s + 1))}
                               disabled={step === 4}
-                              className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm hover:opacity-90 active:scale-95 transition-transform"
+                              className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm"
                           >
                               Tiếp theo
                           </button>
