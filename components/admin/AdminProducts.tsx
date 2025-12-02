@@ -179,9 +179,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             
             {/* View Mode Switching Logic */}
             {viewMode === 'edit' ? (
-                <div className="w-full h-full fixed inset-0 sm:relative sm:inset-auto bg-gray-50 z-40 overflow-y-auto sm:overflow-visible p-2 sm:p-0">
-                    <div className="sm:hidden mb-2">
-                        <button onClick={switchToList} className="text-sm text-gray-500 font-bold">&larr; Quay lại danh sách</button>
+                <div className="w-full h-full bg-gray-50 z-40 overflow-y-auto p-2 sm:p-0">
+                    <div className="mb-4">
+                        <button onClick={switchToList} className="text-sm text-gray-500 font-bold hover:text-gray-900 transition-colors flex items-center gap-1">
+                            &larr; Quay lại danh sách
+                        </button>
                     </div>
                     {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
                     {activeProductSubTab === 'backgrounds' && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />}
