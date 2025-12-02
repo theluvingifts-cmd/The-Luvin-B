@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { ThemeConfig, CustomFont, StaffMember, GiftBoxConfig } from '../types';
+import { ThemeConfig, CustomFont, StaffMember } from '../types';
 
 const CONFIG_DOC_ID = 'general';
 
@@ -37,9 +37,6 @@ export interface StoreConfig {
     
     // NEW: Staff Management
     staff?: StaffMember[];
-
-    // NEW: Gift Box Config
-    giftBox?: GiftBoxConfig;
 
     // Ads Config (Deprecated in favor of daily collection, kept for fallback if needed)
     dailyAdsBudget?: number; 
@@ -78,13 +75,6 @@ export const DEFAULT_THEME: ThemeConfig = {
     }
 };
 
-const DEFAULT_GIFT_BOX: GiftBoxConfig = {
-    enabled: true,
-    price: 30000,
-    stock: 100,
-    imageUrl: 'https://cdn-icons-png.flaticon.com/512/4530/4530625.png'
-};
-
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {
     try {
         const docRef = doc(db, 'config', CONFIG_DOC_ID);
@@ -103,25 +93,16 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (!data.staff) {
                 data.staff = [];
             }
-            // Ensure giftBox exists
-            if (!data.giftBox) {
-                data.giftBox = DEFAULT_GIFT_BOX;
-            }
             return data;
         }
-        return { 
-            theme: DEFAULT_THEME, 
-            uploadedFonts: [], 
-            staff: [],
-            giftBox: DEFAULT_GIFT_BOX
-        };
+        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
     } catch (error: any) {
         if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
             console.warn("Firestore: Unable to fetch config (Permission Denied). Using default settings.");
-            return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], giftBox: DEFAULT_GIFT_BOX };
+            return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
         }
         console.error("Error fetching config:", error);
-        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], giftBox: DEFAULT_GIFT_BOX };
+        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
     }
 };
 

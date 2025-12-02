@@ -226,13 +226,6 @@ export interface SectionStyle {
     paddingBottom?: string;
 }
 
-export interface GiftBoxConfig {
-    enabled: boolean;
-    price: number;
-    stock: number;
-    imageUrl?: string;
-}
-
 export interface ThemeConfig {
     global: {
         colors: {
