@@ -16,6 +16,7 @@ import { getAllTemplates } from './services/templateService';
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
+import { sendOrderTelegram } from './services/telegramService'; // IMPORTED TELEGRAM SERVICE
 
 import AdminPage from './pages/AdminPage'; 
 import { Header } from './components/Header';
@@ -30,7 +31,7 @@ import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
-import { BusinessPage } from './pages/BusinessPage'; // ADDED
+import { BusinessPage } from './pages/BusinessPage'; 
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
@@ -365,7 +366,10 @@ const App: React.FC = () => {
 
         setCartItems([]); 
         navigateTo('order-confirmation');
+        
+        // --- NOTIFICATIONS ---
         sendOrderEmail(res.data);
+        sendOrderTelegram(res.data, storeConfig); // NEW: Send Telegram
     } else {
         // IMPROVED: Throw exact error to CheckoutPage to display
         const errMsg = res.error && typeof res.error === 'object' && 'message' in res.error 

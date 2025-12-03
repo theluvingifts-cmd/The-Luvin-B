@@ -38,8 +38,12 @@ export interface StoreConfig {
     // NEW: Staff Management
     staff?: StaffMember[];
 
-    // Ads Config (Deprecated in favor of daily collection, kept for fallback if needed)
+    // Ads Config
     dailyAdsBudget?: number; 
+
+    // NEW: Telegram Notification Config
+    telegramBotToken?: string;
+    telegramChatId?: string;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

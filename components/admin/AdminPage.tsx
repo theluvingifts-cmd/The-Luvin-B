@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { getAllOrders } from '../../services/orderService';
 import { getAllParts } from '../../services/productService';
@@ -15,8 +16,8 @@ import { AdminDashboard } from '../admin/AdminDashboard';
 import { AdminOrders } from '../admin/AdminOrders';
 import { AdminProducts } from '../admin/AdminProducts';
 import { AdminConfig } from '../admin/AdminConfig';
-import { AdminVouchers } from '../admin/AdminVouchers'; // NEW
-import { AdminCustomers } from '../admin/AdminCustomers'; // NEW
+import { AdminVouchers } from '../admin/AdminVouchers'; 
+import { AdminCustomers } from '../admin/AdminCustomers'; 
 
 type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
 
