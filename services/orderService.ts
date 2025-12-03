@@ -145,41 +145,38 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
 // 3. Hàm lấy toàn bộ danh sách đơn hàng (cho trang Admin)
 export const getAllOrders = async (): Promise<Order[]> => {
     try {
-        const q = query(collection(db, "orders"), orderBy("createdAt", "desc")); 
+        const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
-        
         const orders: Order[] = [];
         querySnapshot.forEach((doc) => {
             orders.push(doc.data() as Order);
         });
         return orders;
-    } catch (error) {
-        console.error("Lỗi lấy danh sách đơn:", error);
+    } catch (error: any) {
+        console.error("Lỗi lấy danh sách đơn hàng:", error);
         return [];
     }
 };
 
-// 4. Hàm cập nhật thông tin đơn hàng
-export const updateOrder = async (orderId: string, updates: Partial<Order>) => {
+// 4. Update Order
+export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
     try {
         const orderRef = doc(db, "orders", orderId);
-        // Sanitize updates deeply to prevent "invalid nested entity" errors
-        const sanitizedUpdates = cleanForFirestore(updates);
-        await updateDoc(orderRef, sanitizedUpdates);
+        await updateDoc(orderRef, updates);
         return true;
     } catch (error) {
-        console.error("Lỗi cập nhật đơn hàng:", error);
+        console.error("Error updating order:", error);
         return false;
     }
 };
 
-// 5. Hàm xóa đơn hàng (Dành cho Admin dọn đơn rác)
-export const deleteOrder = async (orderId: string) => {
+// 5. Delete Order
+export const deleteOrder = async (orderId: string): Promise<boolean> => {
     try {
         await deleteDoc(doc(db, "orders", orderId));
         return true;
     } catch (error) {
-        console.error("Lỗi xóa đơn hàng:", error);
+        console.error("Error deleting order:", error);
         return false;
     }
 };

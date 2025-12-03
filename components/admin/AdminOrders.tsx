@@ -1,4 +1,5 @@
 
+// ... imports (same as before) ...
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
@@ -7,9 +8,11 @@ import { calculateOrderTotal, formatCurrency } from '../../utils/pricing';
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
-import FramePreview from '../FramePreview'; // VISUAL EDITING
+import FramePreview from '../FramePreview';
 
-// CONSTANTS
+// ... (rest of imports and constants are same) ...
+
+// CONSTANTS (same as before)
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
     { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
@@ -63,23 +66,19 @@ interface AdminOrdersProps {
 type OrderTab = 'active' | 'history';
 
 export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
+    // ... (All logic remains identical up to the rendering loop) ...
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
     
-    // Derived State for editing payment
     const [amountPaidInput, setAmountPaidInput] = useState(0);
-
-    // Zoom State
     const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
 
-    // Filtering & Tabs
     const [orderTab, setOrderTab] = useState<OrderTab>('active');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [orderSearch, setOrderSearch] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
     
-    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(20);
 
@@ -96,7 +95,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const canCancelOrder = role === 'admin';
     const canDeleteOrder = role === 'admin';
 
-    // Editing State for Visual Preview
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -106,7 +104,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         }
     }, [selectedOrder]);
 
-    // Reset pagination on filter change
     useEffect(() => {
         setCurrentPage(1);
     }, [orderTab, filterStatus, orderSearch, itemsPerPage]);
@@ -128,15 +125,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const filteredOrders = useMemo(() => {
         let result = [...orders];
-
-        // 1. Tab Filter
         if (orderTab === 'active') {
             result = result.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status));
         } else {
             result = result.filter(o => ['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status));
         }
-
-        // 2. Search
         if (orderSearch.trim()) {
             const searchLower = orderSearch.trim().toLowerCase();
             result = result.filter(o => 
@@ -144,13 +137,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 o.customer.phone.includes(searchLower)
             );
         }
-
-        // 3. Status Filter (Internal within tab)
         if (filterStatus !== 'all') {
             result = result.filter(o => o.status === filterStatus);
         }
-
-        // 4. Sort
         if (sortMode === 'urgent') {
             result.sort((a, b) => {
                 if (a.isUrgent !== b.isUrgent) return a.isUrgent ? -1 : 1;
@@ -170,7 +159,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         return result;
     }, [orders, orderTab, sortMode, filterStatus, orderSearch]);
 
-    // Pagination Logic
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
     const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -192,37 +180,30 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     };
 
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => {
-        // Special logic for status change to "Đã xác nhận" (Confirmed)
         if (updates.status === 'Đã xác nhận') {
             const currentOrder = orders.find(o => o.id === orderId);
             if (currentOrder && (!currentOrder.amountPaid || currentOrder.amountPaid === 0)) {
-                // Calculate expected payment
                 const expectedPayment = currentOrder.payment.method === 'deposit'
                     ? Math.round(currentOrder.totalPrice * 0.7)
                     : currentOrder.totalPrice;
-                
                 updates.amountPaid = expectedPayment;
                 updates.amountToPay = currentOrder.totalPrice - expectedPayment;
             }
         }
-
         const success = await updateOrder(orderId, updates); 
         if (success) { 
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o)); 
             if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, ...updates } : null); 
             if (showMsg) alert("Đã cập nhật!"); 
         } else {
-            alert("Lỗi: Không thể cập nhật đơn hàng. Vui lòng kiểm tra lại kết nối hoặc quyền truy cập.");
+            alert("Lỗi: Không thể cập nhật đơn hàng.");
         }
     };
 
     const handleDeleteOrder = async () => {
         if (!selectedOrder) return;
-        if (!canDeleteOrder) {
-            alert("Bạn không có quyền xóa đơn hàng.");
-            return;
-        }
-        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không? Hành động này không thể hoàn tác.`)) {
+        if (!canDeleteOrder) { alert("Bạn không có quyền xóa đơn hàng."); return; }
+        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XOÁ VĨNH VIỄN đơn hàng ${selectedOrder.id} không?`)) {
             setIsLoading(true);
             await deleteOrder(selectedOrder.id);
             setOrders(prev => prev.filter(o => o.id !== selectedOrder.id));
@@ -236,46 +217,29 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const handleMarkAsPacked = async () => {
         if (!selectedOrder || !currentUser) return;
-        
         if (confirm(`Xác nhận bạn (${currentUser.email}) đã đóng gói đơn này?`)) {
             const now = new Date().toISOString();
-            const success = await updateOrder(selectedOrder.id, { 
-                status: 'Chờ chuyển hàng', 
-                packedBy: currentUser.email,
-                packedAt: now
-            });
-
+            const success = await updateOrder(selectedOrder.id, { status: 'Chờ chuyển hàng', packedBy: currentUser.email, packedAt: now });
             if (success) {
                 setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'Chờ chuyển hàng', packedBy: currentUser.email, packedAt: now } : o));
                 setSelectedOrder(prev => prev ? { ...prev, status: 'Chờ chuyển hàng', packedBy: currentUser.email, packedAt: now } : null);
                 alert("Đã xác nhận đóng gói thành công!");
             } else {
-                alert("LỖI: Không thể cập nhật trạng thái đơn hàng.\n\nNguyên nhân: Tài khoản của bạn chưa được cấp quyền 'write' trong Firebase Rules.");
+                alert("LỖI: Không thể cập nhật trạng thái đơn hàng.");
             }
         }
     };
 
-    // Confirm Payment Logic (Button)
     const handleConfirmPayment = async () => {
         if (!selectedOrder) return;
-        
-        // Determine expected payment
-        const expectedPayment = selectedOrder.payment.method === 'deposit' 
-            ? Math.round(selectedOrder.totalPrice * 0.7) 
-            : selectedOrder.totalPrice;
-
-        await handleUpdate(selectedOrder.id, { 
-            status: 'Đã xác nhận',
-            amountPaid: expectedPayment,
-            amountToPay: selectedOrder.totalPrice - expectedPayment
-        }, true);
+        const expectedPayment = selectedOrder.payment.method === 'deposit' ? Math.round(selectedOrder.totalPrice * 0.7) : selectedOrder.totalPrice;
+        await handleUpdate(selectedOrder.id, { status: 'Đã xác nhận', amountPaid: expectedPayment, amountToPay: selectedOrder.totalPrice - expectedPayment }, true);
     };
 
     const handlePrintOrder = () => {
         if (!selectedOrder) return;
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
-
         const html = `
             <!DOCTYPE html>
             <html>
@@ -293,72 +257,27 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     .item-table th, .item-table td { border: 1px solid #000; padding: 8px; text-align: left; }
                     .item-table th { background: #f0f0f0; }
                     .footer { margin-top: 40px; text-align: center; font-size: 12px; font-style: italic; }
-                    @media print {
-                        @page { margin: 0.5cm; }
-                        body { -webkit-print-color-adjust: exact; }
-                    }
+                    @media print { @page { margin: 0.5cm; } body { -webkit-print-color-adjust: exact; } }
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1>
-                    <p class="subtitle">Hotline: 0964 393 115 - Facebook: The Luvin</p>
-                </div>
+                <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0964 393 115 - Facebook: The Luvin</p></div>
                 <div class="info-grid">
-                    <div class="box">
-                        <span class="box-title">Người nhận</span>
-                        <p><strong>${selectedOrder.customer.name}</strong></p>
-                        <p>${selectedOrder.customer.phone}</p>
-                        <p>${selectedOrder.customer.address}</p>
-                        <p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p>
-                    </div>
-                    <div class="box">
-                        <span class="box-title">Thông tin đơn hàng</span>
-                        <p>Mã đơn: <strong>${selectedOrder.id}</strong></p>
-                        <p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p>
-                        <p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p>
-                        <p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>
-                        ${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}
-                        ${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}
-                    </div>
+                    <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${selectedOrder.customer.address}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p></div>
+                    <div class="box"><span class="box-title">Thông tin đơn hàng</span><p>Mã đơn: <strong>${selectedOrder.id}</strong></p><p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p><p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p><p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}</div>
                 </div>
                 <table class="item-table">
-                    <thead>
-                        <tr>
-                            <th>STT</th>
-                            <th>Tên sản phẩm</th>
-                            <th>Chi tiết</th>
-                            <th>SL</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>STT</th><th>Tên sản phẩm</th><th>Chi tiết</th><th>SL</th></tr></thead>
                     <tbody>
-                        ${selectedOrder.items.map((item, idx) => `
-                            <tr>
-                                <td style="text-align: center">${idx + 1}</td>
-                                <td><strong>Khung LEGO ${item.frameId.toUpperCase()}</strong></td>
-                                <td style="font-size: 12px;">
-                                    ${item.characters.map((char, cIdx) => `
-                                        <div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>
-                                    `).join('')}
-                                    ${item.draggableItems.length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${item.draggableItems.length} phụ kiện/thú cưng</div>` : ''}
-                                </td>
-                                <td style="text-align: center">1</td>
-                            </tr>
-                        `).join('')}
-                        ${selectedOrder.addGiftBox ? `
-                            <tr>
-                                <td style="text-align: center">${selectedOrder.items.length + 1}</td>
-                                <td>Hộp quà cao cấp</td>
-                                <td>Thiệp + Rơm + Nơ</td>
-                                <td style="text-align: center">1</td>
-                            </tr>
-                        ` : ''}
+                        ${selectedOrder.items.map((item, idx) => {
+                            const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
+                            const frameName = frame ? frame.name : item.frameId;
+                            return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>Khung LEGO ${frameName}</strong></td><td style="font-size: 12px;">${item.characters.map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${item.draggableItems.length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${item.draggableItems.length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
+                        }).join('')}
+                        ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">1</td></tr>` : ''}
                     </tbody>
                 </table>
-                <div class="footer">
-                    <p>Cảm ơn quý khách đã tin tưởng The Luvin!</p>
-                    <p>Vui lòng quay video khi mở hàng để được hỗ trợ đổi trả tốt nhất.</p>
-                </div>
+                <div class="footer"><p>Cảm ơn quý khách đã tin tưởng The Luvin!</p><p>Vui lòng quay video khi mở hàng để được hỗ trợ đổi trả tốt nhất.</p></div>
             </body>
             </html>
         `;
@@ -367,19 +286,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         printWindow.print();
     };
 
-    // --- VISUAL TRANSFORM HANDLERS ---
     const handleVisualTransform = (itemIndex: number, itemId: string, newTransform: any) => {
         if (!editForm) return;
-        
         const [type, ...rest] = itemId.split('-');
         const rawId = rest.join('-');
-
         setEditForm(prev => {
             if (!prev) return null;
             let newOrder = { ...prev };
             const newItems = [...newOrder.items];
             const currentItem = { ...newItems[itemIndex] };
-
             if (type === 'text') {
                 const idToUpdate = parseInt(rawId);
                 currentItem.texts = currentItem.texts.map(t => t.id === idToUpdate ? { ...t, ...newTransform } : t);
@@ -397,12 +312,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
     };
 
-    // --- EDITING LOGIC ---
     const startEditingOrder = () => {
         if (!selectedOrder) return;
         const form = JSON.parse(JSON.stringify(selectedOrder));
         setEditForm(form);
-        // Initialize Amount Paid Input with existing value or 0
         setAmountPaidInput(form.amountPaid || 0); 
         setIsEditingOrder(true);
     };
@@ -433,19 +346,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             await adjustStock(stockAdjustments);
             onRefreshProducts();
         }
-        
-        // Final Payment Calculation before save
-        // We use the manually input amountPaid from state
         const finalTotalPrice = editForm.totalPrice; 
         const finalAmountPaid = amountPaidInput;
         const finalAmountToPay = Math.max(0, finalTotalPrice - finalAmountPaid);
-        
-        const finalOrder = { 
-            ...editForm, 
-            amountPaid: finalAmountPaid,
-            amountToPay: finalAmountToPay 
-        };
-
+        const finalOrder = { ...editForm, amountPaid: finalAmountPaid, amountToPay: finalAmountToPay };
         await handleUpdate(selectedOrder.id, finalOrder, false);
         setIsEditingOrder(false);
         setEditForm(null);
@@ -460,7 +364,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         orderItems.forEach(item => {
             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
             sub += frame.price;
-            sub += item.characters.length * 10000; // Base char price
+            sub += item.characters.length * 10000;
             item.characters.forEach(char => {
                 if (char.customPrintPrice) sub += char.customPrintPrice;
                 if (char.hair?.price) sub += char.hair.price;
@@ -485,9 +389,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         const giftBoxFee = newOrder.addGiftBox ? 30000 : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
-        
         const finalPrice = Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
-        
         return { ...newOrder, totalPrice: finalPrice };
     };
 
@@ -496,7 +398,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         setEditForm(prev => {
             if (!prev) return null;
             let newOrder = { ...prev };
-            
             if (itemIndex !== undefined && nestedField === 'frameId') {
                  const newItems = [...newOrder.items];
                  newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
@@ -522,13 +423,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
     };
 
-    // ... (Character editing functions: handleAddCharacter, handleRemoveCharacter, etc. - kept same)
     const handleAddCharacter = (itemIndex: number) => {
         if (!editForm) return;
-        const newChar: LegoCharacterConfig = {
-            id: Date.now(),
-            x: 50, y: 50, rotation: 0, scale: 1,
-        };
+        const newChar: LegoCharacterConfig = { id: Date.now(), x: 50, y: 50, rotation: 0, scale: 1 };
         setEditForm(prev => {
             if (!prev) return null;
             let newOrder = { ...prev };
@@ -560,7 +457,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             let newOrder = { ...prev };
             const newItems = [...newOrder.items];
             const newCharacters = [...newItems[itemIndex].characters];
-            
             if (partId === "") {
                  newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
             } else if (selectedPart) {
@@ -607,20 +503,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const handleAddDraggable = (itemIndex: number, part: LegoPart) => {
         if (!editForm) return;
-        const newItem: DraggableItem = {
-            id: Date.now(),
-            partId: part.id,
-            type: part.type as 'accessory' | 'pet',
-            x: 50, y: 50, rotation: 0, scale: 1
-        };
+        const newItem: DraggableItem = { id: Date.now(), partId: part.id, type: part.type as 'accessory' | 'pet', x: 50, y: 50, rotation: 0, scale: 1 };
         setEditForm(prev => {
              if (!prev) return null;
              let newOrder = { ...prev };
              const newItems = [...newOrder.items];
-             newItems[itemIndex] = { 
-                 ...newItems[itemIndex], 
-                 draggableItems: [...newItems[itemIndex].draggableItems, newItem] 
-             };
+             newItems[itemIndex] = { ...newItems[itemIndex], draggableItems: [...newItems[itemIndex].draggableItems, newItem] };
              newOrder.items = newItems;
              return updateEditFormWithPrice(newOrder);
         });
@@ -629,23 +517,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const isOrderPacked = selectedOrder ? ['Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng'].includes(selectedOrder.status) : false;
 
-    // Billing Breakdown Render Helper
+    // Billing Breakdown Render Helper (Copied from original)
     const BillingBreakdown = () => {
         const order = isEditingOrder && editForm ? editForm : selectedOrder;
         if (!order) return null;
-
         const subtotal = calculateSubtotal(order.items);
         const giftBoxFee = order.addGiftBox ? 30000 : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 
-        
-        // Calculate Amount Paid
-        // If editing, use local state input. 
-        // If viewing, use order.amountPaid (defaults to 0 if undefined)
         const amountPaid = isEditingOrder ? amountPaidInput : (order.amountPaid || 0);
-        
-        // Remaining (COD) = Total - Paid
         const remaining = Math.max(0, totalPrice - amountPaid);
 
         return (
@@ -655,87 +536,26 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     {order.addGiftBox && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ HỘP QUÀ</span>}
                 </h3>
                 <div className="space-y-2 text-sm text-gray-700">
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Tiền hàng:</span>
-                        <span className="font-medium">{formatCurrency(subtotal, 'admin')}</span>
-                    </div>
-                    
-                    {/* Gift Box Row */}
+                    <div className="flex justify-between"><span className="text-gray-500">Tiền hàng:</span><span className="font-medium">{formatCurrency(subtotal, 'admin')}</span></div>
                     <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <span className="text-gray-500">Hộp quà:</span>
-                            {isEditingOrder && (
-                                <input 
-                                    type="checkbox" 
-                                    checked={order.addGiftBox} 
-                                    onChange={(e) => handleEditFormChange('addGiftBox', e.target.checked)} 
-                                    className="w-4 h-4 accent-pink-600"
-                                />
-                            )}
-                        </div>
-                        <span className={`font-medium ${order.addGiftBox ? 'text-gray-900' : 'text-gray-400'}`}>
-                            {formatCurrency(giftBoxFee, 'admin')}
-                        </span>
+                        <div className="flex items-center gap-2"><span className="text-gray-500">Hộp quà:</span>{isEditingOrder && (<input type="checkbox" checked={order.addGiftBox} onChange={(e) => handleEditFormChange('addGiftBox', e.target.checked)} className="w-4 h-4 accent-pink-600"/>)}</div>
+                        <span className={`font-medium ${order.addGiftBox ? 'text-gray-900' : 'text-gray-400'}`}>{formatCurrency(giftBoxFee, 'admin')}</span>
                     </div>
-
-                    {/* Shipping Row */}
                     <div className="flex justify-between items-center">
                         <span className="text-gray-500">Phí vận chuyển:</span>
-                        {isEditingOrder ? (
-                            <input 
-                                type="number" 
-                                className="border rounded p-1 w-24 text-right font-medium text-sm" 
-                                value={shippingFee}
-                                onChange={(e) => handleEditFormChange('shipping', Number(e.target.value), 'fee')}
-                            />
-                        ) : (
-                            <span className="font-medium">{formatCurrency(shippingFee, 'admin')}</span>
-                        )}
+                        {isEditingOrder ? (<input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm" value={shippingFee} onChange={(e) => handleEditFormChange('shipping', Number(e.target.value), 'fee')}/>) : (<span className="font-medium">{formatCurrency(shippingFee, 'admin')}</span>)}
                     </div>
-
-                    {/* Discount Row */}
                     <div className="flex justify-between items-center">
                         <span className="text-gray-500">Giảm giá:</span>
-                        {isEditingOrder ? (
-                            <input 
-                                type="number" 
-                                className="border rounded p-1 w-24 text-right font-medium text-sm text-green-600" 
-                                value={discount}
-                                onChange={(e) => handleEditFormChange('discountAmount', Number(e.target.value))}
-                            />
-                        ) : (
-                            <span className="font-medium text-green-600">-{formatCurrency(discount, 'admin')}</span>
-                        )}
+                        {isEditingOrder ? (<input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm text-green-600" value={discount} onChange={(e) => handleEditFormChange('discountAmount', Number(e.target.value))}/>) : (<span className="font-medium text-green-600">-{formatCurrency(discount, 'admin')}</span>)}
                     </div>
-
                     <div className="border-t border-gray-100 my-2"></div>
-
-                    {/* Total Row */}
-                    <div className="flex justify-between items-center text-base">
-                        <span className="font-bold text-gray-800">Tổng giá trị đơn:</span>
-                        <span className="font-bold text-gray-900">{formatCurrency(totalPrice, 'admin')}</span>
-                    </div>
-
-                    {/* Paid Row */}
+                    <div className="flex justify-between items-center text-base"><span className="font-bold text-gray-800">Tổng giá trị đơn:</span><span className="font-bold text-gray-900">{formatCurrency(totalPrice, 'admin')}</span></div>
                     <div className="flex justify-between items-center bg-green-50 p-2 rounded -mx-2">
                         <span className="text-green-700 font-medium">Đã thanh toán:</span>
-                        {isEditingOrder ? (
-                            <input 
-                                type="number" 
-                                className="border border-green-300 rounded p-1 w-28 text-right font-bold text-green-700 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                value={amountPaidInput}
-                                onChange={(e) => setAmountPaidInput(Number(e.target.value))}
-                            />
-                        ) : (
-                            <span className="font-bold text-green-700">{formatCurrency(amountPaid, 'admin')}</span>
-                        )}
+                        {isEditingOrder ? (<input type="number" className="border border-green-300 rounded p-1 w-28 text-right font-bold text-green-700 bg-white" value={amountPaidInput} onChange={(e) => setAmountPaidInput(Number(e.target.value))}/>) : (<span className="font-bold text-green-700">{formatCurrency(amountPaid, 'admin')}</span>)}
                     </div>
-
-                    {/* Remaining Row */}
-                    <div className="flex justify-between items-center bg-red-50 p-2 rounded -mx-2">
-                        <span className="text-red-700 font-medium">Còn lại (COD):</span>
-                        <span className="font-bold text-red-700 text-lg">{formatCurrency(remaining, 'admin')}</span>
-                    </div>
+                    <div className="flex justify-between items-center bg-red-50 p-2 rounded -mx-2"><span className="text-red-700 font-medium">Còn lại (COD):</span><span className="font-bold text-red-700 text-lg">{formatCurrency(remaining, 'admin')}</span></div>
                 </div>
             </div>
         );
@@ -744,16 +564,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in relative">
             {isLoading && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]">
-                    <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                        <span className="font-bold text-sm">Đang xử lý...</span>
-                    </div>
-                </div>
+                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]"><div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div><span className="font-bold text-sm">Đang xử lý...</span></div></div>
             )}
             
-            {/* Left Panel: Order List */}
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-10 ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
+                {/* List View Left Panel - Same as original but ensuring full content */}
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
                     <div className="flex gap-2 p-1 bg-gray-200 rounded-lg">
                         <button onClick={() => setOrderTab('active')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})</button>
@@ -798,6 +613,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-20 ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                 {selectedOrder ? (
                     <div className="flex flex-col h-full relative">
+                        {/* Header Actions */}
                         <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-start bg-white sticky top-0 z-30 shadow-sm">
                             <div className="flex items-start gap-2 w-full">
                                 <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 mr-2 p-2 -ml-2 hover:bg-gray-100 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg></button>
@@ -819,6 +635,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
+                            {/* ... (Payment Proof & Status blocks same as before) ... */}
                             {selectedOrder.paymentProofUrl && (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                                     <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2"><span>📸</span> Ảnh xác nhận chuyển khoản</h4>
@@ -826,116 +643,21 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         <div className="h-32 w-auto border rounded-lg bg-white overflow-hidden cursor-pointer relative group" onClick={() => setZoomedImageUrl(selectedOrder.paymentProofUrl || null)}><img src={selectedOrder.paymentProofUrl} alt="Payment Proof" className="h-full w-full object-contain" /><div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div></div>
                                         <div className="text-sm text-gray-600">
                                             <p>Thời gian gửi: {selectedOrder.paymentProofUploadedAt ? formatDateTime(new Date(selectedOrder.paymentProofUploadedAt).getTime()) : '---'}</p>
-                                            {selectedOrder.status === 'Chờ thanh toán' && (
-                                                <button onClick={handleConfirmPayment} className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm">Xác nhận thanh toán ngay</button>
-                                            )}
+                                            {selectedOrder.status === 'Chờ thanh toán' && (<button onClick={handleConfirmPayment} className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm">Xác nhận thanh toán ngay</button>)}
                                         </div>
                                     </div>
                                 </div>
                             )}
-
-                            {selectedOrder.packedAt && (
-                                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shadow-sm">
-                                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">🎁</div><div><p className="text-sm font-bold text-purple-900">Đã đóng gói xong</p><p className="text-xs text-purple-700">Nhân viên: <span className="font-semibold">{selectedOrder.packedBy || 'N/A'}</span></p></div></div>
-                                    <div className="text-right pl-12 sm:pl-0"><p className="text-[10px] text-purple-500 uppercase font-bold tracking-wider">Thời gian hoàn thành</p><p className="text-sm font-mono text-purple-900 font-bold">{formatDateTime(new Date(selectedOrder.packedAt).getTime())}</p></div>
-                                </div>
-                            )}
-
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ghi chú nội bộ</label><textarea className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" rows={2} placeholder="Ghi chú cho admin..." value={noteInput} onChange={(e) => setNoteInput(e.target.value)} /></div>
-                                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline Xưởng</label><input type="date" className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" value={adminDeadlineInput} onChange={(e) => setAdminDeadlineInput(e.target.value)} /><div className="mt-2 text-right"><button onClick={handleSaveAdminInfo} className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 rounded hover:bg-black transition-colors">Lưu Ghi chú</button></div></div>
-                            </div>
+                            {selectedOrder.packedAt && (<div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shadow-sm"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">🎁</div><div><p className="text-sm font-bold text-purple-900">Đã đóng gói xong</p><p className="text-xs text-purple-700">Nhân viên: <span className="font-semibold">{selectedOrder.packedBy || 'N/A'}</span></p></div></div><div className="text-right pl-12 sm:pl-0"><p className="text-[10px] text-purple-500 uppercase font-bold tracking-wider">Thời gian hoàn thành</p><p className="text-sm font-mono text-purple-900 font-bold">{formatDateTime(new Date(selectedOrder.packedAt).getTime())}</p></div></div>)}
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ghi chú nội bộ</label><textarea className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" rows={2} placeholder="Ghi chú cho admin..." value={noteInput} onChange={(e) => setNoteInput(e.target.value)} /></div><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline Xưởng</label><input type="date" className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" value={adminDeadlineInput} onChange={(e) => setAdminDeadlineInput(e.target.value)} /><div className="mt-2 text-right"><button onClick={handleSaveAdminInfo} className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 rounded hover:bg-black transition-colors">Lưu Ghi chú</button></div></div></div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3>
-                                    <div className="space-y-2 text-sm text-gray-700">
-                                        {isEditingOrder && editForm ? (
-                                            <>
-                                                <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div>
-                                                <div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div>
-                                                <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-20 text-gray-500">Liên hệ:</span> 
-                                                    <input 
-                                                        className="border rounded p-1 w-full placeholder-gray-400 text-xs" 
-                                                        value={editForm.customer.socialLink || ''} 
-                                                        onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')}
-                                                        placeholder="Link Facebook/Zalo..."
-                                                    />
-                                                </div>
-                                                <div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div>
-                                                <div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p>
-                                                <p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
-                                                <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
-                                                {selectedOrder.customer.socialLink && (
-                                                    <p className="flex items-center">
-                                                        <span className="text-gray-500 w-20 inline-block">Liên hệ:</span>
-                                                        <a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">
-                                                            Mở liên kết ↗
-                                                        </a>
-                                                    </p>
-                                                )}
-                                                <p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p>
-                                                <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col">
-                                    {/* Detailed Billing Table */}
-                                    <BillingBreakdown />
-                                    
-                                    {!isEditingOrder && (selectedOrder.totalPrice - (selectedOrder.amountPaid || 0)) > 0 && selectedOrder.status !== 'Đã giao hàng' && (
-                                        <div className="mt-4 pt-4 border-t border-gray-100">
-                                            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Mã QR Thanh toán (VietQR)</p>
-                                            <img src={getVietQR(selectedOrder)} alt="VietQR" className="w-32 h-32 border rounded-lg" />
-                                            <p className="text-[10px] text-gray-400 mt-1">TCB: 65838666666</p>
-                                        </div>
-                                    )}
-                                </div>
+                                <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p><p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>{selectedOrder.customer.socialLink && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Liên hệ:</span><a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">Mở liên kết ↗</a></p>)}<p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p><p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p></>)}</div></div>
+                                <div className="flex flex-col"><BillingBreakdown />{!isEditingOrder && (selectedOrder.totalPrice - (selectedOrder.amountPaid || 0)) > 0 && selectedOrder.status !== 'Đã giao hàng' && (<div className="mt-4 pt-4 border-t border-gray-100"><p className="text-xs font-bold text-gray-500 uppercase mb-2">Mã QR Thanh toán (VietQR)</p><img src={getVietQR(selectedOrder)} alt="VietQR" className="w-32 h-32 border rounded-lg" /><p className="text-[10px] text-gray-400 mt-1">TCB: 65838666666</p></div>)}</div>
                             </div>
 
-                            {/* Shipping Info with Tracking Code */}
-                            <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
-                                <h3 className="text-sm font-bold text-orange-800 mb-2 uppercase tracking-wider flex items-center gap-2">
-                                    🚚 Thông tin vận chuyển
-                                </h3>
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <div className="flex-1">
-                                        <p className="text-sm text-gray-600">Phương thức: <span className="font-bold text-gray-900">{selectedOrder.shipping.method}</span></p>
-                                        <p className="text-sm text-gray-600 mt-1">Phí vận chuyển: <span className="font-medium">{formatCurrency(selectedOrder.shipping.fee, 'admin')}</span></p>
-                                    </div>
-                                    <div className="flex-1 border-t sm:border-t-0 sm:border-l border-orange-200 pt-2 sm:pt-0 sm:pl-4">
-                                        {isEditingOrder && editForm ? (
-                                            <div>
-                                                <label className="block text-xs font-bold text-orange-700 mb-1">Mã Vận Đơn (Tracking Code)</label>
-                                                <input 
-                                                    className="w-full p-2 border border-orange-300 rounded text-sm uppercase font-mono"
-                                                    value={editForm.trackingCode || ''}
-                                                    onChange={(e) => handleEditFormChange('trackingCode', e.target.value.toUpperCase())}
-                                                    placeholder="VD: SPEVN..."
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <span className="text-xs font-bold text-gray-500 uppercase block mb-1">Mã Vận Đơn</span>
-                                                {selectedOrder.trackingCode ? (
-                                                    <span className="text-lg font-mono font-bold text-orange-700 bg-white px-2 py-1 rounded border border-orange-200 inline-block select-all">
-                                                        {selectedOrder.trackingCode}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-sm text-gray-400 italic">Chưa có mã vận đơn</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Shipping Info */}
+                            <div className="bg-orange-50 border border-orange-100 rounded-lg p-4"><h3 className="text-sm font-bold text-orange-800 mb-2 uppercase tracking-wider flex items-center gap-2">🚚 Thông tin vận chuyển</h3><div className="flex flex-col sm:flex-row gap-4"><div className="flex-1"><p className="text-sm text-gray-600">Phương thức: <span className="font-bold text-gray-900">{selectedOrder.shipping.method}</span></p><p className="text-sm text-gray-600 mt-1">Phí vận chuyển: <span className="font-medium">{formatCurrency(selectedOrder.shipping.fee, 'admin')}</span></p></div><div className="flex-1 border-t sm:border-t-0 sm:border-l border-orange-200 pt-2 sm:pt-0 sm:pl-4">{isEditingOrder && editForm ? (<div><label className="block text-xs font-bold text-orange-700 mb-1">Mã Vận Đơn (Tracking Code)</label><input className="w-full p-2 border border-orange-300 rounded text-sm uppercase font-mono" value={editForm.trackingCode || ''} onChange={(e) => handleEditFormChange('trackingCode', e.target.value.toUpperCase())} placeholder="VD: SPEVN..." /></div>) : (<div><span className="text-xs font-bold text-gray-500 uppercase block mb-1">Mã Vận Đơn</span>{selectedOrder.trackingCode ? (<span className="text-lg font-mono font-bold text-orange-700 bg-white px-2 py-1 rounded border border-orange-200 inline-block select-all">{selectedOrder.trackingCode}</span>) : (<span className="text-sm text-gray-400 italic">Chưa có mã vận đơn</span>)}</div>)}</div></div></div>
 
                             {/* Product Details & Editing */}
                             <div>
@@ -943,167 +665,40 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => (
                                         <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white">
-                                            {/* Top Section: Visual Editing (Only if Editing) */}
-                                            {isEditingOrder && editForm && (
-                                                <div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300">
-                                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p>
-                                                    <div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden">
-                                                        <FramePreview 
-                                                            config={item}
-                                                            containerWidth={400}
-                                                            onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)}
-                                                            onItemRemove={() => {}} 
-                                                            onTextUpdate={() => {}}
-                                                            selectedItemId={editingItemId}
-                                                            setSelectedItemId={setEditingItemId}
-                                                            isInteractive={true}
-                                                            setIsEditingText={() => {}}
-                                                            allParts={allKnownParts}
-                                                            onItemUpdate={() => {}}
-                                                            onCharacterUpdate={() => {}}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* Visual Editing Area */}
+                                            {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={() => {}} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
 
                                             <div className="flex gap-4 items-start flex-col md:flex-row">
-                                                <div 
-                                                    className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer"
-                                                    onClick={() => !isEditingOrder && item.previewImageUrl && setZoomedImageUrl(item.previewImageUrl)}
-                                                >
-                                                    {item.previewImageUrl ? (
-                                                        <>
-                                                            <img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" />
-                                                            {!isEditingOrder && (
-                                                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                    <ZoomIcon className="text-white w-6 h-6" />
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    ) : <span className="text-xs text-gray-400">No img</span>}
+                                                <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer" onClick={() => !isEditingOrder && item.previewImageUrl && setZoomedImageUrl(item.previewImageUrl)}>
+                                                    {item.previewImageUrl ? (<><img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" />{!isEditingOrder && (<div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div>)}</>) : <span className="text-xs text-gray-400">No img</span>}
                                                 </div>
                                                 <div className="flex-grow w-full">
                                                     <div className="mb-3 pb-3 border-b border-gray-100">
                                                         {isEditingOrder && editForm ? (
-                                                            <div className="flex gap-2 items-center mb-1">
-                                                                <span className="font-bold text-gray-800 text-sm">Khung:</span>
-                                                                <select 
-                                                                    className="border rounded p-1 text-sm bg-gray-50"
-                                                                    value={item.frameId}
-                                                                    onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}
-                                                                >
-                                                                    {frames.map(f => (
-                                                                        <option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
+                                                            <div className="flex gap-2 items-center mb-1"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map(f => (<option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
                                                         ) : (
-                                                            <p className="font-bold text-gray-800 mb-1">Khung {item.frameId.toUpperCase()}</p>
+                                                            <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
                                                         )}
                                                         <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
                                                     </div>
-
+                                                    
+                                                    {/* ... Character & Draggable Items editing (same as before) ... */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                                         {item.characters.map((char, charIdx) => (
                                                             <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
                                                                 <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
-                                                                {isEditingOrder && editForm && (
-                                                                    <button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>
-                                                                )}
+                                                                {isEditingOrder && editForm && (<button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>)}
                                                                 {isEditingOrder && editForm ? (
-                                                                    <div className="space-y-1">
-                                                                        {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (
-                                                                            <div key={partType} className="flex flex-col">
-                                                                                <div className="flex justify-between items-center">
-                                                                                    <span className="text-gray-500 capitalize w-16">{partType}</span>
-                                                                                    <select 
-                                                                                        className="border rounded p-1 text-xs flex-grow"
-                                                                                        value={char[partType]?.id || ''}
-                                                                                        onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}
-                                                                                    >
-                                                                                        <option value="">None</option>
-                                                                                        {partsByType[partType]?.map(part => (
-                                                                                            <option key={part.id} value={part.id}>{part.name}</option>
-                                                                                        ))}
-                                                                                    </select>
-                                                                                </div>
-                                                                                {['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (
-                                                                                    <div className="flex gap-1 mt-1 ml-16">
-                                                                                        {char[partType]!.colors!.map(c => (
-                                                                                            <button 
-                                                                                                key={c.hex}
-                                                                                                onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)}
-                                                                                                className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`}
-                                                                                                style={{backgroundColor: c.hex}}
-                                                                                                title={c.name}
-                                                                                            />
-                                                                                        ))}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
+                                                                    <div className="space-y-1">{(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (<div key={partType} className="flex flex-col"><div className="flex justify-between items-center"><span className="text-gray-500 capitalize w-16">{partType}</span><select className="border rounded p-1 text-xs flex-grow" value={char[partType]?.id || ''} onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}><option value="">None</option>{partsByType[partType]?.map(part => (<option key={part.id} value={part.id}>{part.name}</option>))}</select></div>{['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (<div className="flex gap-1 mt-1 ml-16">{char[partType]!.colors!.map(c => (<button key={c.hex} onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)} className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`} style={{backgroundColor: c.hex}} title={c.name} />))}</div>)}</div>))}</div>
                                                                 ) : (
-                                                                    <ul className="text-gray-600 space-y-0.5 mt-1">
-                                                                        {char.hair && <li>Tóc: {char.hair.name}</li>}
-                                                                        {char.face && <li>Mặt: {char.face.name}</li>}
-                                                                        {char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}
-                                                                        {char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}
-                                                                        {char.hat && <li>Mũ: {char.hat.name}</li>}
-                                                                        {char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}
-                                                                    </ul>
+                                                                    <ul className="text-gray-600 space-y-0.5 mt-1">{char.hair && <li>Tóc: {char.hair.name}</li>}{char.face && <li>Mặt: {char.face.name}</li>}{char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}{char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}{char.hat && <li>Mũ: {char.hat.name}</li>}{char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}</ul>
                                                                 )}
                                                             </div>
                                                         ))}
-                                                        {isEditingOrder && editForm && (
-                                                            <button onClick={() => handleAddCharacter(idx)} className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-sm font-bold">
-                                                                + Thêm NV
-                                                            </button>
-                                                        )}
+                                                        {isEditingOrder && editForm && (<button onClick={() => handleAddCharacter(idx)} className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-sm font-bold">+ Thêm NV</button>)}
                                                     </div>
-
-                                                    {item.draggableItems.length > 0 && (
-                                                        <div className="mt-3 pt-3 border-t border-gray-100">
-                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Phụ kiện & Thú cưng</p>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {item.draggableItems.map((di, diIdx) => {
-                                                                const part = allKnownParts[di.partId];
-                                                                return (
-                                                                        <div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
-                                                                            {di.type === 'charm' ? (
-                                                                                <span>Charm (Ảnh)</span>
-                                                                            ) : (
-                                                                                <span>{part?.name || 'Unknown'} {di.selectedColor ? `(${di.selectedColor.name})` : ''}</span>
-                                                                            )}
-                                                                            {isEditingOrder && editForm && (
-                                                                                <button onClick={() => handleRemoveDraggable(idx, diIdx)} className="text-red-500 font-bold hover:text-red-700">×</button>
-                                                                            )}
-                                                                        </div>
-                                                                );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {isEditingOrder && editForm && (
-                                                        <div className="mt-2">
-                                                            <button 
-                                                                onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)}
-                                                                className="text-xs text-blue-600 hover:underline font-semibold"
-                                                            >
-                                                                + Thêm phụ kiện/thú cưng
-                                                            </button>
-                                                            {addingAccessoryToItemIndex === idx && (
-                                                                <div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                                                                    {[...products.filter(p => p.type === 'accessory' || p.type === 'pet')].map(p => (
-                                                                        <button key={p.id} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500">
-                                                                            <img src={p.imageUrl} className="w-8 h-8 object-contain" />
-                                                                            <span className="text-[10px] text-gray-500">{p.name}</span>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    {item.draggableItems.length > 0 && (<div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs font-bold text-gray-500 uppercase mb-2">Phụ kiện & Thú cưng</p><div className="flex flex-wrap gap-2">{item.draggableItems.map((di, diIdx) => { const part = allKnownParts[di.partId]; return (<div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">{di.type === 'charm' ? (<span>Charm (Ảnh)</span>) : (<span>{part?.name || 'Unknown'} {di.selectedColor ? `(${di.selectedColor.name})` : ''}</span>)}{isEditingOrder && editForm && (<button onClick={() => handleRemoveDraggable(idx, diIdx)} className="text-red-500 font-bold hover:text-red-700">×</button>)}</div>); })}</div></div>)}
+                                                    {isEditingOrder && editForm && (<div className="mt-2"><button onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)} className="text-xs text-blue-600 hover:underline font-semibold">+ Thêm phụ kiện/thú cưng</button>{addingAccessoryToItemIndex === idx && (<div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">{[...products.filter(p => p.type === 'accessory' || p.type === 'pet')].map(p => (<button key={p.id} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500"><img src={p.imageUrl} className="w-8 h-8 object-contain" /><span className="text-[10px] text-gray-500">{p.name}</span></button>))}</div>)}</div>)}
                                                 </div>
                                             </div>
                                         </div>
@@ -1118,14 +713,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             </div>
 
             {/* ZOOM LIGHTBOX */}
-            {zoomedImageUrl && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fade-in" onClick={() => setZoomedImageUrl(null)}>
-                    <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                    <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
-                </div>
-            )}
+            {zoomedImageUrl && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fade-in" onClick={() => setZoomedImageUrl(null)}><button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg></button><img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} /></div>)}
         </div>
     );
 };

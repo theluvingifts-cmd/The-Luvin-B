@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Order } from '../types';
+import { Order, FrameOption } from '../types';
 import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderService';
 import { uploadToCloudinary } from '../services/uploadService';
-import { MOCK_ORDERS } from '../constants';
+import { MOCK_ORDERS, FRAME_OPTIONS } from '../constants';
 import { formatCurrency } from '../utils/pricing';
+import { getAllFrames } from '../services/frameService';
 
 // Orders that can be edited by customer must not have these statuses
 const PACKED_STATUSES = ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'];
@@ -14,6 +15,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [savedOrders, setSavedOrders] = useState<{id: string, date: number}[]>([]);
+    const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
     
     // Upload state
     const [isUploading, setIsUploading] = useState(false);
@@ -26,6 +28,16 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                 setSavedOrders(saved);
             }
         } catch(e) {}
+    }, []);
+
+    useEffect(() => {
+        const fetchFrames = async () => {
+            const fetched = await getAllFrames();
+            if (fetched && fetched.length > 0) {
+                setFrames(fetched);
+            }
+        };
+        fetchFrames();
     }, []);
 
     const handleSearch = async (e?: React.FormEvent, codeOverride?: string) => {
@@ -342,17 +354,23 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                 <div>
                                     <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-3 mb-4 uppercase text-xs tracking-wider">Chi tiết sản phẩm</h3>
                                     <div className="space-y-4">
-                                        {foundOrder.items.map((item, idx) => (
-                                            <div key={idx} className="flex items-start gap-4 bg-gray-50 p-3 rounded-xl">
-                                                <div className="w-16 h-16 bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                                                    {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
+                                        {foundOrder.items.map((item, idx) => {
+                                            // Fallback logic to show name
+                                            const frameObj = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
+                                            const frameName = frameObj ? frameObj.name : item.frameId;
+                                            
+                                            return (
+                                                <div key={idx} className="flex items-start gap-4 bg-gray-50 p-3 rounded-xl">
+                                                    <div className="w-16 h-16 bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                                                        {item.previewImageUrl && <img src={item.previewImageUrl} className="w-full h-full object-contain" />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-gray-800">Khung thiết kế riêng</p>
+                                                        <p className="text-xs text-gray-500 mt-1">{item.characters.length} nhân vật • Khung {frameName}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-800">Khung thiết kế riêng</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{item.characters.length} nhân vật • Khung {item.frameId}</p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>

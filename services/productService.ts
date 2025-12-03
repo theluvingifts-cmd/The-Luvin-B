@@ -66,7 +66,7 @@ export const deletePart = async (partId: string) => {
 
 // 5. HÀM MỚI: Điều chỉnh tồn kho hàng loạt
 // usageMap: { partId: quantityChange }
-// quantityChange < 0: Trừ kho (Khách mua)
+// quantityChange < 0: Trừ tồn kho (Khách mua)
 // quantityChange > 0: Cộng kho (Hoàn tác, hủy đơn)
 export const adjustStock = async (usageMap: Record<string, number>) => {
     try {
@@ -78,6 +78,15 @@ export const adjustStock = async (usageMap: Record<string, number>) => {
 
             const partRef = doc(db, COLLECTION_NAME, partId);
             
+            // Note: Since we are using standard firestore now, we could use a transaction to read and write safely,
+            // but batch with increment is atomic for simple increment/decrement.
+            // However, we want to check if the doc exists first ideally, or just try to update.
+            // But writeBatch updates fail if doc doesn't exist? No, update fails, set doesn't.
+            // Let's verify existence to be safe or just attempt update.
+            // Since we're doing batch, we can't await inside loop easily for existence check unless we do it before.
+            // Assuming products exist if they are in the order.
+            
+            // However, to be robust against missing documents:
             const partDoc = await getDoc(partRef);
             if (partDoc.exists()) {
                 const data = partDoc.data();
@@ -123,9 +132,6 @@ export const seedDatabase = async () => {
 export const reorderParts = async (parts: LegoPart[]) => {
     try {
         // Firebase batch has a limit of 500 operations.
-        // If list is large, we need to chunk it. 
-        // For simplicity, assuming list < 500 items. If more, need to implement chunking.
-        
         const batch = writeBatch(db);
         
         parts.forEach((part, index) => {
