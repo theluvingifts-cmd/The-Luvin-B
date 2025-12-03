@@ -33,6 +33,29 @@ export const countPartsInOrder = (orderItems: Order['items']): Record<string, nu
     return counts;
 };
 
+// HELPER: Deep clean data for Firestore (Removes undefined, empty array slots, ensuring strict plain objects)
+const cleanForFirestore = (data: any): any => {
+    if (Array.isArray(data)) {
+        // Filter out undefined/null items in arrays
+        return data
+            .filter(item => item !== undefined && item !== null)
+            .map(cleanForFirestore);
+    }
+    if (data !== null && typeof data === 'object') {
+        const newObj: any = {};
+        for (const key in data) {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                const value = cleanForFirestore(data[key]);
+                if (value !== undefined) {
+                    newObj[key] = value;
+                }
+            }
+        }
+        return newObj;
+    }
+    return data;
+};
+
 // 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
@@ -57,8 +80,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             adminDeadline: ""
         };
 
-        // SANITIZE: Firestore throws error on 'undefined'. We remove undefined keys.
-        const sanitizedOrder = JSON.parse(JSON.stringify(finalOrder));
+        // SANITIZE: Use deep clean instead of just JSON.parse(JSON.stringify)
+        const sanitizedOrder = cleanForFirestore(finalOrder);
 
         // 1. Lưu đơn hàng vào Firestore
         await setDoc(doc(db, "orders", order.id), sanitizedOrder);
@@ -140,8 +163,8 @@ export const getAllOrders = async (): Promise<Order[]> => {
 export const updateOrder = async (orderId: string, updates: Partial<Order>) => {
     try {
         const orderRef = doc(db, "orders", orderId);
-        // Sanitize updates as well
-        const sanitizedUpdates = JSON.parse(JSON.stringify(updates));
+        // Sanitize updates deeply to prevent "invalid nested entity" errors
+        const sanitizedUpdates = cleanForFirestore(updates);
         await updateDoc(orderRef, sanitizedUpdates);
         return true;
     } catch (error) {

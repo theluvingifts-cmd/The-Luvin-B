@@ -997,6 +997,19 @@ interface BuilderPageProps {
     initialStep?: number; 
 }
 
+// HELPER: Convert Base64 to Blob for robust uploading
+const base64ToBlob = (base64: string) => {
+    const arr = base64.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+};
+
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep }) => {
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -1404,7 +1417,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
         animateAddToCart(base64Image);
 
-        const cloudUrl = await uploadToCloudinary(base64Image);
+        // CONVERT BASE64 TO BLOB BEFORE UPLOAD
+        const imageBlob = base64ToBlob(base64Image);
+        const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
+
+        const cloudUrl = await uploadToCloudinary(imageFile);
         
         if (!cloudUrl) {
              showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error');

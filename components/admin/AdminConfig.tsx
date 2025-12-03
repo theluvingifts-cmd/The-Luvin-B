@@ -6,7 +6,7 @@ import { addFeedback, updateFeedback, deleteFeedback } from '../../services/feed
 import { uploadToCloudinary } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { FeedbackForm } from './forms/FeedbackForm';
-import firebase from 'firebase/compat/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 
@@ -230,7 +230,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
         setLoading(true);
         // Create secondary app to create user without logging out current admin
-        const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
+        const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
         const secondaryAuth = getAuth(secondaryApp);
 
         try {
@@ -264,7 +264,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 alert("Lỗi tạo tài khoản: " + error.message);
             }
         } finally {
-            await secondaryApp.delete();
+            await deleteApp(secondaryApp);
             setLoading(false);
         }
     };
