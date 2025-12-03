@@ -36,9 +36,9 @@ export const countPartsInOrder = (orderItems: Order['items']): Record<string, nu
 // HELPER: Deep clean data for Firestore (Removes undefined, empty array slots, ensuring strict plain objects)
 const cleanForFirestore = (data: any): any => {
     if (Array.isArray(data)) {
-        // Filter out undefined/null items in arrays
+        // Filter out undefined items in arrays
         return data
-            .filter(item => item !== undefined && item !== null)
+            .filter(item => item !== undefined)
             .map(cleanForFirestore);
     }
     if (data !== null && typeof data === 'object') {
@@ -162,7 +162,9 @@ export const getAllOrders = async (): Promise<Order[]> => {
 export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
     try {
         const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, updates);
+        // Important: Sanitize updates to remove undefined fields which cause Firestore to crash
+        const cleanUpdates = cleanForFirestore(updates);
+        await updateDoc(orderRef, cleanUpdates);
         return true;
     } catch (error) {
         console.error("Error updating order:", error);

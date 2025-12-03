@@ -1027,7 +1027,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), frames), [config, legoParts, frames]);
+  // Compute allParts Map first to be used in calculations
+  const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
+  // Use allParts here instead of inline calculation
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -1188,8 +1192,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     };
   }, []);
   
-  const allParts = useMemo(() => Object.values(legoParts).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
-
   const selectedText = useMemo(() => {
     if (selectedItemId?.startsWith('text-')) {
         const id = parseInt(selectedItemId.split('-')[1], 10);
