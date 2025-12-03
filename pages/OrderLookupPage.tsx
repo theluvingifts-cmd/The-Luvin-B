@@ -247,13 +247,13 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
                     {/* Order Details */}
                     {foundOrder && typeof foundOrder === 'object' && (
-                        <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-lg animate-fade-in-up">
-                            {/* Allow Editing if not packed */}
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-lg animate-fade-in-up relative">
+                            {/* EDIT ORDER BUTTON (TOP RIGHT) */}
                             {!PACKED_STATUSES.includes(foundOrder.status) && (
-                                <div className="absolute top-6 right-6">
+                                <div className="absolute top-6 right-6 z-10">
                                     <button 
                                         onClick={() => onEditOrder(foundOrder as Order)}
-                                        className="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-2"
+                                        className="bg-blue-600 text-white px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-blue-700 transition-all shadow-md flex items-center gap-2 animate-bounce-small"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         Sửa đơn hàng
@@ -318,7 +318,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         ) : (
                                             <div className="text-center">
                                                 <p className="text-sm font-bold text-gray-700 mb-2">Đã chuyển khoản?</p>
-                                                <p className="text-xs text-gray-500 mb-4">Gửi ảnh biên lai để đơn được xác nhận nhanh hơn.</p>
+                                                <p className="text-xs text-gray-500 mb-4">Gửi ảnh biên lai để đơn hàng được xác nhận nhanh hơn.</p>
                                                 <button 
                                                     onClick={() => fileInputRef.current?.click()}
                                                     disabled={isUploading}

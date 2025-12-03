@@ -8,7 +8,14 @@ import { updateOrder } from '../services/orderService';
 
 declare var confetti: any;
 
-export const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: (page: Page) => void, onZoomImage: (url: string) => void }> = ({ order, navigateTo, onZoomImage }) => {
+interface OrderConfirmationPageProps {
+    order: Order | null;
+    navigateTo: (page: Page) => void;
+    onZoomImage: (url: string) => void;
+    actionType?: 'create' | 'update';
+}
+
+export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create' }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [proofUrl, setProofUrl] = useState<string | null>(order?.paymentProofUrl || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,9 +96,13 @@ export const OrderConfirmationPage: React.FC<{ order: Order | null, navigateTo: 
                 <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md">
                     <div className="text-center">
                         <div className="mb-4 text-5xl">🎉</div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Đơn hàng của bạn đã được ghi nhận!</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                            {actionType === 'update' ? 'Cập nhật đơn hàng thành công!' : 'Đơn hàng của bạn đã được ghi nhận!'}
+                        </h1>
                         <p className="mt-2 text-sm text-gray-600">
-                            Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.
+                            {actionType === 'update' 
+                                ? 'Thông tin đơn hàng đã được thay đổi. Chúng tôi sẽ cập nhật lại quy trình xử lý.'
+                                : 'Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.'}
                         </p>
                         <p className="mt-4 text-base text-gray-700">Mã đơn hàng của bạn là: <span className="font-bold text-lg text-luvin-pink">{order.id}</span></p>
                     </div>

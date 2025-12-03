@@ -8,15 +8,15 @@ import {
     FEEDBACK_ITEMS, 
     FRAME_OPTIONS,
 } from './constants';
-import { createOrder, updateOrder } from './services/orderService'; 
-import { getAllParts } from './services/productService'; 
+import { createOrder, updateOrder, countPartsInOrder } from './services/orderService'; 
+import { getAllParts, adjustStock } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
 import { getStoreConfig, DEFAULT_THEME, StoreConfig } from './services/configService'; 
 import { getAllTemplates } from './services/templateService'; 
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
-import { sendOrderTelegram } from './services/telegramService'; // IMPORTED TELEGRAM SERVICE
+import { sendOrderTelegram } from './services/telegramService'; 
 
 import AdminPage from './pages/AdminPage'; 
 import { Header } from './components/Header';
@@ -97,6 +97,8 @@ const App: React.FC = () => {
 
   // State to track if we are editing an existing order (Order Update Mode)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  // NEW: Track action type for confirmation page message
+  const [lastOrderAction, setLastOrderAction] = useState<'create' | 'update'>('create');
 
   useEffect(() => {
       try {
@@ -311,38 +313,68 @@ const App: React.FC = () => {
 
   // Special Handler for "Edit Existing Order"
   const handleEditOrder = (order: Order) => {
-      if (confirm("Bạn muốn chỉnh sửa đơn hàng này? Giỏ hàng hiện tại sẽ bị thay thế.")) {
-          setCartItems(order.items);
-          setEditingOrder(order);
-          navigateTo('cart');
-      }
+      // 1. Load items to cart
+      setCartItems(order.items);
+      // 2. Set editing mode
+      setEditingOrder(order);
+      // 3. Go to cart
+      navigateTo('cart');
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
-    // If editing existing order, use updateOrder
+    // If editing existing order, calculate diff and update
     if (editingOrder) {
+        setLastOrderAction('update');
+        
+        // 1. Calculate Stock Differences
+        const oldParts = countPartsInOrder(editingOrder.items);
+        const newParts = countPartsInOrder(orderData.items);
+        
+        const stockAdjustments: Record<string, number> = {};
+        
+        // Stock Change Calculation:
+        const allKeys = new Set([...Object.keys(oldParts), ...Object.keys(newParts)]);
+        allKeys.forEach(partId => {
+            const oldQty = oldParts[partId] || 0;
+            const newQty = newParts[partId] || 0;
+            const diff = oldQty - newQty; // +1 means we return 1 to stock, -1 means we take 1 more
+            if (diff !== 0) {
+                stockAdjustments[partId] = diff;
+            }
+        });
+
+        // 2. Adjust Stock if needed
+        if (Object.keys(stockAdjustments).length > 0) {
+            await adjustStock(stockAdjustments);
+        }
+
+        // 3. Update Order in DB
         const success = await updateOrder(editingOrder.id, {
             ...orderData,
-            status: 'Chờ thanh toán', // Reset status if edited
+            status: orderData.totalPrice !== editingOrder.totalPrice ? 'Chờ thanh toán' : editingOrder.status
         });
         
         if (success) {
             const updatedOrder = { 
                 ...editingOrder, 
                 ...orderData,
-                status: editingOrder.status 
+                status: orderData.totalPrice !== editingOrder.totalPrice ? 'Chờ thanh toán' : editingOrder.status
             };
             setCurrentOrder(updatedOrder);
             setCartItems([]);
             setEditingOrder(null);
             navigateTo('order-confirmation');
+            
+            // Notify admin about update
+            sendOrderTelegram(updatedOrder, storeConfig); 
         } else {
-            throw new Error("Không thể cập nhật đơn hàng. Vui lòng thử lại.");
+            throw new Error("Không thể cập nhật đơn hàng. Có thể do lỗi mạng hoặc quyền truy cập.");
         }
         return;
     }
 
     // Normal Create Flow
+    setLastOrderAction('create');
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
@@ -369,9 +401,8 @@ const App: React.FC = () => {
         
         // --- NOTIFICATIONS ---
         sendOrderEmail(res.data);
-        sendOrderTelegram(res.data, storeConfig); // NEW: Send Telegram
+        sendOrderTelegram(res.data, storeConfig); 
     } else {
-        // IMPROVED: Throw exact error to CheckoutPage to display
         const errMsg = res.error && typeof res.error === 'object' && 'message' in res.error 
             ? (res.error as any).message 
             : "Lỗi kết nối cơ sở dữ liệu.";
@@ -417,6 +448,7 @@ const App: React.FC = () => {
                     onZoomImage={setZoomedImageUrl} 
                     logoUrl={storeConfig.logoUrl}
                     initialStep={builderInitialStep}
+                    isEditingOrder={!!editingOrder} // Pass Edit Mode
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
@@ -428,6 +460,7 @@ const App: React.FC = () => {
                 navigateTo={navigateTo}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onZoomImage={setZoomedImageUrl} 
+                isEditingOrder={!!editingOrder} // Pass Edit Mode
             />}
             {currentPage === 'checkout' && (
                 <CheckoutPage 
@@ -438,7 +471,14 @@ const App: React.FC = () => {
                     initialOrder={editingOrder} // Pass existing order if editing
                 />
             )}
-            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} />}
+            {currentPage === 'order-confirmation' && (
+                <OrderConfirmationPage 
+                    order={currentOrder} 
+                    navigateTo={navigateTo} 
+                    onZoomImage={setZoomedImageUrl}
+                    actionType={lastOrderAction} // Pass action type
+                />
+            )}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}

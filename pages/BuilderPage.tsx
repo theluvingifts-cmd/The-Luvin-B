@@ -1,4 +1,5 @@
 
+// ... (All imports and previous components TextEditor, StepIndicator, etc. remain the same) ...
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption } from '../types';
 import { 
@@ -14,6 +15,8 @@ import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
 
 declare var html2canvas: any;
+
+// ... (StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters components are unchanged) ...
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
@@ -79,6 +82,7 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
 };
 
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
+  // ... (Code same as original file) ...
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
@@ -184,6 +188,7 @@ const PresetBackgroundButton: React.FC<{
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
+    // ... (Code same as original) ...
     const isColor = bg.url.startsWith('#');
     let line1 = bg.name;
     let line2 = '';
@@ -251,12 +256,12 @@ const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
+  // ... (Code same as original) ...
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   const availableBackgrounds = useMemo(() => {
-    // Show all backgrounds regardless of frame type
     return backgrounds;
   }, [backgrounds]);
 
@@ -282,22 +287,17 @@ const Step2BackgroundAndDecorations: React.FC<{
     let newFrameId = config.frameId;
     let message = '';
 
-    // Find current frame details
     const currentFrameOption = frames.find(f => f.id === config.frameId);
     
-    // Determine if current frame is Square or Rectangle
     const isCurrentFrameSquare = currentFrameOption ? Math.abs(currentFrameOption.frameWidthCm - currentFrameOption.frameHeightCm) < 1 : true;
 
-    // Determine target frame type based on Background type
     if (bg.type === 'rectangle' && isCurrentFrameSquare) {
-        // Auto-switch to Rectangle Frame (Prefer 'md' / A5)
         const rectFrame = frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) > 1 && f.stock !== 0) || frames.find(f => f.id === 'md');
         if (rectFrame) {
             newFrameId = rectFrame.id;
             message = `Đã tự động chuyển sang khung ${rectFrame.name} để vừa với nền`;
         }
     } else if (bg.type === 'square' && !isCurrentFrameSquare) {
-        // Auto-switch to Square Frame
         let targetId = preferredSquareFrameId;
         const targetFrame = frames.find(f => f.id === targetId);
         if (!targetFrame || Math.abs(targetFrame.frameWidthCm - targetFrame.frameHeightCm) >= 1) {
@@ -311,7 +311,6 @@ const Step2BackgroundAndDecorations: React.FC<{
         }
     }
 
-    // Determine rotation based on Admin Configuration
     let shouldRotate = false;
     if (bg.type === 'rectangle') {
         shouldRotate = bg.orientation === 'landscape';
@@ -322,11 +321,10 @@ const Step2BackgroundAndDecorations: React.FC<{
             ...config, 
             frameId: newFrameId,
             background: { type: 'color', value: bg.url },
-            isRotated: false // Reset rotation for colors usually
+            isRotated: false 
         });
         if (message) showToast(message, 'success');
     } else {
-        // Direct set using configured orientation, skip image loading for speed
         setConfig({ 
             ...config, 
             frameId: newFrameId,
@@ -343,7 +341,6 @@ const Step2BackgroundAndDecorations: React.FC<{
       fileReader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
             const imageUrl = event.target.result as string;
-            // Check orientation for uploaded images
             const img = new Image();
             img.onload = () => {
                  const isLandscape = img.naturalWidth > img.naturalHeight;
@@ -452,6 +449,7 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
 }> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
+    // ... (Code same as original) ...
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -461,7 +459,6 @@ const PartButton: React.FC<{
         setTimeout(() => setIsClicked(false), 300);
     };
     
-    // Check if effective price is lower than regular price
     const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
 
     return (
@@ -476,7 +473,6 @@ const PartButton: React.FC<{
             {isClicked && (
                 <div className="absolute inset-0 bg-luvin-pink opacity-20 z-10 animate-ping rounded-lg"></div>
             )}
-            {/* HOT BADGE */}
             {isHot && (
                 <div className="absolute top-0 right-0 z-20 bg-red-500 text-white text-[10px] px-1 rounded-bl shadow-sm flex items-center justify-center w-5 h-5" title="Hot Trend - Được chọn nhiều nhất tuần qua">
                     🔥
@@ -540,6 +536,7 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
+    // ... (Code same as original) ...
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -787,14 +784,10 @@ const Step3Characters: React.FC<{
                 const aIsHot = indexA !== -1;
                 const bIsHot = indexB !== -1;
 
-                // If both are in hot list, sort by order in hot list (1st, 2nd, 3rd)
                 if (aIsHot && bIsHot) return indexA - indexB;
-                // If A is hot, it comes first
                 if (aIsHot) return -1;
-                // If B is hot, it comes first
                 if (bIsHot) return 1;
                 
-                // Otherwise keep existing order
                 return 0;
             });
         }
@@ -920,7 +913,6 @@ const Step3Characters: React.FC<{
                 <div className="flex flex-col gap-3 mb-4">
                     <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
                     
-                    {/* Category Filter Pills */}
                     {uniqueAccessoryCategories.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                             {uniqueAccessoryCategories.map(cat => (
@@ -939,7 +931,6 @@ const Step3Characters: React.FC<{
                         </div>
                     )}
 
-                    {/* Sorting Dropdown */}
                     <div className="flex justify-end">
                         <div className="relative inline-block w-32">
                             <select 
@@ -1002,7 +993,7 @@ const Step3Characters: React.FC<{
     );
 };
 
-const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: string, value: number}[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving }) => {
+const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: string, value: number}[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1056,17 +1047,20 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
         </div>
 
         <div className="mt-4 space-y-2">
-            <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
-            </button>
-            <button onClick={onAddToCart} disabled={isSaving} className="w-full bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg text-base hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                {isSaving ? '...' : 'Thêm vào giỏ hàng'}
+            {!isEditingOrder && (
+                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                    {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
+                </button>
+            )}
+            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors disabled:opacity-50 disabled:cursor-wait ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
+                {isSaving ? '...' : (isEditingOrder ? 'Lưu mẫu thiết kế' : 'Thêm vào giỏ hàng')}
             </button>
         </div>
     </div>
   );
 };
 
+// ... (TextEditor, BuilderPageProps, base64ToBlob, BuilderPage implementation remain structurally the same, using updated components) ...
 const TextEditor: React.FC<{
     activeText: TextConfig;
     setConfig: (c: FrameConfig) => void;
@@ -1152,9 +1146,9 @@ interface BuilderPageProps {
     onZoomImage: (url: string) => void; 
     logoUrl?: string; 
     initialStep?: number; 
+    isEditingOrder?: boolean;
 }
 
-// HELPER: Convert Base64 to Blob for robust uploading
 const base64ToBlob = (base64: string) => {
     const arr = base64.split(',');
     const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
@@ -1167,7 +1161,8 @@ const base64ToBlob = (base64: string) => {
     return new Blob([u8arr], { type: mime });
 };
 
-export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep }) => {
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder }) => {
+  // ... (Full implementation logic mostly same, just ensuring renderStepContent uses new props for Step4Summary) ...
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1179,29 +1174,25 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [isEditingText, setIsEditingText] = useState(false);
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
-  const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); // Default 23x23
+  const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
   
-  // Undo/Redo State
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // Compute allParts Map first to be used in calculations
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
-  // Use allParts here instead of inline calculation
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
-  // Track last selected square frame for auto-switching preference
   useEffect(() => {
       const currentFrame = frames.find(f => f.id === config.frameId);
-      // Check if frame is square (width ~= height)
       if (currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) < 1) {
           setLastSquareFrameId(currentFrame.id);
       }
   }, [config.frameId, frames]);
 
+  // ... (useEffect for Hot Trends same as original) ...
   useEffect(() => {
     const fetchHotTrends = async () => {
         try {
@@ -1212,37 +1203,30 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             const counts: Record<string, number> = {};
             recentOrders.forEach(o => {
                 o.items.forEach(item => {
-                    // Count draggable items (Accessories, Pets)
                     item.draggableItems.forEach(d => {
-                        if (d.type !== 'charm') { // Ignore custom uploads
+                        if (d.type !== 'charm') {
                             counts[d.partId] = (counts[d.partId] || 0) + 1;
                         }
                     });
-                    // Count worn items if needed (Hats)
                     item.characters.forEach(c => {
                         if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
                     });
                 });
             });
 
-            // Get Top 3 based on sales
             let topIds = Object.entries(counts)
                 .sort(([, a], [, b]) => b - a)
                 .slice(0, 3)
                 .map(([id]) => id);
             
-            // If fewer than 3, fill with items marked isHot or fallback to random accessories
             if (topIds.length < 3) {
                 const availableAccessories = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet];
-                
-                // 1. Fill with static hot items first
                 const staticHotItems = availableAccessories
                     .filter(p => p.isHot && !topIds.includes(p.id))
                     .map(p => p.id);
                 
                 topIds = [...topIds, ...staticHotItems];
 
-                // 2. If still < 3, fill with random items
                 if (topIds.length < 3) {
                     const randomFillers = availableAccessories
                         .filter(p => !topIds.includes(p.id))
@@ -1254,7 +1238,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             setHotPartIds(topIds.slice(0, 3));
         } catch (e) {
             console.error(e);
-            // Fallback if API fails
             const defaults = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].slice(0, 3).map(p => p.id);
             setHotPartIds(defaults);
         }
@@ -1262,16 +1245,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     fetchHotTrends();
   }, []);
 
-  // Wrapper for setConfig to handle history
   const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
       setConfig(prev => {
           const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
           
-          // Only add to history if it's different
           if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
               const newHistory = history.slice(0, historyIndex + 1);
               newHistory.push(newConfig);
-              // Limit history size to 20
               if (newHistory.length > 20) newHistory.shift();
               setHistory(newHistory);
               setHistoryIndex(newHistory.length - 1);
@@ -1313,14 +1293,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   files: [file]
               });
           } catch (e) {
-              // Share cancelled or failed, fallback to download
               const link = document.createElement('a');
               link.href = image;
               link.download = 'the-luvin-design.png';
               link.click();
           }
       } else {
-          // Fallback
           const link = document.createElement('a');
           link.href = image;
           link.download = 'the-luvin-design.png';
@@ -1328,6 +1306,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       }
   };
 
+  // ... (Scroll, Resize Observer, Item Logic same as original) ...
   useEffect(() => {
       const isMobile = window.innerWidth < 1024;
       if (isMobile) {
@@ -1490,7 +1469,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             }
             handleItemDelete(selectedItemId);
         }
-        // Undo/Redo Shortcuts
         if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
             e.preventDefault();
             if (e.shiftKey) handleRedo();
@@ -1532,12 +1510,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             const canvas = await html2canvas(container, {
               backgroundColor: null,
               useCORS: true, 
-              allowTaint: true, // Added to allow cross-origin tainting if needed
+              allowTaint: true, 
               scale: 3,      
               logging: false,
               scrollX: 0,    
               scrollY: 0,
-              // Explicitly ensuring no ignore logic that might hide watermark
               ignoreElements: (element: Element) => false
             });
             resolve(canvas.toDataURL('image/png'));
@@ -1555,7 +1532,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     });
   };
 
-  // --- Animation Helper Function ---
   const animateAddToCart = (imageSrc: string) => {
       const desktopCart = document.getElementById('cart-icon-desktop');
       const mobileCart = document.getElementById('cart-icon-mobile');
@@ -1609,7 +1585,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
         animateAddToCart(base64Image);
 
-        // CONVERT BASE64 TO BLOB BEFORE UPLOAD
         const imageBlob = base64ToBlob(base64Image);
         const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
 
@@ -1691,7 +1666,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         charCount={config.characters.length} 
         onAddToCart={() => handleAddToCartWrapper(false)} 
         onBuyNow={() => handleAddToCartWrapper(true)}
-        isSaving={isSaving} />;
+        isSaving={isSaving} 
+        isEditingOrder={isEditingOrder} // Pass isEditingOrder here
+      />;
       default: return null;
     }
   };
@@ -1699,23 +1676,29 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   return (
     <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
       <div className="container mx-auto px-4">
+        {/* ... (Header) ... */}
         <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-500">
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
             </div>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
-            {editingCartIndex !== null ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
+            {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
+        
+        {/* ... (Rest of layout) ... */}
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
+            {/* ... (Preview container logic same as original) ... */}
             <div className="lg:sticky lg:top-24">
+                {/* ... (Undo/Redo buttons) ... */}
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">
                         ẢNH XEM TRƯỚC
                     </h3>
                     <div className="flex gap-2">
+                        {/* ... buttons ... */}
                         <button 
                             onClick={handleUndo} 
                             disabled={historyIndex <= 0}
@@ -1763,6 +1746,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         logoUrl={logoUrl} 
                     />
                 </div>
+                {/* ... (Disclaimer text) ... */}
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -1838,7 +1822,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   {step === 4 && editingCartIndex !== null && (
                         <div className="mt-2 hidden lg:flex items-center gap-4">
                              <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                                {isSaving ? '...' : 'Cập nhật giỏ hàng'}
+                                {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn hàng' : 'Cập nhật giỏ hàng')}
                             </button>
                         </div>
                   )}
@@ -1877,7 +1861,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                                 Hủy
                             </button>
                             <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">
-                                {isSaving ? '...' : 'Cập nhật'}
+                                {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn' : 'Cập nhật')}
                             </button>
                         </div>
                      ) : (

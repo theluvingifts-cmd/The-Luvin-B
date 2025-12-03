@@ -21,7 +21,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [street, setStreet] = useState('');
   const [notes, setNotes] = useState('');
   
-  // Changed: Start with empty string to force user selection
   const [deliveryDate, setDeliveryDate] = useState('');
   
   const [provinces, setProvinces] = useState<{ name: string; code: number }[]>([]);
@@ -38,7 +37,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState('');
-  const [submissionError, setSubmissionError] = useState(''); // NEW STATE FOR ERROR
+  const [submissionError, setSubmissionError] = useState('');
 
   // Voucher State
   const [voucherCode, setVoucherCode] = useState('');
@@ -164,12 +163,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; 
-    setSubmissionError(''); // Clear previous error
+    setSubmissionError(''); 
 
     const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(phone)) {
         setPhoneError("Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0");
-        // Scroll to phone input if possible
         return;
     }
 
@@ -214,10 +212,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     } catch (error: any) {
         console.error("Order submission error:", error);
         setIsSubmitting(false);
-        // Display precise error to user
         const message = error.message || "Đã có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ hotline.";
         setSubmissionError(message);
-        // Scroll to error
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
   };
@@ -492,7 +488,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               )}
 
               <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-wait">
-                {isSubmitting ? 'Đang xử lý...' : (initialOrder ? 'CẬP NHẬT ĐƠN HÀNG' : 'ĐẶT HÀNG')}
+                {isSubmitting ? 'Đang xử lý...' : (initialOrder ? 'LƯU CẬP NHẬT ĐƠN HÀNG' : 'ĐẶT HÀNG')}
               </button>
             </div>
           </div>

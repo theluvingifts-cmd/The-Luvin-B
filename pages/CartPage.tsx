@@ -13,16 +13,17 @@ interface CartPageProps {
     navigateTo: (page: Page) => void;
     onUpdateQuantity: (index: number, newQuantity: number) => void;
     onZoomImage: (url: string) => void;
+    isEditingOrder?: boolean;
 }
 
-export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder }) => {
     const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
-            <h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">Giỏ hàng của bạn</h1>
+            <h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">{isEditingOrder ? 'Sửa chi tiết đơn hàng' : 'Giỏ hàng của bạn'}</h1>
             {cartItems.length === 0 ? (
-                <p className="text-center text-gray-600 font-body text-lg">Giỏ hàng của bạn đang trống.</p>
+                <p className="text-center text-gray-600 font-body text-lg">Giỏ hàng đang trống.</p>
             ) : (
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
@@ -91,7 +92,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                             <span>{formatCurrency(totalCartPrice)}</span>
                         </div>
                         <button onClick={() => navigateTo('checkout')} className="mt-4 w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-lg hover:opacity-90 transition-colors">
-                            Tiến hành thanh toán
+                            {isEditingOrder ? 'Tiếp tục (Nhập địa chỉ)' : 'Tiến hành thanh toán'}
                         </button>
                     </div>
                 </div>
