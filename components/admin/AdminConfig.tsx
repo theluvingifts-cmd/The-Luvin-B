@@ -9,6 +9,7 @@ import { FeedbackForm } from './forms/FeedbackForm';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
+import { testTelegramConnection } from '../../services/telegramService';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -724,13 +725,26 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Chat ID</label>
-                                        <input 
-                                            type="text"
-                                            className="w-full p-2 border rounded text-sm"
-                                            placeholder="-100xxxxxxxxx"
-                                            value={telegramChatId}
-                                            onChange={(e) => setTelegramChatId(e.target.value)}
-                                        />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text"
+                                                className="w-full p-2 border rounded text-sm"
+                                                placeholder="-100xxxxxxxxx"
+                                                value={telegramChatId}
+                                                onChange={(e) => setTelegramChatId(e.target.value)}
+                                            />
+                                            <button 
+                                                onClick={async () => {
+                                                    if (!telegramToken || !telegramChatId) return alert("Vui lòng nhập Token và Chat ID trước");
+                                                    const res = await testTelegramConnection(telegramToken, telegramChatId);
+                                                    if (res.success) alert("Gửi thử thành công! Hãy kiểm tra tin nhắn Telegram.");
+                                                    else alert("Thất bại: " + res.error);
+                                                }}
+                                                className="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap hover:bg-green-700"
+                                            >
+                                                Test Kết Nối
+                                            </button>
+                                        </div>
                                     </div>
                                     <p className="text-xs text-gray-500 italic">Nhấn "Lưu Tất Cả Thay Đổi" bên dưới để áp dụng.</p>
                                 </div>
@@ -745,6 +759,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     </div>
                 </div>
 
+                {/* ... (Right Panel remains unchanged) ... */}
                 {/* --- RIGHT PANEL: VISUAL PREVIEW --- */}
                 <div className="lg:col-span-8 order-1 lg:order-2">
                     <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">

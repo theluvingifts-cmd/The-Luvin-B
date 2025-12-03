@@ -35,25 +35,26 @@ export const countPartsInOrder = (orderItems: Order['items']): Record<string, nu
 
 // HELPER: Deep clean data for Firestore (Removes undefined, empty array slots, ensuring strict plain objects)
 const cleanForFirestore = (data: any): any => {
+    // 1. Primitives
+    if (data === null || data === undefined) return data; 
+    if (typeof data !== 'object') return data;
+
+    // 2. Arrays
     if (Array.isArray(data)) {
-        // Filter out undefined items in arrays
         return data
-            .filter(item => item !== undefined)
-            .map(cleanForFirestore);
+            .map(cleanForFirestore)
+            .filter(item => item !== undefined);
     }
-    if (data !== null && typeof data === 'object') {
-        const newObj: any = {};
-        for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-                const value = cleanForFirestore(data[key]);
-                if (value !== undefined) {
-                    newObj[key] = value;
-                }
-            }
+
+    // 3. Objects
+    const newObj: any = {};
+    Object.keys(data).forEach(key => {
+        const val = cleanForFirestore(data[key]);
+        if (val !== undefined) {
+            newObj[key] = val;
         }
-        return newObj;
-    }
-    return data;
+    });
+    return newObj;
 };
 
 // 1. Hàm tạo đơn hàng mới
