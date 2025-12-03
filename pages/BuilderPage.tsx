@@ -380,7 +380,7 @@ const PartButton: React.FC<{
             )}
             {/* HOT BADGE */}
             {isHot && (
-                <div className="absolute top-0 right-0 z-20 bg-red-500 text-white text-[10px] px-1 rounded-bl shadow-sm" title="Hot Trend - Được chọn nhiều nhất tuần qua">
+                <div className="absolute top-0 right-0 z-20 bg-red-500 text-white text-[10px] px-1 rounded-bl shadow-sm flex items-center justify-center w-5 h-5" title="Hot Trend - Được chọn nhiều nhất tuần qua">
                     🔥
                 </div>
             )}
@@ -431,7 +431,7 @@ const Step3Characters: React.FC<{
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
     
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
-    const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
+    const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('hot_trend');
     const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
 
     const getAvailableParts = (list: LegoPart[]) => {
@@ -665,8 +665,28 @@ const Step3Characters: React.FC<{
         if (accessoryCategory !== 'Tất cả') {
             list = list.filter(p => p.category === accessoryCategory);
         }
-        return sortParts(list, accessorySortMode);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory]);
+
+        if (accessorySortMode === 'hot_trend') {
+             return list.sort((a, b) => {
+                const indexA = hotPartIds.indexOf(a.id);
+                const indexB = hotPartIds.indexOf(b.id);
+                const aIsHot = indexA !== -1;
+                const bIsHot = indexB !== -1;
+
+                // If both are in hot list, sort by order in hot list (1st, 2nd, 3rd)
+                if (aIsHot && bIsHot) return indexA - indexB;
+                // If A is hot, it comes first
+                if (aIsHot) return -1;
+                // If B is hot, it comes first
+                if (bIsHot) return 1;
+                
+                // Otherwise keep existing order
+                return 0;
+            });
+        }
+
+        return sortParts(list, accessorySortMode as any);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, hotPartIds]);
 
     return (
         <div className="space-y-4">
@@ -801,7 +821,8 @@ const Step3Characters: React.FC<{
                                 onChange={(e) => setAccessorySortMode(e.target.value as any)}
                                 className="appearance-none w-full pl-3 pr-8 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-900 cursor-pointer"
                             >
-                                <option value="default">Sắp xếp</option>
+                                <option value="hot_trend">Hot Trend 🔥</option>
+                                <option value="default">Mặc định</option>
                                 <option value="price_asc">Giá tăng dần</option>
                                 <option value="price_desc">Giá giảm dần</option>
                             </select>
@@ -1060,15 +1081,38 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 });
             });
 
-            // Get Top 3
-            const top3 = Object.entries(counts)
+            // Get Top 3 based on sales
+            let topIds = Object.entries(counts)
                 .sort(([, a], [, b]) => b - a)
                 .slice(0, 3)
                 .map(([id]) => id);
             
-            setHotPartIds(top3);
+            // If fewer than 3, fill with items marked isHot or fallback to random accessories
+            if (topIds.length < 3) {
+                const availableAccessories = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet];
+                
+                // 1. Fill with static hot items first
+                const staticHotItems = availableAccessories
+                    .filter(p => p.isHot && !topIds.includes(p.id))
+                    .map(p => p.id);
+                
+                topIds = [...topIds, ...staticHotItems];
+
+                // 2. If still < 3, fill with random items
+                if (topIds.length < 3) {
+                    const randomFillers = availableAccessories
+                        .filter(p => !topIds.includes(p.id))
+                        .map(p => p.id);
+                    topIds = [...topIds, ...randomFillers];
+                }
+            }
+
+            setHotPartIds(topIds.slice(0, 3));
         } catch (e) {
             console.error(e);
+            // Fallback if API fails
+            const defaults = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].slice(0, 3).map(p => p.id);
+            setHotPartIds(defaults);
         }
     };
     fetchHotTrends();
