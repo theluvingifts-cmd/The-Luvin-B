@@ -311,6 +311,12 @@ const Step2BackgroundAndDecorations: React.FC<{
         }
     }
 
+    // Determine rotation based on Admin Configuration
+    let shouldRotate = false;
+    if (bg.type === 'rectangle') {
+        shouldRotate = bg.orientation === 'landscape';
+    }
+
     if (isColor) {
          setConfig({ 
             ...config, 
@@ -320,37 +326,14 @@ const Step2BackgroundAndDecorations: React.FC<{
         });
         if (message) showToast(message, 'success');
     } else {
-        // Check image dimensions for rotation
-        const img = new Image();
-        img.onload = () => {
-            const isLandscape = img.naturalWidth > img.naturalHeight;
-            
-            // Determine if target frame is rectangular
-            const targetFrame = frames.find(f => f.id === newFrameId);
-            const isTargetRect = targetFrame && Math.abs(targetFrame.frameWidthCm - targetFrame.frameHeightCm) > 1;
-            
-            // If it's a rectangular frame, align rotation with image orientation
-            const shouldRotate = isTargetRect && isLandscape;
-
-            setConfig({ 
-                ...config, 
-                frameId: newFrameId,
-                background: { type: 'image', value: bg.url },
-                isRotated: shouldRotate
-            });
-            
-            if (message) showToast(message, 'success');
-        };
-        img.onerror = () => {
-            // Fallback
-            setConfig({ 
-                ...config, 
-                frameId: newFrameId,
-                background: { type: 'image', value: bg.url }
-            });
-            if (message) showToast(message, 'success');
-        }
-        img.src = bg.url;
+        // Direct set using configured orientation, skip image loading for speed
+        setConfig({ 
+            ...config, 
+            frameId: newFrameId,
+            background: { type: 'image', value: bg.url },
+            isRotated: shouldRotate
+        });
+        if (message) showToast(message, 'success');
     }
   };
 
@@ -360,7 +343,7 @@ const Step2BackgroundAndDecorations: React.FC<{
       fileReader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
             const imageUrl = event.target.result as string;
-            // Check orientation
+            // Check orientation for uploaded images
             const img = new Image();
             img.onload = () => {
                  const isLandscape = img.naturalWidth > img.naturalHeight;

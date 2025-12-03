@@ -14,7 +14,7 @@ export const BackgroundForm: React.FC<{
     );
 
     const [formData, setFormData] = useState<PresetBackground>(initialData || {
-        id: `bg_${Date.now()}`, name: '', url: '', category: 'Khác', type: 'square'
+        id: `bg_${Date.now()}`, name: '', url: '', category: 'Khác', type: 'square', orientation: 'portrait'
     });
     const [isUploading, setIsUploading] = useState(false);
 
@@ -60,12 +60,43 @@ export const BackgroundForm: React.FC<{
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Danh mục</label>
                     <input name="category" value={formData.category} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white text-sm" placeholder="Kỷ niệm, Sinh nhật, Màu trơn..." />
                 </div>
-                <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Loại khung áp dụng</label>
-                    <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white text-sm">
-                        <option value="square">Vuông (15x15, 23x23)</option>
-                        <option value="rectangle">Chữ nhật (A5)</option>
-                    </select>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Loại khung áp dụng</label>
+                        <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 focus:bg-white text-sm">
+                            <option value="square">Vuông (15x15, 23x23)</option>
+                            <option value="rectangle">Chữ nhật (A5)</option>
+                        </select>
+                    </div>
+                    {formData.type === 'rectangle' && (
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hướng hiển thị</label>
+                            <div className="flex gap-2">
+                                <label className={`flex-1 flex items-center justify-center gap-2 border p-2 rounded cursor-pointer transition-colors ${formData.orientation !== 'landscape' ? 'bg-blue-50 border-blue-200 text-blue-800' : 'hover:bg-gray-50'}`}>
+                                    <input 
+                                        type="radio" 
+                                        name="orientation" 
+                                        value="portrait" 
+                                        checked={formData.orientation !== 'landscape'} 
+                                        onChange={() => setFormData({...formData, orientation: 'portrait'})} 
+                                        className="hidden"
+                                    />
+                                    <span className="text-sm font-medium">Dọc (Portrait)</span>
+                                </label>
+                                <label className={`flex-1 flex items-center justify-center gap-2 border p-2 rounded cursor-pointer transition-colors ${formData.orientation === 'landscape' ? 'bg-blue-50 border-blue-200 text-blue-800' : 'hover:bg-gray-50'}`}>
+                                    <input 
+                                        type="radio" 
+                                        name="orientation" 
+                                        value="landscape" 
+                                        checked={formData.orientation === 'landscape'} 
+                                        onChange={() => setFormData({...formData, orientation: 'landscape'})} 
+                                        className="hidden"
+                                    />
+                                    <span className="text-sm font-medium">Ngang (Landscape)</span>
+                                </label>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 
                 <div>

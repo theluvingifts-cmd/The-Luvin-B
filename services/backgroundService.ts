@@ -20,6 +20,7 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
                 url: data.url,
                 category: data.category || 'Khác',
                 type: data.type || 'square',
+                orientation: data.orientation || 'portrait',
                 order: data.order
             } as PresetBackground);
         });

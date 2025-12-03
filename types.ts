@@ -58,6 +58,7 @@ export interface PresetBackground {
     url: string;
     category: string;
     type: 'square' | 'rectangle';
+    orientation?: 'portrait' | 'landscape';
     order?: number;
 }
 
