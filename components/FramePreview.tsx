@@ -394,12 +394,19 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const uniqueId = React.useId();
   const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
 
+  const isRotated = config.isRotated || false;
+  const frameW = isRotated ? frameOption.frameHeightCm : frameOption.frameWidthCm;
+  const frameH = isRotated ? frameOption.frameWidthCm : frameOption.frameHeightCm;
+  const bgW = isRotated ? frameOption.backgroundHeightCm : frameOption.backgroundWidthCm;
+  const bgH = isRotated ? frameOption.backgroundWidthCm : frameOption.backgroundHeightCm;
+
   const maxDimensionCm = useMemo(() => Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm))), []);
   const pxPerCm = containerWidth / maxDimensionCm;
-  const frameWidth = frameOption.frameWidthCm * pxPerCm;
-  const frameHeight = frameOption.frameHeightCm * pxPerCm;
-  const backgroundWidth = frameOption.backgroundWidthCm * pxPerCm;
-  const backgroundHeight = frameOption.backgroundHeightCm * pxPerCm;
+  
+  const frameWidth = frameW * pxPerCm;
+  const frameHeight = frameH * pxPerCm;
+  const backgroundWidth = bgW * pxPerCm;
+  const backgroundHeight = bgH * pxPerCm;
 
   const allParts: Record<string, LegoPart> = useMemo(() => {
       if (propAllParts) return propAllParts;

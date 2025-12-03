@@ -114,6 +114,7 @@ export interface BackgroundConfig {
 export interface FrameConfig {
   frameId: string;
   frameColor?: string;
+  isRotated?: boolean;
   background: BackgroundConfig;
   characters: LegoCharacterConfig[];
   texts: TextConfig[];

@@ -128,6 +128,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
             );
           })}
         </div>
+
         {selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100">
                 <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">MÀU KHUNG</h4>
@@ -297,17 +298,11 @@ const Step2BackgroundAndDecorations: React.FC<{
         }
     } else if (bg.type === 'square' && !isCurrentFrameSquare) {
         // Auto-switch to Square Frame
-        // Prioritize user's last selection (15x15/sm if tracked), else default to 23x23 (lg)
         let targetId = preferredSquareFrameId;
-        
-        // Validation: Ensure target exists and is square
         const targetFrame = frames.find(f => f.id === targetId);
         if (!targetFrame || Math.abs(targetFrame.frameWidthCm - targetFrame.frameHeightCm) >= 1) {
-             // Fallback to 'lg' if preference is invalid or missing
              targetId = 'lg';
         }
-        
-        // Find actual frame object
         const squareFrame = frames.find(f => f.id === targetId) || frames.find(f => f.id === 'lg') || frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) < 1);
 
         if (squareFrame) {
@@ -316,14 +311,46 @@ const Step2BackgroundAndDecorations: React.FC<{
         }
     }
 
-    setConfig({ 
-        ...config, 
-        frameId: newFrameId,
-        background: { type: isColor ? 'color' : 'image', value: bg.url } 
-    });
+    if (isColor) {
+         setConfig({ 
+            ...config, 
+            frameId: newFrameId,
+            background: { type: 'color', value: bg.url },
+            isRotated: false // Reset rotation for colors usually
+        });
+        if (message) showToast(message, 'success');
+    } else {
+        // Check image dimensions for rotation
+        const img = new Image();
+        img.onload = () => {
+            const isLandscape = img.naturalWidth > img.naturalHeight;
+            
+            // Determine if target frame is rectangular
+            const targetFrame = frames.find(f => f.id === newFrameId);
+            const isTargetRect = targetFrame && Math.abs(targetFrame.frameWidthCm - targetFrame.frameHeightCm) > 1;
+            
+            // If it's a rectangular frame, align rotation with image orientation
+            const shouldRotate = isTargetRect && isLandscape;
 
-    if (message) {
-        showToast(message, 'success');
+            setConfig({ 
+                ...config, 
+                frameId: newFrameId,
+                background: { type: 'image', value: bg.url },
+                isRotated: shouldRotate
+            });
+            
+            if (message) showToast(message, 'success');
+        };
+        img.onerror = () => {
+            // Fallback
+            setConfig({ 
+                ...config, 
+                frameId: newFrameId,
+                background: { type: 'image', value: bg.url }
+            });
+            if (message) showToast(message, 'success');
+        }
+        img.src = bg.url;
     }
   };
 
@@ -332,7 +359,22 @@ const Step2BackgroundAndDecorations: React.FC<{
       const fileReader = new FileReader();
       fileReader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
-          setConfig({ ...config, background: { type: 'upload', value: event.target.result as string } });
+            const imageUrl = event.target.result as string;
+            // Check orientation
+            const img = new Image();
+            img.onload = () => {
+                 const isLandscape = img.naturalWidth > img.naturalHeight;
+                 const currentFrame = frames.find(f => f.id === config.frameId);
+                 const isRect = currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) > 1;
+                 const shouldRotate = isRect && isLandscape;
+
+                 setConfig({ 
+                     ...config, 
+                     background: { type: 'upload', value: imageUrl },
+                     isRotated: shouldRotate
+                 });
+            };
+            img.src = imageUrl;
         }
       };
       fileReader.readAsDataURL(e.target.files[0]);
@@ -1741,7 +1783,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
                         </svg>
                     </span>
                     <div className="text-xs text-amber-900 leading-relaxed">
