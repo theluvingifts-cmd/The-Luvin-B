@@ -105,6 +105,9 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
             >
               <span>{frame.name}</span>
               <span className="font-normal opacity-80 mt-1">{formatCurrency(frame.price)}</span>
+              {frame.id === 'lg' && (
+                  <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-[9px] px-1.5 py-0.5 rounded shadow-sm text-yellow-900 font-bold whitespace-nowrap z-10">Phổ biến nhất</span>
+              )}
               {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">Hết hàng</span>}
             </button>
           ))}
@@ -233,10 +236,9 @@ const Step2BackgroundAndDecorations: React.FC<{
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   const availableBackgrounds = useMemo(() => {
-    const isSquare = config.frameId === 'sm' || config.frameId === 'lg';
-    const typeNeeded = isSquare ? 'square' : 'rectangle';
-    return backgrounds.filter(bg => bg.type === typeNeeded);
-  }, [config.frameId, backgrounds]);
+    // Show all backgrounds regardless of frame type
+    return backgrounds;
+  }, [backgrounds]);
 
   const categories = useMemo(() => {
     return ['Tất cả', ...Array.from(new Set(availableBackgrounds.map(bg => bg.category)))];

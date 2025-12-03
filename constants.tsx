@@ -3,9 +3,9 @@ import type { FrameOption, LegoPart, FrameConfig, OutfitColor, Order } from './t
 
 
 export const FRAME_OPTIONS: FrameOption[] = [
+  { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: '', description: 'Sang trọng, ấn tượng', colors: ['black', 'white'], stock: 100 },
   { id: 'sm', name: '15x15cm', frameWidthCm: 15, frameHeightCm: 15, backgroundWidthCm: 12, backgroundHeightCm: 12, price: 210000, imageUrl: '', description: 'Nhỏ gọn, tinh tế', colors: ['black', 'white'], stock: 100 },
   { id: 'md', name: '14.8x21cm', frameWidthCm: 14.8, frameHeightCm: 21, backgroundWidthCm: 11.8, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Thanh lịch, đứng dáng', colors: ['black', 'white'], stock: 100 },
-  { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: '', description: 'Sang trọng, ấn tượng', colors: ['black', 'white'], stock: 100 },
 ];
 
 export const defaultShirtColors: OutfitColor[] = [
@@ -56,7 +56,7 @@ export const PRESET_BACKGROUNDS_SQUARE: { name: string; url: string; category: s
 export const PRESET_BACKGROUNDS_RECTANGLE: { name: string; url: string; category: string; }[] = [];
 
 export const INITIAL_FRAME_CONFIG: FrameConfig = {
-  frameId: 'sm',
+  frameId: 'lg',
   frameColor: 'white', // Default frame color
   background: { type: 'color', value: '#f4eee8' },
   characters: [],
