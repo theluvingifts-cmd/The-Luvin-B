@@ -245,8 +245,11 @@ const Step2BackgroundAndDecorations: React.FC<{
   addText: () => void;
   addCharm: (dataUrl: string) => void;
   backgrounds: PresetBackground[];
+  frames: FrameOption[];
   onZoomImage: (url: string) => void;
-}> = ({ config, setConfig, addText, addCharm, backgrounds, onZoomImage }) => {
+  showToast: (message: string, type: 'success' | 'error') => void;
+  preferredSquareFrameId: string;
+}> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -272,6 +275,57 @@ const Step2BackgroundAndDecorations: React.FC<{
         setSelectedCategory('Tất cả');
     }
   }, [categories, selectedCategory]);
+
+  const handleBackgroundSelect = (bg: PresetBackground) => {
+    const isColor = bg.url.startsWith('#');
+    let newFrameId = config.frameId;
+    let message = '';
+
+    // Find current frame details
+    const currentFrameOption = frames.find(f => f.id === config.frameId);
+    
+    // Determine if current frame is Square or Rectangle
+    const isCurrentFrameSquare = currentFrameOption ? Math.abs(currentFrameOption.frameWidthCm - currentFrameOption.frameHeightCm) < 1 : true;
+
+    // Determine target frame type based on Background type
+    if (bg.type === 'rectangle' && isCurrentFrameSquare) {
+        // Auto-switch to Rectangle Frame (Prefer 'md' / A5)
+        const rectFrame = frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) > 1 && f.stock !== 0) || frames.find(f => f.id === 'md');
+        if (rectFrame) {
+            newFrameId = rectFrame.id;
+            message = `Đã tự động chuyển sang khung ${rectFrame.name} để vừa với nền`;
+        }
+    } else if (bg.type === 'square' && !isCurrentFrameSquare) {
+        // Auto-switch to Square Frame
+        // Prioritize user's last selection (15x15/sm if tracked), else default to 23x23 (lg)
+        let targetId = preferredSquareFrameId;
+        
+        // Validation: Ensure target exists and is square
+        const targetFrame = frames.find(f => f.id === targetId);
+        if (!targetFrame || Math.abs(targetFrame.frameWidthCm - targetFrame.frameHeightCm) >= 1) {
+             // Fallback to 'lg' if preference is invalid or missing
+             targetId = 'lg';
+        }
+        
+        // Find actual frame object
+        const squareFrame = frames.find(f => f.id === targetId) || frames.find(f => f.id === 'lg') || frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) < 1);
+
+        if (squareFrame) {
+            newFrameId = squareFrame.id;
+            message = `Đã tự động chuyển sang khung ${squareFrame.name} để vừa với nền`;
+        }
+    }
+
+    setConfig({ 
+        ...config, 
+        frameId: newFrameId,
+        background: { type: isColor ? 'color' : 'image', value: bg.url } 
+    });
+
+    if (message) {
+        showToast(message, 'success');
+    }
+  };
 
   const handleBgFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -323,13 +377,12 @@ const Step2BackgroundAndDecorations: React.FC<{
         <div className="grid grid-cols-3 gap-2 min-h-[150px]">
           {filteredBackgrounds.length > 0 ? (
             filteredBackgrounds.map((bg) => {
-              const isColor = bg.url.startsWith('#');
               return (
                 <PresetBackgroundButton
                   key={bg.id}
                   bg={bg}
                   isSelected={config.background.value === bg.url}
-                  onClick={() => setConfig({ ...config, background: { type: isColor ? 'color' : 'image', value: bg.url } })}
+                  onClick={() => handleBackgroundSelect(bg)}
                   onZoom={onZoomImage}
                 />
               );
@@ -1101,6 +1154,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [isEditingText, setIsEditingText] = useState(false);
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
+  const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); // Default 23x23
   
   // Undo/Redo State
   const [history, setHistory] = useState<FrameConfig[]>([config]);
@@ -1113,6 +1167,15 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
+
+  // Track last selected square frame for auto-switching preference
+  useEffect(() => {
+      const currentFrame = frames.find(f => f.id === config.frameId);
+      // Check if frame is square (width ~= height)
+      if (currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) < 1) {
+          setLastSquareFrameId(currentFrame.id);
+      }
+  }, [config.frameId, frames]);
 
   useEffect(() => {
     const fetchHotTrends = async () => {
@@ -1584,7 +1647,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfigWithHistory} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfigWithHistory} addText={addText} addCharm={addCharm} backgrounds={backgrounds} onZoomImage={onZoomImage} />;
+      case 2: return <Step2BackgroundAndDecorations 
+          config={config} 
+          setConfig={setConfigWithHistory} 
+          addText={addText} 
+          addCharm={addCharm} 
+          backgrounds={backgrounds} 
+          frames={frames} 
+          onZoomImage={onZoomImage} 
+          showToast={showToast} 
+          preferredSquareFrameId={lastSquareFrameId}
+      />;
       case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
