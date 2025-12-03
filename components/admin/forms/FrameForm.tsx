@@ -16,6 +16,8 @@ export const FrameForm: React.FC<{
         backgroundHeightCm: 12,
         price: 0,
         costPrice: 0,
+        salePrice: 0,
+        saleEndDate: '',
         imageUrl: '',
         description: '',
         stock: 100,
@@ -26,7 +28,7 @@ export const FrameForm: React.FC<{
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: ['price', 'costPrice', 'frameWidthCm', 'frameHeightCm', 'backgroundWidthCm', 'backgroundHeightCm', 'stock'].includes(name) ? Number(value) : value
+            [name]: ['price', 'costPrice', 'salePrice', 'frameWidthCm', 'frameHeightCm', 'backgroundWidthCm', 'backgroundHeightCm', 'stock'].includes(name) ? Number(value) : value
         }));
     };
 
@@ -66,6 +68,21 @@ export const FrameForm: React.FC<{
                                 <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-2.5 border border-red-200 rounded bg-red-50 text-sm text-red-600 font-bold focus:ring-1 focus:ring-red-500" />
                             </div>
                         </div>
+                        
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                            <h5 className="font-bold text-sm text-blue-700 mb-3">🔥 Thiết lập Khuyến mãi</h5>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Giá Sale (VNĐ)</label>
+                                    <input type="number" name="salePrice" value={formData.salePrice || 0} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" placeholder="0 = Không sale" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Kết thúc KM</label>
+                                    <input type="date" name="saleEndDate" value={formData.saleEndDate || ''} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tồn kho</label>
                             <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />

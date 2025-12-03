@@ -9,7 +9,7 @@ import {
 } from '../constants';
 import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
-import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
+import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
 
@@ -94,23 +94,39 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">CHỌN KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
-          {frames.map(frame => (
-            <button
-              key={frame.id}
-              onClick={() => setConfig({ ...config, frameId: frame.id })}
-              disabled={frame.stock === 0}
-              className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative hover:scale-105 active:scale-95 ${
-                config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink shadow-md' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-50'
-              } ${frame.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span>{frame.name}</span>
-              <span className="font-normal opacity-80 mt-1">{formatCurrency(frame.price)}</span>
-              {frame.id === 'lg' && (
-                  <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-[9px] px-1.5 py-0.5 rounded shadow-sm text-yellow-900 font-bold whitespace-nowrap z-10">Phổ biến nhất</span>
-              )}
-              {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">Hết hàng</span>}
-            </button>
-          ))}
+          {frames.map(frame => {
+            const effectivePrice = getEffectivePrice(frame);
+            const isSale = effectivePrice < frame.price;
+
+            return (
+                <button
+                key={frame.id}
+                onClick={() => setConfig({ ...config, frameId: frame.id })}
+                disabled={frame.stock === 0}
+                className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative hover:scale-105 active:scale-95 ${
+                    config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink shadow-md' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-50'
+                } ${frame.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                <span>{frame.name}</span>
+                {isSale ? (
+                    <div className="flex flex-col items-center leading-none mt-1">
+                        <span className="font-normal opacity-60 line-through text-[10px]">{formatCurrency(frame.price)}</span>
+                        <span className="font-bold text-red-600 text-xs">{formatCurrency(effectivePrice)}</span>
+                    </div>
+                ) : (
+                    <span className="font-normal opacity-80 mt-1">{formatCurrency(frame.price)}</span>
+                )}
+                
+                {isSale && (
+                    <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold whitespace-nowrap z-10">SALE</span>
+                )}
+                {frame.id === 'lg' && !isSale && (
+                    <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-[9px] px-1.5 py-0.5 rounded shadow-sm text-yellow-900 font-bold whitespace-nowrap z-10">Phổ biến nhất</span>
+                )}
+                {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">Hết hàng</span>}
+                </button>
+            );
+          })}
         </div>
         {selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100">
@@ -355,8 +371,9 @@ const PartButton: React.FC<{
     isSelected: boolean;
     onClick: () => void;
     priceToDisplay: number; 
+    originalPrice?: number;
     isHot?: boolean;
-}> = ({ part, isSelected, onClick, priceToDisplay, isHot }) => {
+}> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -366,6 +383,9 @@ const PartButton: React.FC<{
         setTimeout(() => setIsClicked(false), 300);
     };
     
+    // Check if effective price is lower than regular price
+    const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
+
     return (
         <button
             onClick={handleClick}
@@ -384,6 +404,11 @@ const PartButton: React.FC<{
                     🔥
                 </div>
             )}
+            {isSale && (
+                <div className="absolute top-0 left-0 z-20 bg-yellow-400 text-yellow-900 text-[9px] px-1 rounded-br shadow-sm font-bold">
+                    SALE
+                </div>
+            )}
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
                 {!imgError && part.imageUrl ? (
                     <img 
@@ -399,9 +424,20 @@ const PartButton: React.FC<{
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-800 line-clamp-1">{part.name}</span>
-                <span className={`text-[11px] font-bold ${isSelected && priceToDisplay > part.price ? 'text-red-600' : 'text-luvin-pink'}`}>
-                    {formatCurrency(priceToDisplay)}
-                </span>
+                {isSale ? (
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-normal text-gray-400 line-through">
+                            {formatCurrency(originalPrice!)}
+                        </span>
+                        <span className={`text-[11px] font-bold ${isSelected ? 'text-red-600' : 'text-red-500'}`}>
+                            {formatCurrency(priceToDisplay)}
+                        </span>
+                    </div>
+                ) : (
+                    <span className={`text-[11px] font-bold ${isSelected ? 'text-red-600' : 'text-luvin-pink'}`}>
+                        {formatCurrency(priceToDisplay)}
+                    </span>
+                )}
             </div>
         </button>
     );
@@ -410,8 +446,8 @@ const PartButton: React.FC<{
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
     return [...parts].sort((a, b) => {
-        const priceA = a.price || 0;
-        const priceB = b.price || 0;
+        const priceA = getEffectivePrice(a) || 0;
+        const priceB = getEffectivePrice(b) || 0;
         return mode === 'price_asc' ? priceA - priceB : priceB - priceA;
     });
 };
@@ -765,11 +801,22 @@ const Step3Characters: React.FC<{
                         {currentPartList.length > 0 ? currentPartList.map(part => {
                             const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
                             
-                            let priceToDisplay = part.price;
+                            // Base Effective Price for the part
+                            let effectiveBasePrice = getEffectivePrice(part);
+                            let originalBasePrice = part.price;
+
+                            // Calculate final display price including color surcharge
+                            let priceToDisplay = effectiveBasePrice;
+                            let originalPriceToDisplay = originalBasePrice;
+
                             if (isSelected) {
-                                if (activePartType === 'shirt' || activePartType === 'set') priceToDisplay += (activeCharacter.selectedShirtColor?.price || 0);
-                                else if (activePartType === 'pants') priceToDisplay += (activeCharacter.selectedPantsColor?.price || 0);
-                                else if (activePartType === 'hair') priceToDisplay += (activeCharacter.selectedHairColor?.price || 0);
+                                let surcharge = 0;
+                                if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
+                                else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
+                                else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
+                                
+                                priceToDisplay += surcharge;
+                                originalPriceToDisplay += surcharge;
                             }
 
                             return (
@@ -778,7 +825,8 @@ const Step3Characters: React.FC<{
                                     part={part}
                                     isSelected={isSelected}
                                     onClick={() => handlePartSelect(part)}
-                                    priceToDisplay={priceToDisplay} 
+                                    priceToDisplay={priceToDisplay}
+                                    originalPrice={originalPriceToDisplay}
                                 />
                             );
                         }) : (
@@ -834,16 +882,20 @@ const Step3Characters: React.FC<{
                 </div>
 
                 <div className="grid grid-cols-4 gap-2">
-                    {filteredAccessories.length > 0 ? filteredAccessories.map(part => (
-                        <PartButton 
-                            key={part.id} 
-                            part={part} 
-                            isSelected={false} 
-                            onClick={() => addDraggableItem(part)} 
-                            priceToDisplay={part.price} 
-                            isHot={hotPartIds.includes(part.id)}
-                        />
-                    )) : (
+                    {filteredAccessories.length > 0 ? filteredAccessories.map(part => {
+                        const effectivePrice = getEffectivePrice(part);
+                        return (
+                            <PartButton 
+                                key={part.id} 
+                                part={part} 
+                                isSelected={false} 
+                                onClick={() => addDraggableItem(part)} 
+                                priceToDisplay={effectivePrice} 
+                                originalPrice={part.price}
+                                isHot={hotPartIds.includes(part.id)}
+                            />
+                        );
+                    }) : (
                         <p className="col-span-4 text-center text-sm text-gray-400 py-4">Không tìm thấy phụ kiện nào.</p>
                     )}
                 </div>
@@ -852,16 +904,20 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {getAvailableParts(legoParts.pet).map(part => (
-                        <PartButton 
-                            key={part.id} 
-                            part={part} 
-                            isSelected={false} 
-                            onClick={() => addDraggableItem(part)} 
-                            priceToDisplay={part.price}
-                            isHot={hotPartIds.includes(part.id)}
-                        />
-                    ))}
+                    {getAvailableParts(legoParts.pet).map(part => {
+                        const effectivePrice = getEffectivePrice(part);
+                        return (
+                            <PartButton 
+                                key={part.id} 
+                                part={part} 
+                                isSelected={false} 
+                                onClick={() => addDraggableItem(part)} 
+                                priceToDisplay={effectivePrice}
+                                originalPrice={part.price}
+                                isHot={hotPartIds.includes(part.id)}
+                            />
+                        );
+                    })}
                 </div>
             </div>
         </div>

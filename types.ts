@@ -13,6 +13,8 @@ export interface FrameOption {
   backgroundHeightCm: number;
   price: number;
   costPrice?: number;
+  salePrice?: number; // Giá khuyến mãi
+  saleEndDate?: string; // Ngày kết thúc khuyến mãi (ISO string)
   imageUrl: string;
   description: string;
   stock?: number;
@@ -33,6 +35,8 @@ export interface LegoPart {
   name: string;
   price: number; 
   costPrice?: number;
+  salePrice?: number; // Giá khuyến mãi
+  saleEndDate?: string; // Ngày kết thúc khuyến mãi (ISO string)
   imageUrl: string;
   type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set';
   widthCm: number;

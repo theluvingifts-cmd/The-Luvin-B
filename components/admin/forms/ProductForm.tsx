@@ -10,7 +10,7 @@ export const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: ''
+        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: ''
     });
     const [isUploading, setIsUploading] = useState(false);
     
@@ -26,7 +26,10 @@ export const ProductForm: React.FC<{
             const stockVal = value === '' ? undefined : Number(value);
             setFormData(prev => ({ ...prev, stock: stockVal }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'costPrice' || name === 'widthCm' || name === 'heightCm' ? Number(value) : value }));
+            setFormData(prev => ({ 
+                ...prev, 
+                [name]: ['price', 'costPrice', 'salePrice', 'widthCm', 'heightCm'].includes(name) ? Number(value) : value 
+            }));
         }
     };
 
@@ -196,6 +199,21 @@ export const ProductForm: React.FC<{
                                     <label className="block text-sm font-semibold text-gray-700 mb-2 text-red-600">Giá vốn (VNĐ)</label>
                                     <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-base text-red-600 font-medium" />
                                 </div>
+                                
+                                <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
+                                    <h5 className="font-bold text-sm text-blue-600 mb-3">🔥 Thiết lập Khuyến mãi</h5>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Giá Sale (VNĐ)</label>
+                                            <input type="number" name="salePrice" value={formData.salePrice || 0} onChange={handleChange} className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" placeholder="0 = Không sale" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Kết thúc khuyến mãi</label>
+                                            <input type="date" name="saleEndDate" value={formData.saleEndDate || ''} onChange={handleChange} className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="col-span-2">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
                                         <input type="number" name="stock" value={formData.stock === undefined ? '' : formData.stock} onChange={handleChange} placeholder="Vô hạn" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />

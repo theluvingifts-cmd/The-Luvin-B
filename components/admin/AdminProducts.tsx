@@ -9,7 +9,7 @@ import { ProductForm } from './forms/ProductForm';
 import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { TemplateForm } from './forms/TemplateForm';
-import { formatCurrency } from '../../utils/pricing';
+import { formatCurrency, getEffectivePrice } from '../../utils/pricing';
 
 interface AdminProductsProps {
     products: LegoPart[];
@@ -228,7 +228,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-                                {filteredProducts.map(part => (
+                                {filteredProducts.map(part => {
+                                    const effectivePrice = getEffectivePrice(part);
+                                    const isSale = effectivePrice < part.price;
+
+                                    return (
                                     <div 
                                         key={part.id} 
                                         className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all"
@@ -241,8 +245,16 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             <img src={part.imageUrl} className="max-w-full max-h-full object-contain" />
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={part.name}>{part.name}</h4>
-                                        <div className="flex justify-between items-center text-[10px] sm:text-xs text-gray-500 mt-1">
-                                            <span>{formatCurrency(part.price)}</span>
+                                        <div className="flex justify-between items-center text-[10px] sm:text-xs mt-1">
+                                            {isSale ? (
+                                                <div className="flex flex-col leading-none">
+                                                    <span className="text-gray-400 line-through">{formatCurrency(part.price)}</span>
+                                                    <span className="text-red-600 font-bold">{formatCurrency(effectivePrice)}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-500">{formatCurrency(part.price)}</span>
+                                            )}
+                                            
                                             {/* Quick Stock Edit */}
                                             {quickStockEditId === part.id ? (
                                                 <div className="flex items-center gap-1 absolute bottom-1 right-1 bg-white border p-1 rounded shadow-lg z-10">
@@ -268,12 +280,13 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 </button>
                                             )}
                                         </div>
+                                        {isSale && <div className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[8px] px-1 rounded font-bold shadow-sm">SALE</div>}
                                         <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => switchToEdit(part, 'parts')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
                                             <button onClick={() => handleDeleteProduct(part.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         </>
                     )}
@@ -285,7 +298,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 <button onClick={() => switchToEdit(null, 'frames')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm Khung</button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                                {frames.map(frame => (
+                                {frames.map(frame => {
+                                    const effectivePrice = getEffectivePrice(frame);
+                                    const isSale = effectivePrice < frame.price;
+
+                                    return (
                                     <div key={frame.id} className="bg-white border rounded-lg p-4 shadow-sm relative group">
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-bold text-base sm:text-lg">{frame.name}</h4>
@@ -293,7 +310,18 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         </div>
                                         <div className="text-sm text-gray-600 space-y-1 mb-4">
                                             <p>Kích thước: {frame.frameWidthCm}x{frame.frameHeightCm}cm</p>
-                                            <p>Giá: <span className="font-bold text-gray-900">{formatCurrency(frame.price)}</span></p>
+                                            <div className="flex items-center gap-2">
+                                                <span>Giá:</span>
+                                                {isSale ? (
+                                                    <>
+                                                        <span className="line-through text-gray-400">{formatCurrency(frame.price)}</span>
+                                                        <span className="font-bold text-red-600">{formatCurrency(effectivePrice)}</span>
+                                                        <span className="bg-red-100 text-red-600 text-[10px] px-1 rounded font-bold">SALE</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="font-bold text-gray-900">{formatCurrency(frame.price)}</span>
+                                                )}
+                                            </div>
                                             <div className="flex items-center gap-2">
                                                 <span>Tồn kho:</span>
                                                 {/* Quick Stock Edit for Frames */}
@@ -328,7 +356,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             <button onClick={() => handleDeleteFrame(frame.id)} className="px-3 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">Xóa</button>
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         </>
                     )}
