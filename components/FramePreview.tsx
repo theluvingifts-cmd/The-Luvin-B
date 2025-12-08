@@ -124,11 +124,12 @@ const getFontFamily = (fontName: string) => {
 
 const EditableText: React.FC<{
     text: TextConfig;
+    fontSize: number; // Calculated font size
     onUpdate: (updates: Partial<TextConfig>) => void;
     onBeginEditing: () => void;
     onEndEditing: () => void;
     isContentLocked?: boolean;
-}> = ({ text, onUpdate, onBeginEditing, onEndEditing, isContentLocked }) => {
+}> = ({ text, fontSize, onUpdate, onBeginEditing, onEndEditing, isContentLocked }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(text.content);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -162,13 +163,15 @@ const EditableText: React.FC<{
 
     const textStyle: React.CSSProperties = {
         fontFamily: getFontFamily(text.font),
-        fontSize: `${text.size}px`,
+        fontSize: `${fontSize}px`,
         color: text.color,
         whiteSpace: 'pre-wrap',
         textAlign: text.textAlign || 'center',
-        padding: '10px',
+        padding: '0.2em', // Changed from 10px to relative unit to scale with font size
         wordBreak: 'break-word',
         textShadow: '0 0 5px white, 0 0 5px white',
+        lineHeight: 1.4,
+        userSelect: isContentLocked ? 'none' : 'auto', // Prevent selection if locked (mobile fix)
         ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
     };
 
@@ -191,13 +194,14 @@ const EditableText: React.FC<{
                     boxShadow: '0 0 0 2px #efa3b5',
                     margin: 0,
                     cursor: 'text',
+                    userSelect: 'auto'
                 }}
             />
         );
     }
 
     return (
-        <div style={{minWidth: '50px', width: '100%', height: '100%'}} onDoubleClick={handleDoubleClick}>
+        <div style={{minWidth: '20px', width: '100%', height: '100%'}} onDoubleClick={handleDoubleClick}>
             <p style={textStyle}>{text.content || " "}</p>
         </div>
     );
@@ -441,6 +445,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const backgroundWidth = bgW * pxPerCm;
   const backgroundHeight = bgH * pxPerCm;
 
+  // Calculate Responsive Scale for Fonts based on Background Width
+  // Admin Base Width is 500px. We scale based on actual background width.
+  const responsiveScale = backgroundWidth / 500;
+
   const allParts: Record<string, LegoPart> = useMemo(() => {
       if (propAllParts) return propAllParts;
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
@@ -631,6 +639,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     >
                        <EditableText 
                             text={text} 
+                            fontSize={text.size * responsiveScale} // Pass calculated responsive font size
                             onUpdate={(updates) => onTextUpdate(text.id, updates)} 
                             onBeginEditing={() => setIsEditingText(true)} 
                             onEndEditing={() => setIsEditingText(false)} 

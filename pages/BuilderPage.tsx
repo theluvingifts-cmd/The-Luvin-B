@@ -1110,12 +1110,25 @@ const TextEditor: React.FC<{
             texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
         });
     }
+
+    const isLocked = activeText.lockedContent;
     
     return (
-        <div className="p-4 border border-gray-200 rounded-lg">
+        <div className="p-4 border border-gray-200 rounded-lg relative">
+            {isLocked && (
+                <div 
+                    className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
+                    onClick={(e) => e.stopPropagation()} // Stop click propagation to inputs behind
+                >
+                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                        🔒 Nội dung đã bị khóa bởi Admin
+                    </span>
+                </div>
+            )}
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-800">CHỈNH SỬA CHỮ</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-2 relative z-30">
                     <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
                         + Thêm chữ
                     </button>
@@ -1130,8 +1143,10 @@ const TextEditor: React.FC<{
                     <textarea
                         value={activeText.content}
                         onChange={e => updateActiveText({ content: e.target.value })}
+                        disabled={isLocked}
+                        readOnly={isLocked}
                         rows={3}
-                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                        className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
                         placeholder="Nhập nội dung văn bản..."
                     />
                 </div>
@@ -1143,14 +1158,20 @@ const TextEditor: React.FC<{
                       max="100" 
                       value={activeText.size} 
                       onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
-                      className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                      disabled={isLocked}
+                      readOnly={isLocked}
+                      className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
                     />
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                    <button onClick={() => updateActiveText({background: !activeText.background})} className={`text-sm px-3 py-2 rounded-lg ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'}`}>
+                    <button 
+                        onClick={() => updateActiveText({background: !activeText.background})} 
+                        disabled={isLocked}
+                        className={`text-sm px-3 py-2 rounded-lg flex-1 ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                       {activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}
                     </button>
-                    <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                    <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                         {(['left', 'center', 'right'] as const).map(align => (
                            <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-3 py-1 text-sm ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'}`}>
                              {align.charAt(0).toUpperCase()}
