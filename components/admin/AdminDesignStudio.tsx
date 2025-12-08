@@ -96,6 +96,7 @@ export const AdminDesignStudio: React.FC<AdminDesignStudioProps> = ({ background
         if (!isDragging || !selectedLayerId || !canvasRef.current) return;
 
         const rect = canvasRef.current.getBoundingClientRect();
+        // Convert screen pixels to percentage relative to the canvas
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -206,7 +207,6 @@ export const AdminDesignStudio: React.FC<AdminDesignStudioProps> = ({ background
                                         <div className="absolute -top-6 left-0 bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">
                                             {layer.label}
                                         </div>
-                                        {/* Resize / Rotate Handles could go here in V2 */}
                                     </>
                                 )}
                             </div>
@@ -311,7 +311,7 @@ export const AdminDesignStudio: React.FC<AdminDesignStudioProps> = ({ background
                                                     onClick={() => updateLayer(selectedLayer.id, { textAlign: align as any })}
                                                     className={`p-1.5 rounded ${selectedLayer.textAlign === align ? 'bg-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
                                                 >
-                                                    {align === 'left' ? 'Left' : align === 'center' ? 'Center' : 'Right'}
+                                                    {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
                                                 </button>
                                             ))}
                                         </div>

@@ -56,10 +56,10 @@ export interface LegoPart {
 export interface TextLayer {
     id: string;
     label: string; // Tên hiển thị cho khách nhập (VD: "Tên bạn", "Ngày kỷ niệm")
-    defaultText: string; // Nội dung mẫu
-    x: number; // % position
-    y: number; // % position
-    fontSize: number; // px relative to base width
+    defaultText: string; // Nội dung mẫu hiển thị trên ảnh
+    x: number; // % position left
+    y: number; // % position top
+    fontSize: number; // px relative to base container
     fontFamily: string;
     color: string;
     fontWeight?: string;
