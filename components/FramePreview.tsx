@@ -101,12 +101,24 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
   );
 };
 
+// Updated Font Family Helper to support custom fonts
 const getFontFamily = (fontName: string) => {
+    // If it's a known Google font, return specific stack
     switch (fontName) {
         case 'Anniversary': return '"Dancing Script", cursive';
         case 'Serif': return '"Noto Serif", serif';
         case 'Playfair Display': return '"Playfair Display", serif';
-        default: return '"Montserrat", sans-serif';
+        case 'Montserrat': return '"Montserrat", sans-serif';
+        case 'Roboto': return '"Roboto", sans-serif';
+        case 'Open Sans': return '"Open Sans", sans-serif';
+        case 'Merriweather': return '"Merriweather", serif';
+        case 'Dancing Script': return '"Dancing Script", cursive';
+        case 'Lora': return '"Lora", serif';
+        case 'Nunito': return '"Nunito", sans-serif';
+        case 'Pacifico': return '"Pacifico", cursive';
+        default: 
+            // For uploaded custom fonts, use the name directly
+            return `'${fontName}', sans-serif`;
     }
 };
 

@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { FrameConfig, LegoPart, TextConfig, DraggableItem, CollectionTemplate, FrameOption } from '../../types';
+import { FrameConfig, LegoPart, TextConfig, DraggableItem, CollectionTemplate, FrameOption, CustomFont } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
 import { addTemplate } from '../../services/templateService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { formatCurrency } from '../../utils/pricing';
+import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 
 declare var html2canvas: any;
 
@@ -16,6 +17,8 @@ const TOOLS = [
     { id: 'upload', icon: '☁️', label: 'Upload' },
     { id: 'layers', icon: '📚', label: 'Lớp' },
 ];
+
+const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
 export const AdminDesign: React.FC = () => {
     // State
@@ -28,18 +31,53 @@ export const AdminDesign: React.FC = () => {
     const [templateName, setTemplateName] = useState('');
     const [showSaveModal, setShowSaveModal] = useState(false);
     
+    // Font Manager State
+    const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
+    const [isUploadingFont, setIsUploadingFont] = useState(false);
+    
     // Refs
     const previewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const fontInputRef = useRef<HTMLInputElement>(null);
 
-    // Load frames on mount
+    // Initial Data Fetch
     useEffect(() => {
-        const fetchFrames = async () => {
-            const data = await getAllFrames();
-            if (data.length > 0) setFrames(data);
+        const fetchInitialData = async () => {
+            const [framesData, configData] = await Promise.all([
+                getAllFrames(),
+                getStoreConfig()
+            ]);
+            
+            if (framesData.length > 0) setFrames(framesData);
+            if (configData?.uploadedFonts) setUploadedFonts(configData.uploadedFonts);
         };
-        fetchFrames();
+        fetchInitialData();
     }, []);
+
+    // Inject fonts into DOM
+    useEffect(() => {
+        const styleId = 'admin-dynamic-fonts';
+        let style = document.getElementById(styleId) as HTMLStyleElement;
+        if (!style) {
+            style = document.createElement('style');
+            style.id = styleId;
+            document.head.appendChild(style);
+        }
+        
+        let css = '';
+        uploadedFonts.forEach(font => {
+            css += `
+                @font-face {
+                    font-family: '${font.name}';
+                    src: url('${font.url}');
+                    font-weight: normal;
+                    font-style: normal;
+                    font-display: swap;
+                }
+            `;
+        });
+        style.innerHTML = css;
+    }, [uploadedFonts]);
 
     // Helpers
     const selectedFrame = useMemo(() => frames.find(f => f.id === config.frameId) || frames[0], [frames, config.frameId]);
@@ -104,7 +142,68 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    // FramePreview Handlers (Mimicking BuilderPage)
+    const handleUploadFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const fontName = prompt("Nhập tên font (VD: MyCustomFont):", file.name.split('.')[0]);
+            
+            if (!fontName) return;
+
+            setIsUploadingFont(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    const newFont: CustomFont = {
+                        id: `font_${Date.now()}`,
+                        name: fontName,
+                        url: url
+                    };
+                    const updatedFonts = [...uploadedFonts, newFont];
+                    
+                    // Save to server
+                    await updateStoreConfig({ uploadedFonts: updatedFonts });
+                    setUploadedFonts(updatedFonts);
+                    alert("Đã upload font thành công!");
+                }
+            } catch (err) {
+                alert('Lỗi upload font');
+            } finally {
+                setIsUploadingFont(false);
+            }
+        }
+    };
+
+    // Alignment Tools
+    const alignItem = (direction: 'centerH' | 'centerV' | 'top' | 'bottom' | 'left' | 'right') => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const numericId = parseInt(idStr);
+
+        const updateFn = (item: any) => {
+            let updates = {};
+            switch (direction) {
+                case 'centerH': updates = { x: 50 }; break;
+                case 'centerV': updates = { y: 50 }; break;
+                case 'top': updates = { y: 10 }; break;
+                case 'bottom': updates = { y: 90 }; break;
+                case 'left': updates = { x: 10 }; break;
+                case 'right': updates = { x: 90 }; break;
+            }
+            return { ...item, ...updates };
+        };
+
+        setConfig(prev => {
+            if (type === 'text') {
+                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? updateFn(t) : t) };
+            }
+            if (type === 'item') {
+                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? updateFn(i) : i) };
+            }
+            return prev;
+        });
+    };
+
+    // FramePreview Handlers
     const handleItemTransform = (id: string, newTransform: any) => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
@@ -133,6 +232,12 @@ export const AdminDesign: React.FC = () => {
 
     const handleTextUpdate = (id: number, updates: Partial<TextConfig>) => {
         setConfig(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
+    };
+
+    const getSelectedText = () => {
+        if (!selectedItemId || !selectedItemId.startsWith('text-')) return null;
+        const id = parseInt(selectedItemId.split('-')[1]);
+        return config.texts.find(t => t.id === id);
     };
 
     // Export & Save
@@ -201,7 +306,7 @@ export const AdminDesign: React.FC = () => {
     };
 
     return (
-        <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in">
+        <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
             {/* 1. Sidebar Tools */}
             <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20">
                 {TOOLS.map(tool => (
@@ -219,7 +324,7 @@ export const AdminDesign: React.FC = () => {
             </div>
 
             {/* 2. Tool Panel (Dynamic) */}
-            <div className="w-72 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
+            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm transition-all">
                 <div className="p-4 border-b border-gray-100">
                     <h3 className="font-bold text-gray-800 text-lg">
                         {TOOLS.find(t => t.id === activeTool)?.label}
@@ -268,13 +373,68 @@ export const AdminDesign: React.FC = () => {
                             
                             {selectedItemId && selectedItemId.startsWith('text') ? (
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-                                    <p className="text-xs font-bold text-blue-600 uppercase">Đang chọn văn bản</p>
-                                    {/* Properties handled in FramePreview/TextEditor, but could mirror here */}
-                                    <p className="text-xs text-gray-500 italic">Nhấp đúp vào chữ trên khung để sửa nội dung.</p>
+                                    <p className="text-xs font-bold text-blue-600 uppercase">Đang chỉnh sửa</p>
+                                    
+                                    {/* Font Selector */}
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1 block">Font chữ</label>
+                                        <select 
+                                            className="w-full p-2 border rounded text-sm bg-white"
+                                            value={getSelectedText()?.font || 'Playfair Display'}
+                                            onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { font: e.target.value })}
+                                        >
+                                            <optgroup label="Cơ bản">
+                                                {DEFAULT_FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+                                            </optgroup>
+                                            <optgroup label="Đã tải lên">
+                                                {uploadedFonts.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    {/* Size & Color */}
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Cỡ chữ</label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded text-sm"
+                                                value={getSelectedText()?.size || 12}
+                                                onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { size: parseInt(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Màu</label>
+                                            <input 
+                                                type="color" 
+                                                className="w-10 h-10 border rounded cursor-pointer"
+                                                value={getSelectedText()?.color || '#000000'}
+                                                onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { color: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Style Toggles */}
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { background: !getSelectedText()!.background })}
+                                            className={`flex-1 py-1.5 text-xs font-bold rounded border ${getSelectedText()?.background ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-gray-600'}`}
+                                        >
+                                            Nền mờ
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-500 text-center py-4">Chọn một chữ để chỉnh sửa.</p>
                             )}
+
+                            <div className="border-t pt-4">
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Upload Font (.ttf, .otf)</label>
+                                <button onClick={() => fontInputRef.current?.click()} disabled={isUploadingFont} className="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-600 hover:bg-gray-50">
+                                    {isUploadingFont ? 'Đang tải...' : 'Tải font mới'}
+                                </button>
+                                <input type="file" ref={fontInputRef} className="hidden" accept=".ttf,.otf,.woff" onChange={handleUploadFont} />
+                            </div>
                         </div>
                     )}
 
@@ -349,6 +509,19 @@ export const AdminDesign: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Floating Alignment Bar (When Item Selected) */}
+                {selectedItemId && (
+                    <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up">
+                        <button onClick={() => alignItem('left')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trái"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
+                        <button onClick={() => alignItem('centerH')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa ngang"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg></button>
+                        <button onClick={() => alignItem('right')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn phải"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+                        <div className="w-px bg-gray-200 mx-1"></div>
+                        <button onClick={() => alignItem('top')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trên"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 5 5 12"></polyline></svg></button>
+                        <button onClick={() => alignItem('centerV')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa dọc"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg></button>
+                        <button onClick={() => alignItem('bottom')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn dưới"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 19 19 12"></polyline></svg></button>
+                    </div>
+                )}
 
                 {/* Canvas Workspace */}
                 <div className="flex-grow overflow-auto flex items-center justify-center p-8 bg-[url('https://res.cloudinary.com/dbdqd93km/image/upload/v1/transparent-bg.png')] bg-repeat">
