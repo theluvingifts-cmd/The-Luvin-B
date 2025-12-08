@@ -52,6 +52,21 @@ export interface LegoPart {
   isHot?: boolean;
 }
 
+export interface BackgroundLayer {
+    id: string;
+    type: 'text';
+    content: string;
+    x: number; // Percentage 0-100
+    y: number; // Percentage 0-100
+    font: string;
+    size: number;
+    color: string;
+    rotation: number;
+    width?: number; // For text wrapping
+    textAlign?: 'left' | 'center' | 'right';
+    background?: boolean;
+}
+
 export interface PresetBackground {
     id: string;
     name: string;
@@ -60,6 +75,7 @@ export interface PresetBackground {
     type: 'square' | 'rectangle';
     orientation?: 'portrait' | 'landscape';
     order?: number;
+    layers?: BackgroundLayer[]; // NEW: For editable templates
 }
 
 export interface LegoCharacterConfig {

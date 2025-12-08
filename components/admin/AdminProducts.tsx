@@ -7,7 +7,8 @@ import { addBackground, updateBackground, deleteBackground, seedBackgrounds, reo
 import { addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../../services/templateService';
 import { ProductForm } from './forms/ProductForm';
 import { FrameForm } from './forms/FrameForm';
-import { BackgroundForm } from './forms/BackgroundForm';
+// import { BackgroundForm } from './forms/BackgroundForm'; // Replaced by Studio
+import { AdminDesignStudio } from './AdminDesignStudio'; // New Component
 import { TemplateForm } from './forms/TemplateForm';
 import { formatCurrency, getEffectivePrice } from '../../utils/pricing';
 
@@ -179,23 +180,32 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             
             {/* View Mode Switching Logic */}
             {viewMode === 'edit' ? (
-                <div className="w-full h-full bg-gray-50 z-40 overflow-y-auto p-2 sm:p-0">
-                    <div className="mb-4">
-                        <button onClick={switchToList} className="text-sm text-gray-500 font-bold hover:text-gray-900 transition-colors flex items-center gap-1">
-                            &larr; Quay lại danh sách
-                        </button>
-                    </div>
-                    {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
-                    {activeProductSubTab === 'backgrounds' && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />}
-                    {activeProductSubTab === 'frames' && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={switchToList} />}
-                    {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={switchToList} />}
+                <div className="fixed inset-0 bg-white z-[100] overflow-y-auto">
+                    {/* Render Studio for Backgrounds */}
+                    {activeProductSubTab === 'backgrounds' && (
+                        <AdminDesignStudio initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />
+                    )}
+                    
+                    {/* Render other forms inside container */}
+                    {activeProductSubTab !== 'backgrounds' && (
+                        <div className="w-full h-full bg-gray-50 p-4">
+                            <div className="mb-4">
+                                <button onClick={switchToList} className="text-sm text-gray-500 font-bold hover:text-gray-900 transition-colors flex items-center gap-1">
+                                    &larr; Quay lại danh sách
+                                </button>
+                            </div>
+                            {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
+                            {activeProductSubTab === 'frames' && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={switchToList} />}
+                            {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={switchToList} />}
+                        </div>
+                    )}
                 </div>
             ) : (
                 <>
                     <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-4 overflow-x-auto no-scrollbar">
                         <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Linh kiện</button>
                         <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Khung</button>
-                        <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền</button>
+                        <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền (Mới)</button>
                         <button onClick={() => setActiveProductSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Mẫu thiết kế</button>
                     </div>
 
@@ -375,7 +385,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">
                                         <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset BG</button>
-                                        <button onClick={() => switchToEdit(null, 'backgrounds')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                                        <button onClick={() => switchToEdit(null, 'backgrounds')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Tạo Mẫu Mới</button>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -399,24 +409,30 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 {filteredBackgrounds.map(bg => (
                                     <div 
                                         key={bg.id} 
-                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all cursor-move"
+                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all cursor-pointer"
+                                        onClick={() => switchToEdit(bg, 'backgrounds')}
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, bg.id)}
                                         onDragOver={handleDragOver}
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
-                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
+                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100 relative`}>
                                             {bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />
                                             )}
+                                            {/* Badge for Editable Template */}
+                                            {bg.layers && bg.layers.length > 0 && (
+                                                <div className="absolute top-1 left-1 bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow font-bold">
+                                                    Editable
+                                                </div>
+                                            )}
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
                                         <p className="text-[10px] sm:text-xs text-gray-500">{bg.category}</p>
                                         <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
-                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteBackground(bg.id); }} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
                                         </div>
                                     </div>
                                 ))}
