@@ -18,9 +18,8 @@ import { AdminProducts } from '../admin/AdminProducts';
 import { AdminConfig } from '../admin/AdminConfig';
 import { AdminVouchers } from '../admin/AdminVouchers'; 
 import { AdminCustomers } from '../admin/AdminCustomers'; 
-import { StudioDesign } from '../admin/studio/StudioDesign'; // IMPORT NEW COMPONENT
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'studio'; // ADDED STUDIO
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -36,6 +35,7 @@ const AdminPage: React.FC = () => {
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
 
     useEffect(() => {
+        // Fetch config immediately to determine roles
         const init = async () => {
             const config = await getStoreConfig();
             if (config) setStoreConfig(config);
@@ -63,14 +63,17 @@ const AdminPage: React.FC = () => {
 
     const handleLogout = async () => { await signOut(auth); };
 
+    // DYNAMIC ROLE DETERMINATION
     const role: StaffRole | null = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
         
+        // 1. Super Admin Hardcode (Fallback)
         const SUPER_ADMINS = ['jinbduong@gmail.com']; 
         if (SUPER_ADMINS.includes(currentUser.email) || currentUser.email.includes('admin')) {
             return 'admin';
         }
 
+        // 2. Check Dynamic List from Config
         if (storeConfig.staff) {
             const staffMember = storeConfig.staff.find(s => s.email === currentUser.email);
             if (staffMember) {
@@ -78,21 +81,23 @@ const AdminPage: React.FC = () => {
             }
         }
 
-        return 'warehouse';
+        return 'warehouse'; // Default fallback for now if authenticated but not in list (should be stricter in prod)
     }, [currentUser, storeConfig]);
 
     const canViewDashboard = role === 'admin';
     const canManageProducts = role === 'admin';
     const canManageConfig = role === 'admin';
 
+    // Redirect warehouse staff to orders tab if they land on dashboard
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'studio')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
 
     if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>;
     
+    // If logged in but no role assigned -> Access Denied (Optional stricter check)
     if (currentUser && !role) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
@@ -120,7 +125,6 @@ const AdminPage: React.FC = () => {
                                  {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Dashboard</button>}
                                 <button onClick={() => setActiveTab('orders')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Đơn hàng</button>
                                 {canManageProducts && <button onClick={() => setActiveTab('products')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Sản phẩm</button>}
-                                {canManageProducts && <button onClick={() => setActiveTab('studio')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'studio' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>} 
                                 {canManageConfig && (
                                     <>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
@@ -151,7 +155,6 @@ const AdminPage: React.FC = () => {
                          {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
                         <button onClick={() => setActiveTab('orders')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
                         {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
-                        {canManageProducts && <button onClick={() => setActiveTab('studio')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'studio' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Studio</button>}
                         {canManageConfig && (
                             <>
                                 <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
@@ -170,7 +173,6 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
-                {activeTab === 'studio' && canManageProducts && <StudioDesign />} 
             </main>
         </div>
     );
