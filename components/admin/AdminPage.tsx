@@ -18,9 +18,8 @@ import { AdminProducts } from '../admin/AdminProducts';
 import { AdminConfig } from '../admin/AdminConfig';
 import { AdminVouchers } from '../admin/AdminVouchers'; 
 import { AdminCustomers } from '../admin/AdminCustomers'; 
-import { StudioDesign } from '../admin/studio/StudioDesign';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'studio';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -91,7 +90,7 @@ const AdminPage: React.FC = () => {
 
     // Redirect warehouse staff to orders tab if they land on dashboard
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'studio')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -128,7 +127,6 @@ const AdminPage: React.FC = () => {
                                 {canManageProducts && <button onClick={() => setActiveTab('products')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Sản phẩm</button>}
                                 {canManageConfig && (
                                     <>
-                                        <button onClick={() => setActiveTab('studio')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm hover:opacity-90`}>Studio Design ✨</button>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
                                         <button onClick={() => setActiveTab('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
@@ -159,7 +157,6 @@ const AdminPage: React.FC = () => {
                         {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
                         {canManageConfig && (
                             <>
-                                <button onClick={() => setActiveTab('studio')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'studio' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Studio</button>
                                 <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
                                 <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
                                 <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
@@ -173,7 +170,6 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'dashboard' && canViewDashboard && <AdminDashboard orders={orders} products={products} frames={frames} />}
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
                 {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} />}
-                {activeTab === 'studio' && canManageConfig && <StudioDesign />}
                 {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
