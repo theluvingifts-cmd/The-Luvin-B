@@ -113,6 +113,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); onRefreshProducts(); } };
     
+    // UPDATED: Handle Save Background & Studio Redirect
     const handleSaveBackground = async (bg: PresetBackground, openStudioMode: boolean = false) => { 
         if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); 
         onRefreshBackgrounds(); 
@@ -199,7 +200,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                 onClose={switchToList} 
                 onSave={() => {
                     onRefreshBackgrounds();
-                    // Optionally stay in studio or close? Let's close for now
+                    // Optionally stay in studio, but closing for now to allow user to see result
                     // switchToList(); 
                 }} 
             />
@@ -445,7 +446,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <img src={bg.url} className="w-full h-full object-cover" />
                                             )}
                                             
-                                            {/* Open Design Studio Button */}
+                                            {/* Design Studio Button Overlay */}
                                             {bg.textLayers && bg.textLayers.length > 0 && (
                                                 <div className="absolute top-1 left-1 bg-purple-500 text-white text-[9px] px-1 rounded shadow font-bold">
                                                     Editable
@@ -455,8 +456,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
                                         <p className="text-[10px] sm:text-xs text-gray-500">{bg.category}</p>
                                         <div className="absolute top-2 right-2 flex gap-1 transition-opacity">
+                                            {/* STUDIO BUTTON */}
                                             <button 
-                                                onClick={() => openStudio(bg)}
+                                                onClick={() => openStudio(bg)} 
                                                 className="p-1.5 bg-purple-100 text-purple-600 rounded shadow-sm hover:bg-purple-200"
                                                 title="Design Template"
                                             >

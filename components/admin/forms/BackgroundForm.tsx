@@ -14,7 +14,7 @@ export const BackgroundForm: React.FC<{
     );
 
     const [formData, setFormData] = useState<PresetBackground>(initialData || {
-        id: `bg_${Date.now()}`, name: '', url: '', category: 'Khác', type: 'square', orientation: 'portrait'
+        id: `bg_${Date.now()}`, name: '', url: '', category: 'Khác', type: 'square', orientation: 'portrait', textLayers: []
     });
     const [isUploading, setIsUploading] = useState(false);
 
@@ -151,7 +151,16 @@ export const BackgroundForm: React.FC<{
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
                 <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded">Hủy</button>
                 <button onClick={() => onSave(formData, false)} disabled={isUploading || !formData.url} className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded disabled:opacity-50">Lưu</button>
-                <button onClick={() => onSave(formData, true)} disabled={isUploading || !formData.url} className="px-4 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50 shadow-md">Lưu & Thiết kế (Studio)</button>
+                
+                {/* NEW BUTTON: SAVE & DESIGN */}
+                <button 
+                    onClick={() => onSave(formData, true)} 
+                    disabled={isUploading || !formData.url} 
+                    className="px-4 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50 shadow-md flex items-center gap-2"
+                >
+                    <span>Lưu & Thiết kế (Studio)</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </button>
             </div>
         </div>
     );
