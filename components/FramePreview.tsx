@@ -127,7 +127,8 @@ const EditableText: React.FC<{
     onUpdate: (updates: Partial<TextConfig>) => void;
     onBeginEditing: () => void;
     onEndEditing: () => void;
-}> = ({ text, onUpdate, onBeginEditing, onEndEditing }) => {
+    isLocked?: boolean;
+}> = ({ text, onUpdate, onBeginEditing, onEndEditing, isLocked }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(text.content);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -153,6 +154,7 @@ const EditableText: React.FC<{
     };
 
     const handleDoubleClick = () => {
+        if (isLocked) return; // Prevent editing if locked
         setIsEditing(true);
         setEditedContent(text.content);
         onBeginEditing();
@@ -627,7 +629,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         isLocked={text.locked} // Pass locked prop
                         style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
                     >
-                       <EditableText text={text} onUpdate={(updates) => onTextUpdate(text.id, updates)} onBeginEditing={() => setIsEditingText(true)} onEndEditing={() => setIsEditingText(false)} />
+                       <EditableText 
+                            text={text} 
+                            onUpdate={(updates) => onTextUpdate(text.id, updates)} 
+                            onBeginEditing={() => setIsEditingText(true)} 
+                            onEndEditing={() => setIsEditingText(false)} 
+                            isLocked={text.locked} // Pass lock status
+                       />
                     </Transformable>
                 ))}
             </div>

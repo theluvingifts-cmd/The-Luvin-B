@@ -271,6 +271,21 @@ export const AdminDesign: React.FC = () => {
         });
     };
 
+    const handleLayerLockToggle = (id: string) => {
+        const [type, idStr] = id.split('-');
+        const numericId = parseInt(idStr);
+
+        setConfig(prev => {
+            if (type === 'text') {
+                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, locked: !t.locked } : t) };
+            }
+            if (type === 'item') {
+                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, locked: !i.locked } : i) };
+            }
+            return prev;
+        });
+    }
+
     const handleTextUpdate = (id: number, updates: Partial<TextConfig>) => {
         setConfig(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
     };
@@ -466,6 +481,12 @@ export const AdminDesign: React.FC = () => {
                                         >
                                             Nền mờ
                                         </button>
+                                        <button 
+                                            onClick={toggleLock}
+                                            className={`flex-1 py-1.5 text-xs font-bold rounded border flex items-center justify-center gap-1 ${isCurrentLocked ? 'bg-red-100 text-red-600 border-red-200' : 'bg-white text-gray-600'}`}
+                                        >
+                                            {isCurrentLocked ? 'Đã Khóa' : 'Khóa'}
+                                        </button>
                                     </div>
                                 </div>
                             ) : (
@@ -496,21 +517,31 @@ export const AdminDesign: React.FC = () => {
                     {activeTool === 'layers' && (
                         <div className="space-y-2">
                             {config.texts.map((t, idx) => (
-                                <div key={t.id} className="flex justify-between items-center p-2 bg-white border rounded hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedItemId(`text-${t.id}`)}>
+                                <div key={t.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `text-${t.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`text-${t.id}`)}>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium truncate w-32">{t.content || 'Text'}</span>
                                         {t.locked && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Locked</span>}
                                     </div>
-                                    <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`text-${t.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`text-${t.id}`); }} className={`p-1 rounded ${t.locked ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={t.locked ? "Mở khóa" : "Khóa"}>
+                                            {t.locked ? <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>}
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`text-${t.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
+                                    </div>
                                 </div>
                             ))}
                             {config.draggableItems.map((item, idx) => (
-                                <div key={item.id} className="flex justify-between items-center p-2 bg-white border rounded hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedItemId(`item-${item.id}`)}>
+                                <div key={item.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `item-${item.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`item-${item.id}`)}>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-blue-600">{item.type === 'charm' ? 'Hình ảnh/Sticker' : item.type}</span>
                                         {item.locked && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Locked</span>}
                                     </div>
-                                    <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`item-${item.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`item-${item.id}`); }} className={`p-1 rounded ${item.locked ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={item.locked ? "Mở khóa" : "Khóa"}>
+                                            {item.locked ? <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>}
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`item-${item.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
+                                    </div>
                                 </div>
                             ))}
                             {config.texts.length === 0 && config.draggableItems.length === 0 && (
