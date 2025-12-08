@@ -128,7 +128,8 @@ export const AdminDesign: React.FC = () => {
             x: 50, y: 50, rotation: 0, scale: 1,
             background: false,
             width: 40,
-            locked: false
+            lockedPosition: false,
+            lockedContent: false
         };
         setConfig(prev => ({ ...prev, texts: [...prev.texts, newText] }));
         setSelectedItemId(`text-${newText.id}`);
@@ -218,30 +219,53 @@ export const AdminDesign: React.FC = () => {
         });
     };
 
-    const toggleLock = () => {
+    const togglePositionLock = () => {
         if (!selectedItemId) return;
         const [type, idStr] = selectedItemId.split('-');
         const numericId = parseInt(idStr);
 
         setConfig(prev => {
             if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, locked: !t.locked } : t) };
+                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedPosition: !t.lockedPosition } : t) };
             }
             if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, locked: !i.locked } : i) };
+                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedPosition: !i.lockedPosition } : i) };
+            }
+            return prev;
+        });
+    };
+
+    const toggleContentLock = () => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const numericId = parseInt(idStr);
+
+        setConfig(prev => {
+            if (type === 'text') {
+                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedContent: !t.lockedContent } : t) };
+            }
+            // Optional: Implement for items if needed
+             if (type === 'item') {
+                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedContent: !i.lockedContent } : i) };
             }
             return prev;
         });
     };
 
     // Get current locked status
-    const isCurrentLocked = useMemo(() => {
-        if (!selectedItemId) return false;
+    const currentLocks = useMemo(() => {
+        if (!selectedItemId) return { position: false, content: false };
         const [type, idStr] = selectedItemId.split('-');
         const numericId = parseInt(idStr);
-        if (type === 'text') return config.texts.find(t => t.id === numericId)?.locked;
-        if (type === 'item') return config.draggableItems.find(i => i.id === numericId)?.locked;
-        return false;
+        if (type === 'text') {
+            const t = config.texts.find(t => t.id === numericId);
+            return { position: t?.lockedPosition, content: t?.lockedContent };
+        }
+        if (type === 'item') {
+            const i = config.draggableItems.find(i => i.id === numericId);
+            return { position: i?.lockedPosition, content: i?.lockedContent };
+        }
+        return { position: false, content: false };
     }, [selectedItemId, config]);
 
     // FramePreview Handlers
@@ -271,16 +295,24 @@ export const AdminDesign: React.FC = () => {
         });
     };
 
-    const handleLayerLockToggle = (id: string) => {
+    const handleLayerLockToggle = (id: string, lockType: 'position' | 'content') => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
 
         setConfig(prev => {
             if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, locked: !t.locked } : t) };
+                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { 
+                    ...t, 
+                    lockedPosition: lockType === 'position' ? !t.lockedPosition : t.lockedPosition,
+                    lockedContent: lockType === 'content' ? !t.lockedContent : t.lockedContent
+                } : t) };
             }
             if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, locked: !i.locked } : i) };
+                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { 
+                    ...i, 
+                    lockedPosition: lockType === 'position' ? !i.lockedPosition : i.lockedPosition,
+                    lockedContent: lockType === 'content' ? !i.lockedContent : i.lockedContent
+                } : i) };
             }
             return prev;
         });
@@ -481,12 +513,6 @@ export const AdminDesign: React.FC = () => {
                                         >
                                             Nền mờ
                                         </button>
-                                        <button 
-                                            onClick={toggleLock}
-                                            className={`flex-1 py-1.5 text-xs font-bold rounded border flex items-center justify-center gap-1 ${isCurrentLocked ? 'bg-red-100 text-red-600 border-red-200' : 'bg-white text-gray-600'}`}
-                                        >
-                                            {isCurrentLocked ? 'Đã Khóa' : 'Khóa'}
-                                        </button>
                                     </div>
                                 </div>
                             ) : (
@@ -519,12 +545,16 @@ export const AdminDesign: React.FC = () => {
                             {config.texts.map((t, idx) => (
                                 <div key={t.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `text-${t.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`text-${t.id}`)}>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium truncate w-32">{t.content || 'Text'}</span>
-                                        {t.locked && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Locked</span>}
+                                        <span className="text-xs font-medium truncate w-24">{t.content || 'Text'}</span>
+                                        {t.lockedPosition && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">PosLock</span>}
+                                        {t.lockedContent && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded">EditLock</span>}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`text-${t.id}`); }} className={`p-1 rounded ${t.locked ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={t.locked ? "Mở khóa" : "Khóa"}>
-                                            {t.locked ? <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>}
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`text-${t.id}`, 'position'); }} className={`p-1 rounded ${t.lockedPosition ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={t.lockedPosition ? "Mở khóa vị trí" : "Khóa vị trí"}>
+                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`text-${t.id}`, 'content'); }} className={`p-1 rounded ${t.lockedContent ? 'text-orange-500 hover:bg-orange-50' : 'text-gray-400 hover:text-gray-600'}`} title={t.lockedContent ? "Mở khóa sửa chữ" : "Khóa sửa chữ"}>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`text-${t.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
                                     </div>
@@ -533,12 +563,16 @@ export const AdminDesign: React.FC = () => {
                             {config.draggableItems.map((item, idx) => (
                                 <div key={item.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `item-${item.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`item-${item.id}`)}>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium text-blue-600">{item.type === 'charm' ? 'Hình ảnh/Sticker' : item.type}</span>
-                                        {item.locked && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Locked</span>}
+                                        <span className="text-xs font-medium text-blue-600 truncate w-24">{item.type === 'charm' ? 'Hình ảnh/Sticker' : item.type}</span>
+                                        {item.lockedPosition && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">PosLock</span>}
+                                        {item.lockedContent && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded">EditLock</span>}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`item-${item.id}`); }} className={`p-1 rounded ${item.locked ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={item.locked ? "Mở khóa" : "Khóa"}>
-                                            {item.locked ? <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>}
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`item-${item.id}`, 'position'); }} className={`p-1 rounded ${item.lockedPosition ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={item.lockedPosition ? "Mở khóa vị trí" : "Khóa vị trí"}>
+                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`item-${item.id}`, 'content'); }} className={`p-1 rounded ${item.lockedContent ? 'text-orange-500 hover:bg-orange-50' : 'text-gray-400 hover:text-gray-600'}`} title={item.lockedContent ? "Mở khóa nội dung" : "Khóa nội dung"}>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`item-${item.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
                                     </div>
@@ -594,12 +628,17 @@ export const AdminDesign: React.FC = () => {
                 {/* Floating Alignment Bar (When Item Selected) */}
                 {selectedItemId && (
                     <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
-                        <button onClick={toggleLock} className={`p-1.5 rounded transition-colors ${isCurrentLocked ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={isCurrentLocked ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
-                            {isCurrentLocked ? (
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                            ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                            )}
+                        <button onClick={togglePositionLock} className={`p-1.5 rounded transition-colors ${currentLocks.position ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.position ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
+                            <svg className="w-4 h-4" fill={currentLocks.position ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={currentLocks.position ? "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" : "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"} /></svg>
+                        </button>
+                        <button onClick={toggleContentLock} className={`p-1.5 rounded transition-colors ${currentLocks.content ? 'bg-orange-50 text-orange-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.content ? "Mở khóa sửa chữ" : "Khóa sửa chữ (Khách không sửa được)"}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {currentLocks.content ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                )}
+                            </svg>
                         </button>
                         <div className="w-px h-4 bg-gray-200 mx-1"></div>
                         
@@ -649,7 +688,7 @@ export const AdminDesign: React.FC = () => {
                         <h3 className="text-xl font-bold mb-2">Lưu Mẫu Nền (Step 2)</h3>
                         <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-2 rounded border border-blue-100">
                             <strong>Tính năng:</strong> Tạo ra các nền có sẵn chữ/sticker để khách hàng chọn ở Bước 2. 
-                            Khách hàng có thể <strong>click vào chữ</strong> để sửa nội dung (tên, ngày tháng...)
+                            Khách hàng có thể <strong>click vào chữ</strong> để sửa nội dung (tên, ngày tháng...) nếu không bị khóa nội dung.
                         </p>
                         
                         <div className="space-y-4">
