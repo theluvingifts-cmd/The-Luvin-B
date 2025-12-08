@@ -59,7 +59,7 @@ export const PRESET_BACKGROUNDS_RECTANGLE: { name: string; url: string; category
 export const INITIAL_FRAME_CONFIG: FrameConfig = {
   frameId: 'lg',
   frameColor: 'white', // Default frame color
-  background: { type: 'color', value: '#f4eee8' },
+  background: { type: 'color', value: '#ffffff' }, // Changed default to white
   characters: [],
   texts: [],
   draggableItems: [],

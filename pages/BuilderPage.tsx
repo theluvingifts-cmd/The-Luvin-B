@@ -1,7 +1,7 @@
 
 // ... (Previous imports)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption } from '../types';
+import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
     FRAME_OPTIONS, 
     LEGO_PARTS, 
@@ -15,6 +15,8 @@ import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
 
 declare var html2canvas: any;
+
+const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
 // ... (StepIndicator, Step1Frame components remain the same) ...
 // (Retaining StepIndicator and Step1Frame fully as they are mostly unchanged)
@@ -320,14 +322,8 @@ const Step2BackgroundAndDecorations: React.FC<{
         shouldRotate = bg.orientation === 'landscape';
     }
 
-    // Determine config to merge
-    // If background has overlayConfig, we load those texts/items
-    // Otherwise, we keep existing items or reset? Usually reset/merge logic is complex.
-    // Here we will merge the template's overlays if they exist.
-    
     const newBackground = { type: isColor ? 'color' : 'image', value: bg.url } as any;
     
-    // Create new config object
     let newConfig = { 
         ...config, 
         frameId: newFrameId,
@@ -335,7 +331,6 @@ const Step2BackgroundAndDecorations: React.FC<{
         isRotated: shouldRotate
     };
 
-    // If this background is a template with pre-defined layers, apply them
     if (bg.overlayConfig) {
         newConfig.texts = bg.overlayConfig.texts || [];
         newConfig.draggableItems = bg.overlayConfig.draggableItems || [];
@@ -1102,7 +1097,8 @@ const TextEditor: React.FC<{
     selectedTextId: number;
     deselect: () => void;
     onAddText: () => void;
-}> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText }) => {
+    uploadedFonts: CustomFont[];
+}> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
         setConfig({
@@ -1149,6 +1145,28 @@ const TextEditor: React.FC<{
                         className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
                         placeholder="Nhập nội dung văn bản..."
                     />
+                </div>
+                <div>
+                    <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
+                    <select
+                        value={activeText.font}
+                        onChange={e => updateActiveText({ font: e.target.value })}
+                        disabled={isLocked}
+                        className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
+                    >
+                        <optgroup label="Phông chữ cơ bản">
+                            {DEFAULT_FONTS.map(font => (
+                                <option key={font} value={font}>{font}</option>
+                            ))}
+                        </optgroup>
+                        {uploadedFonts.length > 0 && (
+                            <optgroup label="Phông chữ tải lên">
+                                {uploadedFonts.map(font => (
+                                    <option key={font.id} value={font.name}>{font.name}</option>
+                                ))}
+                            </optgroup>
+                        )}
+                    </select>
                 </div>
                 <div>
                     <label className="text-sm font-bold text-gray-600 block mb-1">Cỡ chữ</label>
@@ -1202,6 +1220,7 @@ interface BuilderPageProps {
     logoUrl?: string; 
     initialStep?: number; 
     isEditingOrder?: boolean;
+    uploadedFonts: CustomFont[];
 }
 
 const base64ToBlob = (base64: string) => {
@@ -1216,7 +1235,7 @@ const base64ToBlob = (base64: string) => {
     return new Blob([u8arr], { type: mime });
 };
 
-export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder }) => {
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1436,6 +1455,30 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           return prev;
       });
   }, [setConfigWithHistory]);
+
+  const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y') => {
+      if (!selectedItemId) return;
+      
+      const [type, ...rest] = selectedItemId.split('-');
+      const rawId = rest.join('-');
+      const idToUpdate = parseInt(rawId);
+
+      setConfigWithHistory((prev: FrameConfig) => {
+          let updates: Partial<Transform> = {};
+          if (direction === 'center') updates = { x: 50, y: 50 };
+          else if (direction === 'center-x') updates = { x: 50 };
+          else if (direction === 'center-y') updates = { y: 50 };
+
+          if (type === 'text') {
+              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          } else if (type === 'character') {
+              return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          } else if (type === 'item') {
+              return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          }
+          return prev;
+      });
+  };
 
   const handleItemFlip = useCallback((id: string) => {
       const [type, ...rest] = id.split('-');
@@ -1796,6 +1839,24 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         logoUrl={logoUrl} 
                     />
                 </div>
+                
+                {/* FLOATING ALIGNMENT TOOLBAR (Shows when item selected) */}
+                {selectedItemId && isBottomBarVisible && (
+                    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/90 backdrop-blur border border-gray-200 shadow-md rounded-full px-4 py-2 animate-fade-in-up">
+                        <button onClick={() => handleAlignItem('center')} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600" title="Căn giữa">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="2" x2="12" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><rect x="8" y="8" width="8" height="8"></rect></svg>
+                        </button>
+                        <div className="w-px h-5 bg-gray-300 self-center"></div>
+                        <button onClick={() => handleAlignItem('center-x')} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600" title="Căn giữa ngang">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg>
+                        </button>
+                        <div className="w-px h-5 bg-gray-300 self-center"></div>
+                        <button onClick={() => handleAlignItem('center-y')} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600" title="Căn giữa dọc">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg>
+                        </button>
+                    </div>
+                )}
+
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -1842,6 +1903,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                           selectedTextId={selectedText.id}
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
+                          uploadedFonts={uploadedFonts}
                       />
                   ) : (
                       <>

@@ -449,6 +449,7 @@ const App: React.FC = () => {
                     logoUrl={storeConfig.logoUrl}
                     initialStep={builderInitialStep}
                     isEditingOrder={!!editingOrder} // Pass Edit Mode
+                    uploadedFonts={storeConfig.uploadedFonts || []} // Pass uploaded fonts
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
