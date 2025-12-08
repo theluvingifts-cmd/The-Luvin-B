@@ -1,5 +1,4 @@
 
-// ... (Previous imports)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -18,11 +17,7 @@ declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-// ... (StepIndicator, Step1Frame components remain the same) ...
-// (Retaining StepIndicator and Step1Frame fully as they are mostly unchanged)
-
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
-  // ... (No changes here)
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
   return (
@@ -86,7 +81,6 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
 };
 
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
-  // ... (No changes)
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
@@ -186,16 +180,12 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   );
 };
 
-// ... (PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters, Step4Summary components remain unchanged) ...
-// (Omitting their full content for brevity, as they don't need changes)
-
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
-    // ... (Same as existing)
     const isColor = bg.url.startsWith('#');
     let line1 = bg.name;
     let line2 = '';
@@ -269,7 +259,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
-  // ... (Same as existing)
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -331,16 +320,22 @@ const Step2BackgroundAndDecorations: React.FC<{
 
     const newBackground = { type: isColor ? 'color' : 'image', value: bg.url } as any;
     
+    // FIX: Always switch to the selected template configuration.
+    // If overlayConfig exists, use it (deep copy to avoid reference issues).
+    // If not (plain background), clear texts and draggableItems.
+    const newTexts = bg.overlayConfig?.texts ? JSON.parse(JSON.stringify(bg.overlayConfig.texts)) : [];
+    const newDraggableItems = bg.overlayConfig?.draggableItems ? JSON.parse(JSON.stringify(bg.overlayConfig.draggableItems)) : [];
+
     let newConfig = { 
         ...config, 
         frameId: newFrameId,
         background: newBackground,
-        isRotated: shouldRotate
+        isRotated: shouldRotate,
+        texts: newTexts,
+        draggableItems: newDraggableItems
     };
 
     if (bg.overlayConfig) {
-        newConfig.texts = bg.overlayConfig.texts || [];
-        newConfig.draggableItems = bg.overlayConfig.draggableItems || [];
         if (message) message += ". Đã tải mẫu chữ.";
         else message = "Đã tải mẫu nền & chữ.";
     }
@@ -463,7 +458,6 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
 }> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
-    // ... (Same as existing)
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -550,7 +544,6 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
-    // ... (Same as existing)
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -1018,7 +1011,6 @@ const Step3Characters: React.FC<{
 };
 
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
-  // ... (No changes)
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1099,7 +1091,6 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdow
   );
 };
 
-// NEW: FontSelector Component
 const FontSelector: React.FC<{ 
     value: string; 
     onChange: (font: string) => void;
