@@ -22,6 +22,7 @@ const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 
 // (Retaining StepIndicator and Step1Frame fully as they are mostly unchanged)
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
+  // ... (No changes here)
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
   
   return (
@@ -85,6 +86,7 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
 };
 
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
+  // ... (No changes)
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
@@ -184,12 +186,16 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   );
 };
 
+// ... (PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters, Step4Summary components remain unchanged) ...
+// (Omitting their full content for brevity, as they don't need changes)
+
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
+    // ... (Same as existing)
     const isColor = bg.url.startsWith('#');
     let line1 = bg.name;
     let line2 = '';
@@ -263,6 +269,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
+  // ... (Same as existing)
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -448,7 +455,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   );
 };
 
-// ... (Rest of PartButton and other Step3/Step4 components remain unchanged)
 const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
@@ -457,6 +463,7 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
 }> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
+    // ... (Same as existing)
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -543,6 +550,7 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
+    // ... (Same as existing)
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -1010,6 +1018,7 @@ const Step3Characters: React.FC<{
 };
 
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
+  // ... (No changes)
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1090,6 +1099,66 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdow
   );
 };
 
+// NEW: FontSelector Component
+const FontSelector: React.FC<{ 
+    value: string; 
+    onChange: (font: string) => void;
+    onPreview: (font: string | null) => void;
+    uploadedFonts: CustomFont[];
+}> = ({ value, onChange, onPreview, uploadedFonts }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const groups = [
+        { label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS },
+        { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }
+    ];
+
+    return (
+        <div className="relative" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
+            <button 
+                onClick={() => setIsOpen(!isOpen)} 
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
+            >
+                <span className="truncate">{value}</span>
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {groups.map((group) => (
+                        group.fonts.length > 0 && (
+                            <div key={group.label}>
+                                <div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
+                                {group.fonts.map(font => (
+                                    <div 
+                                        key={font}
+                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`}
+                                        onMouseEnter={() => onPreview(font)}
+                                        onClick={() => { onChange(font); setIsOpen(false); }}
+                                    >
+                                        <span style={{ fontFamily: font }}>{font}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const TextEditor: React.FC<{
     activeText: TextConfig;
     setConfig: (c: FrameConfig) => void;
@@ -1098,7 +1167,8 @@ const TextEditor: React.FC<{
     deselect: () => void;
     onAddText: () => void;
     uploadedFonts: CustomFont[];
-}> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts }) => {
+    setPreviewFont: (font: string | null) => void; // New prop
+}> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
         setConfig({
@@ -1148,25 +1218,13 @@ const TextEditor: React.FC<{
                 </div>
                 <div>
                     <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
-                    <select
+                    {/* Replaced Select with FontSelector */}
+                    <FontSelector 
                         value={activeText.font}
-                        onChange={e => updateActiveText({ font: e.target.value })}
-                        disabled={isLocked}
-                        className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
-                    >
-                        <optgroup label="Phông chữ cơ bản">
-                            {DEFAULT_FONTS.map(font => (
-                                <option key={font} value={font}>{font}</option>
-                            ))}
-                        </optgroup>
-                        {uploadedFonts.length > 0 && (
-                            <optgroup label="Phông chữ tải lên">
-                                {uploadedFonts.map(font => (
-                                    <option key={font.id} value={font.name}>{font.name}</option>
-                                ))}
-                            </optgroup>
-                        )}
-                    </select>
+                        onChange={(font) => updateActiveText({ font })}
+                        onPreview={setPreviewFont}
+                        uploadedFonts={uploadedFonts}
+                    />
                 </div>
                 <div>
                     <label className="text-sm font-bold text-gray-600 block mb-1">Cỡ chữ</label>
@@ -1248,10 +1306,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
+  const [previewFont, setPreviewFont] = useState<string | null>(null); // New state for font preview
   
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
+  // ... (Calculations and Effects same as before)
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
@@ -1332,6 +1392,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       });
   }, [history, historyIndex, setConfig]);
 
+  // ... (Other handlers like Undo/Redo/Share/Scroll/ResizeObserver same as existing)
   const handleUndo = () => {
       if (historyIndex > 0) {
           const newIndex = historyIndex - 1;
@@ -1837,6 +1898,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         allParts={allParts}
                         activePartType={activePartType} 
                         logoUrl={logoUrl} 
+                        previewFont={previewFont} // PASS PREVIEW FONT
                     />
                 </div>
                 
@@ -1904,6 +1966,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
                           uploadedFonts={uploadedFonts}
+                          setPreviewFont={setPreviewFont} // PASS SET PREVIEW
                       />
                   ) : (
                       <>

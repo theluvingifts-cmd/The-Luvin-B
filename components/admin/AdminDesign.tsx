@@ -1,4 +1,5 @@
 
+// ... (Previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -12,7 +13,7 @@ import { getStoreConfig, updateStoreConfig } from '../../services/configService'
 declare var html2canvas: any;
 
 const TOOLS = [
-    { id: 'templates', icon: '📂', label: 'Mẫu' }, // New Tool
+    { id: 'templates', icon: '📂', label: 'Mẫu' }, 
     { id: 'background', icon: '🎨', label: 'Nền' },
     { id: 'text', icon: 'abc', label: 'Chữ' },
     { id: 'upload', icon: '☁️', label: 'Upload' },
@@ -22,6 +23,66 @@ const TOOLS = [
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
 const BG_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Khác'];
+
+// Reusable FontSelector (same as in BuilderPage)
+const FontSelector: React.FC<{ 
+    value: string; 
+    onChange: (font: string) => void;
+    onPreview: (font: string | null) => void;
+    uploadedFonts: CustomFont[];
+}> = ({ value, onChange, onPreview, uploadedFonts }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const groups = [
+        { label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS },
+        { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }
+    ];
+
+    return (
+        <div className="relative" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
+            <button 
+                onClick={() => setIsOpen(!isOpen)} 
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
+            >
+                <span className="truncate">{value}</span>
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {groups.map((group) => (
+                        group.fonts.length > 0 && (
+                            <div key={group.label}>
+                                <div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
+                                {group.fonts.map(font => (
+                                    <div 
+                                        key={font}
+                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`}
+                                        onMouseEnter={() => onPreview(font)}
+                                        onClick={() => { onChange(font); setIsOpen(false); }}
+                                    >
+                                        <span style={{ fontFamily: font }}>{font}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const AdminDesign: React.FC = () => {
     // State
@@ -44,12 +105,11 @@ export const AdminDesign: React.FC = () => {
     
     // Font Manager State
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
-    const [isUploadingFont, setIsUploadingFont] = useState(false);
+    const [previewFont, setPreviewFont] = useState<string | null>(null); // NEW STATE
     
     // Refs
     const previewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const fontInputRef = useRef<HTMLInputElement>(null);
 
     // Initial Data Fetch
     useEffect(() => {
@@ -69,7 +129,7 @@ export const AdminDesign: React.FC = () => {
         fetchInitialData();
     }, []);
 
-    // Inject fonts into DOM
+    // ... (useEffect for font injection same as before)
     useEffect(() => {
         const styleId = 'admin-dynamic-fonts';
         let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -94,7 +154,7 @@ export const AdminDesign: React.FC = () => {
         style.innerHTML = css;
     }, [uploadedFonts]);
 
-    // Helpers
+    // ... (Helpers, Handlers: handleFrameChange, handleBackgroundChange, handleUploadBackground, handleDeleteAsset, handleAddText, etc. - No Changes)
     const handleFrameChange = (frameId: string) => {
         setConfig(prev => ({ ...prev, frameId }));
         // Auto set Type suggestion based on frame
@@ -192,7 +252,6 @@ export const AdminDesign: React.FC = () => {
         setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
     }
 
-    // Load Existing Template for Editing
     const handleLoadTemplate = (bg: PresetBackground) => {
         if (confirm("Tải mẫu này sẽ thay thế thiết kế hiện tại. Tiếp tục?")) {
             setEditingBgId(bg.id);
@@ -206,15 +265,13 @@ export const AdminDesign: React.FC = () => {
             let frameId = 'lg'; // Default square
             if (bg.type === 'rectangle') frameId = 'md';
             
-            // If the saved template doesn't specify items, we just load background
             setConfig({
                 frameId: frameId,
                 background: { type: isColor ? 'color' : 'image', value: bg.url },
                 texts: bg.overlayConfig?.texts || [],
                 draggableItems: bg.overlayConfig?.draggableItems || [],
-                characters: [] // Templates usually don't have characters saved in Step 2 logic
+                characters: []
             });
-            // Switch to Layers or Text to start editing
             setActiveTool('layers');
         }
     };
@@ -228,7 +285,6 @@ export const AdminDesign: React.FC = () => {
         }
     }
 
-    // Alignment & Tooling
     const alignItem = (direction: 'centerH' | 'centerV' | 'top' | 'bottom' | 'left' | 'right') => {
         if (!selectedItemId) return;
         const [type, idStr] = selectedItemId.split('-');
@@ -290,7 +346,6 @@ export const AdminDesign: React.FC = () => {
         });
     };
 
-    // Get current locked status
     const currentLocks = useMemo(() => {
         if (!selectedItemId) return { position: false, content: false };
         const [type, idStr] = selectedItemId.split('-');
@@ -442,7 +497,6 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    // Filter Saved Assets
     const backgroundAssets = savedAssets.filter(a => a.type === 'background');
     const stickerAssets = savedAssets.filter(a => a.type === 'sticker');
 
@@ -511,6 +565,7 @@ export const AdminDesign: React.FC = () => {
                         </div>
                     )}
 
+                    {/* ... (Background Tool logic same as before) ... */}
                     {activeTool === 'background' && (
                         <div className="space-y-6">
                             <div>
@@ -576,18 +631,13 @@ export const AdminDesign: React.FC = () => {
                                     
                                     <div>
                                         <label className="text-xs font-bold text-gray-500 mb-1 block">Font chữ</label>
-                                        <select 
-                                            className="w-full p-2 border rounded text-sm bg-white"
+                                        {/* Replaced Select with FontSelector */}
+                                        <FontSelector 
                                             value={getSelectedText()?.font || 'Playfair Display'}
-                                            onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { font: e.target.value })}
-                                        >
-                                            <optgroup label="Cơ bản">
-                                                {DEFAULT_FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-                                            </optgroup>
-                                            <optgroup label="Đã tải lên">
-                                                {uploadedFonts.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                                            </optgroup>
-                                        </select>
+                                            onChange={(font) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { font })}
+                                            onPreview={setPreviewFont}
+                                            uploadedFonts={uploadedFonts}
+                                        />
                                     </div>
 
                                     <div className="flex gap-2">
@@ -634,7 +684,6 @@ export const AdminDesign: React.FC = () => {
                                 <span className="text-sm font-bold text-gray-700">Tải Sticker / Ảnh (Tự động lưu)</span>
                             </label>
 
-                            {/* Saved Stickers Asset Library */}
                             {stickerAssets.length > 0 && (
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Sticker đã lưu</label>
@@ -658,6 +707,7 @@ export const AdminDesign: React.FC = () => {
 
                     {activeTool === 'layers' && (
                         <div className="space-y-2">
+                            {/* Layer items code... (unchanged) */}
                             {config.texts.map((t, idx) => (
                                 <div key={t.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `text-${t.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`text-${t.id}`)}>
                                     <div className="flex items-center gap-2">
@@ -741,7 +791,7 @@ export const AdminDesign: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Floating Alignment Bar (When Item Selected) */}
+                {/* Floating Alignment Bar (When Item Selected) - same as before */}
                 {selectedItemId && (
                     <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
                         <button onClick={togglePositionLock} className={`p-1.5 rounded transition-colors ${currentLocks.position ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.position ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
@@ -792,6 +842,7 @@ export const AdminDesign: React.FC = () => {
                             setIsEditingText={() => {}} // Not needed for admin
                             allParts={{}} // Empty parts list as we use direct uploads mostly
                             className="pointer-events-auto"
+                            previewFont={previewFont} // PASS PREVIEW FONT
                         />
                     </div>
                 </div>

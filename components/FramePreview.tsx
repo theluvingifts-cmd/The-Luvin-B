@@ -30,6 +30,7 @@ interface FramePreviewProps {
   allParts?: Record<string, LegoPart>;
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
+  previewFont?: string | null; // NEW PROP
 }
 
 // 1. SafeImage Component with Skeleton Loading
@@ -129,10 +130,14 @@ const EditableText: React.FC<{
     onBeginEditing: () => void;
     onEndEditing: () => void;
     isContentLocked?: boolean;
-}> = ({ text, fontSize, onUpdate, onBeginEditing, onEndEditing, isContentLocked }) => {
+    previewFont?: string | null;
+}> = ({ text, fontSize, onUpdate, onBeginEditing, onEndEditing, isContentLocked, previewFont }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(text.content);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Use preview font if available, otherwise use text.font
+    const activeFont = previewFont || text.font;
 
     useEffect(() => {
         if (isEditing && textareaRef.current) {
@@ -162,7 +167,7 @@ const EditableText: React.FC<{
     }
 
     const textStyle: React.CSSProperties = {
-        fontFamily: getFontFamily(text.font),
+        fontFamily: getFontFamily(activeFont),
         fontSize: `${fontSize}px`,
         color: text.color,
         whiteSpace: 'pre-wrap',
@@ -424,7 +429,7 @@ const Transformable: React.FC<{
     );
 };
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -628,25 +633,32 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     );
                 })}
                 
-                {config.texts.map(text => (
-                    <Transformable 
-                        key={`text-${text.id}`} id={`text-${text.id}`} 
-                        initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
-                        onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={selectedItemId === `text-${text.id}`} onSelect={setSelectedItemId}
-                        isDraggable={isInteractive} zIndex={15} isTextItem={true} containerSize={{ width: backgroundWidth, height: backgroundHeight }}
-                        isPositionLocked={text.lockedPosition} // Pass lockedPosition
-                        style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
-                    >
-                       <EditableText 
-                            text={text} 
-                            fontSize={text.size * responsiveScale} // Pass calculated responsive font size
-                            onUpdate={(updates) => onTextUpdate(text.id, updates)} 
-                            onBeginEditing={() => setIsEditingText(true)} 
-                            onEndEditing={() => setIsEditingText(false)} 
-                            isContentLocked={text.lockedContent} // Pass lockedContent
-                       />
-                    </Transformable>
-                ))}
+                {config.texts.map(text => {
+                    const isSelected = selectedItemId === `text-${text.id}`;
+                    // Only apply previewFont if this specific item is selected and previewFont is provided
+                    const effectiveFont = (isSelected && previewFont) ? previewFont : text.font;
+
+                    return (
+                        <Transformable 
+                            key={`text-${text.id}`} id={`text-${text.id}`} 
+                            initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
+                            onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={isSelected} onSelect={setSelectedItemId}
+                            isDraggable={isInteractive} zIndex={15} isTextItem={true} containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                            isPositionLocked={text.lockedPosition} // Pass lockedPosition
+                            style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
+                        >
+                        <EditableText 
+                                text={text} 
+                                fontSize={text.size * responsiveScale} // Pass calculated responsive font size
+                                onUpdate={(updates) => onTextUpdate(text.id, updates)} 
+                                onBeginEditing={() => setIsEditingText(true)} 
+                                onEndEditing={() => setIsEditingText(false)} 
+                                isContentLocked={text.lockedContent} // Pass lockedContent
+                                previewFont={isSelected ? previewFont : undefined} // Pass previewFont
+                        />
+                        </Transformable>
+                    );
+                })}
             </div>
         </div>
 
