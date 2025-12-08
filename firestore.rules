@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -48,6 +49,7 @@ service cloud.firestore {
     // OTHER COLLECTIONS (Admin Only Write)
     match /backgrounds/{document=**} {
       allow read: if true;
+      // Explicitly allow write for admin to save background templates with overlayConfig
       allow write: if isAdmin();
     }
 

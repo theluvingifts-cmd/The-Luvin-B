@@ -4,7 +4,7 @@ import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, Fra
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
-import { addBackground } from '../../services/backgroundService'; // Changed from addTemplate
+import { addBackground } from '../../services/backgroundService'; 
 import { uploadToCloudinary } from '../../services/uploadService';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 
@@ -324,18 +324,22 @@ export const AdminDesign: React.FC = () => {
                 url: mainUrl,
                 category: bgCategory,
                 type: bgType,
-                orientation: 'portrait', // Default, logic can be expanded
+                orientation: 'portrait', // Default
                 overlayConfig: {
                     texts: config.texts,
                     draggableItems: config.draggableItems
                 }
             };
 
-            await addBackground(newBackground);
+            const success = await addBackground(newBackground);
             
-            alert("Đã lưu Mẫu nền (Bước 2) thành công! Khách hàng sẽ có thể chỉnh sửa chữ khi chọn mẫu này.");
-            setShowSaveModal(false);
-            setBgName('');
+            if (success) {
+                alert("Đã lưu Mẫu nền (Bước 2) thành công! Khách hàng sẽ có thể chỉnh sửa chữ khi chọn mẫu này.");
+                setShowSaveModal(false);
+                setBgName('');
+            } else {
+                alert("Lỗi khi lưu mẫu nền. Vui lòng kiểm tra quyền truy cập.");
+            }
         } catch (e) {
             console.error(e);
             alert("Lỗi khi lưu mẫu nền");

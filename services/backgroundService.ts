@@ -1,11 +1,31 @@
 
-// services/backgroundService.ts
 import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { PRESET_BACKGROUNDS_SQUARE, PRESET_BACKGROUNDS_RECTANGLE } from '../constants';
 import type { PresetBackground } from '../types';
 
 const COLLECTION_NAME = "backgrounds";
+
+// HELPER: Deep clean data for Firestore (Removes undefined, empty array slots)
+const cleanForFirestore = (data: any): any => {
+    if (data === null || data === undefined) return data; 
+    if (typeof data !== 'object') return data;
+
+    if (Array.isArray(data)) {
+        return data
+            .map(cleanForFirestore)
+            .filter(item => item !== undefined);
+    }
+
+    const newObj: any = {};
+    Object.keys(data).forEach(key => {
+        const val = cleanForFirestore(data[key]);
+        if (val !== undefined) {
+            newObj[key] = val;
+        }
+    });
+    return newObj;
+};
 
 // 1. Lấy tất cả background
 export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
@@ -21,13 +41,14 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
                 category: data.category || 'Khác',
                 type: data.type || 'square',
                 orientation: data.orientation || 'portrait',
-                order: data.order
+                order: data.order,
+                // IMPORTANT: Map the overlayConfig so Builder can use it
+                overlayConfig: data.overlayConfig || undefined 
             } as PresetBackground);
         });
         // Sort by order
         return backgrounds.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
     } catch (error: any) {
-        // Bắt lỗi quyền truy cập để không làm crash app, trả về mảng rỗng để App dùng fallback constants
         if (error.code === 'permission-denied') {
             console.warn("Firestore: Không có quyền đọc 'backgrounds'. Đang sử dụng dữ liệu mẫu cục bộ.");
         } else {
@@ -40,7 +61,8 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
 // 2. Thêm background mới
 export const addBackground = async (bg: PresetBackground) => {
     try {
-        await setDoc(doc(db, COLLECTION_NAME, bg.id), { ...bg, order: 9999 });
+        const cleanData = cleanForFirestore({ ...bg, order: 9999 });
+        await setDoc(doc(db, COLLECTION_NAME, bg.id), cleanData);
         return true;
     } catch (error) {
         console.error("Lỗi thêm background:", error);
@@ -52,7 +74,8 @@ export const addBackground = async (bg: PresetBackground) => {
 export const updateBackground = async (bgId: string, updates: Partial<PresetBackground>) => {
     try {
         const bgRef = doc(db, COLLECTION_NAME, bgId);
-        await updateDoc(bgRef, updates);
+        const cleanUpdates = cleanForFirestore(updates);
+        await updateDoc(bgRef, cleanUpdates);
         return true;
     } catch (error) {
         console.error("Lỗi cập nhật background:", error);
@@ -82,7 +105,7 @@ export const seedBackgrounds = async () => {
         for (const bg of PRESET_BACKGROUNDS_SQUARE) {
             const id = `bg_sq_${Date.now()}_${count}`;
             const newBg: PresetBackground = { ...bg, id, type: 'square', order: count };
-            batch.set(doc(db, COLLECTION_NAME, id), newBg);
+            batch.set(doc(db, COLLECTION_NAME, id), cleanForFirestore(newBg));
             count++;
         }
 
@@ -90,7 +113,7 @@ export const seedBackgrounds = async () => {
         for (const bg of PRESET_BACKGROUNDS_RECTANGLE) {
             const id = `bg_rect_${Date.now()}_${count}`;
             const newBg: PresetBackground = { ...bg, id, type: 'rectangle', order: count };
-            batch.set(doc(db, COLLECTION_NAME, id), newBg);
+            batch.set(doc(db, COLLECTION_NAME, id), cleanForFirestore(newBg));
             count++;
         }
 
