@@ -254,3 +254,59 @@ export interface ThemeConfig {
         footer: SectionStyle;
     };
 }
+
+// --- STUDIO DESIGN TYPES ---
+
+export type LayerType = 'text' | 'image' | 'shape';
+
+export interface DesignLayer {
+    id: string;
+    type: LayerType;
+    name: string;
+    
+    // Geometry (Percentages 0-100 relative to canvas)
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    
+    // Style
+    opacity: number;
+    zIndex: number;
+    
+    // Text Specific
+    content?: string;
+    fontFamily?: string;
+    fontSize?: number; // Relative scale or px
+    textColor?: string;
+    fontWeight?: string; // 'bold', 'normal'
+    fontStyle?: string; // 'italic', 'normal'
+    textAlign?: 'left' | 'center' | 'right';
+    
+    // Image Specific
+    src?: string;
+    
+    // Shape Specific
+    backgroundColor?: string;
+    borderColor?: string;
+    borderWidth?: number;
+    borderRadius?: number;
+
+    // Customer Permissions (Rules)
+    isLocked: boolean; // Admin locks position/size (Customer cannot move)
+    allowContentEdit: boolean; // Customer can edit text/image source
+    allowStyleEdit: boolean; // Customer can edit color/font
+    isHidden: boolean; // Hidden layer (for admin drafts or logic)
+}
+
+export interface BackgroundTemplate {
+    id: string;
+    name: string;
+    category: string; // e.g., 'Sinh nhật', 'Tình yêu'
+    frameSize: 'square' | 'rectangle'; // To know aspect ratio (1:1 vs A5)
+    layers: DesignLayer[];
+    thumbnailUrl: string;
+    createdAt: number;
+    updatedAt: number;
+}
