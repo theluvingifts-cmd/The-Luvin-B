@@ -223,12 +223,6 @@ const PresetBackgroundButton: React.FC<{
                             alt={bg.name}
                             className="w-full h-full object-cover"
                         />
-                        {/* Indicate editable text */}
-                        {bg.layers && bg.layers.length > 0 && (
-                            <div className="absolute top-1 left-1 bg-blue-600 text-white text-[8px] px-1 rounded shadow opacity-80 font-bold">
-                                Chỉnh chữ
-                            </div>
-                        )}
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
                             <div 
                                 className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
@@ -319,51 +313,12 @@ const Step2BackgroundAndDecorations: React.FC<{
         shouldRotate = bg.orientation === 'landscape';
     }
 
-    // Process Layers (Text Templates)
-    let newTexts = config.texts;
-    
-    // Simple heuristic: If the user picks a background with layers, replace current texts with template texts
-    // Or merge them. For better UX, let's append new ones if they are distinct, or clear if the user hasn't heavily customized.
-    // For now: We will ADD the template texts.
-    if (bg.layers && bg.layers.length > 0) {
-        const templateTexts: TextConfig[] = bg.layers.map(layer => ({
-            id: Date.now() + Math.random(), // Unique ID
-            content: layer.content,
-            x: layer.x,
-            y: layer.y,
-            font: layer.font,
-            size: layer.size, // Note: Size in layer might need scaling based on canvas, but let's assume raw px or pct
-            color: layer.color,
-            rotation: layer.rotation,
-            scale: 1,
-            background: layer.background || false,
-            textAlign: layer.textAlign || 'center',
-            width: layer.width
-        }));
-        
-        // Strategy: Keep existing texts, just add template ones. 
-        // User can delete if they don't want.
-        // Option B: Replace all texts. This might be annoying if they typed something.
-        // Let's replace ONLY if current texts are empty or default "Nhập chữ...".
-        const hasUserContent = config.texts.some(t => t.content !== 'Nhập chữ...');
-        if (!hasUserContent) {
-            newTexts = templateTexts;
-        } else {
-            // If user has content, maybe we shouldn't overwrite? Or prompt?
-            // Safe bet: Add them.
-            // Actually, if it's a template background, it usually relies on specific text placement.
-            // Let's replace for now to ensure the design looks right.
-            newTexts = templateTexts;
-        }
-    }
-
     if (isColor) {
          setConfig({ 
             ...config, 
             frameId: newFrameId,
             background: { type: 'color', value: bg.url },
-            isRotated: false,
-            texts: newTexts
+            isRotated: false 
         });
         if (message) showToast(message, 'success');
     } else {
@@ -371,8 +326,7 @@ const Step2BackgroundAndDecorations: React.FC<{
             ...config, 
             frameId: newFrameId,
             background: { type: 'image', value: bg.url },
-            isRotated: shouldRotate,
-            texts: newTexts
+            isRotated: shouldRotate
         });
         if (message) showToast(message, 'success');
     }
