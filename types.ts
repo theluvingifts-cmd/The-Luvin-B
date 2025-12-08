@@ -62,6 +62,36 @@ export interface PresetBackground {
     order?: number;
 }
 
+// --- NEW: STUDIO DESIGN TYPES ---
+export interface TemplateTextLayer {
+    id: string;
+    label: string; // Tên trường (VD: "Tên Chú Rể") - Để khách hàng biết nhập gì
+    content: string; // Nội dung mẫu
+    font: string;
+    size: number;
+    color: string;
+    x: number; // % relative to container
+    y: number; // % relative to container
+    rotation: number;
+    textAlign: 'left' | 'center' | 'right';
+    fontWeight?: 'normal' | 'bold';
+    fontStyle?: 'normal' | 'italic';
+}
+
+export interface BackgroundTemplate {
+    id: string;
+    name: string;
+    category: string;
+    baseImageUrl: string; // Ảnh nền sạch (không chữ)
+    thumbnailUrl: string; // Ảnh preview (có chữ mẫu)
+    layers: TemplateTextLayer[];
+    type: 'square' | 'rectangle';
+    orientation?: 'portrait' | 'landscape';
+    createdAt: number;
+    updatedAt: number;
+}
+// ------------------------------
+
 export interface LegoCharacterConfig {
   id: number;
   hair?: LegoPart;

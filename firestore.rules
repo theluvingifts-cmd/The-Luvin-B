@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -52,6 +53,11 @@ service cloud.firestore {
     }
 
     match /templates/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /background_templates/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
