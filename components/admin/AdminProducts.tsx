@@ -113,9 +113,16 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); onRefreshProducts(); } };
     
-    const handleSaveBackground = async (bg: PresetBackground) => { 
+    const handleSaveBackground = async (bg: PresetBackground, openStudioMode: boolean = false) => { 
         if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); 
-        onRefreshBackgrounds(); switchToList(); 
+        onRefreshBackgrounds(); 
+        
+        if (openStudioMode) {
+            setStudioBackground(bg);
+            setViewMode('studio');
+        } else {
+            switchToList(); 
+        }
     };
     const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); onRefreshBackgrounds(); } };
 
@@ -447,16 +454,16 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
                                         <p className="text-[10px] sm:text-xs text-gray-500">{bg.category}</p>
-                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute top-2 right-2 flex gap-1 transition-opacity">
                                             <button 
                                                 onClick={() => openStudio(bg)}
-                                                className="p-1.5 bg-purple-100 text-purple-600 rounded shadow-sm"
+                                                className="p-1.5 bg-purple-100 text-purple-600 rounded shadow-sm hover:bg-purple-200"
                                                 title="Design Template"
                                             >
                                                 🎨
                                             </button>
-                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
-                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
+                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm hover:bg-blue-200">✏️</button>
+                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm hover:bg-red-200">🗑️</button>
                                         </div>
                                     </div>
                                 ))}
