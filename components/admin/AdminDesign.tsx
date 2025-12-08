@@ -20,6 +20,8 @@ const TOOLS = [
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
+const TEMPLATE_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Khác'];
+
 export const AdminDesign: React.FC = () => {
     // State
     const [activeTool, setActiveTool] = useState('background');
@@ -28,7 +30,10 @@ export const AdminDesign: React.FC = () => {
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Save Modal State
     const [templateName, setTemplateName] = useState('');
+    const [templateCategory, setTemplateCategory] = useState('Tình yêu');
     const [showSaveModal, setShowSaveModal] = useState(false);
     
     // Font Manager State
@@ -107,13 +112,14 @@ export const AdminDesign: React.FC = () => {
     const handleAddText = () => {
         const newText: TextConfig = {
             id: Date.now(),
-            content: 'Nhập văn bản',
+            content: 'Nhập nội dung',
             font: 'Playfair Display',
             size: 24,
             color: '#333333',
             x: 50, y: 50, rotation: 0, scale: 1,
             background: false,
-            width: 40
+            width: 40,
+            locked: false
         };
         setConfig(prev => ({ ...prev, texts: [...prev.texts, newText] }));
         setSelectedItemId(`text-${newText.id}`);
@@ -290,7 +296,7 @@ export const AdminDesign: React.FC = () => {
     };
 
     const handleSaveTemplate = async () => {
-        if (!templateName) return alert("Vui lòng nhập tên mẫu");
+        if (!templateName) return alert("Vui lòng nhập tên Template");
         setIsSaving(true);
         
         // 1. Generate Thumbnail
@@ -315,11 +321,12 @@ export const AdminDesign: React.FC = () => {
                 id: `tpl_${Date.now()}`,
                 name: templateName,
                 imageUrl: thumbUrl || 'https://via.placeholder.com/300?text=No+Preview',
-                config: config
+                config: config,
+                category: templateCategory // Added category
             };
 
             await addTemplate(newTemplate);
-            alert("Đã lưu mẫu thành công!");
+            alert("Đã lưu Template Background thành công!");
             setShowSaveModal(false);
             setTemplateName('');
         } catch (e) {
@@ -537,7 +544,7 @@ export const AdminDesign: React.FC = () => {
                             className="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded hover:bg-blue-700 shadow-sm flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                            Lưu Mẫu
+                            Lưu Template Background
                         </button>
                     </div>
                 </div>
@@ -545,7 +552,7 @@ export const AdminDesign: React.FC = () => {
                 {/* Floating Alignment Bar (When Item Selected) */}
                 {selectedItemId && (
                     <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
-                        <button onClick={toggleLock} className={`p-1.5 rounded transition-colors ${isCurrentLocked ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={isCurrentLocked ? "Mở khóa vị trí" : "Khóa vị trí"}>
+                        <button onClick={toggleLock} className={`p-1.5 rounded transition-colors ${isCurrentLocked ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={isCurrentLocked ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
                             {isCurrentLocked ? (
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
                             ) : (
@@ -595,21 +602,45 @@ export const AdminDesign: React.FC = () => {
 
             {/* Save Modal */}
             {showSaveModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-                        <h3 className="text-lg font-bold mb-4">Lưu làm Mẫu thiết kế</h3>
-                        <input 
-                            type="text" 
-                            className="w-full p-2 border border-gray-300 rounded mb-4"
-                            placeholder="Nhập tên mẫu..."
-                            value={templateName}
-                            onChange={e => setTemplateName(e.target.value)}
-                            autoFocus
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">Hủy</button>
-                            <button onClick={handleSaveTemplate} disabled={isSaving} className="px-4 py-2 text-sm bg-blue-600 text-white font-bold rounded hover:bg-blue-700">
-                                {isSaving ? 'Đang lưu...' : 'Lưu'}
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center font-sans">
+                    <div className="bg-white p-6 rounded-xl shadow-xl w-[450px]">
+                        <h3 className="text-xl font-bold mb-2">Lưu Template Background</h3>
+                        <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-2 rounded border border-blue-100">
+                            <strong>Lưu ý:</strong> Vị trí các Sticker và Text sẽ được lưu lại. 
+                            Nếu bạn đã <strong>KHÓA (Lock)</strong> layer nào, khách hàng sẽ không thể di chuyển nó (chỉ có thể sửa nội dung).
+                        </p>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Tên Template</label>
+                                <input 
+                                    type="text" 
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="Ví dụ: Sinh nhật hồng, Kỷ niệm..."
+                                    value={templateName}
+                                    onChange={e => setTemplateName(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Danh mục</label>
+                                <select 
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={templateCategory}
+                                    onChange={e => setTemplateCategory(e.target.value)}
+                                >
+                                    {TEMPLATE_CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                            <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg">Hủy</button>
+                            <button onClick={handleSaveTemplate} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
+                                {isSaving ? 'Đang lưu...' : 'Lưu Template'}
                             </button>
                         </div>
                     </div>
@@ -619,8 +650,8 @@ export const AdminDesign: React.FC = () => {
             {/* Loading Overlay */}
             {isSaving && (
                 <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center">
-                    <div className="bg-white p-4 rounded-lg flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+                    <div className="bg-white p-4 rounded-lg flex items-center gap-3 shadow-lg">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
                         <span className="font-bold text-sm">Đang xử lý...</span>
                     </div>
                 </div>

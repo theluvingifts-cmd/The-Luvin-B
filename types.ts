@@ -176,6 +176,7 @@ export interface CollectionTemplate {
     name: string;
     imageUrl: string;
     config: FrameConfig;
+    category?: string; // New: For organizing templates (Love, Birthday, etc.)
 }
 
 export interface FeedbackItem {
