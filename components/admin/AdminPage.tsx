@@ -18,9 +18,8 @@ import { AdminProducts } from '../admin/AdminProducts';
 import { AdminConfig } from '../admin/AdminConfig';
 import { AdminVouchers } from '../admin/AdminVouchers'; 
 import { AdminCustomers } from '../admin/AdminCustomers'; 
-import { AdminStudio } from '../admin/AdminStudio'; // Added
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'studio';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -91,7 +90,7 @@ const AdminPage: React.FC = () => {
 
     // Redirect warehouse staff to orders tab if they land on dashboard
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'studio')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -130,7 +129,6 @@ const AdminPage: React.FC = () => {
                                     <>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
-                                        <button onClick={() => setActiveTab('studio')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all text-purple-700 bg-purple-50 hover:bg-purple-100 ${activeTab === 'studio' ? 'ring-2 ring-purple-300' : ''}`}>Studio Design ✨</button>
                                         <button onClick={() => setActiveTab('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
                                     </>
                                 )}
@@ -161,7 +159,6 @@ const AdminPage: React.FC = () => {
                             <>
                                 <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
                                 <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
-                                <button onClick={() => setActiveTab('studio')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'studio' ? 'border-purple-600 text-purple-700' : 'border-transparent text-purple-500 hover:text-purple-800'}`}>Studio</button>
                                 <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
                             </>
                         )}
@@ -176,7 +173,6 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
-                {activeTab === 'studio' && canManageConfig && <AdminStudio />}
             </main>
         </div>
     );
