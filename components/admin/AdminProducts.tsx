@@ -9,7 +9,6 @@ import { ProductForm } from './forms/ProductForm';
 import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { TemplateForm } from './forms/TemplateForm';
-import { AdminDesignStudio } from './AdminDesignStudio'; // New Import
 import { formatCurrency, getEffectivePrice } from '../../utils/pricing';
 
 interface AdminProductsProps {
@@ -24,7 +23,7 @@ interface AdminProductsProps {
 }
 
 type ProductSubTab = 'parts' | 'backgrounds' | 'frames' | 'templates';
-type ViewMode = 'list' | 'edit' | 'studio'; // Added 'studio'
+type ViewMode = 'list' | 'edit';
 
 export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, templates, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds, onRefreshTemplates }) => {
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
@@ -45,10 +44,6 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
     const [editingFrame, setEditingFrame] = useState<FrameOption | null>(null);
     const [editingTemplate, setEditingTemplate] = useState<CollectionTemplate | null>(null);
-    
-    // Studio State
-    const [studioBackground, setStudioBackground] = useState<PresetBackground | null>(null);
-
     const [loading, setLoading] = useState(false);
 
     // Quick Stock Edit State
@@ -87,17 +82,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         setViewMode('edit');
     };
 
-    const openStudio = (bg: PresetBackground) => {
-        setStudioBackground(bg);
-        setViewMode('studio');
-    };
-
     const switchToList = () => {
         setEditingPart(null);
         setEditingBg(null);
         setEditingFrame(null);
         setEditingTemplate(null);
-        setStudioBackground(null);
         setViewMode('list');
     };
 
@@ -113,17 +102,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     };
     const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); onRefreshProducts(); } };
     
-    // UPDATED: Handle Save Background & Studio Redirect
-    const handleSaveBackground = async (bg: PresetBackground, openStudioMode: boolean = false) => { 
+    const handleSaveBackground = async (bg: PresetBackground) => { 
         if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); 
-        onRefreshBackgrounds(); 
-        
-        if (openStudioMode) {
-            setStudioBackground(bg);
-            setViewMode('studio');
-        } else {
-            switchToList(); 
-        }
+        onRefreshBackgrounds(); switchToList(); 
     };
     const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); onRefreshBackgrounds(); } };
 
@@ -191,21 +172,6 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
 
         reorderBackgrounds(items).then(() => onRefreshBackgrounds());
     };
-
-    // --- RENDER STUDIO IF ACTIVE ---
-    if (viewMode === 'studio' && studioBackground) {
-        return (
-            <AdminDesignStudio 
-                background={studioBackground} 
-                onClose={switchToList} 
-                onSave={() => {
-                    onRefreshBackgrounds();
-                    // Optionally stay in studio, but closing for now to allow user to see result
-                    // switchToList(); 
-                }} 
-            />
-        );
-    }
 
     return (
         <div className="animate-fade-in relative">
@@ -439,33 +405,18 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDragOver={handleDragOver}
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
-                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100 relative`}>
+                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
                                             {bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />
                                             )}
-                                            
-                                            {/* Design Studio Button Overlay */}
-                                            {bg.textLayers && bg.textLayers.length > 0 && (
-                                                <div className="absolute top-1 left-1 bg-purple-500 text-white text-[9px] px-1 rounded shadow font-bold">
-                                                    Editable
-                                                </div>
-                                            )}
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
                                         <p className="text-[10px] sm:text-xs text-gray-500">{bg.category}</p>
-                                        <div className="absolute top-2 right-2 flex gap-1 transition-opacity">
-                                            {/* STUDIO BUTTON */}
-                                            <button 
-                                                onClick={() => openStudio(bg)} 
-                                                className="p-1.5 bg-purple-100 text-purple-600 rounded shadow-sm hover:bg-purple-200"
-                                                title="Design Template"
-                                            >
-                                                🎨
-                                            </button>
-                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm hover:bg-blue-200">✏️</button>
-                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm hover:bg-red-200">🗑️</button>
+                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
+                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
                                         </div>
                                     </div>
                                 ))}

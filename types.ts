@@ -52,23 +52,6 @@ export interface LegoPart {
   isHot?: boolean;
 }
 
-// --- NEW: DYNAMIC BACKGROUND TEMPLATES ---
-export interface TextLayer {
-    id: string;
-    label: string; // Tên hiển thị cho khách nhập (VD: "Tên bạn", "Ngày kỷ niệm")
-    defaultText: string; // Nội dung mẫu hiển thị trên ảnh
-    x: number; // % position left
-    y: number; // % position top
-    fontSize: number; // px relative to base container
-    fontFamily: string;
-    color: string;
-    fontWeight?: string;
-    fontStyle?: string;
-    textAlign: 'left' | 'center' | 'right';
-    rotation: number;
-    maxWidth?: number; // % width limitation
-}
-
 export interface PresetBackground {
     id: string;
     name: string;
@@ -77,8 +60,6 @@ export interface PresetBackground {
     type: 'square' | 'rectangle';
     orientation?: 'portrait' | 'landscape';
     order?: number;
-    // New field for editable templates
-    textLayers?: TextLayer[]; 
 }
 
 export interface LegoCharacterConfig {
@@ -129,7 +110,6 @@ export interface DraggableItem {
 export interface BackgroundConfig {
   type: 'color' | 'image' | 'upload';
   value: string;
-  templateData?: Record<string, string>; // Stores user input for the template text layers { layerId: "User Input" }
 }
 
 export interface FrameConfig {
