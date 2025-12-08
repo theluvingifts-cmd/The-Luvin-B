@@ -1,12 +1,11 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { FrameConfig, LegoPart, TextConfig, DraggableItem, CollectionTemplate, FrameOption, CustomFont } from '../../types';
+import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
-import { addTemplate } from '../../services/templateService';
+import { addBackground } from '../../services/backgroundService'; // Changed from addTemplate
 import { uploadToCloudinary } from '../../services/uploadService';
-import { formatCurrency } from '../../utils/pricing';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 
 declare var html2canvas: any;
@@ -20,7 +19,7 @@ const TOOLS = [
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-const TEMPLATE_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Khác'];
+const BG_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Khác'];
 
 export const AdminDesign: React.FC = () => {
     // State
@@ -32,8 +31,9 @@ export const AdminDesign: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     
     // Save Modal State
-    const [templateName, setTemplateName] = useState('');
-    const [templateCategory, setTemplateCategory] = useState('Tình yêu');
+    const [bgName, setBgName] = useState('');
+    const [bgCategory, setBgCategory] = useState('Tình yêu');
+    const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
     const [showSaveModal, setShowSaveModal] = useState(false);
     
     // Font Manager State
@@ -89,6 +89,15 @@ export const AdminDesign: React.FC = () => {
     
     const handleFrameChange = (frameId: string) => {
         setConfig(prev => ({ ...prev, frameId }));
+        // Auto set Type suggestion based on frame
+        const frame = frames.find(f => f.id === frameId);
+        if (frame) {
+            if (Math.abs(frame.frameWidthCm - frame.frameHeightCm) > 1) {
+                setBgType('rectangle');
+            } else {
+                setBgType('square');
+            }
+        }
     };
 
     const handleBackgroundChange = (type: 'color' | 'image', value: string) => {
@@ -282,7 +291,7 @@ export const AdminDesign: React.FC = () => {
                 try {
                     const canvas = await html2canvas(previewRef.current, { useCORS: true, scale: 2, backgroundColor: null });
                     const link = document.createElement('a');
-                    link.download = `design_${Date.now()}.png`;
+                    link.download = `background_preview_${Date.now()}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 } catch (e) {
@@ -295,43 +304,41 @@ export const AdminDesign: React.FC = () => {
         }, 100);
     };
 
-    const handleSaveTemplate = async () => {
-        if (!templateName) return alert("Vui lòng nhập tên Template");
+    const handleSaveBackgroundTemplate = async () => {
+        if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
         setIsSaving(true);
         
-        // 1. Generate Thumbnail
         const originalSelected = selectedItemId;
         setSelectedItemId(null);
         
         try {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for deselect
-            let thumbUrl = '';
-            
-            if (previewRef.current && typeof html2canvas !== 'undefined') {
-                const canvas = await html2canvas(previewRef.current, { useCORS: true, scale: 1, backgroundColor: null });
-                const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-                if (blob) {
-                    const file = new File([blob], "thumbnail.png", { type: "image/png" });
-                    const url = await uploadToCloudinary(file);
-                    if (url) thumbUrl = url;
-                }
-            }
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for deselect/render
 
-            const newTemplate: CollectionTemplate = {
-                id: `tpl_${Date.now()}`,
-                name: templateName,
-                imageUrl: thumbUrl || 'https://via.placeholder.com/300?text=No+Preview',
-                config: config,
-                category: templateCategory // Added category
+            // The main URL of the background is either the color or the image URL
+            const mainUrl = config.background.value;
+
+            // Prepare the PresetBackground object
+            const newBackground: PresetBackground = {
+                id: `bg_${Date.now()}`,
+                name: bgName,
+                url: mainUrl,
+                category: bgCategory,
+                type: bgType,
+                orientation: 'portrait', // Default, logic can be expanded
+                overlayConfig: {
+                    texts: config.texts,
+                    draggableItems: config.draggableItems
+                }
             };
 
-            await addTemplate(newTemplate);
-            alert("Đã lưu Template Background thành công!");
+            await addBackground(newBackground);
+            
+            alert("Đã lưu Mẫu nền (Bước 2) thành công! Khách hàng sẽ có thể chỉnh sửa chữ khi chọn mẫu này.");
             setShowSaveModal(false);
-            setTemplateName('');
+            setBgName('');
         } catch (e) {
             console.error(e);
-            alert("Lỗi khi lưu mẫu");
+            alert("Lỗi khi lưu mẫu nền");
         } finally {
             setIsSaving(false);
             setSelectedItemId(originalSelected);
@@ -388,10 +395,10 @@ export const AdminDesign: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Hình nền</label>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Hình nền (Gốc)</label>
                                 <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
                                     <div className="text-2xl mb-1">☁️</div>
-                                    <span className="text-sm font-medium text-gray-600">Tải ảnh lên</span>
+                                    <span className="text-sm font-medium text-gray-600">Tải ảnh nền gốc</span>
                                 </button>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadBackground} />
                             </div>
@@ -401,7 +408,7 @@ export const AdminDesign: React.FC = () => {
                     {activeTool === 'text' && (
                         <div className="space-y-4">
                             <button onClick={handleAddText} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold shadow-md hover:bg-black transition-transform active:scale-95">
-                                + Thêm văn bản
+                                + Thêm văn bản (Khách sửa được)
                             </button>
                             
                             {selectedItemId && selectedItemId.startsWith('text') ? (
@@ -476,8 +483,8 @@ export const AdminDesign: React.FC = () => {
                             <label className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer block">
                                 <input type="file" className="hidden" accept="image/*" onChange={handleAddUploadItem} />
                                 <div className="text-2xl mb-2">🖼️</div>
-                                <span className="text-sm font-bold text-gray-700">Tải Sticker / Ảnh</span>
-                                <p className="text-xs text-gray-400 mt-1">PNG trong suốt là tốt nhất</p>
+                                <span className="text-sm font-bold text-gray-700">Tải Sticker / Ảnh trang trí</span>
+                                <p className="text-xs text-gray-400 mt-1">Sẽ là lớp phủ trên nền</p>
                             </label>
                         </div>
                     )}
@@ -544,7 +551,7 @@ export const AdminDesign: React.FC = () => {
                             className="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded hover:bg-blue-700 shadow-sm flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                            Lưu Template Background
+                            Lưu Mẫu Nền (Step 2)
                         </button>
                     </div>
                 </div>
@@ -604,43 +611,56 @@ export const AdminDesign: React.FC = () => {
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center font-sans">
                     <div className="bg-white p-6 rounded-xl shadow-xl w-[450px]">
-                        <h3 className="text-xl font-bold mb-2">Lưu Template Background</h3>
+                        <h3 className="text-xl font-bold mb-2">Lưu Mẫu Nền (Step 2)</h3>
                         <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-2 rounded border border-blue-100">
-                            <strong>Lưu ý:</strong> Vị trí các Sticker và Text sẽ được lưu lại. 
-                            Nếu bạn đã <strong>KHÓA (Lock)</strong> layer nào, khách hàng sẽ không thể di chuyển nó (chỉ có thể sửa nội dung).
+                            <strong>Tính năng:</strong> Tạo ra các nền có sẵn chữ/sticker để khách hàng chọn ở Bước 2. 
+                            Khách hàng có thể <strong>click vào chữ</strong> để sửa nội dung (tên, ngày tháng...)
                         </p>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Tên Template</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Tên Hiển Thị</label>
                                 <input 
                                     type="text" 
                                     className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                     placeholder="Ví dụ: Sinh nhật hồng, Kỷ niệm..."
-                                    value={templateName}
-                                    onChange={e => setTemplateName(e.target.value)}
+                                    value={bgName}
+                                    onChange={e => setBgName(e.target.value)}
                                     autoFocus
                                 />
                             </div>
                             
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Danh mục</label>
-                                <select 
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={templateCategory}
-                                    onChange={e => setTemplateCategory(e.target.value)}
-                                >
-                                    {TEMPLATE_CATEGORIES.map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Danh mục</label>
+                                    <select 
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={bgCategory}
+                                        onChange={e => setBgCategory(e.target.value)}
+                                    >
+                                        {BG_CATEGORIES.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Loại Khung</label>
+                                    <select 
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={bgType}
+                                        onChange={e => setBgType(e.target.value as 'square' | 'rectangle')}
+                                    >
+                                        <option value="square">Vuông (15x15, 23x23)</option>
+                                        <option value="rectangle">Chữ nhật (A5)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                             <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg">Hủy</button>
-                            <button onClick={handleSaveTemplate} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
-                                {isSaving ? 'Đang lưu...' : 'Lưu Template'}
+                            <button onClick={handleSaveBackgroundTemplate} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
+                                {isSaving ? 'Đang lưu...' : 'Lưu Mẫu Nền'}
                             </button>
                         </div>
                     </div>

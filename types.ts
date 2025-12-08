@@ -60,6 +60,11 @@ export interface PresetBackground {
     type: 'square' | 'rectangle';
     orientation?: 'portrait' | 'landscape';
     order?: number;
+    // NEW: Configuration for editable layers (Text/Stickers) associated with this background
+    overlayConfig?: {
+        texts: TextConfig[];
+        draggableItems: DraggableItem[];
+    };
 }
 
 export interface LegoCharacterConfig {

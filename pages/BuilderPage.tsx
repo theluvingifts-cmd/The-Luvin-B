@@ -1,5 +1,5 @@
 
-// ... (imports remain the same)
+// ... (Previous imports)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption } from '../types';
 import { 
@@ -16,7 +16,8 @@ import { getAllOrders } from '../services/orderService';
 
 declare var html2canvas: any;
 
-// ... (StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton components remain the same)
+// ... (StepIndicator, Step1Frame components remain the same) ...
+// (Retaining StepIndicator and Step1Frame fully as they are mostly unchanged)
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
@@ -234,6 +235,12 @@ const PresetBackgroundButton: React.FC<{
                         </div>
                     </>
                 )}
+                {/* Indicator for interactive template */}
+                {bg.overlayConfig && (
+                    <div className="absolute top-1 left-1 bg-yellow-400 text-[8px] font-bold px-1.5 py-0.5 rounded text-yellow-900 shadow-sm">
+                        MẪU
+                    </div>
+                )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-9 leading-tight">
                 <span className="text-[11px] font-semibold text-gray-700">{line1}</span>
@@ -313,23 +320,31 @@ const Step2BackgroundAndDecorations: React.FC<{
         shouldRotate = bg.orientation === 'landscape';
     }
 
-    if (isColor) {
-         setConfig({ 
-            ...config, 
-            frameId: newFrameId,
-            background: { type: 'color', value: bg.url },
-            isRotated: false 
-        });
-        if (message) showToast(message, 'success');
-    } else {
-        setConfig({ 
-            ...config, 
-            frameId: newFrameId,
-            background: { type: 'image', value: bg.url },
-            isRotated: shouldRotate
-        });
-        if (message) showToast(message, 'success');
+    // Determine config to merge
+    // If background has overlayConfig, we load those texts/items
+    // Otherwise, we keep existing items or reset? Usually reset/merge logic is complex.
+    // Here we will merge the template's overlays if they exist.
+    
+    const newBackground = { type: isColor ? 'color' : 'image', value: bg.url } as any;
+    
+    // Create new config object
+    let newConfig = { 
+        ...config, 
+        frameId: newFrameId,
+        background: newBackground,
+        isRotated: shouldRotate
+    };
+
+    // If this background is a template with pre-defined layers, apply them
+    if (bg.overlayConfig) {
+        newConfig.texts = bg.overlayConfig.texts || [];
+        newConfig.draggableItems = bg.overlayConfig.draggableItems || [];
+        if (message) message += ". Đã tải mẫu chữ.";
+        else message = "Đã tải mẫu nền & chữ.";
     }
+
+    setConfig(newConfig);
+    if (message) showToast(message, 'success');
   };
 
   const handleBgFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,6 +453,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   );
 };
 
+// ... (Rest of PartButton and other Step3/Step4 components remain unchanged)
 const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
@@ -513,7 +529,6 @@ const PartButton: React.FC<{
     );
 };
 
-// ... (sortParts function) ...
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
     return [...parts].sort((a, b) => {
@@ -533,7 +548,6 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
-    // ... (Hooks and internal state logic remains the same)
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -622,7 +636,6 @@ const Step3Characters: React.FC<{
     }
 
     const handlePartSelect = (part: LegoPart | undefined) => {
-        // ... (Remains same)
         if (!activeCharId || !part) return;
 
         if (part.type === 'hat') {
@@ -666,7 +679,6 @@ const Step3Characters: React.FC<{
     };
 
     const handlePartDeselect = (partType: 'hair' | 'hat') => {
-      // ... (Remains same)
       if (!activeCharId) return;
       if (partType === 'hat') return;
 
@@ -683,7 +695,6 @@ const Step3Characters: React.FC<{
     }
     
     const handleCustomPrintSelect = (price: number) => {
-      // ... (Remains same)
       if (!printDialogCharId) return;
       setConfig({
         ...config,
@@ -695,7 +706,6 @@ const Step3Characters: React.FC<{
     };
 
     const handleRandomizeOutfit = () => {
-        // ... (Remains same)
         if (!activeCharId) return;
         
         const availableHair = getAvailableParts(legoParts.hair);
@@ -1003,9 +1013,6 @@ const Step3Characters: React.FC<{
         </div>
     );
 };
-
-// ... (Step4Summary, TextEditor, BuilderPage code - Ensure using the same logic if needed, but mainly PartButton logic was critical)
-// ... (I will include the rest of BuilderPage.tsx to ensure file completeness)
 
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
