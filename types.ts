@@ -93,6 +93,7 @@ export interface TextConfig {
   background: boolean;
   textAlign?: 'left' | 'center' | 'right';
   width?: number; 
+  locked?: boolean; // New: Prevents moving/resizing
 }
 
 export interface DraggableItem {
@@ -105,6 +106,7 @@ export interface DraggableItem {
     scale: number; 
     isFlipped?: boolean;
     selectedColor?: OutfitColor;
+    locked?: boolean; // New: Prevents moving/resizing
 }
 
 export interface BackgroundConfig {

@@ -173,7 +173,7 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    // Alignment Tools
+    // Alignment & Tooling
     const alignItem = (direction: 'centerH' | 'centerV' | 'top' | 'bottom' | 'left' | 'right') => {
         if (!selectedItemId) return;
         const [type, idStr] = selectedItemId.split('-');
@@ -202,6 +202,32 @@ export const AdminDesign: React.FC = () => {
             return prev;
         });
     };
+
+    const toggleLock = () => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const numericId = parseInt(idStr);
+
+        setConfig(prev => {
+            if (type === 'text') {
+                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, locked: !t.locked } : t) };
+            }
+            if (type === 'item') {
+                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, locked: !i.locked } : i) };
+            }
+            return prev;
+        });
+    };
+
+    // Get current locked status
+    const isCurrentLocked = useMemo(() => {
+        if (!selectedItemId) return false;
+        const [type, idStr] = selectedItemId.split('-');
+        const numericId = parseInt(idStr);
+        if (type === 'text') return config.texts.find(t => t.id === numericId)?.locked;
+        if (type === 'item') return config.draggableItems.find(i => i.id === numericId)?.locked;
+        return false;
+    }, [selectedItemId, config]);
 
     // FramePreview Handlers
     const handleItemTransform = (id: string, newTransform: any) => {
@@ -453,13 +479,19 @@ export const AdminDesign: React.FC = () => {
                         <div className="space-y-2">
                             {config.texts.map((t, idx) => (
                                 <div key={t.id} className="flex justify-between items-center p-2 bg-white border rounded hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedItemId(`text-${t.id}`)}>
-                                    <span className="text-xs font-medium truncate w-32">{t.content || 'Text'}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium truncate w-32">{t.content || 'Text'}</span>
+                                        {t.locked && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Locked</span>}
+                                    </div>
                                     <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`text-${t.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
                                 </div>
                             ))}
                             {config.draggableItems.map((item, idx) => (
                                 <div key={item.id} className="flex justify-between items-center p-2 bg-white border rounded hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedItemId(`item-${item.id}`)}>
-                                    <span className="text-xs font-medium text-blue-600">{item.type === 'charm' ? 'Hình ảnh/Sticker' : item.type}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium text-blue-600">{item.type === 'charm' ? 'Hình ảnh/Sticker' : item.type}</span>
+                                        {item.locked && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Locked</span>}
+                                    </div>
                                     <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`item-${item.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
                                 </div>
                             ))}
@@ -512,7 +544,16 @@ export const AdminDesign: React.FC = () => {
 
                 {/* Floating Alignment Bar (When Item Selected) */}
                 {selectedItemId && (
-                    <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up">
+                    <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
+                        <button onClick={toggleLock} className={`p-1.5 rounded transition-colors ${isCurrentLocked ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={isCurrentLocked ? "Mở khóa vị trí" : "Khóa vị trí"}>
+                            {isCurrentLocked ? (
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                            )}
+                        </button>
+                        <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                        
                         <button onClick={() => alignItem('left')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trái"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
                         <button onClick={() => alignItem('centerH')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa ngang"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg></button>
                         <button onClick={() => alignItem('right')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn phải"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>

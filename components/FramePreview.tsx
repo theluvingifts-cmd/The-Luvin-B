@@ -213,12 +213,13 @@ const Transformable: React.FC<{
     isResizable?: boolean;
     isRotatable?: boolean;
     isDraggable?: boolean;
+    isLocked?: boolean; // New Prop
     zIndex?: number;
     style?: React.CSSProperties;
     isTextItem?: boolean;
     containerSize?: { width: number; height: number; };
     onDoubleClick?: () => void;
-}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, zIndex, style, isTextItem, containerSize, onDoubleClick }) => {
+}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, isLocked = false, zIndex, style, isTextItem, containerSize, onDoubleClick }) => {
     
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
       if ('touches' in e && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -227,7 +228,14 @@ const Transformable: React.FC<{
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if (!isDraggable) return;
+        if (!isDraggable || isLocked) { // Prevent drag if locked
+            if (isLocked) {
+                // Still allow selection if locked, but no drag
+                e.stopPropagation();
+                onSelect(id);
+            }
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
         onSelect(id);
@@ -353,14 +361,25 @@ const Transformable: React.FC<{
                 top: `${initialTransform.y}%`,
                 transform: `translate(-50%, -50%) rotate(${initialTransform.rotation}deg) scale(${initialTransform.scale}) scaleX(${isFlipped ? -1 : 1})`,
                 touchAction: 'none',
-                cursor: isDraggable ? (isSelected ? 'move' : 'pointer') : 'default',
-                outline: isSelected && isDraggable ? '2px dashed #efa3b5' : 'none',
+                cursor: isDraggable && !isLocked ? (isSelected ? 'move' : 'pointer') : (isLocked ? 'not-allowed' : 'default'),
+                outline: isSelected ? (isLocked ? '2px solid #ef4444' : '2px dashed #efa3b5') : 'none',
                 outlineOffset: '5px',
                 zIndex: zIndex
             }}
         >
             {children}
-            {isSelected && isDraggable && (
+            
+            {/* Lock Indicator */}
+            {isSelected && isLocked && (
+                <div 
+                    className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-sm pointer-events-none"
+                    style={{ transform: `scale(${handleScale})` }}
+                >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                </div>
+            )}
+
+            {isSelected && isDraggable && !isLocked && (
                 <>
                   {isTextItem ? (
                       <div 
@@ -493,7 +512,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         else if (type === 'character') currentItem = config.characters.find(c => c.id === id);
         else if (type === 'text') currentItem = config.texts.find(t => t.id === id);
 
-        if (!currentItem) return;
+        if (!currentItem || currentItem.locked) return; // Disable keyboard move if locked
+        
         let dx = 0; let dy = 0;
         const step = e.shiftKey ? 5 : 0.5;
         switch(e.key) {
@@ -590,6 +610,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
                             isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
+                            isLocked={item.locked} // Pass locked prop
                             zIndex={item.type === 'hat' ? 12 : 10}
                         >
                             <SafeImage src={imageUrl} alt={name} className="pointer-events-none" style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }} />
@@ -603,6 +624,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
                         onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={selectedItemId === `text-${text.id}`} onSelect={setSelectedItemId}
                         isDraggable={isInteractive} zIndex={15} isTextItem={true} containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                        isLocked={text.locked} // Pass locked prop
                         style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
                     >
                        <EditableText text={text} onUpdate={(updates) => onTextUpdate(text.id, updates)} onBeginEditing={() => setIsEditingText(true)} onEndEditing={() => setIsEditingText(false)} />
