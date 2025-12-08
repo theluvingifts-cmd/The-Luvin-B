@@ -7,8 +7,13 @@ export const FREE_SHIPPING_THRESHOLD = 349000;
 
 // Helper: Get effective price checking sale conditions
 export const getEffectivePrice = (item: { price: number, salePrice?: number, saleEndDate?: string }) => {
-    // If salePrice exists and is lower than regular price
-    if (item.salePrice !== undefined && item.salePrice !== null && item.salePrice < item.price) {
+    if (!item) return 0;
+    
+    const price = Number(item.price) || 0;
+    const salePrice = Number(item.salePrice);
+
+    // If salePrice exists, is valid number, and is lower than regular price
+    if (item.salePrice !== undefined && item.salePrice !== null && !isNaN(salePrice) && salePrice < price) {
         // If there's an end date, check if it's still valid
         if (item.saleEndDate) {
             const now = new Date();
@@ -17,65 +22,145 @@ export const getEffectivePrice = (item: { price: number, salePrice?: number, sal
             end.setHours(23, 59, 59, 999);
             
             if (now <= end) {
-                return item.salePrice;
+                return salePrice;
             }
         } else {
             // No end date means indefinite sale
-            return item.salePrice;
+            return salePrice;
         }
     }
-    return item.price;
+    return price;
 };
 
-export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
-    const breakdown: {label: string, value: number}[] = [];
-    const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
-    
-    // Use Effective Price for Frame
-    const framePrice = getEffectivePrice(frame);
-    let total = framePrice;
-    breakdown.push({ label: `Khung ${frame.name}`, value: framePrice });
+export interface PriceBreakdownItem {
+    label: string;
+    value: number;
+    originalValue?: number; // To show strikethrough if on sale
+    isBase?: boolean; // True if it's a base cost (Frame, Char Fee)
+    details?: string; // Optional subtitle
+}
 
-    if(config.characters.length > 0) { const val = config.characters.length * CHARACTER_BASE_PRICE; total += val; breakdown.push({ label: `${config.characters.length} nhân vật`, value: val}); }
+export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
+    const breakdown: PriceBreakdownItem[] = [];
+    let total = 0;
+
+    // 1. FRAME PRICE
+    const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
+    const frameEffective = getEffectivePrice(frame);
+    total += frameEffective;
     
+    breakdown.push({ 
+        label: `Khung ${frame.name}`, 
+        value: frameEffective,
+        originalValue: frame.price > frameEffective ? frame.price : undefined,
+        isBase: true,
+        details: frame.description
+    });
+
+    // 2. CHARACTER BASE FEE (Fixed Price)
+    const charCount = config.characters.length;
+    if(charCount > 0) { 
+        const charFee = charCount * CHARACTER_BASE_PRICE; 
+        total += charFee; 
+        breakdown.push({ 
+            label: `Phí nhân vật (${charCount})`, 
+            value: charFee,
+            isBase: true,
+            details: `${formatCurrency(CHARACTER_BASE_PRICE)}/NV`
+        }); 
+    }
+    
+    // 3. DETAILED PARTS BREAKDOWN
     config.characters.forEach((char, index) => {
-        const customPrint = char.customPrintPrice || 0;
-        if(customPrint > 0) {
-            total += customPrint;
-            breakdown.push({ label: `NV ${index + 1} - In yêu cầu`, value: customPrint });
+        const charLabel = `(NV${index + 1})`;
+
+        // Custom Print
+        if (char.customPrintPrice && char.customPrintPrice > 0) {
+            total += char.customPrintPrice;
+            breakdown.push({ label: `In mặt riêng ${charLabel}`, value: char.customPrintPrice });
+        }
+
+        // Helper to add part cost
+        const addPartCost = (part: LegoPart | undefined, typeLabel: string) => {
+            if (!part) return;
+            // Check if this part actually costs extra (base parts might be 0 or high price)
+            // Logic: If effective price > 0, we list it.
+            const effPrice = getEffectivePrice(part);
+            if (effPrice > 0) {
+                total += effPrice;
+                breakdown.push({
+                    label: `${part.name} ${charLabel}`,
+                    value: effPrice,
+                    originalValue: part.price > effPrice ? part.price : undefined,
+                    details: typeLabel
+                });
+            }
+        };
+
+        addPartCost(char.hair, 'Tóc');
+        addPartCost(char.hat, 'Mũ');
+        addPartCost(char.shirt, 'Áo');
+        addPartCost(char.pants, 'Quần');
+        addPartCost(char.face, 'Mặt'); // Usually 0 but just in case
+
+        // Color Upgrades (Check if selected color has a price)
+        if (char.selectedShirtColor && char.selectedShirtColor.price > 0) {
+            total += char.selectedShirtColor.price;
+            breakdown.push({
+                label: `Màu áo: ${char.selectedShirtColor.name} ${charLabel}`,
+                value: char.selectedShirtColor.price,
+                details: 'Nâng cấp màu'
+            });
+        }
+        if (char.selectedPantsColor && char.selectedPantsColor.price > 0) {
+            total += char.selectedPantsColor.price;
+            breakdown.push({
+                label: `Màu quần: ${char.selectedPantsColor.name} ${charLabel}`,
+                value: char.selectedPantsColor.price,
+                details: 'Nâng cấp màu'
+            });
+        }
+        if (char.selectedHairColor && char.selectedHairColor.price > 0) {
+            total += char.selectedHairColor.price;
+            breakdown.push({
+                label: `Màu tóc: ${char.selectedHairColor.name} ${charLabel}`,
+                value: char.selectedHairColor.price,
+                details: 'Nâng cấp màu'
+            });
         }
     });
 
-    // Use Effective Price for Parts
-    const hairPrice = config.characters.reduce((acc, char) => acc + (char.hair ? getEffectivePrice(char.hair) : 0) + (char.selectedHairColor?.price || 0), 0);
-    if(hairPrice > 0) { breakdown.push({ label: 'Tóc & Màu', value: hairPrice }); total += hairPrice; }
+    // 4. DRAGGABLE ITEMS (Accessories, Pets, Hats)
+    config.draggableItems.forEach((item) => {
+        if (item.type === 'charm') return; // Charms are usually free or handled differently
 
-    const hatPrice = config.characters.reduce((acc, char) => acc + (char.hat ? getEffectivePrice(char.hat) : 0), 0) +
-                     config.draggableItems.filter(i => i.type === 'hat').reduce((acc, item) => acc + (allParts[item.partId] ? getEffectivePrice(allParts[item.partId]) : 0), 0);
-    
-    if(hatPrice > 0) { breakdown.push({ label: 'Mũ', value: hatPrice }); total += hatPrice; }
+        const part = allParts[item.partId];
+        if (part) {
+            const effPrice = getEffectivePrice(part);
+            const colorPrice = item.selectedColor?.price || 0;
+            
+            // Add Base Item Price
+            if (effPrice > 0) {
+                total += effPrice;
+                breakdown.push({
+                    label: part.name,
+                    value: effPrice,
+                    originalValue: part.price > effPrice ? part.price : undefined,
+                    details: part.type === 'pet' ? 'Thú cưng' : 'Phụ kiện'
+                });
+            }
 
-    const shirtBasePrice = config.characters.reduce((acc, char) => acc + (char.shirt ? getEffectivePrice(char.shirt) : 0), 0);
-    const shirtColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedShirtColor?.price || 0), 0);
-    const totalShirtPrice = shirtBasePrice + shirtColorPrice;
-    if(totalShirtPrice > 0) { 
-        total += totalShirtPrice; 
-        breakdown.push({ label: 'Áo & Màu', value: totalShirtPrice }); 
-    }
-
-    const pantsBasePrice = config.characters.reduce((acc, char) => acc + (char.pants ? getEffectivePrice(char.pants) : 0), 0);
-    const pantsColorPrice = config.characters.reduce((acc, char) => acc + (char.selectedPantsColor?.price || 0), 0);
-    const totalPantsPrice = pantsBasePrice + pantsColorPrice;
-    if(totalPantsPrice > 0) { 
-        total += totalPantsPrice; 
-        breakdown.push({ label: 'Quần & Màu', value: totalPantsPrice }); 
-    }
-
-    const accessoryPrice = config.draggableItems.filter(i => i.type === 'accessory').reduce((acc, item) => acc + (allParts[item.partId] ? getEffectivePrice(allParts[item.partId]) : 0) + (item.selectedColor?.price || 0), 0);
-    if(accessoryPrice > 0) { total += accessoryPrice; breakdown.push({ label: 'Phụ kiện', value: accessoryPrice }); }
-    
-    const petPrice = config.draggableItems.filter(i => i.type === 'pet').reduce((acc, item) => acc + (allParts[item.partId] ? getEffectivePrice(allParts[item.partId]) : 0) + (item.selectedColor?.price || 0), 0);
-    if(petPrice > 0) { total += petPrice; breakdown.push({ label: 'Thú cưng', value: petPrice }); }
+            // Add Color Surcharge Separately
+            if (colorPrice > 0) {
+                total += colorPrice;
+                breakdown.push({
+                    label: `Màu: ${item.selectedColor?.name || 'Màu đặc biệt'} (${part.name})`,
+                    value: colorPrice,
+                    details: 'Phụ phí màu'
+                });
+            }
+        }
+    });
 
     return { totalPrice: total, priceBreakdown: breakdown };
 };
@@ -83,19 +168,16 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'admin' = 'price') => {
   if (amount === 0) {
       if (context === 'price') return 'Miễn phí';
-      // For payment/admin/input contexts, we want to show 0 ₫ explicitly
       return '0 ₫';
   }
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
-export const calculateOrderTotal = (order: Order, allParts: LegoPart[], frames: FrameOption[]) => {
+export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
     let subtotal = 0;
-    // Tạo map để tra cứu nhanh
-    const partLookup = allParts.reduce((acc, p) => ({...acc, [p.id]: p}), {} as Record<string, LegoPart>);
-
+    
     order.items.forEach(item => {
-        const { totalPrice } = calculatePrice(item, partLookup, frames);
+        const { totalPrice } = calculatePrice(item, allParts, frames);
         subtotal += totalPrice * (item.quantity || 1);
     });
 

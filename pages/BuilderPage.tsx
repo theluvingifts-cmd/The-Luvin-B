@@ -1,5 +1,5 @@
 
-// ... (All imports and previous components TextEditor, StepIndicator, etc. remain the same) ...
+// ... (imports remain the same)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption } from '../types';
 import { 
@@ -10,13 +10,13 @@ import {
 } from '../constants';
 import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
-import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice } from '../utils/pricing';
+import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice, PriceBreakdownItem } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
 
 declare var html2canvas: any;
 
-// ... (StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton, Step3Characters components are unchanged) ...
+// ... (StepIndicator, Step1Frame, PresetBackgroundButton, Step2BackgroundAndDecorations, PartButton components remain the same)
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
@@ -82,7 +82,6 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
 };
 
 const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
-  // ... (Code same as original file) ...
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
@@ -188,7 +187,6 @@ const PresetBackgroundButton: React.FC<{
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
-    // ... (Code same as original) ...
     const isColor = bg.url.startsWith('#');
     let line1 = bg.name;
     let line2 = '';
@@ -256,7 +254,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
-  // ... (Code same as original) ...
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -449,7 +446,6 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
 }> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
-    // ... (Code same as original) ...
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -517,6 +513,7 @@ const PartButton: React.FC<{
     );
 };
 
+// ... (sortParts function) ...
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
     return [...parts].sort((a, b) => {
@@ -536,7 +533,7 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
-    // ... (Code same as original) ...
+    // ... (Hooks and internal state logic remains the same)
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -625,6 +622,7 @@ const Step3Characters: React.FC<{
     }
 
     const handlePartSelect = (part: LegoPart | undefined) => {
+        // ... (Remains same)
         if (!activeCharId || !part) return;
 
         if (part.type === 'hat') {
@@ -668,6 +666,7 @@ const Step3Characters: React.FC<{
     };
 
     const handlePartDeselect = (partType: 'hair' | 'hat') => {
+      // ... (Remains same)
       if (!activeCharId) return;
       if (partType === 'hat') return;
 
@@ -684,6 +683,7 @@ const Step3Characters: React.FC<{
     }
     
     const handleCustomPrintSelect = (price: number) => {
+      // ... (Remains same)
       if (!printDialogCharId) return;
       setConfig({
         ...config,
@@ -695,6 +695,7 @@ const Step3Characters: React.FC<{
     };
 
     const handleRandomizeOutfit = () => {
+        // ... (Remains same)
         if (!activeCharId) return;
         
         const availableHair = getAvailableParts(legoParts.hair);
@@ -953,14 +954,19 @@ const Step3Characters: React.FC<{
                 <div className="grid grid-cols-4 gap-2">
                     {filteredAccessories.length > 0 ? filteredAccessories.map(part => {
                         const effectivePrice = getEffectivePrice(part);
+                        // Add color surcharge if default color has price
+                        const defaultColorPrice = part.colors?.[0]?.price || 0;
+                        const finalPrice = effectivePrice + defaultColorPrice;
+                        const originalPrice = part.price + defaultColorPrice;
+
                         return (
                             <PartButton 
                                 key={part.id} 
                                 part={part} 
                                 isSelected={false} 
                                 onClick={() => addDraggableItem(part)} 
-                                priceToDisplay={effectivePrice} 
-                                originalPrice={part.price}
+                                priceToDisplay={finalPrice} 
+                                originalPrice={originalPrice}
                                 isHot={hotPartIds.includes(part.id)}
                             />
                         );
@@ -975,14 +981,19 @@ const Step3Characters: React.FC<{
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => {
                         const effectivePrice = getEffectivePrice(part);
+                        // Add color surcharge if default color has price
+                        const defaultColorPrice = part.colors?.[0]?.price || 0;
+                        const finalPrice = effectivePrice + defaultColorPrice;
+                        const originalPrice = part.price + defaultColorPrice;
+
                         return (
                             <PartButton 
                                 key={part.id} 
                                 part={part} 
                                 isSelected={false} 
                                 onClick={() => addDraggableItem(part)} 
-                                priceToDisplay={effectivePrice}
-                                originalPrice={part.price}
+                                priceToDisplay={finalPrice}
+                                originalPrice={originalPrice}
                                 isHot={hotPartIds.includes(part.id)}
                             />
                         );
@@ -993,43 +1004,60 @@ const Step3Characters: React.FC<{
     );
 };
 
-const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: string, value: number}[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
+// ... (Step4Summary, TextEditor, BuilderPage code - Ensure using the same logic if needed, but mainly PartButton logic was critical)
+// ... (I will include the rest of BuilderPage.tsx to ensure file completeness)
+
+const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
     <div>
-        <div className="p-4 border border-gray-200 rounded-lg">
-            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">THÔNG TIN KHUNG</h4>
-            <div className="space-y-1 text-sm text-gray-700 mb-4">
-                <p><strong>Kích thước:</strong> {frameName}</p>
-                <p><strong>Số nhân vật:</strong> {charCount}</p>
-            </div>
+        <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
+                <span>CHI TIẾT HÓA ĐƠN</span>
+                <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{charCount} Nhân vật</span>
+            </h4>
             
-            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">GIÁ DỰ KIẾN</h4>
-            <div className="space-y-1 text-sm text-gray-700">
+            <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                 {priceBreakdown.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                        <span>{item.label}</span>
-                        <span className="font-medium">{item.value > 0 ? formatCurrency(item.value) : formatCurrency(0, 'price')}</span>
+                    <div key={index} className="flex justify-between items-center py-1">
+                        <div className="flex flex-col">
+                            <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
+                                {item.label}
+                            </span>
+                            {item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}
+                        </div>
+                        <div className="text-right">
+                            {item.originalValue !== undefined && item.originalValue > item.value && (
+                                <span className="block text-[10px] text-gray-400 line-through">
+                                    {formatCurrency(item.originalValue)}
+                                </span>
+                            )}
+                            <span className={`font-medium ${item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                                {item.value > 0 ? formatCurrency(item.value) : 'Miễn phí'}
+                            </span>
+                        </div>
                     </div>
                 ))}
-                <div className="border-t border-gray-200 my-2"></div>
-                <div className="flex justify-between text-base font-bold text-gray-800">
-                    <span>Tổng cộng</span>
-                    <span>{formatCurrency(totalPrice)}</span>
+            </div>
+            
+            <div className="border-t border-gray-200 my-3 pt-2">
+                <div className="flex justify-between text-base font-bold text-gray-800 items-center">
+                    <span>Tạm tính</span>
+                    <span className="text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span>
                 </div>
-                
-                <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
-                    {remainingForFreeShip > 0 ? (
-                        <p className="text-xs text-gray-600 text-center">
-                            Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span>
-                        </p>
-                    ) : (
-                        <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1">
-                            <span>🎉</span> Đơn hàng đủ điều kiện Freeship!
-                        </p>
-                    )}
-                </div>
+            </div>
+            
+            <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200 mt-2">
+                {remainingForFreeShip > 0 ? (
+                    <p className="text-xs text-gray-600 text-center">
+                        Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span>
+                    </p>
+                ) : (
+                    <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1">
+                        <span>🎉</span> Đơn hàng đủ điều kiện Freeship!
+                    </p>
+                )}
             </div>
         </div>
 
@@ -1048,7 +1076,7 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
 
         <div className="mt-4 space-y-2">
             {!isEditingOrder && (
-                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-md">
                     {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
                 </button>
             )}
@@ -1060,7 +1088,6 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: {label: strin
   );
 };
 
-// ... (TextEditor, BuilderPageProps, base64ToBlob, BuilderPage implementation remain structurally the same, using updated components) ...
 const TextEditor: React.FC<{
     activeText: TextConfig;
     setConfig: (c: FrameConfig) => void;
@@ -1162,7 +1189,6 @@ const base64ToBlob = (base64: string) => {
 };
 
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder }) => {
-  // ... (Full implementation logic mostly same, just ensuring renderStepContent uses new props for Step4Summary) ...
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1192,7 +1218,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       }
   }, [config.frameId, frames]);
 
-  // ... (useEffect for Hot Trends same as original) ...
   useEffect(() => {
     const fetchHotTrends = async () => {
         try {
@@ -1306,7 +1331,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       }
   };
 
-  // ... (Scroll, Resize Observer, Item Logic same as original) ...
   useEffect(() => {
       const isMobile = window.innerWidth < 1024;
       if (isMobile) {
@@ -1667,7 +1691,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         onAddToCart={() => handleAddToCartWrapper(false)} 
         onBuyNow={() => handleAddToCartWrapper(true)}
         isSaving={isSaving} 
-        isEditingOrder={isEditingOrder} // Pass isEditingOrder here
+        isEditingOrder={isEditingOrder}
       />;
       default: return null;
     }
@@ -1676,7 +1700,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   return (
     <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
       <div className="container mx-auto px-4">
-        {/* ... (Header) ... */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-500">
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
@@ -1686,19 +1710,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
-        {/* ... (Rest of layout) ... */}
+        {/* Layout */}
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
-            {/* ... (Preview container logic same as original) ... */}
+            {/* Preview Section */}
             <div className="lg:sticky lg:top-24">
-                {/* ... (Undo/Redo buttons) ... */}
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">
                         ẢNH XEM TRƯỚC
                     </h3>
                     <div className="flex gap-2">
-                        {/* ... buttons ... */}
                         <button 
                             onClick={handleUndo} 
                             disabled={historyIndex <= 0}
@@ -1746,7 +1768,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         logoUrl={logoUrl} 
                     />
                 </div>
-                {/* ... (Disclaimer text) ... */}
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -1763,7 +1784,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
 
           <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> 
-              {/* SLIM FREE SHIP PROGRESS BAR */}
               {(step === 2 || step === 3) && (
                   <div className="mb-3 px-1 animate-fade-in">
                       <div className="flex justify-between items-center text-[10px] mb-1">
@@ -1848,7 +1868,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 </>
               )}
                
-               {/* STICKY BOTTOM BAR FOR MOBILE */}
                <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
                      <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-medium text-gray-500">Tạm tính:</span>

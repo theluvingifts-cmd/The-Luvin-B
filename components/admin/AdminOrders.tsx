@@ -1,18 +1,16 @@
 
-// ... imports (same as before) ...
+// ... (imports)
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
-import { calculateOrderTotal, formatCurrency } from '../../utils/pricing';
+import { calculatePrice, formatCurrency } from '../../utils/pricing'; // Changed import
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
 
-// ... (rest of imports and constants are same) ...
-
-// CONSTANTS (same as before)
+// ... (STATUS_CONFIG, helpers remain the same)
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
     { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
@@ -66,7 +64,7 @@ interface AdminOrdersProps {
 type OrderTab = 'active' | 'history';
 
 export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
-    // ... (All logic remains identical up to the rendering loop) ...
+    // ... (State hooks same as before)
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -97,6 +95,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
+    // ... (Effects and helper functions same as before)
     useEffect(() => {
         if (selectedOrder) {
             setNoteInput(selectedOrder.internalNotes || '');
@@ -240,6 +239,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         if (!selectedOrder) return;
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
+        
+        // Prepare HTML for print
         const html = `
             <!DOCTYPE html>
             <html>
@@ -358,34 +359,19 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         alert("Đã lưu thay đổi!");
     };
 
-    const calculateSubtotal = (orderItems: FrameConfig[]) => {
-        let sub = 0;
+    // Calculate Price Helper for Admin View consistency
+    const calculateOrderPriceDetails = (orderItems: FrameConfig[]) => {
+        let subtotal = 0;
         const partLookup = allKnownParts;
         orderItems.forEach(item => {
-            const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
-            sub += frame.price;
-            sub += item.characters.length * 10000;
-            item.characters.forEach(char => {
-                if (char.customPrintPrice) sub += char.customPrintPrice;
-                if (char.hair?.price) sub += char.hair.price;
-                if (char.hat?.price) sub += char.hat.price;
-                if (char.shirt?.price) sub += char.shirt.price;
-                if (char.selectedShirtColor?.price) sub += char.selectedShirtColor.price;
-                if (char.pants?.price) sub += char.pants.price;
-                if (char.selectedPantsColor?.price) sub += char.selectedPantsColor.price;
-            });
-            item.draggableItems.forEach(di => {
-                if (di.type !== 'charm' && partLookup[di.partId]) {
-                        sub += partLookup[di.partId].price;
-                        if (di.selectedColor?.price) sub += di.selectedColor.price;
-                }
-            });
+            const { totalPrice } = calculatePrice(item, partLookup, frames);
+            subtotal += totalPrice * (item.quantity || 1);
         });
-        return sub;
+        return subtotal;
     }
 
     const updateEditFormWithPrice = (newOrder: Order) => {
-        const subtotal = calculateSubtotal(newOrder.items);
+        const subtotal = calculateOrderPriceDetails(newOrder.items);
         const giftBoxFee = newOrder.addGiftBox ? 30000 : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
@@ -423,6 +409,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
     };
 
+    // ... (Add/Remove char/draggable logic)
     const handleAddCharacter = (itemIndex: number) => {
         if (!editForm) return;
         const newChar: LegoCharacterConfig = { id: Date.now(), x: 50, y: 50, rotation: 0, scale: 1 };
@@ -517,11 +504,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const isOrderPacked = selectedOrder ? ['Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng'].includes(selectedOrder.status) : false;
 
-    // Billing Breakdown Render Helper (Copied from original)
+    // --- UPDATED BILLING BREAKDOWN ---
     const BillingBreakdown = () => {
         const order = isEditingOrder && editForm ? editForm : selectedOrder;
         if (!order) return null;
-        const subtotal = calculateSubtotal(order.items);
+        
+        const subtotal = calculateOrderPriceDetails(order.items);
         const giftBoxFee = order.addGiftBox ? 30000 : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
@@ -561,14 +549,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         );
     };
 
+    // ... (Main Render)
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in relative">
+            {/* ... Loading Overlay ... */}
             {isLoading && (
                 <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]"><div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div><span className="font-bold text-sm">Đang xử lý...</span></div></div>
             )}
             
+            {/* Left Panel (List) - Same logic */}
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-10 ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
-                {/* List View Left Panel - Same as original but ensuring full content */}
+                {/* List Content */}
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
                     <div className="flex gap-2 p-1 bg-gray-200 rounded-lg">
                         <button onClick={() => setOrderTab('active')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})</button>
@@ -578,6 +569,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <input type="text" placeholder="Tìm mã đơn hoặc SĐT..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-gray-900 outline-none" />
                         <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
+                    {/* ... Sort and Status filters ... */}
                     {orderTab === 'active' && (
                         <div className="flex gap-2 w-full mt-1">
                             <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
@@ -603,6 +595,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
                     ))}
                 </div>
+                {/* Pagination */}
                 <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-2"><span className="text-xs text-gray-500">Hiển thị:</span><select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-white border border-gray-300 rounded text-xs p-1 focus:outline-none"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></div>
                     <div className="flex items-center gap-1"><button disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-100 disabled:opacity-50">&lt;</button><span className="text-xs font-medium px-2">Trang {currentPage} / {totalPages || 1}</span><button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-100 disabled:opacity-50">&gt;</button></div>
@@ -635,7 +628,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
-                            {/* ... (Payment Proof & Status blocks same as before) ... */}
+                            {/* Payment Proof Block */}
                             {selectedOrder.paymentProofUrl && (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                                     <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2"><span>📸</span> Ảnh xác nhận chuyển khoản</h4>
@@ -648,12 +641,23 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                     </div>
                                 </div>
                             )}
+                            
                             {selectedOrder.packedAt && (<div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shadow-sm"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">🎁</div><div><p className="text-sm font-bold text-purple-900">Đã đóng gói xong</p><p className="text-xs text-purple-700">Nhân viên: <span className="font-semibold">{selectedOrder.packedBy || 'N/A'}</span></p></div></div><div className="text-right pl-12 sm:pl-0"><p className="text-[10px] text-purple-500 uppercase font-bold tracking-wider">Thời gian hoàn thành</p><p className="text-sm font-mono text-purple-900 font-bold">{formatDateTime(new Date(selectedOrder.packedAt).getTime())}</p></div></div>)}
+                            
+                            {/* Notes */}
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ghi chú nội bộ</label><textarea className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" rows={2} placeholder="Ghi chú cho admin..." value={noteInput} onChange={(e) => setNoteInput(e.target.value)} /></div><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline Xưởng</label><input type="date" className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" value={adminDeadlineInput} onChange={(e) => setAdminDeadlineInput(e.target.value)} /><div className="mt-2 text-right"><button onClick={handleSaveAdminInfo} className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 rounded hover:bg-black transition-colors">Lưu Ghi chú</button></div></div></div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Customer Column */}
                                 <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p><p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>{selectedOrder.customer.socialLink && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Liên hệ:</span><a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">Mở liên kết ↗</a></p>)}<p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p><p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p></>)}</div></div>
-                                <div className="flex flex-col"><BillingBreakdown />{!isEditingOrder && (selectedOrder.totalPrice - (selectedOrder.amountPaid || 0)) > 0 && selectedOrder.status !== 'Đã giao hàng' && (<div className="mt-4 pt-4 border-t border-gray-100"><p className="text-xs font-bold text-gray-500 uppercase mb-2">Mã QR Thanh toán (VietQR)</p><img src={getVietQR(selectedOrder)} alt="VietQR" className="w-32 h-32 border rounded-lg" /><p className="text-[10px] text-gray-400 mt-1">TCB: 65838666666</p></div>)}</div>
+                                
+                                {/* Billing Column */}
+                                <div className="flex flex-col">
+                                    <BillingBreakdown />
+                                    {!isEditingOrder && (selectedOrder.totalPrice - (selectedOrder.amountPaid || 0)) > 0 && selectedOrder.status !== 'Đã giao hàng' && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100"><p className="text-xs font-bold text-gray-500 uppercase mb-2">Mã QR Thanh toán (VietQR)</p><img src={getVietQR(selectedOrder)} alt="VietQR" className="w-32 h-32 border rounded-lg" /><p className="text-[10px] text-gray-400 mt-1">TCB: 65838666666</p></div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Shipping Info */}
@@ -663,8 +667,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
-                                    {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => (
-                                        <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white">
+                                    {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
+                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
+                                        return (
+                                        <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white shadow-sm">
                                             {/* Visual Editing Area */}
                                             {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={() => {}} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
 
@@ -673,16 +679,34 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                     {item.previewImageUrl ? (<><img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" />{!isEditingOrder && (<div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div>)}</>) : <span className="text-xs text-gray-400">No img</span>}
                                                 </div>
                                                 <div className="flex-grow w-full">
-                                                    <div className="mb-3 pb-3 border-b border-gray-100">
-                                                        {isEditingOrder && editForm ? (
-                                                            <div className="flex gap-2 items-center mb-1"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map(f => (<option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
-                                                        ) : (
-                                                            <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
-                                                        )}
-                                                        <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
+                                                    <div className="mb-3 pb-3 border-b border-gray-100 flex justify-between items-start">
+                                                        <div>
+                                                            {isEditingOrder && editForm ? (
+                                                                <div className="flex gap-2 items-center mb-1"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map(f => (<option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
+                                                            ) : (
+                                                                <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
+                                                            )}
+                                                            <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
+                                                        </div>
+                                                        <div className="text-right text-xs">
+                                                            {priceBreakdown.map((pb, pbIdx) => (
+                                                                <div key={pbIdx} className="flex justify-end gap-2">
+                                                                    <span className="text-gray-500">{pb.label}:</span>
+                                                                    <div className="flex flex-col items-end">
+                                                                        {pb.originalValue !== undefined && pb.originalValue > pb.value && (
+                                                                            <span className="text-gray-400 line-through text-[9px]">{formatCurrency(pb.originalValue, 'admin')}</span>
+                                                                        )}
+                                                                        <span className="font-medium text-gray-900">{formatCurrency(pb.value, 'admin')}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            <div className="border-t mt-1 pt-1 font-bold text-gray-900">
+                                                                Tổng: {formatCurrency(itemTotal * (item.quantity || 1), 'admin')}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     
-                                                    {/* ... Character & Draggable Items editing (same as before) ... */}
+                                                    {/* Character & Draggable Items editing */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                                         {item.characters.map((char, charIdx) => (
                                                             <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
@@ -702,7 +726,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             </div>
                         </div>
