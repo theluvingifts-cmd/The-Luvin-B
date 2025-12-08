@@ -1,16 +1,18 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont } from '../../types';
+import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
-import { addBackground } from '../../services/backgroundService'; 
+import { addBackground, updateBackground, getAllBackgrounds } from '../../services/backgroundService'; 
+import { getAllAssets, addAsset, deleteAsset } from '../../services/assetService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 
 declare var html2canvas: any;
 
 const TOOLS = [
+    { id: 'templates', icon: '📂', label: 'Mẫu' }, // New Tool
     { id: 'background', icon: '🎨', label: 'Nền' },
     { id: 'text', icon: 'abc', label: 'Chữ' },
     { id: 'upload', icon: '☁️', label: 'Upload' },
@@ -23,14 +25,18 @@ const BG_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình',
 
 export const AdminDesign: React.FC = () => {
     // State
-    const [activeTool, setActiveTool] = useState('background');
+    const [activeTool, setActiveTool] = useState('templates');
     const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
+    const [existingBackgrounds, setExistingBackgrounds] = useState<PresetBackground[]>([]);
+    const [savedAssets, setSavedAssets] = useState<SavedAsset[]>([]);
+    
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
     
-    // Save Modal State
+    // Edit/Save State
+    const [editingBgId, setEditingBgId] = useState<string | null>(null);
     const [bgName, setBgName] = useState('');
     const [bgCategory, setBgCategory] = useState('Tình yêu');
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
@@ -48,13 +54,17 @@ export const AdminDesign: React.FC = () => {
     // Initial Data Fetch
     useEffect(() => {
         const fetchInitialData = async () => {
-            const [framesData, configData] = await Promise.all([
+            const [framesData, configData, bgData, assetsData] = await Promise.all([
                 getAllFrames(),
-                getStoreConfig()
+                getStoreConfig(),
+                getAllBackgrounds(),
+                getAllAssets()
             ]);
             
             if (framesData.length > 0) setFrames(framesData);
             if (configData?.uploadedFonts) setUploadedFonts(configData.uploadedFonts);
+            if (bgData) setExistingBackgrounds(bgData);
+            if (assetsData) setSavedAssets(assetsData);
         };
         fetchInitialData();
     }, []);
@@ -85,8 +95,6 @@ export const AdminDesign: React.FC = () => {
     }, [uploadedFonts]);
 
     // Helpers
-    const selectedFrame = useMemo(() => frames.find(f => f.id === config.frameId) || frames[0], [frames, config.frameId]);
-    
     const handleFrameChange = (frameId: string) => {
         setConfig(prev => ({ ...prev, frameId }));
         // Auto set Type suggestion based on frame
@@ -109,7 +117,12 @@ export const AdminDesign: React.FC = () => {
             setIsSaving(true);
             try {
                 const url = await uploadToCloudinary(e.target.files[0]);
-                if (url) handleBackgroundChange('image', url);
+                if (url) {
+                    handleBackgroundChange('image', url);
+                    // Save to Assets
+                    const newAsset = await addAsset(url, 'background');
+                    if (newAsset) setSavedAssets(prev => [newAsset, ...prev]);
+                }
             } catch (err) {
                 alert('Lỗi upload ảnh');
             } finally {
@@ -117,6 +130,14 @@ export const AdminDesign: React.FC = () => {
             }
         }
     };
+
+    const handleDeleteAsset = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (confirm("Xóa ảnh này khỏi thư viện?")) {
+            const success = await deleteAsset(id);
+            if (success) setSavedAssets(prev => prev.filter(a => a.id !== id));
+        }
+    }
 
     const handleAddText = () => {
         const newText: TextConfig = {
@@ -149,6 +170,9 @@ export const AdminDesign: React.FC = () => {
                         x: 50, y: 50, rotation: 0, scale: 1
                     };
                     setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
+                    // Save to Assets
+                    const newAsset = await addAsset(url, 'sticker');
+                    if (newAsset) setSavedAssets(prev => [newAsset, ...prev]);
                 }
             } catch (err) {
                 alert('Lỗi upload ảnh');
@@ -158,36 +182,51 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    const handleUploadFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const fontName = prompt("Nhập tên font (VD: MyCustomFont):", file.name.split('.')[0]);
-            
-            if (!fontName) return;
+    const handleAddSavedSticker = (url: string) => {
+        const newItem: DraggableItem = {
+            id: Date.now(),
+            partId: url,
+            type: 'charm',
+            x: 50, y: 50, rotation: 0, scale: 1
+        };
+        setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
+    }
 
-            setIsUploadingFont(true);
-            try {
-                const url = await uploadToCloudinary(file);
-                if (url) {
-                    const newFont: CustomFont = {
-                        id: `font_${Date.now()}`,
-                        name: fontName,
-                        url: url
-                    };
-                    const updatedFonts = [...uploadedFonts, newFont];
-                    
-                    // Save to server
-                    await updateStoreConfig({ uploadedFonts: updatedFonts });
-                    setUploadedFonts(updatedFonts);
-                    alert("Đã upload font thành công!");
-                }
-            } catch (err) {
-                alert('Lỗi upload font');
-            } finally {
-                setIsUploadingFont(false);
-            }
+    // Load Existing Template for Editing
+    const handleLoadTemplate = (bg: PresetBackground) => {
+        if (confirm("Tải mẫu này sẽ thay thế thiết kế hiện tại. Tiếp tục?")) {
+            setEditingBgId(bg.id);
+            setBgName(bg.name);
+            setBgCategory(bg.category);
+            setBgType(bg.type);
+            
+            // Reconstruct Config
+            const isColor = bg.url.startsWith('#');
+            // Try to match frame type (square/rect)
+            let frameId = 'lg'; // Default square
+            if (bg.type === 'rectangle') frameId = 'md';
+            
+            // If the saved template doesn't specify items, we just load background
+            setConfig({
+                frameId: frameId,
+                background: { type: isColor ? 'color' : 'image', value: bg.url },
+                texts: bg.overlayConfig?.texts || [],
+                draggableItems: bg.overlayConfig?.draggableItems || [],
+                characters: [] // Templates usually don't have characters saved in Step 2 logic
+            });
+            // Switch to Layers or Text to start editing
+            setActiveTool('layers');
         }
     };
+
+    const handleResetDesign = () => {
+        if (confirm("Tạo thiết kế mới? Mọi thay đổi chưa lưu sẽ mất.")) {
+            setConfig(INITIAL_FRAME_CONFIG);
+            setEditingBgId(null);
+            setBgName('');
+            setSelectedItemId(null);
+        }
+    }
 
     // Alignment & Tooling
     const alignItem = (direction: 'centerH' | 'centerV' | 'top' | 'bottom' | 'left' | 'right') => {
@@ -244,7 +283,6 @@ export const AdminDesign: React.FC = () => {
             if (type === 'text') {
                 return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedContent: !t.lockedContent } : t) };
             }
-            // Optional: Implement for items if needed
              if (type === 'item') {
                 return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedContent: !i.lockedContent } : i) };
             }
@@ -268,7 +306,6 @@ export const AdminDesign: React.FC = () => {
         return { position: false, content: false };
     }, [selectedItemId, config]);
 
-    // FramePreview Handlers
     const handleItemTransform = (id: string, newTransform: any) => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
@@ -328,7 +365,6 @@ export const AdminDesign: React.FC = () => {
         return config.texts.find(t => t.id === id);
     };
 
-    // Export & Save
     const handleDownloadImage = async () => {
         const originalSelected = selectedItemId;
         setSelectedItemId(null);
@@ -359,33 +395,43 @@ export const AdminDesign: React.FC = () => {
         setSelectedItemId(null);
         
         try {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for deselect/render
+            await new Promise(resolve => setTimeout(resolve, 500)); 
 
-            // The main URL of the background is either the color or the image URL
             const mainUrl = config.background.value;
 
-            // Prepare the PresetBackground object
             const newBackground: PresetBackground = {
-                id: `bg_${Date.now()}`,
+                id: editingBgId || `bg_${Date.now()}`,
                 name: bgName,
                 url: mainUrl,
                 category: bgCategory,
                 type: bgType,
-                orientation: 'portrait', // Default
+                orientation: 'portrait', 
                 overlayConfig: {
                     texts: config.texts,
                     draggableItems: config.draggableItems
                 }
             };
 
-            const success = await addBackground(newBackground);
+            let success = false;
+            if (editingBgId) {
+                success = await updateBackground(editingBgId, newBackground);
+                if (success) {
+                    setExistingBackgrounds(prev => prev.map(b => b.id === editingBgId ? newBackground : b));
+                    alert("Đã cập nhật Mẫu nền thành công!");
+                }
+            } else {
+                success = await addBackground(newBackground);
+                if (success) {
+                    setExistingBackgrounds(prev => [...prev, newBackground]);
+                    alert("Đã tạo mới Mẫu nền thành công!");
+                }
+            }
             
             if (success) {
-                alert("Đã lưu Mẫu nền (Bước 2) thành công! Khách hàng sẽ có thể chỉnh sửa chữ khi chọn mẫu này.");
                 setShowSaveModal(false);
-                setBgName('');
+                if (!editingBgId) setBgName('');
             } else {
-                alert("Lỗi khi lưu mẫu nền. Vui lòng kiểm tra quyền truy cập.");
+                alert("Lỗi khi lưu mẫu nền.");
             }
         } catch (e) {
             console.error(e);
@@ -396,15 +442,19 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
+    // Filter Saved Assets
+    const backgroundAssets = savedAssets.filter(a => a.type === 'background');
+    const stickerAssets = savedAssets.filter(a => a.type === 'sticker');
+
     return (
         <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
             {/* 1. Sidebar Tools */}
-            <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20">
+            <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20 overflow-y-auto no-scrollbar">
                 {TOOLS.map(tool => (
                     <button
                         key={tool.id}
                         onClick={() => setActiveTool(tool.id)}
-                        className={`w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all ${
+                        className={`w-14 h-14 flex-shrink-0 flex flex-col items-center justify-center rounded-lg transition-all ${
                             activeTool === tool.id ? 'bg-white text-gray-900' : 'text-gray-400 hover:text-white hover:bg-gray-800'
                         }`}
                     >
@@ -416,13 +466,51 @@ export const AdminDesign: React.FC = () => {
 
             {/* 2. Tool Panel (Dynamic) */}
             <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm transition-all">
-                <div className="p-4 border-b border-gray-100">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                     <h3 className="font-bold text-gray-800 text-lg">
                         {TOOLS.find(t => t.id === activeTool)?.label}
                     </h3>
+                    {editingBgId && activeTool !== 'templates' && (
+                        <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">
+                            Đang sửa: {bgName}
+                        </span>
+                    )}
                 </div>
                 <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
                     
+                    {activeTool === 'templates' && (
+                        <div className="space-y-4">
+                            <button onClick={handleResetDesign} className="w-full border-2 border-dashed border-gray-300 py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50 hover:border-blue-500 hover:text-blue-600 transition-all">
+                                + Tạo thiết kế mới
+                            </button>
+                            <div className="space-y-2">
+                                <p className="text-xs font-bold text-gray-400 uppercase">Mẫu có sẵn ({existingBackgrounds.length})</p>
+                                {existingBackgrounds.map(bg => (
+                                    <div 
+                                        key={bg.id} 
+                                        onClick={() => handleLoadTemplate(bg)}
+                                        className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
+                                            {bg.url.startsWith('#') ? (
+                                                <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
+                                            ) : (
+                                                <img src={bg.url} className="w-full h-full object-cover" />
+                                            )}
+                                        </div>
+                                        <div className="flex-grow min-w-0">
+                                            <p className="text-sm font-bold text-gray-800 truncate">{bg.name}</p>
+                                            <p className="text-xs text-gray-500">{bg.category} • {bg.type}</p>
+                                        </div>
+                                        {bg.overlayConfig && (
+                                            <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-bold">Mẫu</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {activeTool === 'background' && (
                         <div className="space-y-6">
                             <div>
@@ -446,27 +534,46 @@ export const AdminDesign: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Hình nền (Gốc)</label>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Tải nền mới (Tự động lưu)</label>
                                 <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
                                     <div className="text-2xl mb-1">☁️</div>
-                                    <span className="text-sm font-medium text-gray-600">Tải ảnh nền gốc</span>
+                                    <span className="text-sm font-medium text-gray-600">Upload ảnh nền</span>
                                 </button>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadBackground} />
                             </div>
+                            
+                            {/* Saved Backgrounds Asset Library */}
+                            {backgroundAssets.length > 0 && (
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Thư viện của bạn</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {backgroundAssets.map(asset => (
+                                            <div key={asset.id} className="relative group aspect-square rounded overflow-hidden border border-gray-200 cursor-pointer" onClick={() => handleBackgroundChange('image', asset.url)}>
+                                                <img src={asset.url} className="w-full h-full object-cover" />
+                                                <button 
+                                                    onClick={(e) => handleDeleteAsset(asset.id, e)}
+                                                    className="absolute top-0 right-0 bg-red-500 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {activeTool === 'text' && (
                         <div className="space-y-4">
                             <button onClick={handleAddText} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold shadow-md hover:bg-black transition-transform active:scale-95">
-                                + Thêm văn bản (Khách sửa được)
+                                + Thêm văn bản
                             </button>
                             
                             {selectedItemId && selectedItemId.startsWith('text') ? (
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
                                     <p className="text-xs font-bold text-blue-600 uppercase">Đang chỉnh sửa</p>
                                     
-                                    {/* Font Selector */}
                                     <div>
                                         <label className="text-xs font-bold text-gray-500 mb-1 block">Font chữ</label>
                                         <select 
@@ -483,7 +590,6 @@ export const AdminDesign: React.FC = () => {
                                         </select>
                                     </div>
 
-                                    {/* Size & Color */}
                                     <div className="flex gap-2">
                                         <div className="flex-1">
                                             <label className="text-xs font-bold text-gray-500 mb-1 block">Cỡ chữ</label>
@@ -505,7 +611,6 @@ export const AdminDesign: React.FC = () => {
                                         </div>
                                     </div>
                                     
-                                    {/* Style Toggles */}
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { background: !getSelectedText()!.background })}
@@ -518,14 +623,6 @@ export const AdminDesign: React.FC = () => {
                             ) : (
                                 <p className="text-sm text-gray-500 text-center py-4">Chọn một chữ để chỉnh sửa.</p>
                             )}
-
-                            <div className="border-t pt-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Upload Font (.ttf, .otf)</label>
-                                <button onClick={() => fontInputRef.current?.click()} disabled={isUploadingFont} className="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-600 hover:bg-gray-50">
-                                    {isUploadingFont ? 'Đang tải...' : 'Tải font mới'}
-                                </button>
-                                <input type="file" ref={fontInputRef} className="hidden" accept=".ttf,.otf,.woff" onChange={handleUploadFont} />
-                            </div>
                         </div>
                     )}
 
@@ -534,9 +631,28 @@ export const AdminDesign: React.FC = () => {
                             <label className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer block">
                                 <input type="file" className="hidden" accept="image/*" onChange={handleAddUploadItem} />
                                 <div className="text-2xl mb-2">🖼️</div>
-                                <span className="text-sm font-bold text-gray-700">Tải Sticker / Ảnh trang trí</span>
-                                <p className="text-xs text-gray-400 mt-1">Sẽ là lớp phủ trên nền</p>
+                                <span className="text-sm font-bold text-gray-700">Tải Sticker / Ảnh (Tự động lưu)</span>
                             </label>
+
+                            {/* Saved Stickers Asset Library */}
+                            {stickerAssets.length > 0 && (
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Sticker đã lưu</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {stickerAssets.map(asset => (
+                                            <div key={asset.id} className="relative group aspect-square rounded border border-gray-200 cursor-pointer flex items-center justify-center p-1 bg-gray-50" onClick={() => handleAddSavedSticker(asset.url)}>
+                                                <img src={asset.url} className="w-full h-full object-contain" />
+                                                <button 
+                                                    onClick={(e) => handleDeleteAsset(asset.id, e)}
+                                                    className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -617,10 +733,10 @@ export const AdminDesign: React.FC = () => {
                         </button>
                         <button 
                             onClick={() => setShowSaveModal(true)}
-                            className="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded hover:bg-blue-700 shadow-sm flex items-center gap-2"
+                            className={`px-4 py-2 text-xs font-bold text-white rounded shadow-sm flex items-center gap-2 transition-colors ${editingBgId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                            Lưu Mẫu Nền (Step 2)
+                            {editingBgId ? 'Cập Nhật Mẫu' : 'Lưu Mẫu Mới'}
                         </button>
                     </div>
                 </div>
@@ -685,10 +801,9 @@ export const AdminDesign: React.FC = () => {
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center font-sans">
                     <div className="bg-white p-6 rounded-xl shadow-xl w-[450px]">
-                        <h3 className="text-xl font-bold mb-2">Lưu Mẫu Nền (Step 2)</h3>
+                        <h3 className="text-xl font-bold mb-2">{editingBgId ? 'Cập Nhật Mẫu Nền' : 'Lưu Mẫu Nền Mới'}</h3>
                         <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-2 rounded border border-blue-100">
-                            <strong>Tính năng:</strong> Tạo ra các nền có sẵn chữ/sticker để khách hàng chọn ở Bước 2. 
-                            Khách hàng có thể <strong>click vào chữ</strong> để sửa nội dung (tên, ngày tháng...) nếu không bị khóa nội dung.
+                            <strong>Lưu ý:</strong> Mẫu nền sẽ bao gồm hình nền, các lớp chữ và hình trang trí.
                         </p>
                         
                         <div className="space-y-4">
@@ -697,7 +812,7 @@ export const AdminDesign: React.FC = () => {
                                 <input 
                                     type="text" 
                                     className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="Ví dụ: Sinh nhật hồng, Kỷ niệm..."
+                                    placeholder="Ví dụ: Sinh nhật hồng..."
                                     value={bgName}
                                     onChange={e => setBgName(e.target.value)}
                                     autoFocus
@@ -733,8 +848,20 @@ export const AdminDesign: React.FC = () => {
 
                         <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                             <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg">Hủy</button>
+                            
+                            {/* If editing, show "Save as New" option too */}
+                            {editingBgId && (
+                                <button 
+                                    onClick={() => { setEditingBgId(null); handleSaveBackgroundTemplate(); }} 
+                                    disabled={isSaving} 
+                                    className="px-4 py-2 text-sm bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300"
+                                >
+                                    Lưu thành mới
+                                </button>
+                            )}
+
                             <button onClick={handleSaveBackgroundTemplate} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
-                                {isSaving ? 'Đang lưu...' : 'Lưu Mẫu Nền'}
+                                {isSaving ? 'Đang lưu...' : (editingBgId ? 'Cập nhật' : 'Lưu Mẫu')}
                             </button>
                         </div>
                     </div>

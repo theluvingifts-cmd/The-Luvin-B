@@ -233,6 +233,14 @@ export interface CustomFont {
     url: string;
 }
 
+// --- SAVED ASSETS (Admin Design) ---
+export interface SavedAsset {
+    id: string;
+    url: string;
+    type: 'background' | 'sticker';
+    createdAt: number;
+}
+
 export interface SectionStyle {
     backgroundColor?: string;
     textColor?: string;
