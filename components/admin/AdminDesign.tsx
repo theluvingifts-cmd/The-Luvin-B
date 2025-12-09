@@ -637,20 +637,16 @@ export const AdminDesign: React.FC = () => {
                                         onClick={() => handleLoadTemplate(bg)}
                                         className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
                                     >
-                                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
+                                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border flex items-center justify-center">
                                             {/* Show Preview URL or fallback to main URL if it is an image */}
-                                            {/* Removed color fallback logic */}
-                                            {(bg.previewUrl || !bg.url.startsWith('#')) ? (
-                                                <img 
-                                                    src={bg.previewUrl || bg.url} 
-                                                    className="w-full h-full object-cover" 
-                                                    alt="bg preview"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400">
-                                                    No Img
-                                                </div>
-                                            )}
+                                            <img 
+                                                src={bg.previewUrl || (bg.url.startsWith('#') ? 'https://via.placeholder.com/50?text=Color' : bg.url)} 
+                                                className="w-full h-full object-cover" 
+                                                alt={bg.name}
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/50?text=Err';
+                                                }}
+                                            />
                                         </div>
                                         <div className="flex-grow min-w-0">
                                             <p className="text-sm font-bold text-gray-800 truncate">{bg.name}</p>
@@ -959,13 +955,13 @@ export const AdminDesign: React.FC = () => {
                             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Thumbnail Hiển Thị</label>
                                 <div className="flex items-start gap-4">
-                                    <div className="w-24 h-32 bg-white border rounded overflow-hidden flex-shrink-0 relative group">
+                                    <div className="w-24 h-32 bg-white border rounded overflow-hidden flex-shrink-0 relative group flex items-center justify-center">
                                         {generatedThumbnailUrl ? (
                                             <img src={generatedThumbnailUrl} alt="Preview" className="w-full h-full object-cover" />
                                         ) : existingPreviewUrl ? (
                                             <img src={existingPreviewUrl} alt="Existing Preview" className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center p-2">No Image</div>
+                                            <div className="text-gray-300 text-xs text-center p-2">No Image</div>
                                         )}
                                     </div>
                                     <div className="flex-grow">

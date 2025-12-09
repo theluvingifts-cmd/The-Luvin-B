@@ -411,7 +411,10 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <img 
                                                     src={bg.previewUrl || bg.url} 
                                                     className="w-full h-full object-cover" 
-                                                    alt="design preview" 
+                                                    alt="design preview"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
+                                                    }}
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-400">

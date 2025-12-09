@@ -1,4 +1,4 @@
-// ... (previous imports remain same)
+// ... (previous imports)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -186,10 +186,9 @@ const PresetBackgroundButton: React.FC<{
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
-    // Determine what to show in thumbnail
-    // Priority: Preview URL (generated snapshot) -> Raw URL (if image)
-    // REMOVED LOGIC: No longer using bg.url if it is a hex code to render a color block.
-    const imageSrc = bg.previewUrl || (!bg.url.startsWith('#') ? bg.url : null);
+    // Determine image source. Priority: Preview URL -> Main URL. 
+    // Always treat as image URL.
+    const imageSrc = bg.previewUrl || bg.url;
     
     // For label formatting
     let line1 = bg.name;
@@ -222,6 +221,10 @@ const PresetBackgroundButton: React.FC<{
                             src={imageSrc}
                             alt={bg.name}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                                // Fallback for broken links or color hex codes treated as URL
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
+                            }}
                         />
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
                             <div 
@@ -235,7 +238,6 @@ const PresetBackgroundButton: React.FC<{
                     </>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-400">
-                        {/* Fallback if no preview image is available yet */}
                         No Image
                     </div>
                 )}
