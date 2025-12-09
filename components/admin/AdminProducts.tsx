@@ -405,13 +405,20 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDragOver={handleDragOver}
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
-                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
+                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100 relative`}>
                                             {bg.thumbnailUrl ? (
-                                                <img src={bg.thumbnailUrl} className="w-full h-full object-cover" />
+                                                <img src={bg.thumbnailUrl} className="w-full h-full object-cover" alt="Thumbnail" />
                                             ) : bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
-                                                <img src={bg.url} className="w-full h-full object-cover" />
+                                                <img src={bg.url} className="w-full h-full object-cover" alt="Background" />
+                                            )}
+                                            
+                                            {/* Badge for Template with Items */}
+                                            {bg.overlayConfig && (
+                                                <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                                    MẪU
+                                                </span>
                                             )}
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>

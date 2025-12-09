@@ -1,5 +1,4 @@
 
-// ... (Previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -105,7 +104,7 @@ export const AdminDesign: React.FC = () => {
     
     // Font Manager State
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
-    const [previewFont, setPreviewFont] = useState<string | null>(null); // NEW STATE
+    const [previewFont, setPreviewFont] = useState<string | null>(null);
     
     // Refs
     const previewRef = useRef<HTMLDivElement>(null);
@@ -129,7 +128,7 @@ export const AdminDesign: React.FC = () => {
         fetchInitialData();
     }, []);
 
-    // ... (useEffect for font injection same as before)
+    // useEffect for font injection
     useEffect(() => {
         const styleId = 'admin-dynamic-fonts';
         let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -154,7 +153,7 @@ export const AdminDesign: React.FC = () => {
         style.innerHTML = css;
     }, [uploadedFonts]);
 
-    // ... (Helpers, Handlers: handleFrameChange, handleBackgroundChange, handleUploadBackground, handleDeleteAsset, handleAddText, etc. - No Changes)
+    // Helpers
     const handleFrameChange = (frameId: string) => {
         setConfig(prev => ({ ...prev, frameId }));
         // Auto set Type suggestion based on frame
@@ -225,658 +224,379 @@ export const AdminDesign: React.FC = () => {
                 if (url) {
                     const newItem: DraggableItem = {
                         id: Date.now(),
-                        partId: url, // Store URL in partId for charms/uploads
+                        partId: url, // Store URL in partId for charms/uploaded stickers
                         type: 'charm',
                         x: 50, y: 50, rotation: 0, scale: 1
                     };
                     setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
-                    // Save to Assets
+                    
                     const newAsset = await addAsset(url, 'sticker');
                     if (newAsset) setSavedAssets(prev => [newAsset, ...prev]);
                 }
             } catch (err) {
-                alert('Lỗi upload ảnh');
+                alert('Lỗi upload sticker');
             } finally {
                 setIsSaving(false);
             }
         }
     };
 
-    const handleAddSavedSticker = (url: string) => {
-        const newItem: DraggableItem = {
-            id: Date.now(),
-            partId: url,
-            type: 'charm',
-            x: 50, y: 50, rotation: 0, scale: 1
-        };
-        setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
-    }
-
     const handleLoadTemplate = (bg: PresetBackground) => {
-        if (confirm("Tải mẫu này sẽ thay thế thiết kế hiện tại. Tiếp tục?")) {
-            setEditingBgId(bg.id);
-            setBgName(bg.name);
-            setBgCategory(bg.category);
-            setBgType(bg.type);
-            
-            // Reconstruct Config
-            const isColor = bg.url.startsWith('#');
-            // Try to match frame type (square/rect)
-            let frameId = 'lg'; // Default square
-            if (bg.type === 'rectangle') frameId = 'md';
-            
-            setConfig({
-                frameId: frameId,
-                background: { type: isColor ? 'color' : 'image', value: bg.url },
-                texts: bg.overlayConfig?.texts || [],
-                draggableItems: bg.overlayConfig?.draggableItems || [],
-                characters: []
+        setEditingBgId(bg.id);
+        setBgName(bg.name);
+        setBgCategory(bg.category);
+        setBgType(bg.type);
+        
+        let newFrameId = config.frameId;
+        // Auto switch frame to match template type
+        if (bg.type === 'square') {
+            const sqFrame = frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) < 1);
+            if(sqFrame) newFrameId = sqFrame.id;
+        } else {
+            const rectFrame = frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) > 1);
+            if(rectFrame) newFrameId = rectFrame.id;
+        }
+
+        setConfig({
+            ...config,
+            frameId: newFrameId,
+            background: { type: bg.url.startsWith('#') ? 'color' : 'image', value: bg.url },
+            isRotated: bg.orientation === 'landscape',
+            texts: bg.overlayConfig?.texts || [],
+            draggableItems: bg.overlayConfig?.draggableItems || []
+        });
+        
+        // Auto select tool based on content
+        if (bg.overlayConfig?.texts.length) setActiveTool('text');
+    };
+
+    const captureThumbnail = async () => {
+        if (!previewRef.current) return null;
+
+        // 1. Store current zoom
+        const originalZoom = zoom;
+        
+        // 2. Temporarily reset zoom to 1 to ensure 1:1 capture without scale distortion
+        setZoom(1);
+        
+        // 3. Wait for re-render/transition (Important!)
+        await new Promise(resolve => setTimeout(resolve, 300)); 
+
+        try {
+            const canvas = await html2canvas(previewRef.current, {
+                useCORS: true,
+                scale: 2, // Capture at 2x quality
+                backgroundColor: null, 
+                logging: false,
+                ignoreElements: (element: Element) => element.classList.contains('transform-handle') // Ignore handles
             });
-            setActiveTool('layers');
+
+            // 4. Restore zoom immediately
+            setZoom(originalZoom);
+
+            const base64 = canvas.toDataURL('image/png');
+            const blob = await (await fetch(base64)).blob();
+            const file = new File([blob], "thumbnail.png", { type: "image/png" });
+            
+            return await uploadToCloudinary(file);
+        } catch (e) {
+            console.error("Capture error", e);
+            setZoom(originalZoom); // Restore zoom even on error
+            return null;
         }
     };
 
-    const handleResetDesign = () => {
-        if (confirm("Tạo thiết kế mới? Mọi thay đổi chưa lưu sẽ mất.")) {
-            setConfig(INITIAL_FRAME_CONFIG);
-            setEditingBgId(null);
-            setBgName('');
-            setSelectedItemId(null);
-        }
-    }
+    const handleSaveBackgroundTemplate = async () => {
+        if (!bgName) return alert("Vui lòng nhập tên background!");
+        
+        setIsSaving(true);
+        // Clear selection to hide edit handles
+        setSelectedItemId(null);
+        
+        // Wait for UI update (deselect)
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-    const alignItem = (direction: 'centerH' | 'centerV' | 'top' | 'bottom' | 'left' | 'right') => {
-        if (!selectedItemId) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const numericId = parseInt(idStr);
+        // Generate Thumbnail
+        const thumbnailUrl = await captureThumbnail();
 
-        const updateFn = (item: any) => {
-            let updates = {};
-            switch (direction) {
-                case 'centerH': updates = { x: 50 }; break;
-                case 'centerV': updates = { y: 50 }; break;
-                case 'top': updates = { y: 10 }; break;
-                case 'bottom': updates = { y: 90 }; break;
-                case 'left': updates = { x: 10 }; break;
-                case 'right': updates = { x: 90 }; break;
+        const newBg: PresetBackground = {
+            id: editingBgId || `bg_${Date.now()}`,
+            name: bgName,
+            category: bgCategory,
+            type: bgType,
+            url: config.background.value,
+            thumbnailUrl: thumbnailUrl || undefined,
+            orientation: bgType === 'rectangle' ? (config.isRotated ? 'landscape' : 'portrait') : undefined,
+            overlayConfig: {
+                texts: config.texts,
+                draggableItems: config.draggableItems
             }
-            return { ...item, ...updates };
         };
 
-        setConfig(prev => {
-            if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? updateFn(t) : t) };
-            }
-            if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? updateFn(i) : i) };
-            }
-            return prev;
-        });
-    };
-
-    const togglePositionLock = () => {
-        if (!selectedItemId) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfig(prev => {
-            if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedPosition: !t.lockedPosition } : t) };
-            }
-            if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedPosition: !i.lockedPosition } : i) };
-            }
-            return prev;
-        });
-    };
-
-    const toggleContentLock = () => {
-        if (!selectedItemId) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfig(prev => {
-            if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedContent: !t.lockedContent } : t) };
-            }
-             if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedContent: !i.lockedContent } : i) };
-            }
-            return prev;
-        });
-    };
-
-    const currentLocks = useMemo(() => {
-        if (!selectedItemId) return { position: false, content: false };
-        const [type, idStr] = selectedItemId.split('-');
-        const numericId = parseInt(idStr);
-        if (type === 'text') {
-            const t = config.texts.find(t => t.id === numericId);
-            return { position: t?.lockedPosition, content: t?.lockedContent };
+        if (editingBgId) {
+            await updateBackground(newBg.id, newBg);
+        } else {
+            await addBackground(newBg);
         }
-        if (type === 'item') {
-            const i = config.draggableItems.find(i => i.id === numericId);
-            return { position: i?.lockedPosition, content: i?.lockedContent };
-        }
-        return { position: false, content: false };
-    }, [selectedItemId, config]);
-
-    const handleItemTransform = (id: string, newTransform: any) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfig(prev => {
-            if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, ...newTransform } : t) };
-            }
-            if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, ...newTransform } : i) };
-            }
-            return prev;
-        });
-    };
-
-    const handleItemRemove = (id: string) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-        setSelectedItemId(null);
-        setConfig(prev => {
-            if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== numericId) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numericId) };
-            return prev;
-        });
-    };
-
-    const handleLayerLockToggle = (id: string, lockType: 'position' | 'content') => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfig(prev => {
-            if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { 
-                    ...t, 
-                    lockedPosition: lockType === 'position' ? !t.lockedPosition : t.lockedPosition,
-                    lockedContent: lockType === 'content' ? !t.lockedContent : t.lockedContent
-                } : t) };
-            }
-            if (type === 'item') {
-                return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { 
-                    ...i, 
-                    lockedPosition: lockType === 'position' ? !i.lockedPosition : i.lockedPosition,
-                    lockedContent: lockType === 'content' ? !i.lockedContent : i.lockedContent
-                } : i) };
-            }
-            return prev;
-        });
-    }
-
-    const handleTextUpdate = (id: number, updates: Partial<TextConfig>) => {
-        setConfig(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
-    };
-
-    const getSelectedText = () => {
-        if (!selectedItemId || !selectedItemId.startsWith('text-')) return null;
-        const id = parseInt(selectedItemId.split('-')[1]);
-        return config.texts.find(t => t.id === id);
-    };
-
-    const handleDownloadImage = async () => {
-        const originalSelected = selectedItemId;
-        setSelectedItemId(null);
-        setIsSaving(true);
-        setTimeout(async () => {
-            if (previewRef.current && typeof html2canvas !== 'undefined') {
-                try {
-                    const canvas = await html2canvas(previewRef.current, { useCORS: true, scale: 2, backgroundColor: null });
-                    const link = document.createElement('a');
-                    link.download = `background_preview_${Date.now()}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                } catch (e) {
-                    console.error(e);
-                    alert("Lỗi xuất ảnh");
-                }
-            }
-            setIsSaving(false);
-            setSelectedItemId(originalSelected);
-        }, 100);
-    };
-
-    // --- AUTO THUMBNAIL CAPTURE LOGIC ---
-    const handleSaveBackgroundTemplate = async () => {
-        if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
-        setIsSaving(true);
         
-        const originalSelected = selectedItemId;
-        setSelectedItemId(null); // Clear selection to hide borders/handles
-        
-        try {
-            // Wait for UI to update (remove selections)
-            await new Promise(resolve => setTimeout(resolve, 500)); 
-
-            let thumbnailUrl = '';
-            
-            // Capture the thumbnail from previewRef
-            if (previewRef.current && typeof html2canvas !== 'undefined') {
-                try {
-                    const canvas = await html2canvas(previewRef.current, {
-                        useCORS: true,
-                        scale: 1, // Low scale for thumbnail is enough
-                        backgroundColor: null
-                    });
-                    const base64Data = canvas.toDataURL('image/png');
-                    
-                    // Convert base64 to File object for uploadService
-                    const res = await fetch(base64Data);
-                    const blob = await res.blob();
-                    const file = new File([blob], "thumbnail.png", { type: "image/png" });
-                    
-                    // Upload to Cloudinary
-                    const uploadedUrl = await uploadToCloudinary(file);
-                    if (uploadedUrl) {
-                        thumbnailUrl = uploadedUrl;
-                    }
-                } catch (captureErr) {
-                    console.error("Failed to capture thumbnail:", captureErr);
-                    // Non-blocking error, we can still save without thumbnail
-                }
-            }
-
-            const mainUrl = config.background.value;
-
-            const newBackground: PresetBackground = {
-                id: editingBgId || `bg_${Date.now()}`,
-                name: bgName,
-                url: mainUrl,
-                thumbnailUrl: thumbnailUrl || mainUrl, // Use capture or fallback to main
-                category: bgCategory,
-                type: bgType,
-                orientation: 'portrait', 
-                overlayConfig: {
-                    texts: config.texts,
-                    draggableItems: config.draggableItems
-                }
-            };
-
-            let success = false;
-            if (editingBgId) {
-                success = await updateBackground(editingBgId, newBackground);
-                if (success) {
-                    setExistingBackgrounds(prev => prev.map(b => b.id === editingBgId ? newBackground : b));
-                    alert("Đã cập nhật Mẫu nền thành công!");
-                }
-            } else {
-                success = await addBackground(newBackground);
-                if (success) {
-                    setExistingBackgrounds(prev => [...prev, newBackground]);
-                    alert("Đã tạo mới Mẫu nền thành công!");
-                }
-            }
-            
-            if (success) {
-                setShowSaveModal(false);
-                if (!editingBgId) setBgName('');
-            } else {
-                alert("Lỗi khi lưu mẫu nền.");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Lỗi khi lưu mẫu nền");
-        } finally {
-            setIsSaving(false);
-            setSelectedItemId(originalSelected);
-        }
+        // Refresh local list
+        setExistingBackgrounds(await getAllBackgrounds());
+        setIsSaving(false);
+        setShowSaveModal(false);
+        setEditingBgId(newBg.id); // Stay in edit mode for this item
+        alert("Đã lưu mẫu thành công!");
     };
 
-    const backgroundAssets = savedAssets.filter(a => a.type === 'background');
-    const stickerAssets = savedAssets.filter(a => a.type === 'sticker');
+    const handleCreateNew = () => {
+        setEditingBgId(null);
+        setBgName('');
+        setConfig(INITIAL_FRAME_CONFIG);
+        setSelectedItemId(null);
+    };
 
     return (
-        <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
-            {/* 1. Sidebar Tools */}
-            <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20 overflow-y-auto no-scrollbar">
+        <div className="flex h-[calc(100vh-100px)] overflow-hidden bg-gray-100 -mx-4 -mb-8">
+            {/* Left Toolbar */}
+            <div className="w-16 sm:w-20 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-4 z-20 shadow-sm">
                 {TOOLS.map(tool => (
-                    <button
-                        key={tool.id}
+                    <button 
+                        key={tool.id} 
                         onClick={() => setActiveTool(tool.id)}
-                        className={`w-14 h-14 flex-shrink-0 flex flex-col items-center justify-center rounded-lg transition-all ${
-                            activeTool === tool.id ? 'bg-white text-gray-900' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        }`}
+                        className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all w-14 ${activeTool === tool.id ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100'}`}
                     >
-                        <span className="text-xl mb-1">{tool.icon}</span>
-                        <span className="text-[10px] font-bold uppercase">{tool.label}</span>
+                        <span className="text-xl">{tool.icon}</span>
+                        <span className="text-[10px] font-bold">{tool.label}</span>
                     </button>
                 ))}
             </div>
 
-            {/* 2. Tool Panel (Dynamic) */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm transition-all">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-800 text-lg">
-                        {TOOLS.find(t => t.id === activeTool)?.label}
-                    </h3>
-                    {editingBgId && activeTool !== 'templates' && (
-                        <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">
-                            Đang sửa: {bgName}
-                        </span>
-                    )}
+            {/* Tool Panel (Slide out) */}
+            <div className="w-72 bg-white border-r border-gray-200 flex flex-col z-10 overflow-hidden">
+                <div className="p-4 border-b font-bold text-gray-800 bg-gray-50">
+                    {TOOLS.find(t => t.id === activeTool)?.label}
                 </div>
                 <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
-                    
                     {activeTool === 'templates' && (
                         <div className="space-y-4">
-                            <button onClick={handleResetDesign} className="w-full border-2 border-dashed border-gray-300 py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50 hover:border-blue-500 hover:text-blue-600 transition-all">
-                                + Tạo thiết kế mới
-                            </button>
-                            <div className="space-y-2">
-                                <p className="text-xs font-bold text-gray-400 uppercase">Mẫu có sẵn ({existingBackgrounds.length})</p>
-                                {existingBackgrounds.map(bg => (
-                                    <div 
-                                        key={bg.id} 
+                            <button onClick={handleCreateNew} className="w-full py-2 bg-gray-100 hover:bg-gray-200 rounded font-bold text-sm text-gray-700 mb-2 border border-gray-300 border-dashed">+ Tạo mới</button>
+                            {existingBackgrounds.map(bg => (
+                                <div key={bg.id} className="group relative">
+                                    <button 
                                         onClick={() => handleLoadTemplate(bg)}
-                                        className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                                        className="w-full text-left border rounded-lg p-2 hover:bg-gray-50 transition-colors flex gap-3 items-center"
                                     >
-                                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
-                                            {/* Show Thumbnail if available */}
-                                            {bg.thumbnailUrl ? (
-                                                <img src={bg.thumbnailUrl} className="w-full h-full object-cover" />
-                                            ) : bg.url.startsWith('#') ? (
-                                                <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
-                                            ) : (
-                                                <img src={bg.url} className="w-full h-full object-cover" />
-                                            )}
+                                        <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                                            <img src={bg.thumbnailUrl || bg.url} className="w-full h-full object-cover" />
                                         </div>
-                                        <div className="flex-grow min-w-0">
-                                            <p className="text-sm font-bold text-gray-800 truncate">{bg.name}</p>
-                                            <p className="text-xs text-gray-500">{bg.category} • {bg.type}</p>
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-sm truncate">{bg.name}</p>
+                                            <p className="text-xs text-gray-500">{bg.type} • {bg.category}</p>
                                         </div>
-                                        {bg.overlayConfig && (
-                                            <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-bold">Mẫu</span>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     )}
 
-                    {/* ... (Background Tool logic same as before) ... */}
                     {activeTool === 'background' && (
                         <div className="space-y-6">
                             <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Màu sắc</label>
-                                <div className="grid grid-cols-5 gap-2">
-                                    {['#ffffff', '#f4eee8', '#e2e8f0', '#fed7aa', '#fbcfe8', '#bbf7d0', '#bfdbfe', '#000000'].map(color => (
-                                        <button
-                                            key={color}
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Màu nền</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {['#ffffff', '#f8f9fa', '#fffbf0', '#fce7f3', '#dbeafe', '#f3f4f6', '#1a202c'].map(color => (
+                                        <button 
+                                            key={color} 
                                             onClick={() => handleBackgroundChange('color', color)}
-                                            className="w-8 h-8 rounded-full border shadow-sm hover:scale-110 transition-transform"
-                                            style={{ backgroundColor: color }}
+                                            className="w-8 h-8 rounded-full border shadow-sm hover:scale-110 transition-transform" 
+                                            style={{backgroundColor: color}} 
                                         />
                                     ))}
-                                    <div className="relative w-8 h-8 rounded-full border overflow-hidden">
-                                        <input 
-                                            type="color" 
-                                            className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer"
-                                            onChange={(e) => handleBackgroundChange('color', e.target.value)}
-                                        />
-                                    </div>
+                                    <input type="color" className="w-8 h-8 rounded-full cursor-pointer p-0 border-0" onChange={(e) => handleBackgroundChange('color', e.target.value)} />
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Tải nền mới (Tự động lưu)</label>
-                                <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
-                                    <div className="text-2xl mb-1">☁️</div>
-                                    <span className="text-sm font-medium text-gray-600">Upload ảnh nền</span>
-                                </button>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadBackground} />
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Tải ảnh nền</label>
+                                <input type="file" onChange={handleUploadBackground} className="text-xs w-full" />
                             </div>
-                            
-                            {/* Saved Backgrounds Asset Library */}
-                            {backgroundAssets.length > 0 && (
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Thư viện của bạn</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {backgroundAssets.map(asset => (
-                                            <div key={asset.id} className="relative group aspect-square rounded overflow-hidden border border-gray-200 cursor-pointer" onClick={() => handleBackgroundChange('image', asset.url)}>
-                                                <img src={asset.url} className="w-full h-full object-cover" />
-                                                <button 
-                                                    onClick={(e) => handleDeleteAsset(asset.id, e)}
-                                                    className="absolute top-0 right-0 bg-red-500 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Thư viện của bạn</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {savedAssets.filter(a => a.type === 'background').map(asset => (
+                                        <div key={asset.id} className="relative group cursor-pointer" onClick={() => handleBackgroundChange('image', asset.url)}>
+                                            <img src={asset.url} className="w-full h-16 object-cover rounded border" />
+                                            <button onClick={(e) => handleDeleteAsset(asset.id, e)} className="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-bl">&times;</button>
+                                        </div>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
 
                     {activeTool === 'text' && (
                         <div className="space-y-4">
-                            <button onClick={handleAddText} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold shadow-md hover:bg-black transition-transform active:scale-95">
-                                + Thêm văn bản
-                            </button>
-                            
-                            {selectedItemId && selectedItemId.startsWith('text') ? (
-                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-                                    <p className="text-xs font-bold text-blue-600 uppercase">Đang chỉnh sửa</p>
-                                    
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block">Font chữ</label>
-                                        {/* Replaced Select with FontSelector */}
+                            <button onClick={handleAddText} className="w-full bg-gray-900 text-white py-2 rounded font-bold text-sm">+ Thêm chữ mới</button>
+                            {selectedItemId && selectedItemId.startsWith('text-') ? (
+                                <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa chữ đang chọn</p>
+                                    <div className="space-y-2">
+                                        <textarea 
+                                            value={config.texts.find(t => t.id === parseInt(selectedItemId.split('-')[1]))?.content || ''}
+                                            onChange={(e) => setConfig(prev => ({
+                                                ...prev,
+                                                texts: prev.texts.map(t => t.id === parseInt(selectedItemId.split('-')[1]) ? { ...t, content: e.target.value } : t)
+                                            }))}
+                                            className="w-full p-2 border rounded text-sm"
+                                            rows={2}
+                                        />
                                         <FontSelector 
-                                            value={getSelectedText()?.font || 'Playfair Display'}
-                                            onChange={(font) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { font })}
+                                            value={config.texts.find(t => t.id === parseInt(selectedItemId.split('-')[1]))?.font || 'Playfair Display'}
+                                            onChange={(font) => setConfig(prev => ({
+                                                ...prev,
+                                                texts: prev.texts.map(t => t.id === parseInt(selectedItemId.split('-')[1]) ? { ...t, font } : t)
+                                            }))}
                                             onPreview={setPreviewFont}
                                             uploadedFonts={uploadedFonts}
                                         />
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <div className="flex-1">
-                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Cỡ chữ</label>
-                                            <input 
-                                                type="number" 
-                                                className="w-full p-2 border rounded text-sm"
-                                                value={getSelectedText()?.size || 12}
-                                                onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { size: parseInt(e.target.value) })}
+                                        <div className="flex gap-2">
+                                            <input type="color" className="w-8 h-8 rounded cursor-pointer border-0" 
+                                                value={config.texts.find(t => t.id === parseInt(selectedItemId.split('-')[1]))?.color || '#000000'}
+                                                onChange={(e) => setConfig(prev => ({
+                                                    ...prev,
+                                                    texts: prev.texts.map(t => t.id === parseInt(selectedItemId.split('-')[1]) ? { ...t, color: e.target.value } : t)
+                                                }))}
+                                            />
+                                            <input type="number" className="w-16 p-1 border rounded text-sm" 
+                                                value={config.texts.find(t => t.id === parseInt(selectedItemId.split('-')[1]))?.size || 24}
+                                                onChange={(e) => setConfig(prev => ({
+                                                    ...prev,
+                                                    texts: prev.texts.map(t => t.id === parseInt(selectedItemId.split('-')[1]) ? { ...t, size: parseInt(e.target.value) } : t)
+                                                }))}
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Màu</label>
+                                        <div className="flex gap-2 items-center">
                                             <input 
-                                                type="color" 
-                                                className="w-10 h-10 border rounded cursor-pointer"
-                                                value={getSelectedText()?.color || '#000000'}
-                                                onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { color: e.target.value })}
+                                                type="checkbox" 
+                                                checked={config.texts.find(t => t.id === parseInt(selectedItemId.split('-')[1]))?.lockedContent || false}
+                                                onChange={(e) => setConfig(prev => ({
+                                                    ...prev,
+                                                    texts: prev.texts.map(t => t.id === parseInt(selectedItemId.split('-')[1]) ? { ...t, lockedContent: e.target.checked } : t)
+                                                }))}
+                                                className="w-4 h-4 accent-gray-900"
                                             />
+                                            <label className="text-xs text-gray-700 font-medium">Khóa nội dung (Khách không sửa được)</label>
                                         </div>
-                                    </div>
-                                    
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { background: !getSelectedText()!.background })}
-                                            className={`flex-1 py-1.5 text-xs font-bold rounded border ${getSelectedText()?.background ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-gray-600'}`}
-                                        >
-                                            Nền mờ
-                                        </button>
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-500 text-center py-4">Chọn một chữ để chỉnh sửa.</p>
+                                <p className="text-xs text-gray-400 italic text-center">Chọn một dòng chữ trên khung để sửa</p>
                             )}
                         </div>
                     )}
 
                     {activeTool === 'upload' && (
                         <div className="space-y-4">
-                            <label className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer block">
-                                <input type="file" className="hidden" accept="image/*" onChange={handleAddUploadItem} />
-                                <div className="text-2xl mb-2">🖼️</div>
-                                <span className="text-sm font-bold text-gray-700">Tải Sticker / Ảnh (Tự động lưu)</span>
-                            </label>
-
-                            {stickerAssets.length > 0 && (
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Sticker đã lưu</label>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {stickerAssets.map(asset => (
-                                            <div key={asset.id} className="relative group aspect-square rounded border border-gray-200 cursor-pointer flex items-center justify-center p-1 bg-gray-50" onClick={() => handleAddSavedSticker(asset.url)}>
-                                                <img src={asset.url} className="w-full h-full object-contain" />
-                                                <button 
-                                                    onClick={(e) => handleDeleteAsset(asset.id, e)}
-                                                    className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                </button>
-                                            </div>
-                                        ))}
+                            <button onClick={() => fileInputRef.current?.click()} className="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded font-bold text-sm hover:bg-gray-50">Tải Sticker/Ảnh</button>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAddUploadItem} />
+                            
+                            <div className="grid grid-cols-3 gap-2">
+                                {savedAssets.filter(a => a.type === 'sticker').map(asset => (
+                                    <div key={asset.id} className="relative group cursor-pointer p-1 border rounded hover:bg-gray-50" onClick={() => {
+                                        const newItem: DraggableItem = { id: Date.now(), partId: asset.url, type: 'charm', x: 50, y: 50, rotation: 0, scale: 1 };
+                                        setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
+                                    }}>
+                                        <img src={asset.url} className="w-full h-12 object-contain" />
+                                        <button onClick={(e) => handleDeleteAsset(asset.id, e)} className="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-bl">&times;</button>
                                     </div>
-                                </div>
-                            )}
+                                ))}
+                            </div>
                         </div>
                     )}
 
                     {activeTool === 'layers' && (
                         <div className="space-y-2">
-                            {/* Layer items code... (unchanged) */}
-                            {config.texts.map((t, idx) => (
-                                <div key={t.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `text-${t.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`text-${t.id}`)}>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium truncate w-24">{t.content || 'Text'}</span>
-                                        {t.lockedPosition && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">PosLock</span>}
-                                        {t.lockedContent && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded">EditLock</span>}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`text-${t.id}`, 'position'); }} className={`p-1 rounded ${t.lockedPosition ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={t.lockedPosition ? "Mở khóa vị trí" : "Khóa vị trí"}>
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`text-${t.id}`, 'content'); }} className={`p-1 rounded ${t.lockedContent ? 'text-orange-500 hover:bg-orange-50' : 'text-gray-400 hover:text-gray-600'}`} title={t.lockedContent ? "Mở khóa sửa chữ" : "Khóa sửa chữ"}>
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`text-${t.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
-                                    </div>
+                            {[...config.texts, ...config.draggableItems].length === 0 && <p className="text-sm text-gray-400 text-center">Chưa có lớp nào.</p>}
+                            
+                            {config.texts.map(t => (
+                                <div key={t.id} className="flex justify-between items-center p-2 bg-gray-50 rounded border hover:bg-white text-xs">
+                                    <span className="truncate max-w-[150px]">{t.content}</span>
+                                    <button onClick={() => setConfig(prev => ({ ...prev, texts: prev.texts.filter(text => text.id !== t.id) }))} className="text-red-500 font-bold">&times;</button>
                                 </div>
                             ))}
-                            {config.draggableItems.map((item, idx) => (
-                                <div key={item.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `item-${item.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`item-${item.id}`)}>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium text-blue-600 truncate w-24">{item.type === 'charm' ? 'Hình ảnh/Sticker' : item.type}</span>
-                                        {item.lockedPosition && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">PosLock</span>}
-                                        {item.lockedContent && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded">EditLock</span>}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`item-${item.id}`, 'position'); }} className={`p-1 rounded ${item.lockedPosition ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={item.lockedPosition ? "Mở khóa vị trí" : "Khóa vị trí"}>
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`item-${item.id}`, 'content'); }} className={`p-1 rounded ${item.lockedContent ? 'text-orange-500 hover:bg-orange-50' : 'text-gray-400 hover:text-gray-600'}`} title={item.lockedContent ? "Mở khóa nội dung" : "Khóa nội dung"}>
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`item-${item.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
-                                    </div>
+                            {config.draggableItems.map(d => (
+                                <div key={d.id} className="flex justify-between items-center p-2 bg-gray-50 rounded border hover:bg-white text-xs">
+                                    <span className="truncate">Sticker/Item</span>
+                                    <button onClick={() => setConfig(prev => ({ ...prev, draggableItems: prev.draggableItems.filter(item => item.id !== d.id) }))} className="text-red-500 font-bold">&times;</button>
                                 </div>
                             ))}
-                            {config.texts.length === 0 && config.draggableItems.length === 0 && (
-                                <p className="text-sm text-gray-400 text-center italic">Chưa có lớp nào.</p>
-                            )}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* 3. Main Canvas Area */}
-            <div className="flex-grow flex flex-col bg-gray-100 relative">
-                {/* Top Toolbar */}
-                <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10">
-                    <div className="flex items-center gap-4">
+            {/* Main Canvas Area */}
+            <div className="flex-grow flex flex-col relative">
+                {/* Canvas Toolbar */}
+                <div className="h-12 bg-white border-b flex items-center justify-between px-4">
+                    <div className="flex items-center gap-2">
                         <select 
                             value={config.frameId} 
                             onChange={(e) => handleFrameChange(e.target.value)}
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 font-bold"
+                            className="text-sm border rounded p-1 bg-gray-50"
                         >
-                            {frames.map(f => (
-                                <option key={f.id} value={f.id}>{f.name} ({f.frameWidthCm}x{f.frameHeightCm})</option>
-                            ))}
+                            {frames.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                         </select>
-                        <div className="h-6 w-px bg-gray-300"></div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1 hover:bg-gray-100 rounded text-gray-600 text-lg font-bold">-</button>
-                            <span className="text-xs font-medium w-12 text-center">{Math.round(zoom * 100)}%</span>
-                            <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-1 hover:bg-gray-100 rounded text-gray-600 text-lg font-bold">+</button>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={handleDownloadImage}
-                            className="px-4 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-2"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                            Tải ảnh PNG
-                        </button>
-                        <button 
-                            onClick={() => setShowSaveModal(true)}
-                            className={`px-4 py-2 text-xs font-bold text-white rounded shadow-sm flex items-center gap-2 transition-colors ${editingBgId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                            {editingBgId ? 'Cập Nhật Mẫu' : 'Lưu Mẫu Mới'}
+                        <button onClick={() => setConfig(prev => ({ ...prev, isRotated: !prev.isRotated }))} className="p-1 hover:bg-gray-100 rounded" title="Xoay khung">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         </button>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Zoom: {Math.round(zoom * 100)}%</span>
+                        <input type="range" min="0.5" max="2" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-24 accent-gray-900" />
+                    </div>
+                    <button onClick={() => setShowSaveModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700 shadow-sm">
+                        Lưu Mẫu
+                    </button>
                 </div>
 
-                {/* Floating Alignment Bar (When Item Selected) - same as before */}
-                {selectedItemId && (
-                    <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
-                        <button onClick={togglePositionLock} className={`p-1.5 rounded transition-colors ${currentLocks.position ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.position ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
-                            <svg className="w-4 h-4" fill={currentLocks.position ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={currentLocks.position ? "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" : "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"} /></svg>
-                        </button>
-                        <button onClick={toggleContentLock} className={`p-1.5 rounded transition-colors ${currentLocks.content ? 'bg-orange-50 text-orange-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.content ? "Mở khóa sửa chữ" : "Khóa sửa chữ (Khách không sửa được)"}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {currentLocks.content ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                )}
-                            </svg>
-                        </button>
-                        <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                        
-                        <button onClick={() => alignItem('left')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trái"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
-                        <button onClick={() => alignItem('centerH')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa ngang"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg></button>
-                        <button onClick={() => alignItem('right')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn phải"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-                        <div className="w-px bg-gray-200 mx-1"></div>
-                        <button onClick={() => alignItem('top')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trên"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 5 5 12"></polyline></svg></button>
-                        <button onClick={() => alignItem('centerV')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa dọc"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg></button>
-                        <button onClick={() => alignItem('bottom')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn dưới"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 19 19 12"></polyline></svg></button>
-                    </div>
-                )}
-
-                {/* Canvas Workspace */}
-                <div className="flex-grow overflow-auto flex items-center justify-center p-8 bg-[url('https://res.cloudinary.com/dbdqd93km/image/upload/v1/transparent-bg.png')] bg-repeat">
+                {/* Canvas */}
+                <div className="flex-grow flex items-center justify-center bg-gray-100 overflow-hidden relative">
                     <div 
                         style={{ 
                             transform: `scale(${zoom})`, 
-                            transformOrigin: 'center center',
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                            transition: 'width 0.3s ease, height 0.3s ease'
+                            transition: 'transform 0.2s',
+                            transformOrigin: 'center center' 
                         }}
-                        className="bg-white"
                     >
                         <FramePreview 
                             ref={previewRef}
-                            config={config}
-                            containerWidth={500} // Fixed base width, scaled by zoom
-                            onItemTransform={handleItemTransform}
-                            onItemRemove={handleItemRemove}
-                            onTextUpdate={handleTextUpdate}
-                            isInteractive={true}
-                            selectedItemId={selectedItemId}
-                            setSelectedItemId={setSelectedItemId}
-                            setIsEditingText={() => {}} // Not needed for admin
-                            allParts={{}} // Empty parts list as we use direct uploads mostly
-                            className="pointer-events-auto"
-                            previewFont={previewFont} // PASS PREVIEW FONT
+                            config={config} 
+                            containerWidth={400} 
+                            onItemTransform={(id, transform) => {
+                                // Re-use logic from BuilderPage (simplified here for admin)
+                                const [type, rawId] = id.split('-');
+                                const numId = parseInt(rawId);
+                                if (type === 'text') {
+                                    setConfig(prev => ({ ...prev, texts: prev.texts.map(t => t.id === numId ? { ...t, ...transform } : t) }));
+                                } else if (type === 'item') {
+                                    setConfig(prev => ({ ...prev, draggableItems: prev.draggableItems.map(i => i.id === numId ? { ...i, ...transform } : i) }));
+                                }
+                            }}
+                            onItemRemove={(id) => {
+                                const [type, rawId] = id.split('-');
+                                const numId = parseInt(rawId);
+                                if (type === 'text') setConfig(prev => ({ ...prev, texts: prev.texts.filter(t => t.id !== numId) }));
+                                else if (type === 'item') setConfig(prev => ({ ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numId) }));
+                                setSelectedItemId(null);
+                            }}
+                            onTextUpdate={() => {}} 
+                            selectedItemId={selectedItemId} 
+                            setSelectedItemId={setSelectedItemId} 
+                            isInteractive={true} 
+                            setIsEditingText={() => {}} 
+                            allParts={{}} // Not needed for templates usually
+                            onItemUpdate={() => {}} 
+                            onCharacterUpdate={() => {}} 
+                            previewFont={previewFont}
                         />
                     </div>
                 </div>
@@ -884,81 +604,34 @@ export const AdminDesign: React.FC = () => {
 
             {/* Save Modal */}
             {showSaveModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center font-sans">
-                    <div className="bg-white p-6 rounded-xl shadow-xl w-[450px]">
-                        <h3 className="text-xl font-bold mb-2">{editingBgId ? 'Cập Nhật Mẫu Nền' : 'Lưu Mẫu Nền Mới'}</h3>
-                        <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-2 rounded border border-blue-100">
-                            <strong>Lưu ý:</strong> Mẫu nền sẽ bao gồm hình nền, các lớp chữ và hình trang trí.
-                        </p>
-                        
-                        <div className="space-y-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in-up">
+                        <h3 className="text-lg font-bold mb-4 text-gray-800">Lưu Mẫu Background</h3>
+                        <div className="space-y-3">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Tên Hiển Thị</label>
-                                <input 
-                                    type="text" 
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="Ví dụ: Sinh nhật hồng..."
-                                    value={bgName}
-                                    onChange={e => setBgName(e.target.value)}
-                                    autoFocus
-                                />
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Tên Mẫu</label>
+                                <input className="w-full p-2 border rounded text-sm" value={bgName} onChange={(e) => setBgName(e.target.value)} placeholder="VD: Sinh nhật 1" />
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Danh mục</label>
-                                    <select 
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={bgCategory}
-                                        onChange={e => setBgCategory(e.target.value)}
-                                    >
-                                        {BG_CATEGORIES.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Loại Khung</label>
-                                    <select 
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={bgType}
-                                        onChange={e => setBgType(e.target.value as 'square' | 'rectangle')}
-                                    >
-                                        <option value="square">Vuông (15x15, 23x23)</option>
-                                        <option value="rectangle">Chữ nhật (A5)</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Danh mục</label>
+                                <select className="w-full p-2 border rounded text-sm" value={bgCategory} onChange={(e) => setBgCategory(e.target.value)}>
+                                    {BG_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Loại Khung</label>
+                                <select className="w-full p-2 border rounded text-sm" value={bgType} onChange={(e) => setBgType(e.target.value as any)}>
+                                    <option value="square">Vuông</option>
+                                    <option value="rectangle">Chữ nhật</option>
+                                </select>
                             </div>
                         </div>
-
-                        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                            <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg">Hủy</button>
-                            
-                            {/* If editing, show "Save as New" option too */}
-                            {editingBgId && (
-                                <button 
-                                    onClick={() => { setEditingBgId(null); handleSaveBackgroundTemplate(); }} 
-                                    disabled={isSaving} 
-                                    className="px-4 py-2 text-sm bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300"
-                                >
-                                    Lưu thành mới
-                                </button>
-                            )}
-
-                            <button onClick={handleSaveBackgroundTemplate} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
-                                {isSaving ? 'Đang lưu...' : (editingBgId ? 'Cập nhật' : 'Lưu Mẫu')}
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded text-sm">Hủy</button>
+                            <button onClick={handleSaveBackgroundTemplate} disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700 disabled:opacity-50">
+                                {isSaving ? 'Đang lưu...' : 'Lưu Ngay'}
                             </button>
                         </div>
-                    </div>
-                </div>
-            )}
-            
-            {/* Loading Overlay */}
-            {isSaving && (
-                <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center">
-                    <div className="bg-white p-4 rounded-lg flex items-center gap-3 shadow-lg">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                        <span className="font-bold text-sm">Đang xử lý...</span>
                     </div>
                 </div>
             )}
