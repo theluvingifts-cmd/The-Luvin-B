@@ -56,6 +56,7 @@ export interface PresetBackground {
     id: string;
     name: string;
     url: string;
+    previewUrl?: string; // URL ảnh thumbnail đã có thiết kế (chữ, sticker)
     category: string;
     type: 'square' | 'rectangle';
     orientation?: 'portrait' | 'landscape';

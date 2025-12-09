@@ -84,6 +84,18 @@ const FontSelector: React.FC<{
     );
 };
 
+const base64ToBlob = (base64: string) => {
+    const arr = base64.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+};
+
 export const AdminDesign: React.FC = () => {
     // State
     const [activeTool, setActiveTool] = useState('templates');
@@ -135,7 +147,7 @@ export const AdminDesign: React.FC = () => {
         let style = document.getElementById(styleId) as HTMLStyleElement;
         if (!style) {
             style = document.createElement('style');
-            style.id = styleId;
+            style.id = 'admin-dynamic-fonts';
             document.head.appendChild(style);
         }
         
@@ -447,10 +459,26 @@ export const AdminDesign: React.FC = () => {
         setIsSaving(true);
         
         const originalSelected = selectedItemId;
-        setSelectedItemId(null);
+        setSelectedItemId(null); // Deselect to clear selection borders/handlers
         
         try {
             await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            // 1. Capture the visual representation
+            let previewUrl = '';
+            if (previewRef.current && typeof html2canvas !== 'undefined') {
+                const canvas = await html2canvas(previewRef.current, { 
+                    useCORS: true, 
+                    scale: 1, // Thumbnail doesn't need high res
+                    backgroundColor: null 
+                });
+                const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (blob) {
+                    const file = new File([blob], "thumbnail.png", { type: "image/png" });
+                    const uploaded = await uploadToCloudinary(file);
+                    if (uploaded) previewUrl = uploaded;
+                }
+            }
 
             const mainUrl = config.background.value;
 
@@ -458,6 +486,7 @@ export const AdminDesign: React.FC = () => {
                 id: editingBgId || `bg_${Date.now()}`,
                 name: bgName,
                 url: mainUrl,
+                previewUrl: previewUrl, // Save the generated thumbnail
                 category: bgCategory,
                 type: bgType,
                 orientation: 'portrait', 
@@ -546,7 +575,10 @@ export const AdminDesign: React.FC = () => {
                                         className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
                                     >
                                         <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
-                                            {bg.url.startsWith('#') ? (
+                                            {/* Show Preview URL if available, else fallback to raw URL/color */}
+                                            {bg.previewUrl ? (
+                                                <img src={bg.previewUrl} className="w-full h-full object-cover" />
+                                            ) : bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />

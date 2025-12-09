@@ -1,4 +1,5 @@
 
+// ... (previous imports remain same)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -186,12 +187,15 @@ const PresetBackgroundButton: React.FC<{
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
-    const isColor = bg.url.startsWith('#');
+    // Determine what to show in thumbnail
+    // Priority: Preview URL (generated snapshot) -> Raw URL (if image) -> Color (if #hex)
+    const showPreviewImage = !!bg.previewUrl;
+    const isRawColor = !showPreviewImage && bg.url.startsWith('#');
+    
+    // For label formatting
     let line1 = bg.name;
     let line2 = '';
-
     const match = bg.name.match(/^(.*?)(\s+\d+)$/);
-    
     if (match) {
         line1 = match[1]; 
         line2 = match[2].trim();
@@ -203,6 +207,9 @@ const PresetBackgroundButton: React.FC<{
         }
     }
 
+    // Determine the image source to use
+    const imageSrc = showPreviewImage ? bg.previewUrl : bg.url;
+
     return (
         <button
             onClick={onClick}
@@ -213,19 +220,19 @@ const PresetBackgroundButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
-                {isColor ? (
+                {isRawColor ? (
                     <div className="w-full h-full" style={{ backgroundColor: bg.url }}></div>
                 ) : (
                     <>
                         <img
-                            src={bg.url}
+                            src={imageSrc}
                             alt={bg.name}
                             className="w-full h-full object-cover"
                         />
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
                             <div 
                                 className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
+                                onClick={(e) => { e.stopPropagation(); onZoom(imageSrc!); }}
                                 title="Zoom"
                             >
                                 <ZoomIcon className="w-4 h-4" />
@@ -248,6 +255,7 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
+// ... (rest of the file remains unchanged)
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;
@@ -259,6 +267,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
+// ... (rest of code is same)
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -1285,6 +1294,7 @@ const base64ToBlob = (base64: string) => {
 };
 
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
+  // ... (Component code same as original but using the updated PresetBackgroundButton above)
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);

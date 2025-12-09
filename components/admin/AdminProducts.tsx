@@ -1,4 +1,5 @@
 
+// ... (previous imports)
 import React, { useState, useMemo } from 'react';
 import { LegoPart, FrameOption, PresetBackground, CollectionTemplate } from '../../types';
 import { addPart, updatePart, deletePart, seedDatabase, reorderParts } from '../../services/productService';
@@ -26,6 +27,7 @@ type ProductSubTab = 'parts' | 'backgrounds' | 'frames' | 'templates';
 type ViewMode = 'list' | 'edit';
 
 export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, templates, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds, onRefreshTemplates }) => {
+// ... (Component logic same as original file)
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     
@@ -406,7 +408,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
                                         <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
-                                            {bg.url.startsWith('#') ? (
+                                            {bg.previewUrl ? (
+                                                <img src={bg.previewUrl} className="w-full h-full object-cover" alt="design preview" />
+                                            ) : bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />
@@ -424,6 +428,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                         </>
                     )}
 
+                    {/* Templates tab logic remains same... */}
                     {activeProductSubTab === 'templates' && (
                         <>
                             <div className="flex justify-end gap-2 mb-4">
