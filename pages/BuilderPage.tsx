@@ -1,4 +1,3 @@
-
 // ... (previous imports remain same)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
@@ -188,9 +187,9 @@ const PresetBackgroundButton: React.FC<{
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
     // Determine what to show in thumbnail
-    // Priority: Preview URL (generated snapshot) -> Raw URL (if image) -> Color (if #hex)
-    const showPreviewImage = !!bg.previewUrl;
-    const isRawColor = !showPreviewImage && bg.url.startsWith('#');
+    // Priority: Preview URL (generated snapshot) -> Raw URL (if image)
+    // REMOVED LOGIC: No longer using bg.url if it is a hex code to render a color block.
+    const imageSrc = bg.previewUrl || (!bg.url.startsWith('#') ? bg.url : null);
     
     // For label formatting
     let line1 = bg.name;
@@ -207,9 +206,6 @@ const PresetBackgroundButton: React.FC<{
         }
     }
 
-    // Determine the image source to use
-    const imageSrc = showPreviewImage ? bg.previewUrl : bg.url;
-
     return (
         <button
             onClick={onClick}
@@ -220,9 +216,7 @@ const PresetBackgroundButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
-                {isRawColor ? (
-                    <div className="w-full h-full" style={{ backgroundColor: bg.url }}></div>
-                ) : (
+                {imageSrc ? (
                     <>
                         <img
                             src={imageSrc}
@@ -232,14 +226,20 @@ const PresetBackgroundButton: React.FC<{
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
                             <div 
                                 className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); onZoom(imageSrc!); }}
+                                onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}
                                 title="Zoom"
                             >
                                 <ZoomIcon className="w-4 h-4" />
                             </div>
                         </div>
                     </>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-400">
+                        {/* Fallback if no preview image is available yet */}
+                        No Image
+                    </div>
                 )}
+                
                 {/* Indicator for interactive template */}
                 {bg.overlayConfig && (
                     <div className="absolute top-1 left-1 bg-yellow-400 text-[8px] font-bold px-1.5 py-0.5 rounded text-yellow-900 shadow-sm">

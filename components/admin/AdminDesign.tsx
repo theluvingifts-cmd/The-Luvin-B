@@ -1,4 +1,4 @@
-
+// ... (previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -638,13 +638,18 @@ export const AdminDesign: React.FC = () => {
                                         className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
                                     >
                                         <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
-                                            {/* Show Preview URL if available, else fallback to raw URL/color */}
-                                            {bg.previewUrl ? (
-                                                <img src={bg.previewUrl} className="w-full h-full object-cover" />
-                                            ) : bg.url.startsWith('#') ? (
-                                                <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
+                                            {/* Show Preview URL or fallback to main URL if it is an image */}
+                                            {/* Removed color fallback logic */}
+                                            {(bg.previewUrl || !bg.url.startsWith('#')) ? (
+                                                <img 
+                                                    src={bg.previewUrl || bg.url} 
+                                                    className="w-full h-full object-cover" 
+                                                    alt="bg preview"
+                                                />
                                             ) : (
-                                                <img src={bg.url} className="w-full h-full object-cover" />
+                                                <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400">
+                                                    No Img
+                                                </div>
                                             )}
                                         </div>
                                         <div className="flex-grow min-w-0">

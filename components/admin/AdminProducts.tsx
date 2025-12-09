@@ -1,4 +1,3 @@
-
 // ... (previous imports)
 import React, { useState, useMemo } from 'react';
 import { LegoPart, FrameOption, PresetBackground, CollectionTemplate } from '../../types';
@@ -408,12 +407,16 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
                                         <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100 relative`}>
-                                            {bg.previewUrl ? (
-                                                <img src={bg.previewUrl} className="w-full h-full object-cover" alt="design preview" />
-                                            ) : bg.url.startsWith('#') ? (
-                                                <div className="w-full h-full flex items-center justify-center" style={{backgroundColor: bg.url}}></div>
+                                            {(bg.previewUrl || !bg.url.startsWith('#')) ? (
+                                                <img 
+                                                    src={bg.previewUrl || bg.url} 
+                                                    className="w-full h-full object-cover" 
+                                                    alt="design preview" 
+                                                />
                                             ) : (
-                                                <img src={bg.url} className="w-full h-full object-cover" />
+                                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-400">
+                                                    No Preview
+                                                </div>
                                             )}
                                             
                                             {/* Show fallback if missing preview but has template data */}
