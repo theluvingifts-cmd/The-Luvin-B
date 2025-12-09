@@ -1,5 +1,4 @@
 
-// ... (Previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -462,26 +461,26 @@ export const AdminDesign: React.FC = () => {
         }, 100);
     };
 
-    // --- SNAPSHOT GENERATION (UPDATED FOR ROBUSTNESS) ---
+    // --- SNAPSHOT GENERATION (STRICT) ---
     const handlePrepareSave = async () => {
         setIsSaving(true);
         const originalSelected = selectedItemId;
         setSelectedItemId(null); // Clear selection borders
 
         try {
-            // 1. Wait for UI to update (remove selections)
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            // 2. Ensure fonts are ready
+            // 1. Wait for UI to update (remove selections) and Fonts to Load
+            await new Promise(resolve => setTimeout(resolve, 800)); // Longer delay
             await document.fonts.ready;
 
             if (previewRef.current && typeof html2canvas !== 'undefined') {
                 const canvas = await html2canvas(previewRef.current, { 
                     useCORS: true, 
                     allowTaint: true,
-                    scale: 1, 
+                    scale: 2, // Higher quality
                     backgroundColor: '#ffffff', // FORCE WHITE BACKGROUND
-                    logging: false
+                    logging: false,
+                    scrollX: 0,
+                    scrollY: 0
                 });
                 
                 const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -490,6 +489,7 @@ export const AdminDesign: React.FC = () => {
                     setGeneratedThumbnailUrl(URL.createObjectURL(blob));
                 } else {
                     console.error("Blob generation failed");
+                    alert("Lỗi tạo ảnh thumbnail. Vui lòng thử lại.");
                 }
             } else {
                 console.error("Preview ref missing or html2canvas not loaded");
@@ -497,7 +497,7 @@ export const AdminDesign: React.FC = () => {
             setShowSaveModal(true);
         } catch (e) {
             console.error("Error generating thumbnail:", e);
-            alert("Cảnh báo: Lỗi tạo ảnh thumbnail. Vui lòng thử lại hoặc tải ảnh thủ công.");
+            alert("Lỗi tạo ảnh thumbnail. Vui lòng thử lại hoặc tải ảnh thủ công.");
             setShowSaveModal(true); 
         } finally {
             setIsSaving(false);
