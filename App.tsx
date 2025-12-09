@@ -79,6 +79,27 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     style.innerHTML = css;
 };
 
+// HELPER: UPDATE SEO META TAGS
+const updateMetaTags = (config: StoreConfig) => {
+    // Title
+    if (config.seoTitle) {
+        document.title = config.seoTitle;
+        document.querySelector('meta[property="og:title"]')?.setAttribute('content', config.seoTitle);
+        document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', config.seoTitle);
+    }
+    // Desc
+    if (config.seoDescription) {
+        document.querySelector('meta[name="description"]')?.setAttribute('content', config.seoDescription);
+        document.querySelector('meta[property="og:description"]')?.setAttribute('content', config.seoDescription);
+        document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', config.seoDescription);
+    }
+    // Image
+    if (config.seoImageUrl) {
+        document.querySelector('meta[property="og:image"]')?.setAttribute('content', config.seoImageUrl);
+        document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', config.seoImageUrl);
+    }
+};
+
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
@@ -209,6 +230,9 @@ const App: React.FC = () => {
                 setStoreConfig(fetchedConfig);
                 // Cache config to LocalStorage for next visit
                 localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
+                
+                // --- UPDATE SEO META TAGS ---
+                updateMetaTags(fetchedConfig);
 
                 if (fetchedConfig.faviconUrl) {
                     const link = document.querySelector("link[rel~='icon']");

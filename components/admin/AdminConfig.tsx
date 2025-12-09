@@ -18,7 +18,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -347,6 +347,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     <button onClick={() => setActiveTab('content')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'content' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nội dung</button>
                     <button onClick={() => setActiveTab('fonts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'fonts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Quản lý Font</button>
                     <button onClick={() => setActiveTab('staff')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'staff' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nhân sự & Bot</button>
+                    <button onClick={() => setActiveTab('seo')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'seo' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>SEO & Social</button>
                 </div>
             </div>
 
@@ -369,6 +370,71 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
                             </div>
                             <ConfigImageUpload label="Banner Inspire" description="Ảnh nền phần Collection" currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
+                        </div>
+                    )}
+
+                    {/* SEO TAB */}
+                    {activeTab === 'seo' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình SEO & Chia sẻ Mạng xã hội</h3>
+                            <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-4 text-sm text-blue-800">
+                                <p className="font-bold mb-1">ℹ️ Lưu ý quan trọng:</p>
+                                <p>Các thay đổi ở đây sẽ ảnh hưởng đến cách website hiển thị khi bạn gửi link qua Facebook, Zalo, Messenger...</p>
+                                <p className="mt-1">Sau khi lưu, có thể cần vài phút hoặc bạn cần dùng công cụ "Facebook Sharing Debugger" để cập nhật lại cache của Facebook.</p>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề (Title)</label>
+                                <input 
+                                    ref={(el) => { inputRefs.current['seoTitle'] = el; }}
+                                    value={storeConfig.seoTitle || ''} 
+                                    onChange={(e) => setStoreConfig(prev => ({...prev, seoTitle: e.target.value}))}
+                                    className="w-full p-2 border rounded text-sm"
+                                    placeholder="VD: The Luvin - Quà tặng LEGO độc bản"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Mô tả (Description)</label>
+                                <textarea
+                                    ref={(el) => { inputRefs.current['seoDescription'] = el; }}
+                                    value={storeConfig.seoDescription || ''} 
+                                    onChange={(e) => setStoreConfig(prev => ({...prev, seoDescription: e.target.value}))}
+                                    className="w-full p-2 border rounded text-sm h-24"
+                                    placeholder="VD: Tự tay thiết kế khung tranh LEGO..."
+                                />
+                            </div>
+
+                            <div ref={(el) => { inputRefs.current['seoImageUrl'] = el; }}>
+                                <ConfigImageUpload 
+                                    label="Ảnh hiển thị khi chia sẻ (Thumbnail)" 
+                                    description="Kích thước khuyên dùng: 1200 x 630 pixels"
+                                    currentUrl={storeConfig.seoImageUrl}
+                                    onUpload={(f) => handleConfigUpload(f, 'seoImageUrl')}
+                                    isUploading={uploadingField === 'seoImageUrl'}
+                                />
+                            </div>
+                            
+                            {/* Preview Box */}
+                            <div className="mt-6 border-t pt-6">
+                                <label className="block text-sm font-bold text-gray-500 uppercase mb-3">Xem trước (Facebook/Zalo)</label>
+                                <div className="max-w-md bg-gray-100 p-4 rounded-lg">
+                                    <div className="bg-white border border-gray-300 rounded overflow-hidden">
+                                        <div className="aspect-[1.91/1] bg-gray-200 relative">
+                                            {storeConfig.seoImageUrl ? (
+                                                <img src={storeConfig.seoImageUrl} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-gray-400 text-xs">1200x630px</div>
+                                            )}
+                                        </div>
+                                        <div className="p-3 bg-gray-50 border-t border-gray-200">
+                                            <p className="text-xs text-gray-500 uppercase mb-1">THE-LUVIN.WEB.APP</p>
+                                            <p className="font-bold text-gray-900 truncate">{storeConfig.seoTitle || 'Tiêu đề website...'}</p>
+                                            <p className="text-xs text-gray-600 line-clamp-2 mt-1">{storeConfig.seoDescription || 'Mô tả website...'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -759,7 +825,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     </div>
                 </div>
 
-                {/* ... (Right Panel remains unchanged) ... */}
                 {/* --- RIGHT PANEL: VISUAL PREVIEW --- */}
                 <div className="lg:col-span-8 order-1 lg:order-2">
                     <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">

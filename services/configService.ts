@@ -44,6 +44,11 @@ export interface StoreConfig {
     // NEW: Telegram Notification Config
     telegramBotToken?: string;
     telegramChatId?: string;
+
+    // SEO & Social
+    seoTitle?: string;
+    seoDescription?: string;
+    seoImageUrl?: string;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
