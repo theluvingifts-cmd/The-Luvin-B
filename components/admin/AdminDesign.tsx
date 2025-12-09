@@ -113,6 +113,7 @@ export const AdminDesign: React.FC = () => {
     const [bgName, setBgName] = useState('');
     const [bgCategory, setBgCategory] = useState('Tình yêu');
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
+    const [existingPreviewUrl, setExistingPreviewUrl] = useState<string>(''); // To preserve previewUrl on edit
     const [showSaveModal, setShowSaveModal] = useState(false);
     
     // Thumbnail Preview State
@@ -122,7 +123,7 @@ export const AdminDesign: React.FC = () => {
 
     // Font Manager State
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
-    const [previewFont, setPreviewFont] = useState<string | null>(null); // NEW STATE
+    const [previewFont, setPreviewFont] = useState<string | null>(null);
     
     // Refs
     const previewRef = useRef<HTMLDivElement>(null);
@@ -171,7 +172,7 @@ export const AdminDesign: React.FC = () => {
         style.innerHTML = css;
     }, [uploadedFonts]);
 
-    // ... (Helpers, Handlers: handleFrameChange, handleBackgroundChange, handleUploadBackground, handleDeleteAsset, handleAddText, etc. - No Changes)
+    // ... (Helpers, Handlers - No Changes)
     const handleFrameChange = (frameId: string) => {
         setConfig(prev => ({ ...prev, frameId }));
         // Auto set Type suggestion based on frame
@@ -275,6 +276,7 @@ export const AdminDesign: React.FC = () => {
             setBgName(bg.name);
             setBgCategory(bg.category);
             setBgType(bg.type);
+            setExistingPreviewUrl(bg.previewUrl || ''); // Store existing preview
             
             // Reconstruct Config
             const isColor = bg.url.startsWith('#');
@@ -298,6 +300,7 @@ export const AdminDesign: React.FC = () => {
             setConfig(INITIAL_FRAME_CONFIG);
             setEditingBgId(null);
             setBgName('');
+            setExistingPreviewUrl('');
             setSelectedItemId(null);
         }
     }
@@ -459,11 +462,11 @@ export const AdminDesign: React.FC = () => {
         }, 100);
     };
 
-    // --- NEW: Handle Generate Snapshot before opening Modal ---
+    // --- SNAPSHOT GENERATION ---
     const handlePrepareSave = async () => {
         setIsSaving(true);
         const originalSelected = selectedItemId;
-        setSelectedItemId(null); // Clear selection for clean screenshot
+        setSelectedItemId(null); // Clear selection borders
 
         try {
             // Slight delay to ensure UI updates (selection removal)
@@ -473,7 +476,7 @@ export const AdminDesign: React.FC = () => {
                 const canvas = await html2canvas(previewRef.current, { 
                     useCORS: true, 
                     scale: 1, 
-                    backgroundColor: null 
+                    backgroundColor: '#ffffff' // FORCE WHITE BACKGROUND
                 });
                 const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
                 if (blob) {
@@ -485,14 +488,13 @@ export const AdminDesign: React.FC = () => {
         } catch (e) {
             console.error("Error generating thumbnail:", e);
             alert("Lỗi tạo ảnh thumbnail. Bạn vẫn có thể lưu nhưng cần tự tải ảnh.");
-            setShowSaveModal(true); // Open anyway
+            setShowSaveModal(true); 
         } finally {
             setIsSaving(false);
             setSelectedItemId(originalSelected);
         }
     };
 
-    // --- NEW: Handle Manual Thumbnail Upload ---
     const handleManualThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -501,22 +503,32 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    // --- UPDATED: Save Final with Thumbnail ---
+    // --- SAVE FINAL ---
     const handleConfirmSave = async () => {
         if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
         setIsSaving(true);
         
         try {
-            let previewUrl = '';
+            let previewUrl = existingPreviewUrl || '';
             
-            // Upload the thumbnail (blob or file)
+            // Upload the thumbnail if generated/selected
             if (generatedThumbnailBlob) {
                 const fileToUpload = generatedThumbnailBlob instanceof File 
                     ? generatedThumbnailBlob 
                     : new File([generatedThumbnailBlob], "thumbnail.png", { type: "image/png" });
                 
                 const uploaded = await uploadToCloudinary(fileToUpload);
-                if (uploaded) previewUrl = uploaded;
+                if (uploaded) {
+                    previewUrl = uploaded;
+                } else {
+                    // FATAL ERROR if upload fails to prevent broken previews
+                    throw new Error("Lỗi upload ảnh thumbnail. Vui lòng kiểm tra mạng và thử lại.");
+                }
+            }
+
+            // Fallback: If no previewUrl exists (new item, upload failed without error being caught?), force user to upload
+            if (!previewUrl) {
+                 throw new Error("Chưa có ảnh thumbnail. Vui lòng thử lại hoặc tải ảnh lên thủ công.");
             }
 
             const mainUrl = config.background.value;
@@ -525,7 +537,7 @@ export const AdminDesign: React.FC = () => {
                 id: editingBgId || `bg_${Date.now()}`,
                 name: bgName,
                 url: mainUrl,
-                previewUrl: previewUrl, // Use the uploaded URL
+                previewUrl: previewUrl, 
                 category: bgCategory,
                 type: bgType,
                 orientation: 'portrait', 
@@ -555,12 +567,13 @@ export const AdminDesign: React.FC = () => {
                 if (!editingBgId) setBgName('');
                 setGeneratedThumbnailBlob(null);
                 setGeneratedThumbnailUrl('');
+                setExistingPreviewUrl('');
             } else {
-                alert("Lỗi khi lưu mẫu nền.");
+                alert("Lỗi khi lưu dữ liệu vào database.");
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert("Lỗi khi lưu mẫu nền");
+            alert(e.message || "Lỗi không xác định khi lưu.");
         } finally {
             setIsSaving(false);
         }
@@ -934,6 +947,8 @@ export const AdminDesign: React.FC = () => {
                                     <div className="w-24 h-32 bg-white border rounded overflow-hidden flex-shrink-0 relative group">
                                         {generatedThumbnailUrl ? (
                                             <img src={generatedThumbnailUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : existingPreviewUrl ? (
+                                            <img src={existingPreviewUrl} alt="Existing Preview" className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center p-2">No Image</div>
                                         )}

@@ -411,7 +411,13 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             {bg.previewUrl ? (
                                                 <img src={bg.previewUrl} className="w-full h-full object-cover" alt="design preview" />
                                             ) : bg.url.startsWith('#') ? (
-                                                <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
+                                                <div className="w-full h-full flex items-center justify-center" style={{backgroundColor: bg.url}}>
+                                                    {bg.overlayConfig && (
+                                                        <div className="text-center text-xs text-gray-500 bg-white/80 p-1 rounded font-bold">
+                                                            ⚠️ Missing Preview
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />
                                             )}
