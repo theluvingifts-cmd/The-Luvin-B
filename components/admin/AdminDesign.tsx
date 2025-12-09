@@ -462,32 +462,42 @@ export const AdminDesign: React.FC = () => {
         }, 100);
     };
 
-    // --- SNAPSHOT GENERATION ---
+    // --- SNAPSHOT GENERATION (UPDATED FOR ROBUSTNESS) ---
     const handlePrepareSave = async () => {
         setIsSaving(true);
         const originalSelected = selectedItemId;
         setSelectedItemId(null); // Clear selection borders
 
         try {
-            // Slight delay to ensure UI updates (selection removal)
+            // 1. Wait for UI to update (remove selections)
             await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // 2. Ensure fonts are ready
+            await document.fonts.ready;
 
             if (previewRef.current && typeof html2canvas !== 'undefined') {
                 const canvas = await html2canvas(previewRef.current, { 
                     useCORS: true, 
+                    allowTaint: true,
                     scale: 1, 
-                    backgroundColor: '#ffffff' // FORCE WHITE BACKGROUND
+                    backgroundColor: '#ffffff', // FORCE WHITE BACKGROUND
+                    logging: false
                 });
+                
                 const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
                 if (blob) {
                     setGeneratedThumbnailBlob(blob);
                     setGeneratedThumbnailUrl(URL.createObjectURL(blob));
+                } else {
+                    console.error("Blob generation failed");
                 }
+            } else {
+                console.error("Preview ref missing or html2canvas not loaded");
             }
             setShowSaveModal(true);
         } catch (e) {
             console.error("Error generating thumbnail:", e);
-            alert("Lỗi tạo ảnh thumbnail. Bạn vẫn có thể lưu nhưng cần tự tải ảnh.");
+            alert("Cảnh báo: Lỗi tạo ảnh thumbnail. Vui lòng thử lại hoặc tải ảnh thủ công.");
             setShowSaveModal(true); 
         } finally {
             setIsSaving(false);
@@ -503,7 +513,7 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    // --- SAVE FINAL ---
+    // --- SAVE FINAL (STRICT CHECK) ---
     const handleConfirmSave = async () => {
         if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
         setIsSaving(true);
@@ -526,9 +536,9 @@ export const AdminDesign: React.FC = () => {
                 }
             }
 
-            // Fallback: If no previewUrl exists (new item, upload failed without error being caught?), force user to upload
+            // CRITICAL: Prevent saving if previewUrl is empty
             if (!previewUrl) {
-                 throw new Error("Chưa có ảnh thumbnail. Vui lòng thử lại hoặc tải ảnh lên thủ công.");
+                 throw new Error("Chưa có ảnh thumbnail. Vui lòng thử lại nút 'Lưu Mẫu' hoặc tải ảnh lên thủ công.");
             }
 
             const mainUrl = config.background.value;

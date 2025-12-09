@@ -407,19 +407,22 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDragOver={handleDragOver}
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
-                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
+                                        <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100 relative`}>
                                             {bg.previewUrl ? (
                                                 <img src={bg.previewUrl} className="w-full h-full object-cover" alt="design preview" />
                                             ) : bg.url.startsWith('#') ? (
-                                                <div className="w-full h-full flex items-center justify-center" style={{backgroundColor: bg.url}}>
-                                                    {bg.overlayConfig && (
-                                                        <div className="text-center text-xs text-gray-500 bg-white/80 p-1 rounded font-bold">
-                                                            ⚠️ Missing Preview
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <div className="w-full h-full flex items-center justify-center" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />
+                                            )}
+                                            
+                                            {/* Show fallback if missing preview but has template data */}
+                                            {bg.overlayConfig && !bg.previewUrl && (
+                                                <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center p-2 text-center border-2 border-red-500">
+                                                    <span className="text-2xl mb-1">⚠️</span>
+                                                    <span className="text-[10px] font-bold text-red-600 leading-tight">Lỗi Thumbnail</span>
+                                                    <span className="text-[8px] text-gray-500">Cần vào sửa & lưu lại</span>
+                                                </div>
                                             )}
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
