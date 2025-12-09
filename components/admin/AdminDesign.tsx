@@ -115,6 +115,11 @@ export const AdminDesign: React.FC = () => {
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
     const [showSaveModal, setShowSaveModal] = useState(false);
     
+    // Thumbnail Preview State
+    const [generatedThumbnailBlob, setGeneratedThumbnailBlob] = useState<Blob | null>(null);
+    const [generatedThumbnailUrl, setGeneratedThumbnailUrl] = useState<string>('');
+    const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
     // Font Manager State
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
     const [previewFont, setPreviewFont] = useState<string | null>(null); // NEW STATE
@@ -454,30 +459,64 @@ export const AdminDesign: React.FC = () => {
         }, 100);
     };
 
-    const handleSaveBackgroundTemplate = async () => {
-        if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
+    // --- NEW: Handle Generate Snapshot before opening Modal ---
+    const handlePrepareSave = async () => {
         setIsSaving(true);
-        
         const originalSelected = selectedItemId;
-        setSelectedItemId(null); // Deselect to clear selection borders/handlers
-        
-        try {
-            await new Promise(resolve => setTimeout(resolve, 500)); 
+        setSelectedItemId(null); // Clear selection for clean screenshot
 
-            // 1. Capture the visual representation
-            let previewUrl = '';
+        try {
+            // Slight delay to ensure UI updates (selection removal)
+            await new Promise(resolve => setTimeout(resolve, 300));
+
             if (previewRef.current && typeof html2canvas !== 'undefined') {
                 const canvas = await html2canvas(previewRef.current, { 
                     useCORS: true, 
-                    scale: 1, // Thumbnail doesn't need high res
+                    scale: 1, 
                     backgroundColor: null 
                 });
                 const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
                 if (blob) {
-                    const file = new File([blob], "thumbnail.png", { type: "image/png" });
-                    const uploaded = await uploadToCloudinary(file);
-                    if (uploaded) previewUrl = uploaded;
+                    setGeneratedThumbnailBlob(blob);
+                    setGeneratedThumbnailUrl(URL.createObjectURL(blob));
                 }
+            }
+            setShowSaveModal(true);
+        } catch (e) {
+            console.error("Error generating thumbnail:", e);
+            alert("Lỗi tạo ảnh thumbnail. Bạn vẫn có thể lưu nhưng cần tự tải ảnh.");
+            setShowSaveModal(true); // Open anyway
+        } finally {
+            setIsSaving(false);
+            setSelectedItemId(originalSelected);
+        }
+    };
+
+    // --- NEW: Handle Manual Thumbnail Upload ---
+    const handleManualThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setGeneratedThumbnailBlob(file);
+            setGeneratedThumbnailUrl(URL.createObjectURL(file));
+        }
+    };
+
+    // --- UPDATED: Save Final with Thumbnail ---
+    const handleConfirmSave = async () => {
+        if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
+        setIsSaving(true);
+        
+        try {
+            let previewUrl = '';
+            
+            // Upload the thumbnail (blob or file)
+            if (generatedThumbnailBlob) {
+                const fileToUpload = generatedThumbnailBlob instanceof File 
+                    ? generatedThumbnailBlob 
+                    : new File([generatedThumbnailBlob], "thumbnail.png", { type: "image/png" });
+                
+                const uploaded = await uploadToCloudinary(fileToUpload);
+                if (uploaded) previewUrl = uploaded;
             }
 
             const mainUrl = config.background.value;
@@ -486,7 +525,7 @@ export const AdminDesign: React.FC = () => {
                 id: editingBgId || `bg_${Date.now()}`,
                 name: bgName,
                 url: mainUrl,
-                previewUrl: previewUrl, // Save the generated thumbnail
+                previewUrl: previewUrl, // Use the uploaded URL
                 category: bgCategory,
                 type: bgType,
                 orientation: 'portrait', 
@@ -514,6 +553,8 @@ export const AdminDesign: React.FC = () => {
             if (success) {
                 setShowSaveModal(false);
                 if (!editingBgId) setBgName('');
+                setGeneratedThumbnailBlob(null);
+                setGeneratedThumbnailUrl('');
             } else {
                 alert("Lỗi khi lưu mẫu nền.");
             }
@@ -522,7 +563,6 @@ export const AdminDesign: React.FC = () => {
             alert("Lỗi khi lưu mẫu nền");
         } finally {
             setIsSaving(false);
-            setSelectedItemId(originalSelected);
         }
     };
 
@@ -814,7 +854,7 @@ export const AdminDesign: React.FC = () => {
                             Tải ảnh PNG
                         </button>
                         <button 
-                            onClick={() => setShowSaveModal(true)}
+                            onClick={handlePrepareSave} // Changed to Prepare Save
                             className={`px-4 py-2 text-xs font-bold text-white rounded shadow-sm flex items-center gap-2 transition-colors ${editingBgId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
@@ -823,7 +863,7 @@ export const AdminDesign: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Floating Alignment Bar (When Item Selected) - same as before */}
+                {/* Floating Alignment Bar (When Item Selected) */}
                 {selectedItemId && (
                     <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
                         <button onClick={togglePositionLock} className={`p-1.5 rounded transition-colors ${currentLocks.position ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.position ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
@@ -864,17 +904,17 @@ export const AdminDesign: React.FC = () => {
                         <FramePreview 
                             ref={previewRef}
                             config={config}
-                            containerWidth={500} // Fixed base width, scaled by zoom
+                            containerWidth={500}
                             onItemTransform={handleItemTransform}
                             onItemRemove={handleItemRemove}
                             onTextUpdate={handleTextUpdate}
                             isInteractive={true}
                             selectedItemId={selectedItemId}
                             setSelectedItemId={setSelectedItemId}
-                            setIsEditingText={() => {}} // Not needed for admin
-                            allParts={{}} // Empty parts list as we use direct uploads mostly
+                            setIsEditingText={() => {}} 
+                            allParts={{}} 
                             className="pointer-events-auto"
-                            previewFont={previewFont} // PASS PREVIEW FONT
+                            previewFont={previewFont} 
                         />
                     </div>
                 </div>
@@ -883,13 +923,40 @@ export const AdminDesign: React.FC = () => {
             {/* Save Modal */}
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center font-sans">
-                    <div className="bg-white p-6 rounded-xl shadow-xl w-[450px]">
+                    <div className="bg-white p-6 rounded-xl shadow-xl w-[500px] max-h-[90vh] overflow-y-auto">
                         <h3 className="text-xl font-bold mb-2">{editingBgId ? 'Cập Nhật Mẫu Nền' : 'Lưu Mẫu Nền Mới'}</h3>
-                        <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-2 rounded border border-blue-100">
-                            <strong>Lưu ý:</strong> Mẫu nền sẽ bao gồm hình nền, các lớp chữ và hình trang trí.
-                        </p>
                         
-                        <div className="space-y-4">
+                        <div className="space-y-4 mt-4">
+                            {/* Thumbnail Preview Section */}
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Thumbnail Hiển Thị</label>
+                                <div className="flex items-start gap-4">
+                                    <div className="w-24 h-32 bg-white border rounded overflow-hidden flex-shrink-0 relative group">
+                                        {generatedThumbnailUrl ? (
+                                            <img src={generatedThumbnailUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs text-center p-2">No Image</div>
+                                        )}
+                                    </div>
+                                    <div className="flex-grow">
+                                        <p className="text-xs text-gray-600 mb-2">Đây là ảnh sẽ hiển thị trên danh sách mẫu của khách hàng.</p>
+                                        <button 
+                                            onClick={() => thumbnailInputRef.current?.click()}
+                                            className="px-3 py-1.5 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Tải ảnh khác
+                                        </button>
+                                        <input 
+                                            type="file" 
+                                            ref={thumbnailInputRef} 
+                                            className="hidden" 
+                                            accept="image/*" 
+                                            onChange={handleManualThumbnailUpload} 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Tên Hiển Thị</label>
                                 <input 
@@ -935,7 +1002,7 @@ export const AdminDesign: React.FC = () => {
                             {/* If editing, show "Save as New" option too */}
                             {editingBgId && (
                                 <button 
-                                    onClick={() => { setEditingBgId(null); handleSaveBackgroundTemplate(); }} 
+                                    onClick={() => { setEditingBgId(null); handleConfirmSave(); }} 
                                     disabled={isSaving} 
                                     className="px-4 py-2 text-sm bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300"
                                 >
@@ -943,7 +1010,7 @@ export const AdminDesign: React.FC = () => {
                                 </button>
                             )}
 
-                            <button onClick={handleSaveBackgroundTemplate} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
+                            <button onClick={handleConfirmSave} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
                                 {isSaving ? 'Đang lưu...' : (editingBgId ? 'Cập nhật' : 'Lưu Mẫu')}
                             </button>
                         </div>
