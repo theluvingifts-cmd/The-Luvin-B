@@ -1,4 +1,5 @@
 
+// ... (Previous imports - No change)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -187,6 +188,9 @@ const PresetBackgroundButton: React.FC<{
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
     const isColor = bg.url.startsWith('#');
+    // Prioritize thumbnailUrl if available
+    const displayUrl = bg.thumbnailUrl || bg.url;
+    
     let line1 = bg.name;
     let line2 = '';
 
@@ -213,19 +217,19 @@ const PresetBackgroundButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
-                {isColor ? (
+                {isColor && !bg.thumbnailUrl ? (
                     <div className="w-full h-full" style={{ backgroundColor: bg.url }}></div>
                 ) : (
                     <>
                         <img
-                            src={bg.url}
+                            src={displayUrl}
                             alt={bg.name}
                             className="w-full h-full object-cover"
                         />
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
                             <div 
                                 className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); onZoom(bg.url); }}
+                                onClick={(e) => { e.stopPropagation(); onZoom(displayUrl); }}
                                 title="Zoom"
                             >
                                 <ZoomIcon className="w-4 h-4" />
@@ -248,6 +252,7 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
+// ... (Rest of the file remains unchanged)
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;

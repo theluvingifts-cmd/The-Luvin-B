@@ -135,7 +135,7 @@ export const AdminDesign: React.FC = () => {
         let style = document.getElementById(styleId) as HTMLStyleElement;
         if (!style) {
             style = document.createElement('style');
-            style.id = styleId;
+            style.id = 'admin-preview-fonts';
             document.head.appendChild(style);
         }
         
@@ -442,15 +442,45 @@ export const AdminDesign: React.FC = () => {
         }, 100);
     };
 
+    // --- AUTO THUMBNAIL CAPTURE LOGIC ---
     const handleSaveBackgroundTemplate = async () => {
         if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
         setIsSaving(true);
         
         const originalSelected = selectedItemId;
-        setSelectedItemId(null);
+        setSelectedItemId(null); // Clear selection to hide borders/handles
         
         try {
+            // Wait for UI to update (remove selections)
             await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            let thumbnailUrl = '';
+            
+            // Capture the thumbnail from previewRef
+            if (previewRef.current && typeof html2canvas !== 'undefined') {
+                try {
+                    const canvas = await html2canvas(previewRef.current, {
+                        useCORS: true,
+                        scale: 1, // Low scale for thumbnail is enough
+                        backgroundColor: null
+                    });
+                    const base64Data = canvas.toDataURL('image/png');
+                    
+                    // Convert base64 to File object for uploadService
+                    const res = await fetch(base64Data);
+                    const blob = await res.blob();
+                    const file = new File([blob], "thumbnail.png", { type: "image/png" });
+                    
+                    // Upload to Cloudinary
+                    const uploadedUrl = await uploadToCloudinary(file);
+                    if (uploadedUrl) {
+                        thumbnailUrl = uploadedUrl;
+                    }
+                } catch (captureErr) {
+                    console.error("Failed to capture thumbnail:", captureErr);
+                    // Non-blocking error, we can still save without thumbnail
+                }
+            }
 
             const mainUrl = config.background.value;
 
@@ -458,6 +488,7 @@ export const AdminDesign: React.FC = () => {
                 id: editingBgId || `bg_${Date.now()}`,
                 name: bgName,
                 url: mainUrl,
+                thumbnailUrl: thumbnailUrl || mainUrl, // Use capture or fallback to main
                 category: bgCategory,
                 type: bgType,
                 orientation: 'portrait', 
@@ -546,7 +577,10 @@ export const AdminDesign: React.FC = () => {
                                         className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
                                     >
                                         <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
-                                            {bg.url.startsWith('#') ? (
+                                            {/* Show Thumbnail if available */}
+                                            {bg.thumbnailUrl ? (
+                                                <img src={bg.thumbnailUrl} className="w-full h-full object-cover" />
+                                            ) : bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />

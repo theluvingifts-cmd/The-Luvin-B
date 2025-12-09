@@ -406,7 +406,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         onDrop={(e) => handleDropBackground(e, bg.id)}
                                     >
                                         <div className={`aspect-${bg.type === 'square' ? 'square' : '[2/3]'} bg-gray-50 rounded mb-2 flex items-center justify-center overflow-hidden border border-gray-100`}>
-                                            {bg.url.startsWith('#') ? (
+                                            {bg.thumbnailUrl ? (
+                                                <img src={bg.thumbnailUrl} className="w-full h-full object-cover" />
+                                            ) : bg.url.startsWith('#') ? (
                                                 <div className="w-full h-full" style={{backgroundColor: bg.url}}></div>
                                             ) : (
                                                 <img src={bg.url} className="w-full h-full object-cover" />
