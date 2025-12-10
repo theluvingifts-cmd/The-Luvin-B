@@ -171,14 +171,17 @@ const EditableText: React.FC<{
         fontFamily: getFontFamily(activeFont),
         fontSize: `${fontSize}px`,
         color: text.color,
+        fontWeight: text.fontWeight || 'normal',
         whiteSpace: 'pre-wrap',
         textAlign: text.textAlign || 'center',
-        padding: '0.2em', // Changed from 10px to relative unit to scale with font size
+        padding: '0.4em', // Changed from 10px to relative unit to scale with font size
         wordBreak: 'break-word',
         textShadow: '0 0 5px white, 0 0 5px white',
         lineHeight: 1.4,
         userSelect: isContentLocked ? 'none' : 'auto', // Prevent selection if locked (mobile fix)
-        ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
+        ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' }),
+        border: text.border ? `2px ${text.borderStyle || 'solid'} ${text.borderColor || text.color}` : 'none',
+        borderRadius: '4px',
     };
 
     if (isEditing) {

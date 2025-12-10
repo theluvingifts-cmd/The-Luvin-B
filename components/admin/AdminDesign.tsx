@@ -766,6 +766,47 @@ export const AdminDesign: React.FC = () => {
                                             Nền mờ
                                         </button>
                                     </div>
+
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Kiểu dáng</label>
+                                    <div className="flex gap-2 items-center">
+                                        {/* Bold Button */}
+                                        <button 
+                                            onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { fontWeight: getSelectedText()!.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                                            className={`w-10 h-10 border rounded flex items-center justify-center font-bold font-serif text-lg ${getSelectedText()?.fontWeight === 'bold' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                                            title="In đậm"
+                                        >
+                                            B
+                                        </button>
+
+                                        {/* Border Toggle */}
+                                        <button 
+                                            onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { border: !getSelectedText()!.border })}
+                                            className={`w-10 h-10 border rounded flex items-center justify-center ${getSelectedText()?.border ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                                            title="Viền khung"
+                                        >
+                                            <div className="w-5 h-5 border-2 border-current rounded-sm"></div>
+                                        </button>
+
+                                        {/* Dashed Toggle (only if border enabled) */}
+                                        {getSelectedText()?.border && (
+                                            <>
+                                                <button 
+                                                    onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { borderStyle: getSelectedText()?.borderStyle === 'dashed' ? 'solid' : 'dashed' })}
+                                                    className={`w-10 h-10 border rounded flex items-center justify-center ${getSelectedText()?.borderStyle === 'dashed' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                                                    title="Nét đứt"
+                                                >
+                                                    <div className="w-5 h-5 border-2 border-current border-dashed rounded-sm"></div>
+                                                </button>
+                                                <input 
+                                                    type="color" 
+                                                    className="w-10 h-10 border rounded cursor-pointer p-0.5"
+                                                    value={getSelectedText()?.borderColor || getSelectedText()?.color || '#000000'}
+                                                    onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { borderColor: e.target.value })}
+                                                    title="Màu viền"
+                                                />
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-500 text-center py-4">Chọn một chữ để chỉnh sửa.</p>
