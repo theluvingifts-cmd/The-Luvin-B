@@ -1,5 +1,4 @@
 
-// ... (previous imports)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -13,14 +12,15 @@ import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice, PriceBreakdownItem } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
+import { trackAddToCart } from '../services/analyticsService'; // Import tracking service
 
 declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
-  const steps = ['Thông tin SP', 'Nền & Chữ', 'Thiết kế', 'Mua hàng'];
-  
+  const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
+
   return (
     <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
       <div className="flex justify-between md:justify-start md:gap-4 items-center relative md:w-max">
@@ -187,11 +187,7 @@ const PresetBackgroundButton: React.FC<{
     onClick: () => void;
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
-    // Determine image source. Priority: Preview URL -> Main URL. 
-    // Always treat as image URL.
     const imageSrc = bg.previewUrl || bg.url;
-    
-    // For label formatting
     let line1 = bg.name;
     let line2 = '';
     const match = bg.name.match(/^(.*?)(\s+\d+)$/);
@@ -223,7 +219,6 @@ const PresetBackgroundButton: React.FC<{
                             alt={bg.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                // Fallback for broken links or color hex codes treated as URL
                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
                             }}
                         />
@@ -243,7 +238,6 @@ const PresetBackgroundButton: React.FC<{
                     </div>
                 )}
                 
-                {/* Indicator for interactive template */}
                 {bg.overlayConfig && (
                     <div className="absolute top-1 left-1 bg-yellow-400 text-[8px] font-bold px-1.5 py-0.5 rounded text-yellow-900 shadow-sm">
                         MẪU
@@ -301,6 +295,7 @@ const Step2BackgroundAndDecorations: React.FC<{
 
     const currentFrameOption = frames.find(f => f.id === config.frameId);
     
+    // FIX: Using currentFrameOption instead of undefined currentFrame
     const isCurrentFrameSquare = currentFrameOption ? Math.abs(currentFrameOption.frameWidthCm - currentFrameOption.frameHeightCm) < 1 : true;
 
     if (bg.type === 'rectangle' && isCurrentFrameSquare) {
@@ -330,7 +325,6 @@ const Step2BackgroundAndDecorations: React.FC<{
 
     const newBackground = { type: isColor ? 'color' : 'image', value: bg.url } as any;
     
-    // FIX: Always switch to the selected template configuration (texts, stickers AND SHAPES).
     const newTexts = bg.overlayConfig?.texts ? JSON.parse(JSON.stringify(bg.overlayConfig.texts)) : [];
     const newDraggableItems = bg.overlayConfig?.draggableItems ? JSON.parse(JSON.stringify(bg.overlayConfig.draggableItems)) : [];
     const newShapes = bg.overlayConfig?.shapes ? JSON.parse(JSON.stringify(bg.overlayConfig.shapes)) : [];
@@ -342,7 +336,7 @@ const Step2BackgroundAndDecorations: React.FC<{
         isRotated: shouldRotate,
         texts: newTexts,
         draggableItems: newDraggableItems,
-        shapes: newShapes, // Updated: include shapes from template
+        shapes: newShapes, 
     };
 
     if (bg.overlayConfig) {
@@ -460,7 +454,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   );
 };
 
-// ... (PartButton component)
 const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
@@ -536,9 +529,6 @@ const PartButton: React.FC<{
     );
 };
 
-// ... (Rest of components are same, showing only modified BuilderPage main logic for brevity)
-
-// ... sortParts function ...
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
     return [...parts].sort((a, b) => {
@@ -548,7 +538,6 @@ const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_des
     });
 };
 
-// ... Step3Characters ...
 const Step3Characters: React.FC<{ 
     config: FrameConfig; 
     setConfig: (c: FrameConfig) => void;
@@ -559,7 +548,6 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
-    // ... (This component remains unchanged)
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -1026,8 +1014,6 @@ const Step3Characters: React.FC<{
     );
 };
 
-// ... (Step4Summary, TextEditor, and rest of BuilderPage)
-// Please retain existing implementation
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
@@ -1303,7 +1289,6 @@ const base64ToBlob = (base64: string) => {
 };
 
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
-  // ... (Component code same as original but using the updated PresetBackgroundButton above)
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -1321,7 +1306,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // ... (Calculations and Effects same as before)
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
@@ -1402,7 +1386,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       });
   }, [history, historyIndex, setConfig]);
 
-  // ... (Other handlers like Undo/Redo/Share/Scroll/ResizeObserver same as existing)
   const handleUndo = () => {
       if (historyIndex > 0) {
           const newIndex = historyIndex - 1;
@@ -1748,6 +1731,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleAddToCartWrapper = async (andCheckout: boolean) => {
+    // TRACKING CALL:
+    trackAddToCart(); // Fire and forget
+
     setIsSaving(true);
     try {
         const base64Image = await captureFrameAsImage();

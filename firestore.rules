@@ -72,5 +72,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // NEW: Analytics collection - Allow public write for tracking
+    match /analytics/{document=**} {
+      allow read: if true; // Or restrict to admin only if preferred
+      allow write: if true; // Allow anyone to increment stats
+    }
   }
 }
