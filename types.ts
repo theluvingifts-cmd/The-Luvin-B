@@ -101,11 +101,6 @@ export interface TextConfig {
   width?: number; 
   lockedPosition?: boolean; // Prevents moving/resizing
   lockedContent?: boolean; // Prevents editing text
-  // New Styling Options
-  fontWeight?: 'normal' | 'bold';
-  border?: boolean;
-  borderStyle?: 'solid' | 'dashed';
-  borderColor?: string;
 }
 
 export interface DraggableItem {
