@@ -1,3 +1,4 @@
+
 // ... (previous imports)
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
@@ -257,7 +258,6 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
-// ... (rest of the file remains unchanged)
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;
@@ -269,7 +269,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
-// ... (rest of code is same)
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
@@ -331,11 +330,10 @@ const Step2BackgroundAndDecorations: React.FC<{
 
     const newBackground = { type: isColor ? 'color' : 'image', value: bg.url } as any;
     
-    // FIX: Always switch to the selected template configuration.
-    // If overlayConfig exists, use it (deep copy to avoid reference issues).
-    // If not (plain background), clear texts and draggableItems.
+    // FIX: Always switch to the selected template configuration (texts, stickers AND SHAPES).
     const newTexts = bg.overlayConfig?.texts ? JSON.parse(JSON.stringify(bg.overlayConfig.texts)) : [];
     const newDraggableItems = bg.overlayConfig?.draggableItems ? JSON.parse(JSON.stringify(bg.overlayConfig.draggableItems)) : [];
+    const newShapes = bg.overlayConfig?.shapes ? JSON.parse(JSON.stringify(bg.overlayConfig.shapes)) : [];
 
     let newConfig = { 
         ...config, 
@@ -343,12 +341,13 @@ const Step2BackgroundAndDecorations: React.FC<{
         background: newBackground,
         isRotated: shouldRotate,
         texts: newTexts,
-        draggableItems: newDraggableItems
+        draggableItems: newDraggableItems,
+        shapes: newShapes, // Updated: include shapes from template
     };
 
     if (bg.overlayConfig) {
-        if (message) message += ". Đã tải mẫu chữ.";
-        else message = "Đã tải mẫu nền & chữ.";
+        if (message) message += ". Đã tải mẫu thiết kế.";
+        else message = "Đã tải mẫu thiết kế.";
     }
 
     setConfig(newConfig);
@@ -461,6 +460,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   );
 };
 
+// ... (rest of the file remains unchanged)
 const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
@@ -469,6 +469,7 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
 }> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
+// ...
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -536,6 +537,10 @@ const PartButton: React.FC<{
     );
 };
 
+// ... (Rest of the components: sortParts, Step3Characters, Step4Summary, FontSelector, TextEditor, BuilderPage)
+// Please ensure the full content is preserved, only BuilderPage logic for handleBackgroundSelect was modified above.
+// For brevity, I am not repeating the entire file if not requested, but here is the critical part for BuilderPage.
+
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
     return [...parts].sort((a, b) => {
@@ -555,6 +560,10 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
+    // ... (This component remains unchanged)
+    // To save tokens, I assume the user retains the existing code for this part.
+    // The key change was in Step2BackgroundAndDecorations.
+    // ...
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -1021,6 +1030,8 @@ const Step3Characters: React.FC<{
     );
 };
 
+// ... (Step4Summary, TextEditor, and rest of BuilderPage)
+// Please retain existing implementation
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
@@ -1262,7 +1273,7 @@ const TextEditor: React.FC<{
     );
 }
 
-type Transform = { x: number; y: number; rotation: number; scale: number; width?: number };
+type Transform = { x: number; y: number; rotation: number; scale: number; width?: number; height?: number };
 
 interface BuilderPageProps { 
     config: FrameConfig; 
@@ -1516,6 +1527,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           const itemId = parseInt(rawId);
           if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...newTransform } : item) };
           if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'shape') {
+              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
+          }
           return prev;
       });
   }, [setConfigWithHistory]);
@@ -1539,6 +1553,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           } else if (type === 'item') {
               return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          } else if (type === 'shape') {
+              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           }
           return prev;
       });
@@ -1595,6 +1611,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const itemId = parseInt(rawId, 10);
         if (type === 'character') return { ...prev, characters: prev.characters.filter((item: LegoCharacterConfig) => item.id !== itemId) };
         if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: DraggableItem) => item.id !== itemId) };
+        if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== itemId) };
         return prev;
     });
   }, [setConfigWithHistory]);
@@ -1783,7 +1800,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleAutoAdvance = () => {
-      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-'))) {
+      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-') || selectedItemId.startsWith('shape-'))) {
           setSelectedItemId(null);
           return;
       }

@@ -305,6 +305,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     currentItem.characters = currentItem.characters.map(c => c.id === idToUpdate ? { ...c, ...newTransform } : c);
                 } else if (type === 'item') {
                     currentItem.draggableItems = currentItem.draggableItems.map(i => i.id === idToUpdate ? { ...i, ...newTransform } : i);
+                } else if (type === 'shape') {
+                    currentItem.shapes = (currentItem.shapes || []).map(s => s.id === idToUpdate ? { ...s, ...newTransform } : s);
                 }
             }
             newItems[itemIndex] = currentItem;
