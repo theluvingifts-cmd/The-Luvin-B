@@ -38,6 +38,7 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
                 id: doc.id,
                 name: data.name || doc.id,
                 url: data.url,
+                previewUrl: data.previewUrl, // Added mapping for previewUrl
                 category: data.category || 'Khác',
                 type: data.type || 'square',
                 orientation: data.orientation || 'portrait',

@@ -32,7 +32,8 @@ interface FramePreviewProps {
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
   previewFont?: string | null; 
-  allowTextScaling?: boolean; 
+  allowTextScaling?: boolean;
+  onAlign?: (type: 'center' | 'horizontal' | 'vertical') => void; // New prop for alignment
 }
 
 // 1. SafeImage Component with Skeleton Loading
@@ -464,7 +465,7 @@ const Transformable: React.FC<{
     );
 };
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont, allowTextScaling }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont, allowTextScaling, onAlign }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -757,6 +758,20 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
                 <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5 mx-auto">
+                    {onAlign && (
+                        <>
+                            <button onClick={() => onAlign('center')} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="2" x2="12" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><rect x="8" y="8" width="8" height="8"></rect></svg>
+                            </button>
+                            <button onClick={() => onAlign('horizontal')} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa ngang">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg>
+                            </button>
+                            <button onClick={() => onAlign('vertical')} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa dọc">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg>
+                            </button>
+                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                        </>
+                    )}
                     {selectedItemDetails?.canFlip && (
                         <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors active:scale-90" title="Lật">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>

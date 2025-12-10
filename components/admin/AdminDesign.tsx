@@ -1224,11 +1224,9 @@ export const AdminDesign: React.FC = () => {
                         <div className="w-px h-4 bg-gray-200 mx-1"></div>
                         
                         <button onClick={() => alignItem('left')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trái"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
-                        <button onClick={() => alignItem('centerH')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa ngang"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg></button>
                         <button onClick={() => alignItem('right')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn phải"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
                         <div className="w-px bg-gray-200 mx-1"></div>
                         <button onClick={() => alignItem('top')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trên"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 5 5 12"></polyline></svg></button>
-                        <button onClick={() => alignItem('centerV')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa dọc"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg></button>
                         <button onClick={() => alignItem('bottom')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn dưới"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 19 19 12"></polyline></svg></button>
                     </div>
                 )}
@@ -1259,6 +1257,11 @@ export const AdminDesign: React.FC = () => {
                             className="pointer-events-auto"
                             previewFont={previewFont}
                             allowTextScaling={true} // ENABLE SCALING FOR TEXT
+                            onAlign={(type) => { // Pass alignment logic
+                                if (type === 'center') { alignItem('centerH'); alignItem('centerV'); }
+                                else if (type === 'horizontal') alignItem('centerH');
+                                else if (type === 'vertical') alignItem('centerV');
+                            }}
                         />
                     </div>
                 </div>

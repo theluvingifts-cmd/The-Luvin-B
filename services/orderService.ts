@@ -2,7 +2,7 @@
 // services/orderService.ts
 import { db } from '../config/firebase';
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where } from 'firebase/firestore';
-import type { Order } from '../types';
+import type { Order, FrameConfig } from '../types';
 import { uploadToCloudinary } from './uploadService';
 import { adjustStock } from './productService';
 
@@ -57,18 +57,40 @@ const cleanForFirestore = (data: any): any => {
     return newObj;
 };
 
+// HELPER: Process images in order items (Upload base64 to Storage)
+const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfig[]> => {
+    return Promise.all(items.map(async (item) => {
+        let newItem = { ...item };
+
+        // 1. Upload Preview Image if Base64
+        if (newItem.previewImageUrl && newItem.previewImageUrl.startsWith('data:')) {
+            const cloudUrl = await uploadToCloudinary(newItem.previewImageUrl);
+            if (cloudUrl) {
+                newItem.previewImageUrl = cloudUrl;
+            } else {
+                console.error("Failed to upload preview image for item", item.frameId);
+            }
+        }
+
+        // 2. Upload Background Image if Base64 (User Upload)
+        if (newItem.background && newItem.background.type === 'upload' && newItem.background.value.startsWith('data:')) {
+             const bgCloudUrl = await uploadToCloudinary(newItem.background.value);
+             if (bgCloudUrl) {
+                 newItem.background = { ...newItem.background, value: bgCloudUrl };
+             } else {
+                 console.error("Failed to upload background image for item", item.frameId);
+             }
+        }
+
+        return newItem; 
+    }));
+};
+
 // 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
-        // Xử lý ảnh: Upload ảnh preview lên Cloudinary nếu là chuỗi base64
-        const itemsWithImages = await Promise.all(order.items.map(async (item) => {
-            if (item.previewImageUrl && item.previewImageUrl.startsWith('data:')) {
-                const cloudUrl = await uploadToCloudinary(item.previewImageUrl);
-                if (!cloudUrl) throw new Error("Lỗi upload ảnh thiết kế. Vui lòng kiểm tra kết nối mạng.");
-                return { ...item, previewImageUrl: cloudUrl || item.previewImageUrl };
-            }
-            return item; 
-        }));
+        // Xử lý ảnh: Upload ảnh preview và background lên Storage nếu là chuỗi base64
+        const itemsWithImages = await processOrderItemsImages(order.items);
 
         const timestamp = Date.now();
         const finalOrder: Order = {
@@ -162,6 +184,11 @@ export const getAllOrders = async (): Promise<Order[]> => {
 // 4. Update Order
 export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
     try {
+        // Process images if items are updated
+        if (updates.items && Array.isArray(updates.items)) {
+            updates.items = await processOrderItemsImages(updates.items);
+        }
+
         const orderRef = doc(db, "orders", orderId);
         // Important: Sanitize updates to remove undefined fields which cause Firestore to crash
         const cleanUpdates = cleanForFirestore(updates);

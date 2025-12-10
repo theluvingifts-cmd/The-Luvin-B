@@ -188,6 +188,9 @@ const PresetBackgroundButton: React.FC<{
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
     const imageSrc = bg.previewUrl || bg.url;
+    // Check if it's a color (starts with #)
+    const isColor = imageSrc.startsWith('#');
+    
     let line1 = bg.name;
     let line2 = '';
     const match = bg.name.match(/^(.*?)(\s+\d+)$/);
@@ -212,14 +215,19 @@ const PresetBackgroundButton: React.FC<{
             }`}
         >
             <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
-                {imageSrc ? (
+                {isColor ? (
+                    <div 
+                        className="w-full h-full"
+                        style={{ backgroundColor: imageSrc }}
+                    ></div>
+                ) : imageSrc ? (
                     <>
                         <img
                             src={imageSrc}
                             alt={bg.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
                             }}
                         />
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
@@ -416,7 +424,10 @@ const Step2BackgroundAndDecorations: React.FC<{
                 <PresetBackgroundButton
                   key={bg.id}
                   bg={bg}
-                  isSelected={config.background.value === bg.url}
+                  // Prevent templates from being auto-selected visually to avoid confusion, 
+                  // as templates are often just "starting points" and share same background color (e.g. white).
+                  // Standard backgrounds (no overlay) will still show as selected if active.
+                  isSelected={config.background.value === bg.url && !bg.overlayConfig}
                   onClick={() => handleBackgroundSelect(bg)}
                   onZoom={onZoomImage}
                 />
@@ -1513,9 +1524,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       });
   }, [setConfigWithHistory]);
 
-  const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y') => {
+  const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => {
       if (!selectedItemId) return;
       
+      // Normalize 'horizontal'/'vertical' from FramePreview prop to internal logic
+      if (direction === 'horizontal') direction = 'center-x';
+      if (direction === 'vertical') direction = 'center-y';
+
       const [type, ...rest] = selectedItemId.split('-');
       const rawId = rest.join('-');
       const idToUpdate = parseInt(rawId);
@@ -1904,25 +1919,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         activePartType={activePartType} 
                         logoUrl={logoUrl} 
                         previewFont={previewFont} // PASS PREVIEW FONT
+                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} // Pass Alignment Handler
                     />
                 </div>
                 
-                {/* FLOATING ALIGNMENT TOOLBAR (Shows when item selected) */}
-                {selectedItemId && isBottomBarVisible && (
-                    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/90 backdrop-blur border border-gray-200 shadow-md rounded-full px-4 py-2 animate-fade-in-up">
-                        <button onClick={() => handleAlignItem('center')} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600" title="Căn giữa">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="2" x2="12" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><rect x="8" y="8" width="8" height="8"></rect></svg>
-                        </button>
-                        <div className="w-px h-5 bg-gray-300 self-center"></div>
-                        <button onClick={() => handleAlignItem('center-x')} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600" title="Căn giữa ngang">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg>
-                        </button>
-                        <div className="w-px h-5 bg-gray-300 self-center"></div>
-                        <button onClick={() => handleAlignItem('center-y')} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600" title="Căn giữa dọc">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg>
-                        </button>
-                    </div>
-                )}
+                {/* REMOVED: FLOATING ALIGNMENT TOOLBAR (Shows when item selected) */}
 
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
