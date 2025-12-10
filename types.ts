@@ -52,38 +52,19 @@ export interface LegoPart {
   isHot?: boolean;
 }
 
-export interface PresetBackground {
-    id: string;
-    name: string;
-    url: string;
-    previewUrl?: string; // URL ảnh thumbnail đã có thiết kế (chữ, sticker)
-    category: string;
-    type: 'square' | 'rectangle';
-    orientation?: 'portrait' | 'landscape';
-    order?: number;
-    // NEW: Configuration for editable layers (Text/Stickers) associated with this background
-    overlayConfig?: {
-        texts: TextConfig[];
-        draggableItems: DraggableItem[];
-    };
-}
-
-export interface LegoCharacterConfig {
+export interface ShapeConfig {
   id: number;
-  hair?: LegoPart;
-  face?: LegoPart;
-  shirt?: LegoPart;
-  pants?: LegoPart;
-  hat?: LegoPart;
-  selectedShirtColor?: OutfitColor; 
-  selectedPantsColor?: OutfitColor;
-  selectedHairColor?: OutfitColor;
-  customPrintPrice?: number;
-  x: number; 
-  y: number; 
-  rotation: number; 
-  scale: number; 
-  previousHair?: LegoPart; 
+  type: 'rect' | 'circle'; 
+  x: number; // percentage
+  y: number; // percentage
+  width: number; // percentage
+  height: number; // percentage
+  rotation: number;
+  strokeColor: string;
+  strokeWidth: number;
+  strokeType: 'solid' | 'dashed' | 'dotted';
+  borderRadius: number; // px
+  lockedPosition?: boolean;
 }
 
 export interface TextConfig {
@@ -135,9 +116,28 @@ export interface FrameConfig {
   background: BackgroundConfig;
   characters: LegoCharacterConfig[];
   texts: TextConfig[];
+  shapes: ShapeConfig[]; // New shapes array
   draggableItems: DraggableItem[];
   previewImageUrl?: string;
   quantity?: number;
+}
+
+export interface LegoCharacterConfig {
+  id: number;
+  hair?: LegoPart;
+  face?: LegoPart;
+  shirt?: LegoPart;
+  pants?: LegoPart;
+  hat?: LegoPart;
+  selectedShirtColor?: OutfitColor; 
+  selectedPantsColor?: OutfitColor;
+  selectedHairColor?: OutfitColor;
+  customPrintPrice?: number;
+  x: number; 
+  y: number; 
+  rotation: number; 
+  scale: number; 
+  previousHair?: LegoPart; 
 }
 
 export interface Order {
@@ -183,6 +183,23 @@ export interface Order {
   // --- Discounts ---
   discountCode?: string; // Mã giảm giá đã dùng
   discountAmount?: number; // Số tiền được giảm
+}
+
+export interface PresetBackground {
+    id: string;
+    name: string;
+    url: string;
+    previewUrl?: string; // URL ảnh thumbnail đã có thiết kế (chữ, sticker)
+    category: string;
+    type: 'square' | 'rectangle';
+    orientation?: 'portrait' | 'landscape';
+    order?: number;
+    // NEW: Configuration for editable layers (Text/Stickers) associated with this background
+    overlayConfig?: {
+        texts: TextConfig[];
+        draggableItems: DraggableItem[];
+        shapes?: ShapeConfig[];
+    };
 }
 
 export interface CollectionTemplate {

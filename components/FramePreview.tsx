@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect, useMemo, forwardRef } from 'react';
-import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor } from '../types';
+import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
 type Transform = {
@@ -9,6 +9,7 @@ type Transform = {
   rotation: number;
   scale: number;
   width?: number;
+  height?: number; // Added height for shapes
 }
 
 interface FramePreviewProps {
@@ -31,7 +32,7 @@ interface FramePreviewProps {
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
   previewFont?: string | null; 
-  allowTextScaling?: boolean; // NEW PROP: Enable corner scaling for text
+  allowTextScaling?: boolean; 
 }
 
 // 1. SafeImage Component with Skeleton Loading
@@ -230,11 +231,11 @@ const Transformable: React.FC<{
     isPositionLocked?: boolean; // New Prop
     zIndex?: number;
     style?: React.CSSProperties;
-    isTextItem?: boolean;
-    allowTextScaling?: boolean; // New Prop: Allow scaling text via corner
+    resizeMode?: 'scale' | 'dimensions'; // New: Choose how to resize
+    allowTextScaling?: boolean; // New Prop: Allow scaling text via corner (deprecated by resizeMode but kept for compat)
     containerSize?: { width: number; height: number; };
     onDoubleClick?: () => void;
-}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, isPositionLocked = false, zIndex, style, isTextItem, allowTextScaling = false, containerSize, onDoubleClick }) => {
+}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, isPositionLocked = false, zIndex, style, resizeMode = 'scale', allowTextScaling = false, containerSize, onDoubleClick }) => {
     
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
       if ('touches' in e && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -314,15 +315,35 @@ const Transformable: React.FC<{
      const handleResizeStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
+        if (!containerSize) return; // Should have container size for accurate dimension resizing
+
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
-        const startScale = initialTransform.scale;
         
+        const startScale = initialTransform.scale || 1;
+        const startWidth = initialTransform.width || 20;
+        const startHeight = initialTransform.height || 20;
+
         const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
              const moveCoords = getClientCoords(moveEvent);
              if (!moveCoords) return;
              const dx = moveCoords.x - startCoords.x;
-             onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
+             const dy = moveCoords.y - startCoords.y;
+
+             if (resizeMode === 'dimensions') {
+                 // Resizing width and height (Shapes)
+                 const dwPercent = (dx / containerSize.width) * 100;
+                 const dhPercent = (dy / containerSize.height) * 100;
+                 
+                 onTransform(id, { 
+                     ...initialTransform, 
+                     width: Math.max(1, startWidth + dwPercent),
+                     height: Math.max(1, startHeight + dhPercent)
+                 });
+             } else {
+                 // Standard scaling
+                 onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
+             }
         };
         const handleEnd = () => {
             window.removeEventListener('mousemove', handleMove);
@@ -362,7 +383,8 @@ const Transformable: React.FC<{
         window.addEventListener('touchend', handleEnd);
     };
 
-    const handleScale = 1 / (initialTransform.scale || 1);
+    const handleScale = resizeMode === 'dimensions' ? 1 : 1 / (initialTransform.scale || 1);
+    const rotation = initialTransform.rotation || 0;
     
     return (
         <div
@@ -374,7 +396,8 @@ const Transformable: React.FC<{
                 ...style,
                 left: `${initialTransform.x}%`,
                 top: `${initialTransform.y}%`,
-                transform: `translate(-50%, -50%) rotate(${initialTransform.rotation}deg) scale(${initialTransform.scale}) scaleX(${isFlipped ? -1 : 1})`,
+                // If resizeMode is dimensions, we don't scale the container itself, we expect width/height to be set via props/style
+                transform: `translate(-50%, -50%) rotate(${rotation}deg) ${resizeMode === 'scale' ? `scale(${initialTransform.scale})` : ''} scaleX(${isFlipped ? -1 : 1})`,
                 touchAction: 'none',
                 cursor: isDraggable && !isPositionLocked ? (isSelected ? 'move' : 'pointer') : (isPositionLocked ? 'not-allowed' : 'default'),
                 outline: isSelected ? (isPositionLocked ? '2px solid #ef4444' : '2px dashed #efa3b5') : 'none',
@@ -394,10 +417,10 @@ const Transformable: React.FC<{
                 </div>
             )}
 
-            {isSelected && isDraggable && !isPositionLocked && (
+            {isSelected && !isPositionLocked && (
                 <>
                   {/* Text Specific Width Handle */}
-                  {isTextItem && (
+                  {resizeMode === 'dimensions' && !style?.height && ( // Hacky check if it's text (only width resizing)
                       <div 
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 
@@ -418,8 +441,8 @@ const Transformable: React.FC<{
                       </div>
                   )}
 
-                  {/* Corner Scale Handle (Standard for Items, Optional for Text) */}
-                  {isResizable && (!isTextItem || allowTextScaling) && (
+                  {/* Corner Scale/Resize Handle */}
+                  {isResizable && (
                       <div 
                         onMouseDown={handleResizeStart} 
                         onTouchStart={handleResizeStart} 
@@ -492,6 +515,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
           return { type: 'text', data: config.texts.find(t => t.id === id), canFlip: false };
       } else if (type === 'character') {
           return { type: 'character', data: config.characters.find(c => c.id === id), canFlip: false };
+      } else if (type === 'shape') {
+          return { type: 'shape', data: config.shapes?.find(s => s.id === id), canFlip: false };
       }
       return null;
   }, [selectedItemId, config, allParts]);
@@ -532,6 +557,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         if (type === 'item') currentItem = config.draggableItems.find(i => i.id === id);
         else if (type === 'character') currentItem = config.characters.find(c => c.id === id);
         else if (type === 'text') currentItem = config.texts.find(t => t.id === id);
+        else if (type === 'shape') currentItem = config.shapes?.find(s => s.id === id);
 
         if (!currentItem || currentItem.lockedPosition) return; // Disable keyboard move if position locked
         
@@ -605,6 +631,40 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
+                {/* NEW: Shapes Layer (Layer 4) */}
+                {config.shapes && config.shapes.map(shape => (
+                    <Transformable
+                        key={`shape-${shape.id}`}
+                        id={`shape-${shape.id}`}
+                        initialTransform={{ x: shape.x, y: shape.y, rotation: shape.rotation, scale: 1, width: shape.width, height: shape.height }}
+                        onTransform={onItemTransform}
+                        parentRef={previewContainerRef}
+                        isSelected={selectedItemId === `shape-${shape.id}`}
+                        onSelect={setSelectedItemId}
+                        isDraggable={isInteractive}
+                        isResizable={isInteractive}
+                        isRotatable={isInteractive}
+                        isPositionLocked={shape.lockedPosition}
+                        zIndex={4}
+                        resizeMode="dimensions"
+                        containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                        style={{ 
+                            width: `${(shape.width) * backgroundWidth / 100}px`,
+                            height: `${(shape.height) * backgroundHeight / 100}px`
+                        }}
+                    >
+                        <div style={{
+                            width: '100%',
+                            height: '100%',
+                            borderStyle: shape.strokeType,
+                            borderWidth: `${shape.strokeWidth}px`,
+                            borderColor: shape.strokeColor,
+                            borderRadius: `${shape.borderRadius}px`,
+                            boxSizing: 'border-box'
+                        }} />
+                    </Transformable>
+                ))}
+
                 {/* 5. Content Layers (Layer 10+) */}
                 {config.characters.map(char => (
                     <Transformable 
@@ -649,7 +709,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={`text-${text.id}`} id={`text-${text.id}`} 
                             initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
                             onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={isSelected} onSelect={setSelectedItemId}
-                            isDraggable={isInteractive} zIndex={15} isTextItem={true} containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                            isDraggable={isInteractive} zIndex={15} resizeMode="dimensions" containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                             isPositionLocked={text.lockedPosition} // Pass lockedPosition
                             style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
                             allowTextScaling={allowTextScaling} // Pass allowTextScaling

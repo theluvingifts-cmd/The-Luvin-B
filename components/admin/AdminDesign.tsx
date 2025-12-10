@@ -1,7 +1,7 @@
 
 // ... (previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
+import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
@@ -15,6 +15,7 @@ declare var html2canvas: any;
 const TOOLS = [
     { id: 'templates', icon: '📂', label: 'Mẫu' }, 
     { id: 'background', icon: '🎨', label: 'Nền' },
+    { id: 'shape', icon: '🟥', label: 'Cấu trúc' }, // Changed Icon for Shape/Structure
     { id: 'text', icon: 'abc', label: 'Chữ' },
     { id: 'upload', icon: '☁️', label: 'Upload' },
     { id: 'layers', icon: '📚', label: 'Lớp' },
@@ -235,6 +236,36 @@ export const AdminDesign: React.FC = () => {
         setActiveTool('text');
     };
 
+    const handleAddShape = () => {
+        const newShape: ShapeConfig = {
+            id: Date.now(),
+            type: 'rect',
+            x: 50, y: 50, rotation: 0, 
+            width: 20, height: 15,
+            strokeColor: '#333333',
+            strokeWidth: 2,
+            strokeType: 'dashed',
+            borderRadius: 0,
+            lockedPosition: false
+        };
+        setConfig(prev => ({ ...prev, shapes: [...(prev.shapes || []), newShape] }));
+        setSelectedItemId(`shape-${newShape.id}`);
+        setActiveTool('shape');
+    };
+
+    const handleShapeUpdate = (id: number, updates: Partial<ShapeConfig>) => {
+        setConfig(prev => ({
+            ...prev,
+            shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s)
+        }));
+    };
+
+    const getSelectedShape = () => {
+        if (!selectedItemId || !selectedItemId.startsWith('shape-')) return null;
+        const id = parseInt(selectedItemId.split('-')[1]);
+        return config.shapes?.find(s => s.id === id);
+    };
+
     const handleAddUploadItem = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setIsSaving(true);
@@ -289,6 +320,7 @@ export const AdminDesign: React.FC = () => {
                 background: { type: isColor ? 'color' : 'image', value: bg.url },
                 texts: bg.overlayConfig?.texts || [],
                 draggableItems: bg.overlayConfig?.draggableItems || [],
+                shapes: bg.overlayConfig?.shapes || [], // Load shapes
                 characters: []
             });
             setActiveTool('layers');
@@ -330,6 +362,9 @@ export const AdminDesign: React.FC = () => {
             if (type === 'item') {
                 return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? updateFn(i) : i) };
             }
+            if (type === 'shape') {
+                return { ...prev, shapes: (prev.shapes || []).map(s => s.id === numericId ? updateFn(s) : s) };
+            }
             return prev;
         });
     };
@@ -345,6 +380,9 @@ export const AdminDesign: React.FC = () => {
             }
             if (type === 'item') {
                 return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedPosition: !i.lockedPosition } : i) };
+            }
+            if (type === 'shape') {
+                return { ...prev, shapes: (prev.shapes || []).map(s => s.id === numericId ? { ...s, lockedPosition: !s.lockedPosition } : s) };
             }
             return prev;
         });
@@ -362,6 +400,7 @@ export const AdminDesign: React.FC = () => {
              if (type === 'item') {
                 return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedContent: !i.lockedContent } : i) };
             }
+            // Shapes don't have content lock
             return prev;
         });
     };
@@ -378,6 +417,10 @@ export const AdminDesign: React.FC = () => {
             const i = config.draggableItems.find(i => i.id === numericId);
             return { position: i?.lockedPosition, content: i?.lockedContent };
         }
+        if (type === 'shape') {
+            const s = config.shapes?.find(s => s.id === numericId);
+            return { position: s?.lockedPosition, content: false };
+        }
         return { position: false, content: false };
     }, [selectedItemId, config]);
 
@@ -392,6 +435,9 @@ export const AdminDesign: React.FC = () => {
             if (type === 'item') {
                 return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, ...newTransform } : i) };
             }
+            if (type === 'shape') {
+                return { ...prev, shapes: (prev.shapes || []).map(s => s.id === numericId ? { ...s, ...newTransform } : s) };
+            }
             return prev;
         });
     };
@@ -403,6 +449,7 @@ export const AdminDesign: React.FC = () => {
         setConfig(prev => {
             if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== numericId) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numericId) };
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== numericId) };
             return prev;
         });
     };
@@ -425,6 +472,12 @@ export const AdminDesign: React.FC = () => {
                     lockedPosition: lockType === 'position' ? !i.lockedPosition : i.lockedPosition,
                     lockedContent: lockType === 'content' ? !i.lockedContent : i.lockedContent
                 } : i) };
+            }
+            if (type === 'shape') {
+                return { ...prev, shapes: (prev.shapes || []).map(s => s.id === numericId ? { 
+                    ...s, 
+                    lockedPosition: lockType === 'position' ? !s.lockedPosition : s.lockedPosition,
+                } : s) };
             }
             return prev;
         });
@@ -554,7 +607,8 @@ export const AdminDesign: React.FC = () => {
                 orientation: 'portrait', 
                 overlayConfig: {
                     texts: config.texts,
-                    draggableItems: config.draggableItems
+                    draggableItems: config.draggableItems,
+                    shapes: config.shapes || []
                 }
             };
 
@@ -728,7 +782,6 @@ export const AdminDesign: React.FC = () => {
                                     
                                     <div>
                                         <label className="text-xs font-bold text-gray-500 mb-1 block">Font chữ</label>
-                                        {/* Replaced Select with FontSelector */}
                                         <FontSelector 
                                             value={getSelectedText()?.font || 'Playfair Display'}
                                             onChange={(font) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { font })}
@@ -825,6 +878,68 @@ export const AdminDesign: React.FC = () => {
                         </div>
                     )}
 
+                    {activeTool === 'shape' && (
+                        <div className="space-y-4">
+                            <button onClick={handleAddShape} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold shadow-md hover:bg-black transition-transform active:scale-95">
+                                + Thêm hình chữ nhật / đường
+                            </button>
+                            
+                            {getSelectedShape() ? (
+                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+                                    <p className="text-xs font-bold text-blue-600 uppercase">Đang chỉnh sửa Shape</p>
+                                    
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1 block">Kiểu nét</label>
+                                        <select 
+                                            className="w-full p-2 border rounded text-sm bg-white"
+                                            value={getSelectedShape()?.strokeType || 'solid'}
+                                            onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { strokeType: e.target.value as any })}
+                                        >
+                                            <option value="solid">Nét liền (Solid)</option>
+                                            <option value="dashed">Nét đứt (Dashed)</option>
+                                            <option value="dotted">Chấm bi (Dotted)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Độ dày nét</label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded text-sm"
+                                                value={getSelectedShape()?.strokeWidth || 2}
+                                                onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { strokeWidth: parseInt(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Màu</label>
+                                            <input 
+                                                type="color" 
+                                                className="w-10 h-10 border rounded cursor-pointer"
+                                                value={getSelectedShape()?.strokeColor || '#000000'}
+                                                onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { strokeColor: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1 block">Bo góc (Radius): {getSelectedShape()?.borderRadius}px</label>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="100" 
+                                            className="w-full"
+                                            value={getSelectedShape()?.borderRadius || 0}
+                                            onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { borderRadius: parseInt(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500 text-center py-4">Chọn một hình để chỉnh sửa.</p>
+                            )}
+                        </div>
+                    )}
+
                     {activeTool === 'upload' && (
                         <div className="space-y-4">
                             <label className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer block">
@@ -856,7 +971,6 @@ export const AdminDesign: React.FC = () => {
 
                     {activeTool === 'layers' && (
                         <div className="space-y-2">
-                            {/* Layer items code... (unchanged) */}
                             {config.texts.map((t, idx) => (
                                 <div key={t.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `text-${t.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`text-${t.id}`)}>
                                     <div className="flex items-center gap-2">
@@ -872,6 +986,20 @@ export const AdminDesign: React.FC = () => {
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`text-${t.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
+                                    </div>
+                                </div>
+                            ))}
+                            {config.shapes?.map((s, idx) => (
+                                <div key={s.id} className={`flex justify-between items-center p-2 border rounded cursor-pointer ${selectedItemId === `shape-${s.id}` ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'}`} onClick={() => setSelectedItemId(`shape-${s.id}`)}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium truncate w-24">Shape {idx+1}</span>
+                                        {s.lockedPosition && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">PosLock</span>}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={(e) => { e.stopPropagation(); handleLayerLockToggle(`shape-${s.id}`, 'position'); }} className={`p-1 rounded ${s.lockedPosition ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-600'}`} title={s.lockedPosition ? "Mở khóa vị trí" : "Khóa vị trí"}>
+                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleItemRemove(`shape-${s.id}`); }} className="text-red-500 hover:bg-red-100 p-1 rounded">×</button>
                                     </div>
                                 </div>
                             ))}
@@ -893,7 +1021,7 @@ export const AdminDesign: React.FC = () => {
                                     </div>
                                 </div>
                             ))}
-                            {config.texts.length === 0 && config.draggableItems.length === 0 && (
+                            {config.texts.length === 0 && config.draggableItems.length === 0 && (!config.shapes || config.shapes.length === 0) && (
                                 <p className="text-sm text-gray-400 text-center italic">Chưa có lớp nào.</p>
                             )}
                         </div>

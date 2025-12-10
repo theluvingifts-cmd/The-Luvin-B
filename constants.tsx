@@ -63,6 +63,7 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
   characters: [],
   texts: [],
   draggableItems: [],
+  shapes: [], // Initialize shapes array
 };
 
 export const COLLECTION_TEMPLATES: { id: string; name: string; imageUrl: string; config: FrameConfig }[] = [];
