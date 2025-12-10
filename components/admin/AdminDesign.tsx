@@ -1,5 +1,4 @@
 
-// ... (previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -126,6 +125,9 @@ export const AdminDesign: React.FC = () => {
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     
+    // Clipboard State for Copy/Paste
+    const [clipboard, setClipboard] = useState<{ type: 'text' | 'shape' | 'item'; data: any } | null>(null);
+
     // Refs
     const previewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +174,128 @@ export const AdminDesign: React.FC = () => {
         });
         style.innerHTML = css;
     }, [uploadedFonts]);
+
+    const handleItemRemove = (id: string) => {
+        const [type, idStr] = id.split('-');
+        const numericId = parseInt(idStr);
+        setSelectedItemId(null);
+        setConfig(prev => {
+            if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== numericId) };
+            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numericId) };
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== numericId) };
+            return prev;
+        });
+    };
+
+    // Keyboard Shortcuts Effect
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            const isCtrl = e.ctrlKey || e.metaKey;
+
+            // DELETE
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedItemId) {
+                    e.preventDefault();
+                    handleItemRemove(selectedItemId);
+                }
+                return;
+            }
+
+            // ENTER (Deselect / Confirm)
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                setSelectedItemId(null);
+                return;
+            }
+
+            // COPY (Ctrl+C)
+            if (isCtrl && e.key === 'c') {
+                if (selectedItemId) {
+                    e.preventDefault();
+                    const [type, idStr] = selectedItemId.split('-');
+                    const id = parseInt(idStr);
+                    let data = null;
+                    let itemType: 'text' | 'shape' | 'item' | null = null;
+
+                    if (type === 'text') {
+                        data = config.texts.find(t => t.id === id);
+                        itemType = 'text';
+                    } else if (type === 'shape') {
+                        data = config.shapes?.find(s => s.id === id);
+                        itemType = 'shape';
+                    } else if (type === 'item') {
+                        data = config.draggableItems.find(i => i.id === id);
+                        itemType = 'item';
+                    }
+
+                    if (data && itemType) {
+                        setClipboard({ type: itemType, data: JSON.parse(JSON.stringify(data)) });
+                    }
+                }
+                return;
+            }
+
+            // PASTE (Ctrl+V)
+            if (isCtrl && e.key === 'v') {
+                if (clipboard) {
+                    e.preventDefault();
+                    const newId = Date.now();
+                    const newItem = { 
+                        ...clipboard.data, 
+                        id: newId, 
+                        x: Math.min(95, (clipboard.data.x || 50) + 2), 
+                        y: Math.min(95, (clipboard.data.y || 50) + 2) 
+                    };
+
+                    setConfig(prev => {
+                        const next = { ...prev };
+                        if (clipboard.type === 'text') {
+                            next.texts = [...prev.texts, newItem];
+                        } else if (clipboard.type === 'shape') {
+                            next.shapes = [...(prev.shapes || []), newItem];
+                        } else if (clipboard.type === 'item') {
+                            next.draggableItems = [...prev.draggableItems, newItem];
+                        }
+                        return next;
+                    });
+                    setSelectedItemId(`${clipboard.type}-${newId}`);
+                }
+                return;
+            }
+
+            // ARROW KEYS (Nudge)
+            if (selectedItemId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                const step = e.shiftKey ? 5 : 0.5;
+                let dx = 0; let dy = 0;
+                if (e.key === 'ArrowUp') dy = -step;
+                if (e.key === 'ArrowDown') dy = step;
+                if (e.key === 'ArrowLeft') dx = -step;
+                if (e.key === 'ArrowRight') dx = step;
+
+                const [type, idStr] = selectedItemId.split('-');
+                const id = parseInt(idStr);
+                
+                const updatePos = (item: any) => ({ 
+                    ...item, 
+                    x: Math.max(0, Math.min(100, item.x + (dx / 500 * 100))), // Approximation of pixel nudge to percentage
+                    y: Math.max(0, Math.min(100, item.y + (dy / 500 * 100))) 
+                });
+
+                setConfig(prev => {
+                    if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? updatePos(t) : t) };
+                    if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? updatePos(s) : s) };
+                    if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? updatePos(i) : i) };
+                    return prev;
+                });
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [config, selectedItemId, clipboard]);
 
     // ... (Helpers, Handlers - No Changes)
     const handleFrameChange = (frameId: string) => {
@@ -438,18 +562,6 @@ export const AdminDesign: React.FC = () => {
             if (type === 'shape') {
                 return { ...prev, shapes: (prev.shapes || []).map(s => s.id === numericId ? { ...s, ...newTransform } : s) };
             }
-            return prev;
-        });
-    };
-
-    const handleItemRemove = (id: string) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-        setSelectedItemId(null);
-        setConfig(prev => {
-            if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== numericId) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numericId) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== numericId) };
             return prev;
         });
     };
