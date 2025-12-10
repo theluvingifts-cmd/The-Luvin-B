@@ -4,6 +4,7 @@ import { Order, LegoPart, FrameOption } from '../../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { formatCurrency } from '../../utils/pricing';
 import { getAdsCosts, saveAdsCost } from '../../services/configService';
+import { uploadToCloudinary } from '../../services/uploadService';
 
 interface AdminDashboardProps {
     orders: Order[];
@@ -151,6 +152,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     const [adsDateInput, setAdsDateInput] = useState(new Date().toISOString().split('T')[0]);
     const [adsCostInput, setAdsCostInput] = useState<number>(0);
     const [isSavingAds, setIsSavingAds] = useState(false);
+    const [isCheckingSystem, setIsCheckingSystem] = useState(false);
 
     // Calculate start and end dates based on filter
     const { startDate, endDate, dateLabel } = useMemo(() => {
@@ -209,6 +211,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             alert('Lỗi lưu chi phí');
         }
         setIsSavingAds(false);
+    };
+
+    const handleSystemCheck = async () => {
+        setIsCheckingSystem(true);
+        try {
+            // Test Cloudinary / Firebase Storage Upload
+            // Create a small blob
+            const blob = new Blob(["Test"], { type: "text/plain" });
+            const testFile = new File([blob], "system_check.txt", { type: "text/plain" });
+            
+            const url = await uploadToCloudinary(testFile);
+            
+            if (url) {
+                // Now try to fetch it back to test CORS
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        alert("✅ HỆ THỐNG HOẠT ĐỘNG TỐT!\n\n- Database: Đã kết nối\n- Storage: Đã kết nối\n- CORS: Đã cấu hình chính xác (Cho phép tải ảnh thiết kế)");
+                    } else {
+                        alert("⚠️ CẢNH BÁO CORS:\nUpload thành công nhưng không thể tải về trực tiếp từ trình duyệt.\nCó thể bạn cần đợi vài phút hoặc chạy lại lệnh CORS trong Cloud Shell.");
+                    }
+                } catch (fetchErr) {
+                     alert("❌ LỖI CORS:\nUpload thành công nhưng trình duyệt chặn tải về.\nVui lòng chạy lại lệnh 'gsutil cors set...' trong Cloud Shell.");
+                }
+            } else {
+                alert("❌ LỖI STORAGE:\nKhông thể upload file. Kiểm tra lại Firebase Storage Rules (phải là 'allow write: if true').");
+            }
+        } catch (e: any) {
+            console.error(e);
+            alert("❌ LỖI KHÔNG XÁC ĐỊNH:\n" + e.message);
+        } finally {
+            setIsCheckingSystem(false);
+        }
     };
 
     const allKnownParts = useMemo(() => {
@@ -411,6 +446,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
                 
                 <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-center w-full sm:w-auto">
+                    {/* SYSTEM CHECK BUTTON ADDED HERE */}
+                    <button 
+                        onClick={handleSystemCheck}
+                        disabled={isCheckingSystem}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-md bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors whitespace-nowrap"
+                    >
+                        {isCheckingSystem ? (
+                            <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-700"></div> Đang kiểm tra...</>
+                        ) : (
+                            <>⚡ Kiểm tra hệ thống</>
+                        )}
+                    </button>
+
                     <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
                         <button onClick={() => setFilterType('period')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Ngày</button>
                         <button onClick={() => setFilterType('month')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>

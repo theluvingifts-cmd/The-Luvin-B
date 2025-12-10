@@ -1,33 +1,71 @@
 
 // services/uploadService.ts
+import { storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// --- CẤU HÌNH CLOUDINARY ---
-const CLOUD_NAME = "dbdqd93km"; 
-// QUAN TRỌNG: Bạn cần tạo Upload Preset tên là "the-luvin-preset" và chọn chế độ "Unsigned" trong Settings > Upload của Cloudinary
-const UPLOAD_PRESET = "the-luvin-preset"; 
-
+/**
+ * Uploads a file or base64 string to Firebase Storage
+ * @param file File object or Base64 string
+ * @returns Download URL or null
+ */
 export const uploadToCloudinary = async (file: File | string): Promise<string | null> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
+    // Note: Function name kept as 'uploadToCloudinary' for backward compatibility,
+    // but logic now uses Firebase Storage.
+    
     try {
-        // Sử dụng resource_type = 'auto' để Cloudinary tự nhận diện là image, video, hay raw (font file)
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-            method: "POST",
-            body: formData,
-        });
+        let blob: Blob;
+        // Tạo tên file unique để tránh trùng lặp
+        let fileName = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Cloudinary error:", errorData);
-            throw new Error(errorData.error?.message || "Upload failed");
+        if (typeof file === 'string') {
+            // Handle Base64 String (from html2canvas or charms)
+            if (file.startsWith('data:')) {
+                const response = await fetch(file);
+                blob = await response.blob();
+                
+                // Try to detect extension from mime type
+                const mimeType = file.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1];
+                const extension = mimeType?.split('/')[1] || 'png';
+                fileName += `.${extension}`;
+            } else if (file.startsWith('http')) {
+                // If it's already a URL, just return it
+                return file;
+            } else {
+                console.error("Invalid file format provided to upload service");
+                return null;
+            }
+        } else {
+            // Handle File Object (from input type='file')
+            blob = file;
+            // Sanitize filename
+            const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+            fileName += `_${cleanName}`;
         }
 
-        const data = await response.json();
-        return data.secure_url; // Trả về đường dẫn HTTPS
-    } catch (error) {
-        console.error("Lỗi upload file:", error);
+        // Create a reference
+        const storageRef = ref(storage, fileName);
+
+        // Upload the file
+        const snapshot = await uploadBytes(storageRef, blob);
+
+        // Get the download URL
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        
+        console.log("Upload success to Firebase Storage:", downloadURL);
+        return downloadURL;
+    } catch (error: any) {
+        console.error("Firebase Storage Upload Error:", error);
+        
+        // Gợi ý lỗi thường gặp cho người dùng
+        if (error.code === 'storage/unauthorized') {
+            alert("Lỗi quyền truy cập (403): Vui lòng vào Firebase Console -> Storage -> Rules và đổi 'allow write: if false' thành 'allow write: if true' (chế độ test).");
+        } else if (error.code === 'storage/canceled') {
+            alert("Đã hủy upload.");
+        } else if (error.code === 'storage/unknown') {
+            alert("Lỗi không xác định. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình bucket.");
+        } else {
+            alert(`Lỗi upload ảnh: ${error.message}`);
+        }
         return null;
     }
 };

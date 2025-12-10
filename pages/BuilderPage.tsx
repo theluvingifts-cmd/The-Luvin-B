@@ -460,7 +460,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   );
 };
 
-// ... (rest of the file remains unchanged)
+// ... (PartButton component)
 const PartButton: React.FC<{
     part: LegoPart;
     isSelected: boolean;
@@ -469,7 +469,6 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
 }> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
-// ...
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -537,10 +536,9 @@ const PartButton: React.FC<{
     );
 };
 
-// ... (Rest of the components: sortParts, Step3Characters, Step4Summary, FontSelector, TextEditor, BuilderPage)
-// Please ensure the full content is preserved, only BuilderPage logic for handleBackgroundSelect was modified above.
-// For brevity, I am not repeating the entire file if not requested, but here is the critical part for BuilderPage.
+// ... (Rest of components are same, showing only modified BuilderPage main logic for brevity)
 
+// ... sortParts function ...
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
     return [...parts].sort((a, b) => {
@@ -550,6 +548,7 @@ const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_des
     });
 };
 
+// ... Step3Characters ...
 const Step3Characters: React.FC<{ 
     config: FrameConfig; 
     setConfig: (c: FrameConfig) => void;
@@ -561,9 +560,6 @@ const Step3Characters: React.FC<{
     hotPartIds: string[];
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
     // ... (This component remains unchanged)
-    // To save tokens, I assume the user retains the existing code for this part.
-    // The key change was in Step2BackgroundAndDecorations.
-    // ...
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -1698,8 +1694,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             console.error('html2canvas error');
             resolve('');
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Snapshot error:', error);
+          if (error.message && error.message.includes('Tainted')) {
+              alert("Lỗi CORS: Không thể lưu ảnh do chưa cấu hình CORS cho Firebase Storage. Vui lòng xem hướng dẫn trong README để chạy lệnh 'gsutil cors'.");
+          }
           resolve('');
         } finally {
           setSelectedItemId(originalSelectedId); 
@@ -1754,7 +1753,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const base64Image = await captureFrameAsImage();
         
         if (!base64Image) {
-            showToast('Lỗi tạo ảnh. Vui lòng thử lại.', 'error');
+            showToast('Lỗi tạo ảnh. Có thể do lỗi CORS.', 'error');
             setIsSaving(false);
             return;
         }
