@@ -30,7 +30,8 @@ interface FramePreviewProps {
   allParts?: Record<string, LegoPart>;
   activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
-  previewFont?: string | null; // NEW PROP
+  previewFont?: string | null; 
+  allowTextScaling?: boolean; // NEW PROP: Enable corner scaling for text
 }
 
 // 1. SafeImage Component with Skeleton Loading
@@ -228,9 +229,10 @@ const Transformable: React.FC<{
     zIndex?: number;
     style?: React.CSSProperties;
     isTextItem?: boolean;
+    allowTextScaling?: boolean; // New Prop: Allow scaling text via corner
     containerSize?: { width: number; height: number; };
     onDoubleClick?: () => void;
-}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, isPositionLocked = false, zIndex, style, isTextItem, containerSize, onDoubleClick }) => {
+}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, isPositionLocked = false, zIndex, style, isTextItem, allowTextScaling = false, containerSize, onDoubleClick }) => {
     
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
       if ('touches' in e && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -392,36 +394,38 @@ const Transformable: React.FC<{
 
             {isSelected && isDraggable && !isPositionLocked && (
                 <>
-                  {isTextItem ? (
+                  {/* Text Specific Width Handle */}
+                  {isTextItem && (
                       <div 
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 
                         className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-4 h-8 rounded-md border-2 border-white shadow-sm" 
                         style={{ transform: `translateY(-50%) scale(${handleScale})` }}
                       ></div>
-                  ) : (
-                    <>
-                      {isRotatable && (
-                          <div 
-                            onMouseDown={handleRotateStart} 
-                            onTouchStart={handleRotateStart} 
-                            className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-sm" 
-                            style={{ transform: `translateX(-50%) scale(${handleScale})` }}
-                          >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                          </div>
-                      )}
-                      {isResizable && (
-                          <div 
-                            onMouseDown={handleResizeStart} 
-                            onTouchStart={handleResizeStart} 
-                            className="transform-handle absolute -bottom-3 -right-3 cursor-nwse-resize bg-luvin-pink w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
-                            style={{ transform: `scale(${handleScale})` }}
-                          >
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
-                          </div>
-                      )}
-                    </>
+                  )}
+
+                  {/* Standard Rotation Handle (Top) */}
+                  {isRotatable && (
+                      <div 
+                        onMouseDown={handleRotateStart} 
+                        onTouchStart={handleRotateStart} 
+                        className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-sm" 
+                        style={{ transform: `translateX(-50%) scale(${handleScale})` }}
+                      >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                      </div>
+                  )}
+
+                  {/* Corner Scale Handle (Standard for Items, Optional for Text) */}
+                  {isResizable && (!isTextItem || allowTextScaling) && (
+                      <div 
+                        onMouseDown={handleResizeStart} 
+                        onTouchStart={handleResizeStart} 
+                        className="transform-handle absolute -bottom-3 -right-3 cursor-nwse-resize bg-luvin-pink w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
+                        style={{ transform: `scale(${handleScale})` }}
+                      >
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
+                      </div>
                   )}
                 </>
             )}
@@ -429,7 +433,7 @@ const Transformable: React.FC<{
     );
 };
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont }, ref) => {
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont, allowTextScaling }, ref) => {
   const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
   const previewContainerRef = useRef<HTMLDivElement>(null);
   
@@ -646,6 +650,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             isDraggable={isInteractive} zIndex={15} isTextItem={true} containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                             isPositionLocked={text.lockedPosition} // Pass lockedPosition
                             style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
+                            allowTextScaling={allowTextScaling} // Pass allowTextScaling
                         >
                         <EditableText 
                                 text={text} 

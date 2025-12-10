@@ -1,3 +1,4 @@
+
 // ... (previous imports)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset } from '../../types';
@@ -938,7 +939,8 @@ export const AdminDesign: React.FC = () => {
                             setIsEditingText={() => {}} 
                             allParts={{}} 
                             className="pointer-events-auto"
-                            previewFont={previewFont} 
+                            previewFont={previewFont}
+                            allowTextScaling={true} // ENABLE SCALING FOR TEXT
                         />
                     </div>
                 </div>
