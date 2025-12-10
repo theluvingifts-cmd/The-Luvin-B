@@ -758,13 +758,65 @@ export const AdminDesign: React.FC = () => {
                                         </div>
                                     </div>
                                     
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { background: !getSelectedText()!.background })}
-                                            className={`flex-1 py-1.5 text-xs font-bold rounded border ${getSelectedText()?.background ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-gray-600'}`}
-                                        >
-                                            Nền mờ
-                                        </button>
+                                    {/* Styling Options */}
+                                    <div className="space-y-2 pt-2 border-t border-gray-200">
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { fontWeight: getSelectedText()!.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                                                className={`p-2 rounded border flex-1 text-sm font-bold ${getSelectedText()?.fontWeight === 'bold' ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white text-gray-600'}`}
+                                            >
+                                                B (Đậm)
+                                            </button>
+                                            <button 
+                                                onClick={() => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { background: !getSelectedText()!.background })}
+                                                className={`p-2 rounded border flex-1 text-sm ${getSelectedText()?.background ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white text-gray-600'}`}
+                                            >
+                                                Nền mờ
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                type="checkbox" 
+                                                id="text-border" 
+                                                checked={!!getSelectedText()?.border} 
+                                                onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { border: e.target.checked })} 
+                                                className="w-4 h-4"
+                                            />
+                                            <label htmlFor="text-border" className="text-sm font-medium text-gray-700">Khung viền (Border)</label>
+                                        </div>
+
+                                        {getSelectedText()?.border && (
+                                            <div className="pl-6 space-y-2">
+                                                <div className="flex gap-2">
+                                                    <select 
+                                                        className="flex-1 p-1.5 border rounded text-xs"
+                                                        value={getSelectedText()?.borderStyle || 'solid'}
+                                                        onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { borderStyle: e.target.value as any })}
+                                                    >
+                                                        <option value="solid">Nét liền (Solid)</option>
+                                                        <option value="dashed">Nét đứt (Dashed)</option>
+                                                        <option value="dotted">Chấm bi (Dotted)</option>
+                                                    </select>
+                                                    <input 
+                                                        type="number"
+                                                        className="w-12 p-1.5 border rounded text-xs"
+                                                        value={getSelectedText()?.borderWidth || 2}
+                                                        onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { borderWidth: Number(e.target.value) })}
+                                                        title="Độ dày"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-500">Màu viền:</span>
+                                                    <input 
+                                                        type="color" 
+                                                        className="w-6 h-6 border rounded p-0"
+                                                        value={getSelectedText()?.borderColor || getSelectedText()?.color || '#000000'}
+                                                        onChange={(e) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { borderColor: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ) : (

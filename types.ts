@@ -101,6 +101,12 @@ export interface TextConfig {
   width?: number; 
   lockedPosition?: boolean; // Prevents moving/resizing
   lockedContent?: boolean; // Prevents editing text
+  // New Styling Props
+  fontWeight?: 'normal' | 'bold';
+  border?: boolean;
+  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  borderColor?: string;
+  borderWidth?: number;
 }
 
 export interface DraggableItem {

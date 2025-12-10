@@ -177,7 +177,9 @@ const EditableText: React.FC<{
         wordBreak: 'break-word',
         textShadow: '0 0 5px white, 0 0 5px white',
         lineHeight: 1.4,
+        fontWeight: text.fontWeight || 'normal', // Apply bold
         userSelect: isContentLocked ? 'none' : 'auto', // Prevent selection if locked (mobile fix)
+        border: text.border ? `${text.borderWidth || 2}px ${text.borderStyle || 'solid'} ${text.borderColor || text.color}` : 'none', // Apply border
         ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
     };
 
