@@ -483,6 +483,7 @@ const PartButton: React.FC<{
     };
     
     const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
+    const isBulk = part.bulkPricing && part.bulkPricing.length > 0;
 
     return (
         <button
@@ -504,6 +505,12 @@ const PartButton: React.FC<{
             {isSale && (
                 <div className="absolute top-0 left-0 z-20 bg-yellow-400 text-yellow-900 text-[9px] px-1 rounded-br shadow-sm font-bold">
                     SALE
+                </div>
+            )}
+            {/* Show Combo Badge */}
+            {isBulk && !isSale && (
+                <div className="absolute top-0 left-0 z-20 bg-green-500 text-white text-[8px] px-1 rounded-br shadow-sm font-bold" title="Mua nhiều giảm giá">
+                    COMBO
                 </div>
             )}
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">

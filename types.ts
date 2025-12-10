@@ -30,6 +30,11 @@ export interface OutfitColor {
   stock?: number;
 }
 
+export interface BulkPriceTier {
+    quantity: number; // Số lượng tối thiểu (VD: 5)
+    price: number;    // Giá bán mỗi cái khi đạt số lượng này (VD: 8000)
+}
+
 export interface LegoPart {
   id: string;
   name: string;
@@ -42,6 +47,7 @@ export interface LegoPart {
   widthCm: number;
   heightCm: number;
   colors?: OutfitColor[];
+  bulkPricing?: BulkPriceTier[]; // NEW: Cấu hình giá sỉ/combo
   attach?: { x: number; y: number }; 
   slices?: boolean; 
   dx?: number; 

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LegoPart, OutfitColor } from '../../../types';
+import { LegoPart, OutfitColor, BulkPriceTier } from '../../../types';
 import { uploadToCloudinary } from '../../../services/uploadService';
 import { formatCurrency } from '../../../utils/pricing';
 
@@ -10,7 +10,7 @@ export const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: ''
+        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: '', bulkPricing: []
     });
     const [isUploading, setIsUploading] = useState(false);
     
@@ -19,6 +19,11 @@ export const ProductForm: React.FC<{
     const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
     const [editingColorIndex, setEditingColorIndex] = useState<number | null>(null);
     const [draggedColorIndex, setDraggedColorIndex] = useState<number | null>(null);
+
+    // Bulk Pricing State
+    const [bulkTiers, setBulkTiers] = useState<BulkPriceTier[]>(initialData?.bulkPricing || []);
+    const [newTierQty, setNewTierQty] = useState<number>(0);
+    const [newTierPrice, setNewTierPrice] = useState<number>(0);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -141,13 +146,33 @@ export const ProductForm: React.FC<{
         setDraggedColorIndex(null);
     };
 
+    // Bulk Pricing Handlers
+    const addBulkTier = () => {
+        if (newTierQty <= 1 || newTierPrice <= 0) {
+            alert("Số lượng phải > 1 và giá phải > 0");
+            return;
+        }
+        if (bulkTiers.some(t => t.quantity === newTierQty)) {
+            alert("Đã có mức giá cho số lượng này.");
+            return;
+        }
+        setBulkTiers([...bulkTiers, { quantity: newTierQty, price: newTierPrice }].sort((a,b) => a.quantity - b.quantity));
+        setNewTierQty(0);
+        setNewTierPrice(0);
+    };
+
+    const removeBulkTier = (index: number) => {
+        setBulkTiers(bulkTiers.filter((_, i) => i !== index));
+    };
+
     const handleSave = () => {
-        const dataToSave = { ...formData, colors: colors };
+        const dataToSave = { ...formData, colors: colors, bulkPricing: bulkTiers };
         const cleanData = JSON.parse(JSON.stringify(dataToSave));
         onSave(cleanData);
     };
 
     const canHaveColors = ['shirt', 'pants', 'accessory', 'pet', 'hair', 'hat', 'set'].includes(formData.type);
+    const canHaveBulkPricing = ['accessory', 'pet'].includes(formData.type);
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -200,6 +225,7 @@ export const ProductForm: React.FC<{
                                     <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-base text-red-600 font-medium" />
                                 </div>
                                 
+                                {/* Promotion Settings */}
                                 <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
                                     <h5 className="font-bold text-sm text-blue-600 mb-3">🔥 Thiết lập Khuyến mãi</h5>
                                     <div className="grid grid-cols-2 gap-6">
@@ -342,6 +368,50 @@ export const ProductForm: React.FC<{
                                 <p className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded text-center">Loại sản phẩm này không hỗ trợ biến thể màu sắc.</p>
                             )}
                         </div>
+
+                        {/* Section 3: Bulk Pricing (Combo) */}
+                        {canHaveBulkPricing && (
+                            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 text-base flex items-center gap-2">
+                                    📦 Giá Combo (Mua nhiều giảm giá)
+                                </h4>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <input 
+                                            type="number" 
+                                            placeholder="SL tối thiểu" 
+                                            className="p-2 border rounded text-sm"
+                                            value={newTierQty || ''}
+                                            onChange={(e) => setNewTierQty(Number(e.target.value))}
+                                        />
+                                        <input 
+                                            type="number" 
+                                            placeholder="Giá bán mới" 
+                                            className="p-2 border rounded text-sm"
+                                            value={newTierPrice || ''}
+                                            onChange={(e) => setNewTierPrice(Number(e.target.value))}
+                                        />
+                                        <button onClick={addBulkTier} className="bg-green-600 text-white font-bold rounded text-sm hover:bg-green-700">Thêm</button>
+                                    </div>
+                                    
+                                    {bulkTiers.length > 0 ? (
+                                        <div className="bg-gray-50 rounded border divide-y">
+                                            {bulkTiers.map((tier, index) => (
+                                                <div key={index} className="flex justify-between items-center p-2 text-sm">
+                                                    <span>Mua từ <b>{tier.quantity}</b> cái:</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-bold text-green-700">{formatCurrency(tier.price)}</span>
+                                                        <button onClick={() => removeBulkTier(index)} className="text-red-500 hover:bg-red-100 p-1 rounded font-bold">×</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 italic">Chưa có cấu hình giá combo.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Column - Image & Dimensions */}
