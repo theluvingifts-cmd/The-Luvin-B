@@ -61,6 +61,7 @@ export interface ShapeConfig {
   height: number; // percentage
   rotation: number;
   strokeColor: string;
+  fillColor?: string; // New: Fill color
   strokeWidth: number;
   strokeType: 'solid' | 'dashed' | 'dotted';
   borderRadius: number; // px

@@ -341,8 +341,13 @@ const Transformable: React.FC<{
                      height: Math.max(1, startHeight + dhPercent)
                  });
              } else {
-                 // Standard scaling
-                 onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
+                 if (allowTextScaling && !style?.height) { // Text scaling (corner drag -> scale)
+                     // If allowTextScaling is true and it's text (no height in style), treat corner as scale
+                     onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
+                 } else {
+                     // Standard scaling
+                     onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
+                 }
              }
         };
         const handleEnd = () => {
@@ -397,7 +402,8 @@ const Transformable: React.FC<{
                 left: `${initialTransform.x}%`,
                 top: `${initialTransform.y}%`,
                 // If resizeMode is dimensions, we don't scale the container itself, we expect width/height to be set via props/style
-                transform: `translate(-50%, -50%) rotate(${rotation}deg) ${resizeMode === 'scale' ? `scale(${initialTransform.scale})` : ''} scaleX(${isFlipped ? -1 : 1})`,
+                // EXCEPT if allowTextScaling is true (for Text), then we DO apply scale
+                transform: `translate(-50%, -50%) rotate(${rotation}deg) ${(resizeMode === 'scale' || allowTextScaling) ? `scale(${initialTransform.scale})` : ''} scaleX(${isFlipped ? -1 : 1})`,
                 touchAction: 'none',
                 cursor: isDraggable && !isPositionLocked ? (isSelected ? 'move' : 'pointer') : (isPositionLocked ? 'not-allowed' : 'default'),
                 outline: isSelected ? (isPositionLocked ? '2px solid #ef4444' : '2px dashed #efa3b5') : 'none',
@@ -659,6 +665,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             borderStyle: shape.strokeType,
                             borderWidth: `${shape.strokeWidth}px`,
                             borderColor: shape.strokeColor,
+                            backgroundColor: shape.fillColor || 'transparent',
                             borderRadius: `${shape.borderRadius}px`,
                             boxSizing: 'border-box'
                         }} />

@@ -367,6 +367,7 @@ export const AdminDesign: React.FC = () => {
             x: 50, y: 50, rotation: 0, 
             width: 20, height: 15,
             strokeColor: '#333333',
+            fillColor: 'transparent',
             strokeWidth: 2,
             strokeType: 'dashed',
             borderRadius: 0,
@@ -1023,14 +1024,39 @@ export const AdminDesign: React.FC = () => {
                                                 onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { strokeWidth: parseInt(e.target.value) })}
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Màu</label>
-                                            <input 
-                                                type="color" 
-                                                className="w-10 h-10 border rounded cursor-pointer"
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Màu viền (Stroke)</label>
+                                            <input
+                                                type="color"
+                                                className="w-full h-8 border rounded cursor-pointer"
                                                 value={getSelectedShape()?.strokeColor || '#000000'}
                                                 onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { strokeColor: e.target.value })}
                                             />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Màu nền (Fill)</label>
+                                            <div className="flex gap-1">
+                                                 <input
+                                                    type="color"
+                                                    className="w-full h-8 border rounded cursor-pointer disabled:opacity-50"
+                                                    value={getSelectedShape()?.fillColor === 'transparent' ? '#ffffff' : (getSelectedShape()?.fillColor || '#ffffff')}
+                                                    onChange={(e) => handleShapeUpdate(getSelectedShape()!.id, { fillColor: e.target.value })}
+                                                    disabled={getSelectedShape()?.fillColor === 'transparent'}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const isTransparent = getSelectedShape()?.fillColor === 'transparent';
+                                                        handleShapeUpdate(getSelectedShape()!.id, { fillColor: isTransparent ? '#ffffff' : 'transparent' });
+                                                    }}
+                                                    className={`px-2 rounded border text-xs font-bold ${getSelectedShape()?.fillColor === 'transparent' ? 'bg-gray-200 text-gray-600' : 'bg-white text-red-500'}`}
+                                                    title={getSelectedShape()?.fillColor === 'transparent' ? "Bật màu nền" : "Tắt màu nền (Trong suốt)"}
+                                                >
+                                                    {getSelectedShape()?.fillColor === 'transparent' ? '🚫' : 'Màu'}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
