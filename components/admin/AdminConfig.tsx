@@ -416,7 +416,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-xs text-yellow-800 mb-2">
-                                        <p><b>Cách lấy Token:</b> F12 Network Tab -> Refresh POS -> Tìm request 'shops' -> Copy Link Address -> Dán vào đây.</p>
+                                        <p><b>Cách lấy Token:</b> F12 Network Tab &rarr; Refresh POS &rarr; Tìm request 'shops' &rarr; Copy Link Address &rarr; Dán vào đây.</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Access Token</label>
