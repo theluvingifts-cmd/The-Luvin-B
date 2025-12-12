@@ -10,6 +10,7 @@ import * as firebaseApp from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';
+import { testPancakeConnection } from '../../services/pancakeService'; // Import new test function
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -344,6 +345,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     return (
         <div className="animate-fade-in relative min-h-screen pb-20">
+            {/* ... (Existing loading and tab UI) ... */}
             {loading && (
                 <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
                     <div className="bg-white p-4 rounded shadow flex items-center gap-3">
@@ -372,7 +374,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 {/* --- LEFT PANEL: CONTROLS (4 Columns) --- */}
                 <div className="lg:col-span-4 space-y-8 order-2 lg:order-1 h-[calc(100vh-180px)] overflow-y-auto pr-2 custom-scrollbar">
                     
-                    {/* BRANDING TAB */}
+                    {/* ... (Existing tabs: branding, seo, theme, sections, content, fonts) ... */}
                     {activeTab === 'branding' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Hình ảnh thương hiệu</h3>
@@ -389,7 +391,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {/* SEO TAB */}
                     {activeTab === 'seo' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình SEO & Chia sẻ Mạng xã hội</h3>
@@ -454,11 +455,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {/* THEME TAB */}
                     {activeTab === 'theme' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình Giao diện Chung</h3>
-                            {/* Colors and Typography code remains same */}
                             <div>
                                 <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Bảng màu (Global)</h4>
                                 <div className="space-y-3">
@@ -487,7 +486,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     ))}
                                 </div>
                             </div>
-                            {/* Typography */}
                             <div>
                                 <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Font chữ & Kiểu dáng</h4>
                                 <div className="space-y-4">
@@ -526,7 +524,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {/* SECTIONS TAB */}
                     {activeTab === 'sections' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Tùy chỉnh từng phần</h3>
@@ -566,7 +563,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {/* CONTENT TAB */}
                     {activeTab === 'content' && (
                         <div className="space-y-8">
                             <div className="bg-white p-6 rounded-lg border shadow-sm">
@@ -600,7 +596,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </div>
                                 </div>
                             </div>
-                            {/* Story Section */}
                             <div className="bg-white p-6 rounded-lg border shadow-sm">
                                 <h3 className="text-lg font-bold mb-4">Câu chuyện (Story Section)</h3>
                                 <div className="space-y-4">
@@ -637,7 +632,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {/* FONTS TAB */}
                     {activeTab === 'fonts' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Quản lý Font chữ (Upload)</h3>
@@ -761,12 +755,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-xs text-yellow-800 mb-2">
                                         <p>Kết nối để đẩy đơn hàng từ Web về Pancake POS:</p>
                                         <ul className="list-disc pl-4 mt-1 space-y-1">
-                                            <li>Lấy <b>Access Token</b> từ trang quản lý tài khoản Pancake (Profile).</li>
+                                            <li>Lấy <b>Access Token</b> từ trang quản lý tài khoản Pancake (Profile) hoặc API Key.</li>
                                             <li>Lấy <b>Shop ID</b> từ đường dẫn URL khi bạn truy cập POS (ví dụ: pos.pages.fm/shops/<b>123456</b>).</li>
                                         </ul>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Access Token</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Access Token / API Key</label>
                                         <input 
                                             type="password"
                                             className="w-full p-2 border rounded text-sm"
@@ -777,13 +771,29 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Shop ID</label>
-                                        <input 
-                                            type="text"
-                                            className="w-full p-2 border rounded text-sm"
-                                            placeholder="Nhập Shop ID (ví dụ: 194820)"
-                                            value={pancakeShopId}
-                                            onChange={(e) => setPancakeShopId(e.target.value)}
-                                        />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text"
+                                                className="w-full p-2 border rounded text-sm"
+                                                placeholder="Nhập Shop ID (ví dụ: 194820)"
+                                                value={pancakeShopId}
+                                                onChange={(e) => setPancakeShopId(e.target.value)}
+                                            />
+                                            {/* New Test Connection Button */}
+                                            <button 
+                                                onClick={async () => {
+                                                    if (!pancakeToken || !pancakeShopId) return alert("Vui lòng nhập Token và Shop ID trước");
+                                                    setLoading(true);
+                                                    const res = await testPancakeConnection(pancakeToken, pancakeShopId);
+                                                    setLoading(false);
+                                                    if (res.success) alert("Kết nối thành công!");
+                                                    else alert("Thất bại: " + res.error);
+                                                }}
+                                                className="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap hover:bg-green-700"
+                                            >
+                                                Test Kết Nối
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -883,7 +893,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     </div>
                 </div>
 
-                {/* --- RIGHT PANEL: VISUAL PREVIEW --- */}
+                {/* ... (Right Panel remains the same) ... */}
                 <div className="lg:col-span-8 order-1 lg:order-2">
                     <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">
                         <div className="bg-gray-100 p-3 border-b flex justify-between items-center flex-shrink-0">
@@ -897,7 +907,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             </div>
                         </div>
                         
-                        {/* Simulated Website - FULL HEIGHT PREVIEW */}
                         <div 
                             className="flex-grow overflow-y-auto custom-scrollbar relative"
                             style={{ 
@@ -961,7 +970,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 }}
                                 className="relative flex flex-col md:flex-row min-h-[400px]"
                             >
-                                {/* Left Content */}
                                 <div className="w-full md:w-1/2 flex flex-col justify-center px-6 md:px-12 py-12 z-10 pointer-events-none">
                                     <div className="pointer-events-auto">
                                         <div className="flex items-center gap-3 mb-6">
@@ -1016,7 +1024,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </div>
                                 </div>
 
-                                {/* Right Image */}
                                 <div className="w-full md:w-1/2 relative min-h-[300px] pointer-events-auto">
                                     <EditableZone 
                                         onClick={() => scrollToField('branding', 'heroImageUrl')} 

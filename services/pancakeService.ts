@@ -106,3 +106,28 @@ export const pushOrderToPancake = async (
         return { success: false, error: error.message };
     }
 };
+
+/**
+ * Tests connection to Pancake POS API
+ * @param accessToken 
+ * @param shopId 
+ */
+export const testPancakeConnection = async (accessToken: string, shopId: string) => {
+    try {
+        // Try fetching orders (limit 1) to validate creds
+        // Using GET request to list orders is a safe read-only check
+        const endpoint = `https://pos.pages.fm/api/v1/shops/${shopId}/orders?access_token=${accessToken}&page_number=1&page_size=1`;
+        
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            return { success: true };
+        } else {
+            return { success: false, error: data.message || "Kết nối thất bại. Vui lòng kiểm tra lại Token và Shop ID." };
+        }
+    } catch (error: any) {
+        console.error("Pancake Connection Error:", error);
+        return { success: false, error: error.message };
+    }
+};
