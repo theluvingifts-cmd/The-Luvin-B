@@ -190,6 +190,9 @@ export interface Order {
   // --- Discounts ---
   discountCode?: string; // Mã giảm giá đã dùng
   discountAmount?: number; // Số tiền được giảm
+
+  // --- Integrations ---
+  pancakeOrderId?: string; // ID đơn hàng trên Pancake
 }
 
 export interface PresetBackground {

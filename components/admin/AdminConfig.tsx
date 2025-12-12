@@ -18,7 +18,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'integrations';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -82,6 +82,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [telegramToken, setTelegramToken] = useState(storeConfig.telegramBotToken || '');
     const [telegramChatId, setTelegramChatId] = useState(storeConfig.telegramChatId || '');
 
+    // Pancake Config
+    const [pancakeToken, setPancakeToken] = useState(storeConfig.pancakeAccessToken || '');
+    const [pancakeShopId, setPancakeShopId] = useState(storeConfig.pancakeShopId || '');
+
     // Refs for scrolling to inputs
     const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -122,6 +126,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
         if (storeConfig.telegramBotToken) setTelegramToken(storeConfig.telegramBotToken);
         if (storeConfig.telegramChatId) setTelegramChatId(storeConfig.telegramChatId);
+        if (storeConfig.pancakeAccessToken) setPancakeToken(storeConfig.pancakeAccessToken);
+        if (storeConfig.pancakeShopId) setPancakeShopId(storeConfig.pancakeShopId);
     }, [storeConfig]);
 
     // --- HANDLERS ---
@@ -147,10 +153,19 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             ...storeConfig,
             theme: themeConfig,
             telegramBotToken: telegramToken,
-            telegramChatId: telegramChatId
+            telegramChatId: telegramChatId,
+            pancakeAccessToken: pancakeToken,
+            pancakeShopId: pancakeShopId
         });
         if (success) {
-            setStoreConfig(prev => ({ ...prev, theme: themeConfig, telegramBotToken: telegramToken, telegramChatId: telegramChatId }));
+            setStoreConfig(prev => ({ 
+                ...prev, 
+                theme: themeConfig, 
+                telegramBotToken: telegramToken, 
+                telegramChatId: telegramChatId,
+                pancakeAccessToken: pancakeToken,
+                pancakeShopId: pancakeShopId
+            }));
             alert("Đã lưu cấu hình thành công! Website sẽ tải lại để áp dụng.");
             window.location.reload();
         } else {
@@ -346,8 +361,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                     <button onClick={() => setActiveTab('sections')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'sections' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Chi tiết</button>
                     <button onClick={() => setActiveTab('content')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'content' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nội dung</button>
                     <button onClick={() => setActiveTab('fonts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'fonts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Quản lý Font</button>
-                    <button onClick={() => setActiveTab('staff')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'staff' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nhân sự & Bot</button>
-                    <button onClick={() => setActiveTab('seo')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'seo' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>SEO & Social</button>
+                    <button onClick={() => setActiveTab('integrations')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'integrations' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Kết nối (API)</button>
+                    <button onClick={() => setActiveTab('staff')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'staff' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Nhân sự</button>
+                    <button onClick={() => setActiveTab('seo')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === 'seo' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>SEO</button>
                 </div>
             </div>
 
@@ -683,6 +699,97 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
+                    {/* INTEGRATIONS TAB (NEW) */}
+                    {activeTab === 'integrations' && (
+                        <div className="space-y-8">
+                            {/* Telegram Bot Config */}
+                            <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                                    <span className="text-blue-500">✈️</span> Thông báo Telegram
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 mb-2">
+                                        <p>Để nhận thông báo đơn hàng mới qua Telegram:</p>
+                                        <ol className="list-decimal pl-4 mt-1 space-y-1">
+                                            <li>Chat với <b>@BotFather</b> để tạo Bot và lấy <b>Token</b>.</li>
+                                            <li>Tạo nhóm chat, thêm Bot vào nhóm.</li>
+                                            <li>Chat với bot <b>@userinfobot</b> (hoặc tương tự) để lấy <b>Chat ID</b> (thường bắt đầu bằng dấu - cho nhóm).</li>
+                                        </ol>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Bot Token</label>
+                                        <input 
+                                            type="password"
+                                            className="w-full p-2 border rounded text-sm"
+                                            placeholder="123456789:ABCdefGHI..."
+                                            value={telegramToken}
+                                            onChange={(e) => setTelegramToken(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Chat ID</label>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text"
+                                                className="w-full p-2 border rounded text-sm"
+                                                placeholder="-100xxxxxxxxx"
+                                                value={telegramChatId}
+                                                onChange={(e) => setTelegramChatId(e.target.value)}
+                                            />
+                                            <button 
+                                                onClick={async () => {
+                                                    if (!telegramToken || !telegramChatId) return alert("Vui lòng nhập Token và Chat ID trước");
+                                                    const res = await testTelegramConnection(telegramToken, telegramChatId);
+                                                    if (res.success) alert("Gửi thử thành công! Hãy kiểm tra tin nhắn Telegram.");
+                                                    else alert("Thất bại: " + res.error);
+                                                }}
+                                                className="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap hover:bg-green-700"
+                                            >
+                                                Test Kết Nối
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pancake POS Config */}
+                            <div className="bg-white p-6 rounded-lg border shadow-sm">
+                                <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                                    <span className="text-pink-500">🥞</span> Pancake POS Integration
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-xs text-yellow-800 mb-2">
+                                        <p>Kết nối để đẩy đơn hàng từ Web về Pancake POS:</p>
+                                        <ul className="list-disc pl-4 mt-1 space-y-1">
+                                            <li>Lấy <b>Access Token</b> từ trang quản lý tài khoản Pancake (Profile).</li>
+                                            <li>Lấy <b>Shop ID</b> từ đường dẫn URL khi bạn truy cập POS (ví dụ: pos.pages.fm/shops/<b>123456</b>).</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Access Token</label>
+                                        <input 
+                                            type="password"
+                                            className="w-full p-2 border rounded text-sm"
+                                            placeholder="Nhập Access Token..."
+                                            value={pancakeToken}
+                                            onChange={(e) => setPancakeToken(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Shop ID</label>
+                                        <input 
+                                            type="text"
+                                            className="w-full p-2 border rounded text-sm"
+                                            placeholder="Nhập Shop ID (ví dụ: 194820)"
+                                            value={pancakeShopId}
+                                            onChange={(e) => setPancakeShopId(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* STAFF & BOT TAB */}
                     {activeTab === 'staff' && (
                         <div className="space-y-8">
@@ -764,55 +871,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     ) : (
                                         <p className="text-sm text-gray-500 italic text-center py-4">Chưa có nhân viên nào được thêm.</p>
                                     )}
-                                </div>
-                            </div>
-
-                            {/* Telegram Bot Config */}
-                            <div className="bg-white p-6 rounded-lg border shadow-sm">
-                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Thông báo Telegram</h3>
-                                <div className="space-y-4">
-                                    <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 mb-2">
-                                        <p>Để nhận thông báo đơn hàng mới qua Telegram:</p>
-                                        <ol className="list-decimal pl-4 mt-1 space-y-1">
-                                            <li>Chat với <b>@BotFather</b> để tạo Bot và lấy <b>Token</b>.</li>
-                                            <li>Tạo nhóm chat, thêm Bot vào nhóm.</li>
-                                            <li>Chat với bot <b>@userinfobot</b> (hoặc tương tự) để lấy <b>Chat ID</b> (thường bắt đầu bằng dấu - cho nhóm).</li>
-                                        </ol>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Bot Token</label>
-                                        <input 
-                                            type="password"
-                                            className="w-full p-2 border rounded text-sm"
-                                            placeholder="123456789:ABCdefGHI..."
-                                            value={telegramToken}
-                                            onChange={(e) => setTelegramToken(e.target.value)}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Chat ID</label>
-                                        <div className="flex gap-2">
-                                            <input 
-                                                type="text"
-                                                className="w-full p-2 border rounded text-sm"
-                                                placeholder="-100xxxxxxxxx"
-                                                value={telegramChatId}
-                                                onChange={(e) => setTelegramChatId(e.target.value)}
-                                            />
-                                            <button 
-                                                onClick={async () => {
-                                                    if (!telegramToken || !telegramChatId) return alert("Vui lòng nhập Token và Chat ID trước");
-                                                    const res = await testTelegramConnection(telegramToken, telegramChatId);
-                                                    if (res.success) alert("Gửi thử thành công! Hãy kiểm tra tin nhắn Telegram.");
-                                                    else alert("Thất bại: " + res.error);
-                                                }}
-                                                className="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap hover:bg-green-700"
-                                            >
-                                                Test Kết Nối
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-gray-500 italic">Nhấn "Lưu Tất Cả Thay Đổi" bên dưới để áp dụng.</p>
                                 </div>
                             </div>
                         </div>

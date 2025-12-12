@@ -41,9 +41,13 @@ export interface StoreConfig {
     // Ads Config
     dailyAdsBudget?: number; 
 
-    // NEW: Telegram Notification Config
+    // Notification Config
     telegramBotToken?: string;
     telegramChatId?: string;
+
+    // Pancake POS Integration
+    pancakeAccessToken?: string;
+    pancakeShopId?: string;
 
     // SEO & Social
     seoTitle?: string;
