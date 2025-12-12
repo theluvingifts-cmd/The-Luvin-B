@@ -25,7 +25,7 @@ export const pushOrderToPancake = async (
     try {
         // Clean token
         const cleanToken = config.pancakeAccessToken.trim();
-        const shopIdNum = parseInt(config.pancakeShopId, 10); // Ensure shop_id is a number
+        const shopIdNum = config.pancakeShopId.trim();
 
         // 1. Prepare Customer Data
         const customerPayload = {
@@ -68,7 +68,7 @@ export const pushOrderToPancake = async (
 
         // 3. Prepare Order Payload
         const payload = {
-            shop_id: shopIdNum,
+            shop_id: parseInt(shopIdNum),
             partner_id: order.id,
             customer: customerPayload,
             items: itemsPayload,
@@ -80,9 +80,8 @@ export const pushOrderToPancake = async (
         };
 
         // 4. Send Request
-        // IMPORTANT: Changed endpoint from /shops/{id}/orders to /orders
-        // Based on typical REST behavior when shop_id is in body.
-        const endpoint = `https://pos.pancake.vn/api/v1/orders?access_token=${cleanToken}`;
+        // Using correct endpoint structure: /api/v1/shops/{shop_id}/orders
+        const endpoint = `https://pos.pancake.vn/api/v1/shops/${shopIdNum}/orders?access_token=${cleanToken}`;
 
         console.log("Pushing to Pancake:", endpoint, payload);
 
@@ -94,29 +93,24 @@ export const pushOrderToPancake = async (
             body: JSON.stringify(payload)
         });
 
-        const result = await response.json();
+        // Safely handle non-JSON responses (like 404 HTML pages)
+        const textResponse = await response.text();
+        let result;
+        
+        try {
+            result = JSON.parse(textResponse);
+        } catch (e) {
+            console.error("Invalid JSON from Pancake:", textResponse);
+            return { 
+                success: false, 
+                error: `Lỗi kết nối Pancake (${response.status}): ${textResponse.includes('Page not found') ? 'Sai đường dẫn API' : textResponse.substring(0, 100)}` 
+            };
+        }
 
         if (response.ok && result.success) {
             return { success: true, data: result.order_id || result.data?.id };
         } else {
             console.error("Pancake API Error Response:", result);
-            
-            // Fallback: If 404, maybe try the other endpoint pattern just in case
-            if (response.status === 404) {
-                 const fallbackEndpoint = `https://pos.pancake.vn/api/v1/shops/${shopIdNum}/orders?access_token=${cleanToken}`;
-                 console.log("Retrying with fallback endpoint:", fallbackEndpoint);
-                 const retryResponse = await fetch(fallbackEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                 });
-                 const retryResult = await retryResponse.json();
-                 if (retryResponse.ok && retryResult.success) {
-                     return { success: true, data: retryResult.order_id || retryResult.data?.id };
-                 }
-                 return { success: false, error: retryResult.message || "Lỗi 404 (Endpoint không đúng) & Token không hợp lệ" };
-            }
-
             return { success: false, error: result.message || JSON.stringify(result) };
         }
 
@@ -136,7 +130,14 @@ export const testPancakeConnection = async (accessToken: string, shopId: string)
         const endpoint = `https://pos.pancake.vn/api/v1/shops/${shopId}/orders?access_token=${cleanToken}&page_number=1&page_size=1`;
         
         const response = await fetch(endpoint);
-        const data = await response.json();
+        const textResponse = await response.text();
+        let data;
+
+        try {
+            data = JSON.parse(textResponse);
+        } catch (e) {
+             return { success: false, error: `Phản hồi không hợp lệ (${response.status})` };
+        }
         
         if (response.ok && data.success) {
             return { success: true };
