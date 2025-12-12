@@ -337,6 +337,25 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleSaveFeedback = async (fb: FeedbackItem) => { setIsEditingFeedback(false); if (editingFeedback) await updateFeedback(fb.id, fb); else await addFeedback(fb); onRefreshFeedbacks(); setEditingFeedback(null); };
     const handleDeleteFeedback = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFeedback(id); onRefreshFeedbacks(); } };
 
+    // Pancake Token Auto-Extraction
+    const handlePancakeTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        // Check if value looks like a URL containing access_token
+        if (val.includes('access_token=')) {
+            try {
+                const match = val.match(/access_token=([^&]+)/);
+                if (match && match[1]) {
+                    setPancakeToken(match[1]);
+                    alert("Đã tự động trích xuất Token từ đường dẫn!");
+                    return;
+                }
+            } catch (err) {
+                console.error("Token extraction failed", err);
+            }
+        }
+        setPancakeToken(val);
+    };
+
     // Font Options
     const fontOptions = [
         { label: '--- Google Fonts ---', options: GOOGLE_FONTS.map(f => ({ value: f.name, label: f.label })) },
@@ -755,18 +774,18 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-xs text-yellow-800 mb-2">
                                         <p>Kết nối để đẩy đơn hàng từ Web về Pancake POS:</p>
                                         <ul className="list-disc pl-4 mt-1 space-y-1">
-                                            <li>Lấy <b>Access Token</b> từ trang quản lý tài khoản Pancake (Profile) hoặc API Key.</li>
-                                            <li>Lấy <b>Shop ID</b> từ đường dẫn URL khi bạn truy cập POS (ví dụ: pos.pages.fm/shops/<b>123456</b>).</li>
+                                            <li><b>Cách lấy Token nhanh:</b> Chuột phải vào dòng request <b>shops</b> hoặc <b>users</b> trong Network tab -> Copy Link Address -> Dán vào đây.</li>
+                                            <li>Lấy <b>Shop ID</b> từ đường dẫn URL khi bạn truy cập POS (ví dụ: pos.pancake.vn/shops/<b>123456</b>).</li>
                                         </ul>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Access Token / API Key</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Access Token (Dán cả link request cũng được)</label>
                                         <input 
                                             type="password"
                                             className="w-full p-2 border rounded text-sm"
-                                            placeholder="Nhập Access Token..."
+                                            placeholder="Paste access_token..."
                                             value={pancakeToken}
-                                            onChange={(e) => setPancakeToken(e.target.value)}
+                                            onChange={(e) => handlePancakeTokenChange(e)}
                                         />
                                     </div>
                                     <div>

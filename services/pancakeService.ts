@@ -66,7 +66,7 @@ export const pushOrderToPancake = async (
 
         // 3. Prepare Order Payload
         // Note: This matches common Pancake POS API structure. 
-        // Verify with actual documentation: https://docs.pancake.vn/pos/
+        // Using Vietnam endpoint: https://pos.pancake.vn/api/v1
         const payload = {
             shop_id: config.pancakeShopId,
             partner_id: order.id, // Use our order ID as partner reference
@@ -81,8 +81,8 @@ export const pushOrderToPancake = async (
         };
 
         // 4. Send Request
-        // Endpoint structure: https://pos.pages.fm/api/v1/shops/{shop_id}/orders?access_token={token}
-        const endpoint = `https://pos.pages.fm/api/v1/shops/${config.pancakeShopId}/orders?access_token=${config.pancakeAccessToken}`;
+        // Endpoint structure: https://pos.pancake.vn/api/v1/shops/{shop_id}/orders?access_token={token}
+        const endpoint = `https://pos.pancake.vn/api/v1/shops/${config.pancakeShopId}/orders?access_token=${config.pancakeAccessToken}`;
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -116,7 +116,8 @@ export const testPancakeConnection = async (accessToken: string, shopId: string)
     try {
         // Try fetching orders (limit 1) to validate creds
         // Using GET request to list orders is a safe read-only check
-        const endpoint = `https://pos.pages.fm/api/v1/shops/${shopId}/orders?access_token=${accessToken}&page_number=1&page_size=1`;
+        // Updated to use pos.pancake.vn
+        const endpoint = `https://pos.pancake.vn/api/v1/shops/${shopId}/orders?access_token=${accessToken}&page_number=1&page_size=1`;
         
         const response = await fetch(endpoint);
         const data = await response.json();
