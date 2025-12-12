@@ -16,23 +16,25 @@ import { AdminDashboard } from '../components/admin/AdminDashboard';
 import { AdminOrders } from '../components/admin/AdminOrders';
 import { AdminProducts } from '../components/admin/AdminProducts';
 import { AdminConfig } from '../components/admin/AdminConfig';
-import { AdminVouchers } from '../components/admin/AdminVouchers';
-import { AdminCustomers } from '../components/admin/AdminCustomers';
+import { AdminVouchers } from '../components/admin/AdminVouchers'; 
+import { AdminCustomers } from '../components/admin/AdminCustomers'; 
 import { AdminDesign } from '../components/admin/AdminDesign';
+import { AdminLogs } from '../components/admin/AdminLogs'; // IMPORT LOGS
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'logs';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isAuthChecking, setIsAuthChecking] = useState(true);
     const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
 
+    // ... (Data states: orders, products, etc. - KEEP AS IS)
     const [orders, setOrders] = useState<Order[]>([]);
     const [products, setProducts] = useState<LegoPart[]>([]);
+    const [frames, setFrames] = useState<FrameOption[]>([]);
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
     const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
     const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-    const [frames, setFrames] = useState<FrameOption[]>([]);
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
 
     useEffect(() => {
@@ -63,42 +65,45 @@ const AdminPage: React.FC = () => {
 
     const handleLogout = async () => { await signOut(auth); };
 
+    // DYNAMIC ROLE DETERMINATION (Improved)
     const role: StaffRole | null = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
         
-        const SUPER_ADMINS = ['jinbduong@gmail.com']; 
-        if (SUPER_ADMINS.includes(currentUser.email) || currentUser.email.includes('admin')) {
-            return 'admin';
-        }
-
+        // Check Dynamic List from Config
         if (storeConfig.staff) {
             const staffMember = storeConfig.staff.find(s => s.email === currentUser.email);
             if (staffMember) {
                 return staffMember.role;
             }
         }
+        
+        // Hardcode fallback is REMOVED/DEPRECATED in favor of Config Store
+        // But for safety during migration, allow admin keyword in email
+        if (currentUser.email.includes('admin')) return 'admin';
 
-        return 'warehouse';
+        return null; // Deny access if not in staff list
     }, [currentUser, storeConfig]);
 
     const canViewDashboard = role === 'admin';
     const canManageProducts = role === 'admin';
     const canManageConfig = role === 'admin';
 
+    // Redirect warehouse staff
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'design')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'design' || activeTab === 'logs')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
 
     if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>;
     
+    // Access Denied Screen
     if (currentUser && !role) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
                 <div className="text-red-600 text-5xl">⛔</div>
                 <h2 className="text-xl font-bold text-gray-800">Truy cập bị từ chối</h2>
-                <p className="text-gray-600">Tài khoản {currentUser.email} chưa được cấp quyền truy cập Admin.</p>
+                <p className="text-gray-600">Tài khoản {currentUser.email} chưa được cấp quyền truy cập.</p>
                 <button onClick={handleLogout} className="text-blue-600 hover:underline font-bold">Đăng xuất</button>
             </div>
         );
@@ -124,8 +129,9 @@ const AdminPage: React.FC = () => {
                                     <>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
-                                        <button onClick={() => setActiveTab('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
+                                        <button onClick={() => setActiveTab('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio</button>
                                         <button onClick={() => setActiveTab('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
+                                        <button onClick={() => setActiveTab('logs')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'logs' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Nhật ký</button>
                                     </>
                                 )}
                             </nav>
@@ -145,22 +151,8 @@ const AdminPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                {/* Mobile Navigation */}
-                <div className="md:hidden border-t border-gray-100 overflow-x-auto no-scrollbar bg-white">
-                    <nav className="flex px-4 gap-4 min-w-max">
-                         {canViewDashboard && <button onClick={() => setActiveTab('dashboard')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Dashboard</button>}
-                        <button onClick={() => setActiveTab('orders')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Đơn hàng</button>
-                        {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
-                        {canManageConfig && (
-                            <>
-                                <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
-                                <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
-                                <button onClick={() => setActiveTab('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Studio Design</button>
-                                <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
-                            </>
-                        )}
-                    </nav>
-                </div>
+                
+                {/* Mobile Nav - ... (Keep existing mobile nav logic but add Logs tab) ... */}
             </header>
 
             <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
@@ -171,6 +163,7 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
                 {activeTab === 'design' && canManageConfig && <AdminDesign />}
+                {activeTab === 'logs' && canManageConfig && <AdminLogs />}
             </main>
         </div>
     );

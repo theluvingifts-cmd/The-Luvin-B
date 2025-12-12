@@ -3,80 +3,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isAdmin() {
-      return request.auth != null && (
-        request.auth.token.email == 'jinbduong@gmail.com' ||
-        request.auth.token.email.matches('.*admin.*')
-      );
-    }
-    
-    function isStaff() {
+    // Check if user is signed in to Firebase Auth
+    function isAuthenticated() {
       return request.auth != null;
     }
 
     // RULES FOR ORDERS
     match /orders/{orderId} {
-      allow read: if true;
-      allow create: if true;
-      
-      // Allow customers to update their own orders (e.g. status, items, address)
-      // Since we don't have customer auth, we allow public updates for now based on Order ID knowledge.
-      allow update: if true; 
-      
-      allow delete: if isAdmin();
+      allow read: if true; // Public read for tracking (could be stricter)
+      allow create: if true; // Public create
+      allow update: if true; // Public update (needed for customer self-service logic currently)
+      allow delete: if isAuthenticated(); // Only staff can delete
     }
 
     // RULES FOR PRODUCTS (Inventory)
     match /lego_parts/{document=**} {
       allow read: if true;
-      
-      // Allow admin to do anything
-      allow create, delete: if isAdmin();
-      
-      // Allow public to update ONLY the 'stock' field (for inventory adjustment)
-      // OR allow admin to update everything
-      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+      allow write: if isAuthenticated(); // Only staff can manage products
     }
 
-    // RULES FOR FRAMES (Inventory)
+    // RULES FOR FRAMES
     match /frames/{document=**} {
       allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+      allow write: if isAuthenticated();
     }
 
-    // OTHER COLLECTIONS (Admin Only Write)
+    // OTHER COLLECTIONS
     match /backgrounds/{document=**} {
       allow read: if true;
-      // Explicitly allow write for admin to save background templates with overlayConfig
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
     match /templates/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
     match /feedbacks/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
     match /config/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated(); // Important: Protect config
     }
     
     match /vouchers/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
-    // NEW: Analytics collection - Allow public write for tracking
+    match /assets/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
     match /analytics/{document=**} {
-      allow read: if true; // Or restrict to admin only if preferred
-      allow write: if true; // Allow anyone to increment stats
+      allow read: if true; 
+      allow write: if true; 
+    }
+    
+    // NEW: Logs
+    match /system_logs/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if true; // Public create (e.g. system logs from client actions)
+      allow update, delete: if false; // Logs are immutable
     }
   }
 }

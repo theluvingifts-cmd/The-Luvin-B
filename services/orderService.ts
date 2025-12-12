@@ -1,10 +1,12 @@
 
 // services/orderService.ts
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadToCloudinary } from './uploadService';
 import { adjustStock } from './productService';
+import { pushOrderToPospancake } from './pospancakeService';
+import { logAction } from './logService';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
@@ -82,6 +84,23 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
              }
         }
 
+        // 3. Upload Draggable Items (Charms) if Base64 (User Uploaded Stickers)
+        if (newItem.draggableItems && newItem.draggableItems.length > 0) {
+            const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
+                if (di.type === 'charm' && di.partId && di.partId.startsWith('data:')) {
+                    const charmUrl = await uploadToCloudinary(di.partId);
+                    if (charmUrl) {
+                        return { ...di, partId: charmUrl };
+                    } else {
+                        console.error("Failed to upload charm image", di.id);
+                        return di;
+                    }
+                }
+                return di;
+            }));
+            newItem.draggableItems = processedDraggables;
+        }
+
         return newItem; 
     }));
 };
@@ -111,20 +130,22 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
 
         // 2. Trừ tồn kho
         const partsUsage = countPartsInOrder(finalOrder.items);
-        // Chuyển số lượng thành số âm để trừ
         const stockAdjustments: Record<string, number> = {};
         for (const [partId, qty] of Object.entries(partsUsage)) {
             stockAdjustments[partId] = -qty;
         }
-        
-        // Gọi hàm cập nhật kho (không await để không chặn UI, chạy ngầm)
         adjustStock(stockAdjustments);
+
+        // 3. (NEW) Đẩy đơn sang PosPancake (Chạy ngầm, không await để tránh delay)
+        pushOrderToPospancake(finalOrder).catch(err => console.error("POS Sync Error:", err));
+
+        // 4. (NEW) Ghi log (Khách tạo đơn)
+        logAction('CREATE', 'orders', order.id, `Khách hàng tạo đơn mới trị giá ${order.totalPrice}`, 'customer');
 
         return { success: true, data: finalOrder };
     } catch (error: any) {
         console.error("Lỗi tạo đơn hàng:", error);
         
-        // Return structured error
         let errorMessage = "Đã có lỗi xảy ra.";
         if (error.code === 'permission-denied') errorMessage = "Lỗi quyền truy cập hệ thống. Vui lòng liên hệ Admin.";
         else if (error.code === 'unavailable') errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.";
@@ -149,15 +170,12 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 // 2b. Hàm tra cứu đơn hàng bằng SĐT
 export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
     try {
-        // FIX: Removed orderBy("createdAt", "desc") from Firestore query to avoid "Requires Index" error.
-        // We sort the results on the client side instead.
         const q = query(collection(db, "orders"), where("customer.phone", "==", phone));
         const querySnapshot = await getDocs(q);
         const orders: Order[] = [];
         querySnapshot.forEach((doc) => {
             orders.push(doc.data() as Order);
         });
-        // Sort desc by time (Client-side sort)
         return orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     } catch (error) {
         console.error("Lỗi tra cứu theo SĐT:", error);
@@ -182,17 +200,22 @@ export const getAllOrders = async (): Promise<Order[]> => {
 };
 
 // 4. Update Order
-export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
+export const updateOrder = async (orderId: string, updates: Partial<Order>, userEmail: string = 'system'): Promise<boolean> => {
     try {
-        // Process images if items are updated
+        const currentUser = auth.currentUser?.email || userEmail;
+
         if (updates.items && Array.isArray(updates.items)) {
             updates.items = await processOrderItemsImages(updates.items);
         }
 
         const orderRef = doc(db, "orders", orderId);
-        // Important: Sanitize updates to remove undefined fields which cause Firestore to crash
         const cleanUpdates = cleanForFirestore(updates);
         await updateDoc(orderRef, cleanUpdates);
+
+        // (NEW) Log Action
+        const updateKeys = Object.keys(cleanUpdates).join(', ');
+        logAction('UPDATE', 'orders', orderId, `Cập nhật trường: ${updateKeys}`, currentUser);
+
         return true;
     } catch (error) {
         console.error("Error updating order:", error);
@@ -203,7 +226,12 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
 // 5. Delete Order
 export const deleteOrder = async (orderId: string): Promise<boolean> => {
     try {
+        const currentUser = auth.currentUser?.email || 'unknown';
         await deleteDoc(doc(db, "orders", orderId));
+        
+        // (NEW) Log Action
+        logAction('DELETE', 'orders', orderId, `Xóa vĩnh viễn đơn hàng`, currentUser);
+        
         return true;
     } catch (error) {
         console.error("Error deleting order:", error);
