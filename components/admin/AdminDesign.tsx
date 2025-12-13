@@ -680,6 +680,49 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
+    // --- FONT UPLOAD HANDLER ---
+    const handleUploadFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const defaultName = file.name.replace(/\.[^/.]+$/, ""); 
+            
+            const fontName = prompt("Nhập tên font (để hiển thị):", defaultName);
+            if (!fontName) {
+                e.target.value = '';
+                return;
+            }
+
+            setIsSaving(true);
+            try {
+                const url = await uploadToCloudinary(file);
+                if (url) {
+                    const newFont: CustomFont = {
+                        id: `font_${Date.now()}`,
+                        name: fontName.trim(),
+                        url: url
+                    };
+                    
+                    const updatedFonts = [...uploadedFonts, newFont];
+                    await updateStoreConfig({ uploadedFonts: updatedFonts });
+                    setUploadedFonts(updatedFonts);
+                    
+                    // Apply to selected text if applicable
+                    const selectedText = getSelectedText();
+                    if (selectedText) {
+                         handleTextUpdate(selectedText.id, { font: newFont.name });
+                    }
+                    alert(`Đã thêm font "${newFont.name}"!`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Lỗi upload font.");
+            } finally {
+                setIsSaving(false);
+                e.target.value = '';
+            }
+        }
+    };
+
     // --- SAVE FINAL (STRICT CHECK) ---
     const handleConfirmSave = async () => {
         if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
@@ -894,7 +937,13 @@ export const AdminDesign: React.FC = () => {
                                     <p className="text-xs font-bold text-blue-600 uppercase">Đang chỉnh sửa</p>
                                     
                                     <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block">Font chữ</label>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="text-xs font-bold text-gray-500 block">Font chữ</label>
+                                            <label className="text-[10px] text-blue-600 cursor-pointer hover:underline font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100 flex items-center gap-1">
+                                                <input type="file" accept=".ttf,.otf,.woff,.woff2" className="hidden" onChange={handleUploadFont} />
+                                                <span>+ Up Font</span>
+                                            </label>
+                                        </div>
                                         <FontSelector 
                                             value={getSelectedText()?.font || 'Playfair Display'}
                                             onChange={(font) => getSelectedText() && handleTextUpdate(getSelectedText()!.id, { font })}
