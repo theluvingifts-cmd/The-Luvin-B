@@ -13,7 +13,6 @@ export interface FrameOption {
   backgroundHeightCm: number;
   price: number;
   costPrice?: number;
-  isOnSale?: boolean; // NEW: Toggle switch for sale
   salePrice?: number; // Giá khuyến mãi
   saleEndDate?: string; // Ngày kết thúc khuyến mãi (ISO string)
   imageUrl: string;
@@ -41,7 +40,6 @@ export interface LegoPart {
   name: string;
   price: number; 
   costPrice?: number;
-  isOnSale?: boolean; // NEW: Toggle switch for sale
   salePrice?: number; // Giá khuyến mãi
   saleEndDate?: string; // Ngày kết thúc khuyến mãi (ISO string)
   imageUrl: string;

@@ -16,7 +16,6 @@ export const FrameForm: React.FC<{
         backgroundHeightCm: 12,
         price: 0,
         costPrice: 0,
-        isOnSale: false,
         salePrice: 0,
         saleEndDate: '',
         imageUrl: '',
@@ -31,10 +30,6 @@ export const FrameForm: React.FC<{
             ...prev,
             [name]: ['price', 'costPrice', 'salePrice', 'frameWidthCm', 'frameHeightCm', 'backgroundWidthCm', 'backgroundHeightCm', 'stock'].includes(name) ? Number(value) : value
         }));
-    };
-
-    const handleToggleSale = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, isOnSale: e.target.checked }));
     };
 
     const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,35 +69,18 @@ export const FrameForm: React.FC<{
                             </div>
                         </div>
                         
-                        <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-100">
-                            <div className="flex items-center justify-between mb-3">
-                                <h5 className="font-bold text-sm text-blue-700">🔥 Thiết lập Khuyến mãi</h5>
-                                <label className="inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={!!formData.isOnSale} 
-                                        onChange={handleToggleSale}
-                                        className="sr-only peer" 
-                                    />
-                                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                    <span className="ms-3 text-sm font-medium text-gray-900">{formData.isOnSale ? 'Bật' : 'Tắt'}</span>
-                                </label>
-                            </div>
-                            
-                            {formData.isOnSale ? (
-                                <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 mb-1">Giá Sale (VNĐ)</label>
-                                        <input type="number" name="salePrice" value={formData.salePrice || 0} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" placeholder="0 = Không sale" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 mb-1">Kết thúc KM</label>
-                                        <input type="date" name="saleEndDate" value={formData.saleEndDate || ''} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" />
-                                    </div>
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                            <h5 className="font-bold text-sm text-blue-700 mb-3">🔥 Thiết lập Khuyến mãi</h5>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Giá Sale (VNĐ)</label>
+                                    <input type="number" name="salePrice" value={formData.salePrice || 0} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" placeholder="0 = Không sale" />
                                 </div>
-                            ) : (
-                                <p className="text-xs text-gray-500 italic">Bật công tắc để thiết lập giá khuyến mãi.</p>
-                            )}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Kết thúc KM</label>
+                                    <input type="date" name="saleEndDate" value={formData.saleEndDate || ''} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" />
+                                </div>
+                            </div>
                         </div>
 
                         <div>

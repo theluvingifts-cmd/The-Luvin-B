@@ -6,7 +6,7 @@ export const CHARACTER_BASE_PRICE = 10000;
 export const FREE_SHIPPING_THRESHOLD = 349000;
 
 // Helper: Get effective price checking sale conditions
-export const getEffectivePrice = (item: { price: number, isOnSale?: boolean, salePrice?: number, saleEndDate?: string }, quantity: number = 1, bulkPricing?: { quantity: number, price: number }[]) => {
+export const getEffectivePrice = (item: { price: number, salePrice?: number, saleEndDate?: string }, quantity: number = 1, bulkPricing?: { quantity: number, price: number }[]) => {
     if (!item) return 0;
     
     const price = Number(item.price) || 0;
@@ -21,27 +21,24 @@ export const getEffectivePrice = (item: { price: number, isOnSale?: boolean, sal
         }
     }
 
-    // 2. Check Sale Price (Must be ON SALE explicitly)
-    if (item.isOnSale) {
-        const salePrice = Number(item.salePrice);
-        if (item.salePrice !== undefined && item.salePrice !== null && !isNaN(salePrice)) {
-            // If there's an end date, check if it's still valid
-            if (item.saleEndDate) {
-                const now = new Date();
-                const end = new Date(item.saleEndDate);
-                // End date set to end of that day
-                end.setHours(23, 59, 59, 999);
-                
-                if (now <= end) {
-                    return salePrice;
-                }
-            } else {
-                // No end date means indefinite sale
+    // 2. Check Sale Price
+    const salePrice = Number(item.salePrice);
+    if (item.salePrice !== undefined && item.salePrice !== null && !isNaN(salePrice) && salePrice < price) {
+        // If there's an end date, check if it's still valid
+        if (item.saleEndDate) {
+            const now = new Date();
+            const end = new Date(item.saleEndDate);
+            // End date set to end of that day
+            end.setHours(23, 59, 59, 999);
+            
+            if (now <= end) {
                 return salePrice;
             }
+        } else {
+            // No end date means indefinite sale
+            return salePrice;
         }
     }
-    
     return price;
 };
 
