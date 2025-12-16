@@ -709,6 +709,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
                             isPositionLocked={item.lockedPosition} // Pass lockedPosition
                             zIndex={item.type === 'hat' ? 12 : 10}
+                            containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
                             <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm }}>
                                 <SafeImage src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
