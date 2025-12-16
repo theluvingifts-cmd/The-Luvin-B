@@ -46,13 +46,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [voucherError, setVoucherError] = useState('');
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   
-  // Auto-fill State
+  // Auto-fill & Loyalty State
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
   const EARLY_BIRD_THRESHOLD = 20; // 20 days threshold for pre-order discount
   const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; // 5%
+  const LOYALTY_DISCOUNT_PERCENT = 0.05; // 5% for loyal customers
 
   // Pre-fill data if editing
   useEffect(() => {
@@ -126,6 +128,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const isEarlyBird = daysDifference >= EARLY_BIRD_THRESHOLD;
   const earlyBirdDiscountAmount = isEarlyBird ? Math.round(subtotal * EARLY_BIRD_DISCOUNT_PERCENT) : 0;
 
+  // Loyalty Discount Logic
+  const loyaltyDiscountAmount = isLoyalCustomer ? Math.round(subtotal * LOYALTY_DISCOUNT_PERCENT) : 0;
+
   // Voucher Logic
   let voucherDiscountAmount = 0;
   if (appliedVoucher) {
@@ -137,7 +142,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       if (voucherDiscountAmount > subtotal) voucherDiscountAmount = subtotal;
   }
 
-  const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount;
+  const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount + loyaltyDiscountAmount;
   const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee - totalDiscount);
   const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
 
@@ -164,8 +169,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       setVoucherError('');
   };
 
-  // --- SMART AUTOFILL HANDLER ---
+  // --- SMART AUTOFILL & LOYALTY CHECK HANDLER ---
   const handlePhoneBlur = async () => {
+      setIsLoyalCustomer(false); // Reset status initially
+      
       // Basic validate phone length before checking DB
       if (phone.length >= 10 && !initialOrder) {
           setIsCheckingPhone(true);
@@ -175,23 +182,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   // Get the most recent order (sorted by default in service)
                   const lastOrder = history[0];
                   
+                  // Loyalty Check: Has at least 1 successful order
+                  // For simplicity, existence in history means they ordered.
+                  setIsLoyalCustomer(true);
+                  
                   // Autofill basic info
                   if (!name) setName(lastOrder.customer.name);
                   if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
                   
-                  // For address, since we use dropdowns, it's hard to map back perfectly without ID.
-                  // Strategy: Fill the 'Street' input with the full address string so user can just edit/confirm.
-                  // Or prompt user? Let's just fill Street for simplicity and clear dropdowns.
                   if (!street && lastOrder.customer.address) {
                       setStreet(lastOrder.customer.address);
-                      // Clear dropdowns to avoid confusion, forcing user to rely on the street input or re-select
+                      // Clear dropdowns to avoid confusion
                       setSelectedProvince('');
                       setSelectedDistrict('');
                       setSelectedWard('');
                   }
-                  
-                  // Show subtle feedback
-                  // Using alert is too intrusive, maybe a small text
               }
           } catch (e) {
               console.error("Autofill error", e);
@@ -229,7 +234,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     }
 
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
-    const finalNotes = (isEarlyBird ? `[ƯU ĐÃI ĐẶT SỚM 5%] ` : '') + (appliedVoucher ? `[VOUCHER: ${appliedVoucher.code}] ` : '') + notes;
+    
+    // Construct Notes with tags
+    let autoTags = '';
+    if (isEarlyBird) autoTags += '[ƯU ĐÃI ĐẶT SỚM 5%] ';
+    if (isLoyalCustomer) autoTags += '[KHÁCH QUEN 5%] ';
+    if (appliedVoucher) autoTags += `[VOUCHER: ${appliedVoucher.code}] `;
+    
+    const finalNotes = autoTags + notes;
 
     try {
         await onPlaceOrder({
@@ -242,7 +254,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           payment: { method: paymentMethod },
           totalPrice,
           amountToPay,
-          discountCode: appliedVoucher?.code,
+          discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
           discountAmount: totalDiscount
         });
 
@@ -288,21 +300,38 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         type="tel" 
                         placeholder="Số điện thoại" 
                         value={phone} 
-                        onChange={e => { setPhone(e.target.value); setPhoneError(''); }} 
+                        onChange={e => { setPhone(e.target.value); setPhoneError(''); if(e.target.value.length < 10) setIsLoyalCustomer(false); }} 
                         onBlur={handlePhoneBlur}
                         className={`w-full p-3 border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'} rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`} 
                         required 
                       />
-                      {isCheckingPhone && <span className="absolute right-3 top-3.5 text-xs text-gray-400 animate-pulse">Đang tìm...</span>}
+                      {isCheckingPhone && <span className="absolute right-3 top-3.5 text-xs text-gray-400 animate-pulse">Đang kiểm tra...</span>}
+                      {isLoyalCustomer && !isCheckingPhone && (
+                          <div className="absolute right-2 top-2 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm border border-blue-200 animate-fade-in">
+                              <span>💎</span> Khách quen
+                          </div>
+                      )}
                       {phoneError && <p className="text-red-500 text-xs mt-1 ml-1">{phoneError}</p>}
                     </div>
                     <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
                     <input type="email" placeholder="Email (Nhận thông báo đơn hàng)" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
                   </div>
+                  
+                  {isLoyalCustomer && (
+                      <div className="mt-3 bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-3 animate-fade-in">
+                          <span className="text-xl">🎉</span>
+                          <p className="text-sm text-blue-800">
+                              Chào mừng bạn quay lại! The Luvin tặng bạn ưu đãi <strong>giảm ngay 5%</strong> cho khách hàng thân thiết.
+                          </p>
+                      </div>
+                  )}
+                  
                   {/* Info Tip */}
-                  <div className="mt-2 text-[10px] text-gray-400 italic">
-                      * Nhập SĐT để tự động điền thông tin nếu bạn đã từng mua hàng.
-                  </div>
+                  {!isLoyalCustomer && (
+                      <div className="mt-2 text-[10px] text-gray-400 italic">
+                          * Nhập SĐT để tự động nhận diện thành viên & điền địa chỉ cũ.
+                      </div>
+                  )}
               </div>
 
               <div className="mb-6 border-b border-gray-200 pb-6">
@@ -472,8 +501,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <span>-{formatCurrency(earlyBirdDiscountAmount)}</span>
                     </div>
                 )}
+                {isLoyalCustomer && (
+                    <div className="flex justify-between text-blue-600 font-bold animate-pulse">
+                        <span className="flex items-center gap-1">💎 Khách quen (5%)</span>
+                        <span>-{formatCurrency(loyaltyDiscountAmount)}</span>
+                    </div>
+                )}
                 {appliedVoucher && (
-                    <div className="flex justify-between text-blue-600 font-bold">
+                    <div className="flex justify-between text-purple-600 font-bold">
                         <span>Voucher ({appliedVoucher.code})</span>
                         <span>-{formatCurrency(voucherDiscountAmount)}</span>
                     </div>

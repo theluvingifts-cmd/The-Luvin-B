@@ -723,8 +723,15 @@ export const AdminDesign: React.FC = () => {
         setConfigWithHistory(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
     };
 
-    const handleItemUpdate = (id: number, updates: Partial<DraggableItem>) => {
-        setConfigWithHistory(prev => ({ ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) }));
+    const handleItemUpdate = (id: number | string, updates: Partial<DraggableItem>) => {
+        let numericId: number;
+        if (typeof id === 'string') {
+            const parts = id.split('-');
+            numericId = parts.length > 1 ? parseInt(parts[1]) : parseInt(id);
+        } else {
+            numericId = id;
+        }
+        setConfigWithHistory(prev => ({ ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, ...updates } : i) }));
     };
 
     const getSelectedText = () => {
