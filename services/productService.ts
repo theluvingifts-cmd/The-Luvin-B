@@ -89,7 +89,7 @@ export const adjustStock = async (usageMap: Record<string, number>) => {
             // However, to be robust against missing documents:
             const partDoc = await getDoc(partRef);
             if (partDoc.exists()) {
-                const data = partDoc.data();
+                const data = partDoc.data() as LegoPart;
                 if (typeof data.stock === 'number') {
                     batch.update(partRef, { stock: increment(change) });
                     hasUpdates = true;

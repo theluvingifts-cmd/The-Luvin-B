@@ -56,7 +56,7 @@ export interface LegoPart {
   order?: number;
   category?: string;
   isHot?: boolean;
-  preventHat?: boolean; // NEW: Flag to prevent adding hat/scarf if this hair is selected
+  preventScarf?: boolean; // RENAMED: Flag to prevent adding scarf/neck accessory if this hair is selected
 }
 
 export interface ShapeConfig {

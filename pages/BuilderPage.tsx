@@ -562,7 +562,7 @@ const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_des
 
 const Step3Characters: React.FC<{ 
     config: FrameConfig; 
-    setConfig: (c: FrameConfig) => void;
+    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>;
     legoParts: typeof LEGO_PARTS;
     selectedItemId?: string | null;
     setSelectedItemId: (id: string | null) => void;
@@ -633,13 +633,14 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
         
-        // CONFLICT CHECK: Hair Volume vs Hat/Accessory
+        // CONFLICT CHECK: Hair Volume vs Scarf/Neck Accessory
+        // Hat is allowed always as per request "tóc nào cũng đội được mũ"
         if (activeCharacter) {
-            // Treat Scarves as Hats for this logic if they are Accessories
-            const isHeadOrNeckItem = part.type === 'hat' || part.name.toLowerCase().includes('khăn');
+            // Only check conflict if it's an accessory (likely neck item) and hair has flag
+            const isScarf = part.type === 'accessory';
             
-            if (isHeadOrNeckItem && activeCharacter.hair?.preventHat) {
-                if (showToast) showToast('Kiểu tóc hiện tại quá phồng, không thể đeo thêm Mũ/Khăn!', 'error');
+            if (isScarf && activeCharacter.hair?.preventScarf) {
+                if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/phụ kiện!', 'error');
                 return;
             }
         }
@@ -691,17 +692,8 @@ const Step3Characters: React.FC<{
                         (newChar as any)[part.type] = part;
                     }
 
-                    // CONFLICT CHECK: If hair is bulky (preventHat), remove linked hats/scarves
-                    if (part.type === 'hair' && part.preventHat) {
-                        // 1. Remove internal 'hat' slot (if used in future)
-                        newChar.hat = undefined; 
-                        
-                        // 2. We also need to remove Draggable Items (Hats/Scarves) linked to this character
-                        // We'll do this in a side effect below or just notify user.
-                        // Since `draggableItems` are separate from `characters`, we can't easily modify them inside this map cleanly without refactoring state update.
-                        // BUT, we can queue a toast.
-                        // Ideally, we filter draggableItems in the state update.
-                    }
+                    // No internal slot blocking logic here anymore for hats.
+                    // We rely on filtering Draggable Items if hair changes to preventScarf
 
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
@@ -724,22 +716,23 @@ const Step3Characters: React.FC<{
             })
         });
 
-        // SECOND PASS: Remove conflicting Draggable Items if Hair changed to Bulky
-        if (part.type === 'hair' && part.preventHat) {
+        // SECOND PASS: Remove conflicting Accessories (Scarves) if Hair changed to Bulky
+        // BUT KEEP HATS
+        if (part.type === 'hair' && part.preventScarf) {
             // We need to filter draggableItems
             setTimeout(() => { // Small timeout to ensure state update flow or do it in one setConfig
-                setConfig(prev => {
+                setConfig((prev: FrameConfig) => {
                     const char = prev.characters.find(c => c.id === activeCharId);
-                    if (!char || !char.hair?.preventHat) return prev;
+                    if (!char || !char.hair?.preventScarf) return prev;
 
-                    // Find linked hats/scarves
+                    // Find linked ACCESSORIES (scarves/neck items) only
                     const conflictingItems = prev.draggableItems.filter(
-                        item => (item.type === 'hat' || (item.type === 'accessory')) && 
+                        item => (item.type === 'accessory') && 
                                 item.linkedCharId === activeCharId
                     );
 
                     if (conflictingItems.length > 0) {
-                        if (showToast) showToast("Đã tự động tháo Mũ/Khăn để vừa với kiểu tóc mới", 'error');
+                        if (showToast) showToast("Đã tháo phụ kiện ở cổ để phù hợp với kiểu tóc mới", 'error');
                         return {
                             ...prev,
                             draggableItems: prev.draggableItems.filter(item => !conflictingItems.includes(item))

@@ -33,7 +33,8 @@ export const getCartStats = async (): Promise<number> => {
         const ref = doc(db, ANALYTICS_COLLECTION, CART_STATS_DOC);
         const snap = await getDoc(ref);
         if (snap.exists()) {
-            return snap.data().totalAddCount || 0;
+            const data = snap.data() as { totalAddCount?: number };
+            return data.totalAddCount || 0;
         }
         return 0;
     } catch (error) {
