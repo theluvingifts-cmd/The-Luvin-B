@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FrameConfig, LegoPart, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
 import FramePreview from '../FramePreview';
@@ -14,7 +14,7 @@ declare var html2canvas: any;
 const TOOLS = [
     { id: 'templates', icon: '📂', label: 'Mẫu' }, 
     { id: 'background', icon: '🎨', label: 'Nền' },
-    { id: 'shape', icon: '🟥', label: 'Cấu trúc' }, // Changed Icon for Shape/Structure
+    { id: 'shape', icon: '🟥', label: 'Cấu trúc' },
     { id: 'text', icon: 'abc', label: 'Chữ' },
     { id: 'upload', icon: '☁️', label: 'Upload' },
     { id: 'layers', icon: '📚', label: 'Lớp' },
@@ -84,18 +84,6 @@ const FontSelector: React.FC<{
     );
 };
 
-const base64ToBlob = (base64: string) => {
-    const arr = base64.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-};
-
 export const AdminDesign: React.FC = () => {
     // State
     const [activeTool, setActiveTool] = useState('templates');
@@ -104,6 +92,10 @@ export const AdminDesign: React.FC = () => {
     const [existingBackgrounds, setExistingBackgrounds] = useState<PresetBackground[]>([]);
     const [savedAssets, setSavedAssets] = useState<SavedAsset[]>([]);
     
+    // History State
+    const [history, setHistory] = useState<FrameConfig[]>([INITIAL_FRAME_CONFIG]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
@@ -124,6 +116,8 @@ export const AdminDesign: React.FC = () => {
     // Font Manager State
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
     const [previewFont, setPreviewFont] = useState<string | null>(null);
+    const [quickFontName, setQuickFontName] = useState('');
+    const [isUploadingFont, setIsUploadingFont] = useState(false);
     
     // Clipboard State for Copy/Paste
     const [clipboard, setClipboard] = useState<{ type: 'text' | 'shape' | 'item'; data: any } | null>(null);
@@ -131,6 +125,41 @@ export const AdminDesign: React.FC = () => {
     // Refs
     const previewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // HISTORY HELPER
+    const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
+        setConfig(prev => {
+            const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
+            
+            // Only push to history if different
+            if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
+                const newHistory = history.slice(0, historyIndex + 1);
+                newHistory.push(newConfig);
+                // Limit history size to 30 steps
+                if (newHistory.length > 30) newHistory.shift();
+                
+                setHistory(newHistory);
+                setHistoryIndex(newHistory.length - 1);
+            }
+            return newConfig;
+        });
+    }, [history, historyIndex]);
+
+    const handleUndo = () => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setConfig(history[newIndex]);
+        }
+    };
+
+    const handleRedo = () => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setConfig(history[newIndex]);
+        }
+    };
 
     // Initial Data Fetch
     useEffect(() => {
@@ -150,7 +179,7 @@ export const AdminDesign: React.FC = () => {
         fetchInitialData();
     }, []);
 
-    // ... (useEffect for font injection same as before)
+    // Effect: Load Fonts
     useEffect(() => {
         const styleId = 'admin-dynamic-fonts';
         let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -175,11 +204,50 @@ export const AdminDesign: React.FC = () => {
         style.innerHTML = css;
     }, [uploadedFonts]);
 
+    const handleQuickFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!quickFontName.trim()) {
+            alert("Vui lòng nhập tên font trước.");
+            e.target.value = ''; 
+            return;
+        }
+
+        if (e.target.files && e.target.files[0]) {
+            setIsUploadingFont(true);
+            try {
+                const file = e.target.files[0];
+                const url = await uploadToCloudinary(file);
+                
+                if (url) {
+                    const newFont: CustomFont = {
+                        id: `font_${Date.now()}`,
+                        name: quickFontName.trim(),
+                        url: url
+                    };
+                    
+                    // Update Cloud
+                    const currentConfig = await getStoreConfig();
+                    const updatedFonts = [...(currentConfig?.uploadedFonts || []), newFont];
+                    await updateStoreConfig({ uploadedFonts: updatedFonts });
+                    
+                    // Update Local
+                    setUploadedFonts(updatedFonts);
+                    setQuickFontName('');
+                    alert(`Font "${newFont.name}" đã sẵn sàng sử dụng!`);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi upload font.");
+            } finally {
+                setIsUploadingFont(false);
+            }
+        }
+    };
+
     const handleItemRemove = (id: string) => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
         setSelectedItemId(null);
-        setConfig(prev => {
+        setConfigWithHistory(prev => {
             if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== numericId) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== numericId) };
             if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== numericId) };
@@ -193,6 +261,19 @@ export const AdminDesign: React.FC = () => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             const isCtrl = e.ctrlKey || e.metaKey;
+
+            // UNDO / REDO
+            if (isCtrl && (e.key === 'z' || e.key === 'Z')) {
+                e.preventDefault();
+                if (e.shiftKey) handleRedo();
+                else handleUndo();
+                return;
+            }
+            if (isCtrl && (e.key === 'y' || e.key === 'Y')) {
+                e.preventDefault();
+                handleRedo();
+                return;
+            }
 
             // DELETE
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -249,7 +330,7 @@ export const AdminDesign: React.FC = () => {
                         y: Math.min(95, (clipboard.data.y || 50) + 2) 
                     };
 
-                    setConfig(prev => {
+                    setConfigWithHistory(prev => {
                         const next = { ...prev };
                         if (clipboard.type === 'text') {
                             next.texts = [...prev.texts, newItem];
@@ -280,11 +361,11 @@ export const AdminDesign: React.FC = () => {
                 
                 const updatePos = (item: any) => ({ 
                     ...item, 
-                    x: Math.max(0, Math.min(100, item.x + (dx / 500 * 100))), // Approximation of pixel nudge to percentage
+                    x: Math.max(0, Math.min(100, item.x + (dx / 500 * 100))), 
                     y: Math.max(0, Math.min(100, item.y + (dy / 500 * 100))) 
                 });
 
-                setConfig(prev => {
+                setConfigWithHistory(prev => {
                     if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? updatePos(t) : t) };
                     if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? updatePos(s) : s) };
                     if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? updatePos(i) : i) };
@@ -299,7 +380,7 @@ export const AdminDesign: React.FC = () => {
 
     // ... (Helpers, Handlers - No Changes)
     const handleFrameChange = (frameId: string) => {
-        setConfig(prev => ({ ...prev, frameId }));
+        setConfigWithHistory(prev => ({ ...prev, frameId }));
         // Auto set Type suggestion based on frame
         const frame = frames.find(f => f.id === frameId);
         if (frame) {
@@ -312,7 +393,7 @@ export const AdminDesign: React.FC = () => {
     };
 
     const handleBackgroundChange = (type: 'color' | 'image', value: string) => {
-        setConfig(prev => ({ ...prev, background: { type, value } }));
+        setConfigWithHistory(prev => ({ ...prev, background: { type, value } }));
     };
 
     const handleUploadBackground = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -355,7 +436,7 @@ export const AdminDesign: React.FC = () => {
             lockedPosition: false,
             lockedContent: false
         };
-        setConfig(prev => ({ ...prev, texts: [...prev.texts, newText] }));
+        setConfigWithHistory(prev => ({ ...prev, texts: [...prev.texts, newText] }));
         setSelectedItemId(`text-${newText.id}`);
         setActiveTool('text');
     };
@@ -373,13 +454,13 @@ export const AdminDesign: React.FC = () => {
             borderRadius: 0,
             lockedPosition: false
         };
-        setConfig(prev => ({ ...prev, shapes: [...(prev.shapes || []), newShape] }));
+        setConfigWithHistory(prev => ({ ...prev, shapes: [...(prev.shapes || []), newShape] }));
         setSelectedItemId(`shape-${newShape.id}`);
         setActiveTool('shape');
     };
 
     const handleShapeUpdate = (id: number, updates: Partial<ShapeConfig>) => {
-        setConfig(prev => ({
+        setConfigWithHistory(prev => ({
             ...prev,
             shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s)
         }));
@@ -403,7 +484,7 @@ export const AdminDesign: React.FC = () => {
                         type: 'charm',
                         x: 50, y: 50, rotation: 0, scale: 1
                     };
-                    setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
+                    setConfigWithHistory(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
                     // Save to Assets
                     const newAsset = await addAsset(url, 'sticker');
                     if (newAsset) setSavedAssets(prev => [newAsset, ...prev]);
@@ -423,7 +504,7 @@ export const AdminDesign: React.FC = () => {
             type: 'charm',
             x: 50, y: 50, rotation: 0, scale: 1
         };
-        setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
+        setConfigWithHistory(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
     }
 
     const handleLoadTemplate = (bg: PresetBackground) => {
@@ -440,7 +521,7 @@ export const AdminDesign: React.FC = () => {
             let frameId = 'lg'; // Default square
             if (bg.type === 'rectangle') frameId = 'md';
             
-            setConfig({
+            setConfigWithHistory({
                 frameId: frameId,
                 background: { type: isColor ? 'color' : 'image', value: bg.url },
                 texts: bg.overlayConfig?.texts || [],
@@ -454,7 +535,7 @@ export const AdminDesign: React.FC = () => {
 
     const handleResetDesign = () => {
         if (confirm("Tạo thiết kế mới? Mọi thay đổi chưa lưu sẽ mất.")) {
-            setConfig(INITIAL_FRAME_CONFIG);
+            setConfigWithHistory(INITIAL_FRAME_CONFIG);
             setEditingBgId(null);
             setBgName('');
             setExistingPreviewUrl('');
@@ -480,7 +561,7 @@ export const AdminDesign: React.FC = () => {
             return { ...item, ...updates };
         };
 
-        setConfig(prev => {
+        setConfigWithHistory(prev => {
             if (type === 'text') {
                 return { ...prev, texts: prev.texts.map(t => t.id === numericId ? updateFn(t) : t) };
             }
@@ -499,7 +580,7 @@ export const AdminDesign: React.FC = () => {
         const [type, idStr] = selectedItemId.split('-');
         const numericId = parseInt(idStr);
 
-        setConfig(prev => {
+        setConfigWithHistory(prev => {
             if (type === 'text') {
                 return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedPosition: !t.lockedPosition } : t) };
             }
@@ -518,14 +599,13 @@ export const AdminDesign: React.FC = () => {
         const [type, idStr] = selectedItemId.split('-');
         const numericId = parseInt(idStr);
 
-        setConfig(prev => {
+        setConfigWithHistory(prev => {
             if (type === 'text') {
                 return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, lockedContent: !t.lockedContent } : t) };
             }
              if (type === 'item') {
                 return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, lockedContent: !i.lockedContent } : i) };
             }
-            // Shapes don't have content lock
             return prev;
         });
     };
@@ -553,7 +633,7 @@ export const AdminDesign: React.FC = () => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
 
-        setConfig(prev => {
+        setConfigWithHistory(prev => {
             if (type === 'text') {
                 return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, ...newTransform } : t) };
             }
@@ -571,7 +651,7 @@ export const AdminDesign: React.FC = () => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
 
-        setConfig(prev => {
+        setConfigWithHistory(prev => {
             if (type === 'text') {
                 return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { 
                     ...t, 
@@ -596,14 +676,67 @@ export const AdminDesign: React.FC = () => {
         });
     }
 
+    const changeLayerOrder = (direction: 'front' | 'back') => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const numericId = parseInt(idStr);
+
+        setConfigWithHistory(prev => {
+            const next = { ...prev };
+            // Simple logic: We can only reorder within the same array for now
+            // To make it fully flexible (mixed layers), we'd need a unified 'layers' array which is a bigger refactor.
+            // For now, we allow bringing to front/back of ITS OWN TYPE array.
+            
+            if (type === 'text') {
+                const idx = prev.texts.findIndex(t => t.id === numericId);
+                if (idx === -1) return prev;
+                const item = prev.texts[idx];
+                const newArr = [...prev.texts];
+                newArr.splice(idx, 1);
+                if (direction === 'front') newArr.push(item);
+                else newArr.unshift(item);
+                next.texts = newArr;
+            } else if (type === 'item') {
+                const idx = prev.draggableItems.findIndex(i => i.id === numericId);
+                if (idx === -1) return prev;
+                const item = prev.draggableItems[idx];
+                const newArr = [...prev.draggableItems];
+                newArr.splice(idx, 1);
+                if (direction === 'front') newArr.push(item);
+                else newArr.unshift(item);
+                next.draggableItems = newArr;
+            } else if (type === 'shape') {
+                const idx = (prev.shapes || []).findIndex(s => s.id === numericId);
+                if (idx === -1) return prev;
+                const item = (prev.shapes || [])[idx];
+                const newArr = [...(prev.shapes || [])];
+                newArr.splice(idx, 1);
+                if (direction === 'front') newArr.push(item);
+                else newArr.unshift(item);
+                next.shapes = newArr;
+            }
+            return next;
+        });
+    }
+
     const handleTextUpdate = (id: number, updates: Partial<TextConfig>) => {
-        setConfig(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
+        setConfigWithHistory(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
+    };
+
+    const handleItemUpdate = (id: number, updates: Partial<DraggableItem>) => {
+        setConfigWithHistory(prev => ({ ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) }));
     };
 
     const getSelectedText = () => {
         if (!selectedItemId || !selectedItemId.startsWith('text-')) return null;
         const id = parseInt(selectedItemId.split('-')[1]);
         return config.texts.find(t => t.id === id);
+    };
+
+    const getSelectedItem = () => {
+        if (!selectedItemId || !selectedItemId.startsWith('item-')) return null;
+        const id = parseInt(selectedItemId.split('-')[1]);
+        return config.draggableItems.find(i => i.id === id);
     };
 
     const handleDownloadImage = async () => {
@@ -829,7 +962,6 @@ export const AdminDesign: React.FC = () => {
                         </div>
                     )}
 
-                    {/* ... (Background Tool logic same as before) ... */}
                     {activeTool === 'background' && (
                         <div className="space-y-6">
                             <div>
@@ -861,7 +993,6 @@ export const AdminDesign: React.FC = () => {
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadBackground} />
                             </div>
                             
-                            {/* Saved Backgrounds Asset Library */}
                             {backgroundAssets.length > 0 && (
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Thư viện của bạn</label>
@@ -889,6 +1020,31 @@ export const AdminDesign: React.FC = () => {
                                 + Thêm văn bản
                             </button>
                             
+                            <div className="border-t border-gray-200 pt-4 mt-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Upload Font Nhanh</label>
+                                <div className="space-y-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Tên font (VD: MyFont)" 
+                                        className="w-full p-2 border rounded text-xs"
+                                        value={quickFontName}
+                                        onChange={(e) => setQuickFontName(e.target.value)}
+                                    />
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            accept=".ttf,.otf,.woff,.woff2" 
+                                            onChange={handleQuickFontUpload}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            disabled={isUploadingFont}
+                                        />
+                                        <button className={`w-full p-2 border border-dashed rounded text-xs font-medium text-center ${isUploadingFont ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                                            {isUploadingFont ? 'Đang tải...' : '+ Chọn file Font (.ttf)'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             {selectedItemId && selectedItemId.startsWith('text') ? (
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
                                     <p className="text-xs font-bold text-blue-600 uppercase">Đang chỉnh sửa</p>
@@ -1104,6 +1260,45 @@ export const AdminDesign: React.FC = () => {
                                     </div>
                                 </div>
                             )}
+                            
+                            {/* CLIP MARK TOOL */}
+                            {getSelectedItem() && getSelectedItem()?.type === 'charm' && (
+                                <div className="mt-6 pt-4 border-t">
+                                    <label className="text-xs font-bold text-blue-600 uppercase mb-2 block">Tạo mặt nạ ảnh (Clip Mark)</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button 
+                                            onClick={() => handleItemUpdate(getSelectedItem()!.id, { maskShape: 'none' })}
+                                            className={`p-2 border rounded text-xs text-center hover:bg-gray-50 ${getSelectedItem()?.maskShape === 'none' || !getSelectedItem()?.maskShape ? 'bg-blue-50 border-blue-300 font-bold' : ''}`}
+                                        >
+                                            Gốc
+                                        </button>
+                                        <button 
+                                            onClick={() => handleItemUpdate(getSelectedItem()!.id, { maskShape: 'circle' })}
+                                            className={`p-2 border rounded text-xs text-center hover:bg-gray-50 ${getSelectedItem()?.maskShape === 'circle' ? 'bg-blue-50 border-blue-300 font-bold' : ''}`}
+                                        >
+                                            Tròn
+                                        </button>
+                                        <button 
+                                            onClick={() => handleItemUpdate(getSelectedItem()!.id, { maskShape: 'rounded' })}
+                                            className={`p-2 border rounded text-xs text-center hover:bg-gray-50 ${getSelectedItem()?.maskShape === 'rounded' ? 'bg-blue-50 border-blue-300 font-bold' : ''}`}
+                                        >
+                                            Bo góc
+                                        </button>
+                                        <button 
+                                            onClick={() => handleItemUpdate(getSelectedItem()!.id, { maskShape: 'heart' })}
+                                            className={`p-2 border rounded text-xs text-center hover:bg-gray-50 ${getSelectedItem()?.maskShape === 'heart' ? 'bg-blue-50 border-blue-300 font-bold' : ''}`}
+                                        >
+                                            Trái tim
+                                        </button>
+                                        <button 
+                                            onClick={() => handleItemUpdate(getSelectedItem()!.id, { maskShape: 'star' })}
+                                            className={`p-2 border rounded text-xs text-center hover:bg-gray-50 ${getSelectedItem()?.maskShape === 'star' ? 'bg-blue-50 border-blue-300 font-bold' : ''}`}
+                                        >
+                                            Ngôi sao
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1187,6 +1382,25 @@ export const AdminDesign: React.FC = () => {
                             <span className="text-xs font-medium w-12 text-center">{Math.round(zoom * 100)}%</span>
                             <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-1 hover:bg-gray-100 rounded text-gray-600 text-lg font-bold">+</button>
                         </div>
+                        <div className="h-6 w-px bg-gray-300"></div>
+                        <div className="flex items-center gap-1">
+                            <button 
+                                onClick={handleUndo} 
+                                disabled={historyIndex <= 0}
+                                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Hoàn tác (Ctrl+Z)"
+                            >
+                                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                            </button>
+                            <button 
+                                onClick={handleRedo} 
+                                disabled={historyIndex >= history.length - 1}
+                                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Làm lại (Ctrl+Shift+Z)"
+                            >
+                                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
+                            </button>
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <button 
@@ -1197,7 +1411,7 @@ export const AdminDesign: React.FC = () => {
                             Tải ảnh PNG
                         </button>
                         <button 
-                            onClick={handlePrepareSave} // Changed to Prepare Save
+                            onClick={handlePrepareSave} 
                             className={`px-4 py-2 text-xs font-bold text-white rounded shadow-sm flex items-center gap-2 transition-colors ${editingBgId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
@@ -1206,7 +1420,7 @@ export const AdminDesign: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Floating Alignment Bar (When Item Selected) */}
+                {/* Floating Alignment & Layer Bar (When Item Selected) */}
                 {selectedItemId && (
                     <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white shadow-md border border-gray-200 rounded-lg p-1.5 flex gap-1 animate-fade-in-up items-center">
                         <button onClick={togglePositionLock} className={`p-1.5 rounded transition-colors ${currentLocks.position ? 'bg-red-50 text-red-600' : 'hover:bg-gray-100 text-gray-500'}`} title={currentLocks.position ? "Mở khóa vị trí" : "Khóa vị trí (Cố định template)"}>
@@ -1224,10 +1438,19 @@ export const AdminDesign: React.FC = () => {
                         <div className="w-px h-4 bg-gray-200 mx-1"></div>
                         
                         <button onClick={() => alignItem('left')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trái"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
+                        <button onClick={() => alignItem('centerH')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa ngang"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg></button>
                         <button onClick={() => alignItem('right')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn phải"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-                        <div className="w-px bg-gray-200 mx-1"></div>
+                        
+                        <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                        
                         <button onClick={() => alignItem('top')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn trên"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 5 5 12"></polyline></svg></button>
+                        <button onClick={() => alignItem('centerV')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn giữa dọc"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg></button>
                         <button onClick={() => alignItem('bottom')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Căn dưới"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 19 19 12"></polyline></svg></button>
+
+                        <div className="w-px h-4 bg-gray-200 mx-1"></div>
+
+                        <button onClick={() => changeLayerOrder('front')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Lên trên cùng"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+                        <button onClick={() => changeLayerOrder('back')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600" title="Xuống dưới cùng"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></button>
                     </div>
                 )}
 
@@ -1249,6 +1472,7 @@ export const AdminDesign: React.FC = () => {
                             onItemTransform={handleItemTransform}
                             onItemRemove={handleItemRemove}
                             onTextUpdate={handleTextUpdate}
+                            onItemUpdate={handleItemUpdate}
                             isInteractive={true}
                             selectedItemId={selectedItemId}
                             setSelectedItemId={setSelectedItemId}

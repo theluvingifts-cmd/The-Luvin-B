@@ -109,6 +109,8 @@ export interface DraggableItem {
     selectedColor?: OutfitColor;
     lockedPosition?: boolean; // Prevents moving/resizing
     lockedContent?: boolean; // Prevents changing color/variant
+    // NEW: Masking for Clip Mark feature
+    maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
 }
 
 export interface BackgroundConfig {

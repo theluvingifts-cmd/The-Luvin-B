@@ -692,7 +692,15 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
                     const widthCm = isCharm ? 2 : (part?.widthCm || 1);
                     const heightCm = isCharm ? 2 : (part?.heightCm || 1);
+                    
                     if (!imageUrl) return null;
+
+                    // MASKING STYLE
+                    let maskStyle: React.CSSProperties = {};
+                    if (item.maskShape === 'circle') maskStyle = { borderRadius: '50%' };
+                    else if (item.maskShape === 'rounded') maskStyle = { borderRadius: '15%' };
+                    else if (item.maskShape === 'heart') maskStyle = { clipPath: 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' };
+                    else if (item.maskShape === 'star') maskStyle = { clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' };
 
                     return (
                         <Transformable 
@@ -702,7 +710,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             isPositionLocked={item.lockedPosition} // Pass lockedPosition
                             zIndex={item.type === 'hat' ? 12 : 10}
                         >
-                            <SafeImage src={imageUrl} alt={name} className="pointer-events-none" style={{ width: widthCm * pxPerCm, height: heightCm * pxPerCm, objectFit: 'contain', maxWidth: 'none', maxHeight: 'none' }} />
+                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm }}>
+                                <SafeImage src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
                         </Transformable>
                     );
                 })}
@@ -778,7 +788,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         </button>
                     )}
                     <button onClick={() => onItemRemove(selectedItemId)} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     {onAutoAdvance && (
                         <>

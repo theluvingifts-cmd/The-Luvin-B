@@ -6,6 +6,7 @@ import {
     LEGO_PARTS, 
     defaultShirtColors,
     defaultPantsColors,
+    INITIAL_FRAME_CONFIG,
 } from '../constants';
 import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
@@ -1320,6 +1321,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
   const [previewFont, setPreviewFont] = useState<string | null>(null); // New state for font preview
+  const [showRestoreDraft, setShowRestoreDraft] = useState(false); // AUTO SAVE STATE
   
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -1329,6 +1331,54 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
+
+  // --- AUTO SAVE EFFECT ---
+  useEffect(() => {
+      // Only save if user has made changes (history > 1) and not editing an existing order
+      if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
+          const draft = JSON.stringify(config);
+          localStorage.setItem('builder_draft', draft);
+      }
+  }, [config, history, isEditingOrder, editingCartIndex]);
+
+  // --- CHECK DRAFT ON MOUNT ---
+  useEffect(() => {
+      if (editingCartIndex === null && !isEditingOrder) {
+          const draft = localStorage.getItem('builder_draft');
+          if (draft) {
+              try {
+                  const parsedDraft = JSON.parse(draft);
+                  // Check if draft is different from initial
+                  if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) {
+                      setShowRestoreDraft(true);
+                  }
+              } catch (e) {
+                  console.error("Failed to parse draft", e);
+              }
+          }
+      }
+  }, [editingCartIndex, isEditingOrder]);
+
+  const handleRestoreDraft = () => {
+      try {
+          const draft = localStorage.getItem('builder_draft');
+          if (draft) {
+              const parsed = JSON.parse(draft);
+              setConfig(parsed);
+              setHistory([parsed]);
+              setHistoryIndex(0);
+              showToast("Đã khôi phục thiết kế gần nhất!", 'success');
+          }
+      } catch(e) {
+          showToast("Lỗi khôi phục.", 'error');
+      }
+      setShowRestoreDraft(false);
+  };
+
+  const handleDiscardDraft = () => {
+      localStorage.removeItem('builder_draft');
+      setShowRestoreDraft(false);
+  };
 
   useEffect(() => {
       const currentFrame = frames.find(f => f.id === config.frameId);
@@ -1784,6 +1834,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             previewImageUrl: cloudUrl
         };
 
+        // Clear draft after adding to cart
+        localStorage.removeItem('builder_draft');
+
         if (editingCartIndex !== null && !andCheckout) {
             onUpdateCart(finalConfig);
         } else {
@@ -2072,6 +2125,23 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
         </div>
       </div>
+
+      {/* RESTORE DRAFT BANNER */}
+      {showRestoreDraft && (
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-w-sm animate-bounce-small">
+              <div className="flex items-start gap-3">
+                  <span className="text-2xl">💾</span>
+                  <div>
+                      <h4 className="font-bold text-gray-900 text-sm">Bản nháp chưa hoàn thành</h4>
+                      <p className="text-xs text-gray-600 mt-1">Chúng tôi tìm thấy thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?</p>
+                  </div>
+              </div>
+              <div className="flex gap-3 mt-3 justify-end">
+                  <button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button>
+                  <button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

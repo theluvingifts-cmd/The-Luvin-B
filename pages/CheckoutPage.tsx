@@ -5,6 +5,7 @@ import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../util
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
+import { getOrdersByPhone } from '../services/orderService'; // Import Service
 
 interface CheckoutPageProps {
   cartItems: FrameConfig[];
@@ -44,6 +45,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [voucherError, setVoucherError] = useState('');
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+  
+  // Auto-fill State
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
@@ -160,6 +164,43 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       setVoucherError('');
   };
 
+  // --- SMART AUTOFILL HANDLER ---
+  const handlePhoneBlur = async () => {
+      // Basic validate phone length before checking DB
+      if (phone.length >= 10 && !initialOrder) {
+          setIsCheckingPhone(true);
+          try {
+              const history = await getOrdersByPhone(phone);
+              if (history && history.length > 0) {
+                  // Get the most recent order (sorted by default in service)
+                  const lastOrder = history[0];
+                  
+                  // Autofill basic info
+                  if (!name) setName(lastOrder.customer.name);
+                  if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
+                  
+                  // For address, since we use dropdowns, it's hard to map back perfectly without ID.
+                  // Strategy: Fill the 'Street' input with the full address string so user can just edit/confirm.
+                  // Or prompt user? Let's just fill Street for simplicity and clear dropdowns.
+                  if (!street && lastOrder.customer.address) {
+                      setStreet(lastOrder.customer.address);
+                      // Clear dropdowns to avoid confusion, forcing user to rely on the street input or re-select
+                      setSelectedProvince('');
+                      setSelectedDistrict('');
+                      setSelectedWard('');
+                  }
+                  
+                  // Show subtle feedback
+                  // Using alert is too intrusive, maybe a small text
+              }
+          } catch (e) {
+              console.error("Autofill error", e);
+          } finally {
+              setIsCheckingPhone(false);
+          }
+      }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; 
@@ -242,19 +283,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               <div className="mb-6 border-b border-gray-200 pb-6">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">1. Người nhận</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
-                    <div>
+                    <div className="relative">
                       <input 
                         type="tel" 
                         placeholder="Số điện thoại" 
                         value={phone} 
                         onChange={e => { setPhone(e.target.value); setPhoneError(''); }} 
+                        onBlur={handlePhoneBlur}
                         className={`w-full p-3 border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'} rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`} 
                         required 
                       />
+                      {isCheckingPhone && <span className="absolute right-3 top-3.5 text-xs text-gray-400 animate-pulse">Đang tìm...</span>}
                       {phoneError && <p className="text-red-500 text-xs mt-1 ml-1">{phoneError}</p>}
                     </div>
-                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
+                    <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
+                    <input type="email" placeholder="Email (Nhận thông báo đơn hàng)" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
+                  </div>
+                  {/* Info Tip */}
+                  <div className="mt-2 text-[10px] text-gray-400 italic">
+                      * Nhập SĐT để tự động điền thông tin nếu bạn đã từng mua hàng.
                   </div>
               </div>
 
