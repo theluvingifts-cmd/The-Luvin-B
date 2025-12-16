@@ -10,7 +10,7 @@ export const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: '', bulkPricing: []
+        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: '', bulkPricing: [], preventHat: false
     });
     const [isUploading, setIsUploading] = useState(false);
     
@@ -30,6 +30,8 @@ export const ProductForm: React.FC<{
         if (name === 'stock') {
             const stockVal = value === '' ? undefined : Number(value);
             setFormData(prev => ({ ...prev, stock: stockVal }));
+        } else if (name === 'preventHat') {
+            setFormData(prev => ({ ...prev, preventHat: (e.target as HTMLInputElement).checked }));
         } else {
             setFormData(prev => ({ 
                 ...prev, 
@@ -225,6 +227,22 @@ export const ProductForm: React.FC<{
                                     <input type="number" name="costPrice" value={formData.costPrice || 0} onChange={handleChange} className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-base text-red-600 font-medium" />
                                 </div>
                                 
+                                {formData.type === 'hair' && (
+                                    <div className="col-span-2 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                name="preventHat" 
+                                                checked={formData.preventHat || false} 
+                                                onChange={handleChange}
+                                                className="w-5 h-5 accent-red-600" 
+                                            />
+                                            <span className="text-sm font-bold text-yellow-800">⛔ Chặn đội mũ/khăn (Dành cho tóc phồng/xù)</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mt-1 ml-7">Nếu tích, khách hàng sẽ không thể thêm mũ hoặc khăn cho nhân vật dùng kiểu tóc này.</p>
+                                    </div>
+                                )}
+
                                 {/* Promotion Settings */}
                                 <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
                                     <h5 className="font-bold text-sm text-blue-600 mb-3">🔥 Thiết lập Khuyến mãi</h5>

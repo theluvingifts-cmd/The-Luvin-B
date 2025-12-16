@@ -56,6 +56,7 @@ export interface LegoPart {
   order?: number;
   category?: string;
   isHot?: boolean;
+  preventHat?: boolean; // NEW: Flag to prevent adding hat/scarf if this hair is selected
 }
 
 export interface ShapeConfig {
@@ -111,6 +112,7 @@ export interface DraggableItem {
     lockedContent?: boolean; // Prevents changing color/variant
     // NEW: Masking for Clip Mark feature
     maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
+    linkedCharId?: number; // Optional: Link to a character to track conflicts
 }
 
 export interface BackgroundConfig {

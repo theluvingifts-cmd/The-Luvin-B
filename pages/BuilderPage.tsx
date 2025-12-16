@@ -19,6 +19,7 @@ declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
+// ... (StepIndicator and Step1Frame components remain unchanged) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
 
@@ -182,6 +183,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   );
 };
 
+// ... (PresetBackgroundButton component remains unchanged) ...
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
@@ -261,6 +263,7 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
+// ... (Step2BackgroundAndDecorations, PartButton components remain unchanged) ...
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;
@@ -566,7 +569,8 @@ const Step3Characters: React.FC<{
     activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds }) => {
+    showToast?: (msg: string, type: 'success' | 'error') => void; // New Prop
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -629,6 +633,17 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
         
+        // CONFLICT CHECK: Hair Volume vs Hat/Accessory
+        if (activeCharacter) {
+            // Treat Scarves as Hats for this logic if they are Accessories
+            const isHeadOrNeckItem = part.type === 'hat' || part.name.toLowerCase().includes('khăn');
+            
+            if (isHeadOrNeckItem && activeCharacter.hair?.preventHat) {
+                if (showToast) showToast('Kiểu tóc hiện tại quá phồng, không thể đeo thêm Mũ/Khăn!', 'error');
+                return;
+            }
+        }
+
         let startX = 50;
         let startY = 50;
         
@@ -649,7 +664,8 @@ const Step3Characters: React.FC<{
             rotation: 0, 
             scale: 1, 
             isFlipped: false, 
-            selectedColor: part.colors?.[0]
+            selectedColor: part.colors?.[0],
+            linkedCharId: activeCharacter?.id // Link to character for future checks
         };
         setConfig({...config, draggableItems: [...config.draggableItems, newItem]});
     }
@@ -675,6 +691,18 @@ const Step3Characters: React.FC<{
                         (newChar as any)[part.type] = part;
                     }
 
+                    // CONFLICT CHECK: If hair is bulky (preventHat), remove linked hats/scarves
+                    if (part.type === 'hair' && part.preventHat) {
+                        // 1. Remove internal 'hat' slot (if used in future)
+                        newChar.hat = undefined; 
+                        
+                        // 2. We also need to remove Draggable Items (Hats/Scarves) linked to this character
+                        // We'll do this in a side effect below or just notify user.
+                        // Since `draggableItems` are separate from `characters`, we can't easily modify them inside this map cleanly without refactoring state update.
+                        // BUT, we can queue a toast.
+                        // Ideally, we filter draggableItems in the state update.
+                    }
+
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
@@ -695,6 +723,32 @@ const Step3Characters: React.FC<{
                 return c;
             })
         });
+
+        // SECOND PASS: Remove conflicting Draggable Items if Hair changed to Bulky
+        if (part.type === 'hair' && part.preventHat) {
+            // We need to filter draggableItems
+            setTimeout(() => { // Small timeout to ensure state update flow or do it in one setConfig
+                setConfig(prev => {
+                    const char = prev.characters.find(c => c.id === activeCharId);
+                    if (!char || !char.hair?.preventHat) return prev;
+
+                    // Find linked hats/scarves
+                    const conflictingItems = prev.draggableItems.filter(
+                        item => (item.type === 'hat' || (item.type === 'accessory')) && 
+                                item.linkedCharId === activeCharId
+                    );
+
+                    if (conflictingItems.length > 0) {
+                        if (showToast) showToast("Đã tự động tháo Mũ/Khăn để vừa với kiểu tóc mới", 'error');
+                        return {
+                            ...prev,
+                            draggableItems: prev.draggableItems.filter(item => !conflictingItems.includes(item))
+                        };
+                    }
+                    return prev;
+                });
+            }, 50);
+        }
     };
 
     const handlePartDeselect = (partType: 'hair' | 'hat') => {
@@ -712,6 +766,8 @@ const Step3Characters: React.FC<{
         })
       });
     }
+    
+    // ... (Rest of Step3Characters logic remains unchanged: handleCustomPrintSelect, handleRandomizeOutfit, partTypes, currentPartList, etc.)
     
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
@@ -1033,7 +1089,9 @@ const Step3Characters: React.FC<{
     );
 };
 
+// ... (Step4Summary, FontSelector, TextEditor, BuilderPage remain unchanged) ...
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
+  // ... existing code ...
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1332,6 +1390,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
+  // ... (Auto Save, Restore Draft, Hot Trends logic remain unchanged) ...
   // --- AUTO SAVE EFFECT ---
   useEffect(() => {
       // Only save if user has made changes (history > 1) and not editing an existing order
@@ -1894,7 +1953,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           showToast={showToast} 
           preferredSquareFrameId={lastSquareFrameId}
       />;
-      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
