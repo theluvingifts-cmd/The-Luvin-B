@@ -1,5 +1,5 @@
 
-// ... (imports)
+// ... (imports remain the same)
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
@@ -10,7 +10,7 @@ import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
 
-// ... (STATUS_CONFIG, helpers remain the same)
+// ... (STATUS_CONFIG, formatDate, formatDateTime, getCountdownText, getVietQR helpers remain the same)
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
     { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
@@ -133,7 +133,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             const searchLower = orderSearch.trim().toLowerCase();
             result = result.filter(o => 
                 o.id.toLowerCase().includes(searchLower) || 
-                o.customer.phone.includes(searchLower)
+                o.customer.phone.includes(searchLower) ||
+                (o.customer.name && o.customer.name.toLowerCase().includes(searchLower))
             );
         }
         if (filterStatus !== 'all') {
@@ -568,7 +569,13 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         <button onClick={() => setOrderTab('history')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Lịch sử ({orders.filter(o => ['Đã giao hàng', 'Huỷ đơn'].includes(o.status)).length})</button>
                     </div>
                     <div className="relative w-full mt-2">
-                        <input type="text" placeholder="Tìm mã đơn hoặc SĐT..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-gray-900 outline-none" />
+                        <input 
+                            type="text" 
+                            placeholder="Tìm mã đơn, SĐT hoặc Tên khách..." 
+                            value={orderSearch} 
+                            onChange={(e) => setOrderSearch(e.target.value)} 
+                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-gray-900 outline-none" 
+                        />
                         <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
                     {/* ... Sort and Status filters ... */}
