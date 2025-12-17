@@ -1,14 +1,16 @@
 
+// ... (imports remain the same)
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
-import { calculatePrice, formatCurrency } from '../../utils/pricing';
+import { calculatePrice, formatCurrency } from '../../utils/pricing'; // Changed import
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
 
+// ... (STATUS_CONFIG, formatDate, formatDateTime, getCountdownText, getVietQR helpers remain the same)
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
     { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
@@ -49,11 +51,6 @@ const getVietQR = (order: Order) => {
     return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
 };
 
-const removeVietnameseTones = (str: string) => {
-    if (!str) return '';
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
-};
-
 interface AdminOrdersProps {
     orders: Order[];
     setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
@@ -67,6 +64,7 @@ interface AdminOrdersProps {
 type OrderTab = 'active' | 'history';
 
 export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
+    // ... (State hooks same as before)
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -97,6 +95,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
+    // ... (Effects and helper functions same as before)
     useEffect(() => {
         if (selectedOrder) {
             setNoteInput(selectedOrder.internalNotes || '');
@@ -130,23 +129,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         } else {
             result = result.filter(o => ['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status));
         }
-        
         if (orderSearch.trim()) {
-            const term = orderSearch.trim().toLowerCase();
-            const termNoAccents = removeVietnameseTones(term);
-
-            result = result.filter(o => {
-                const idMatch = o.id.toLowerCase().includes(term);
-                const phoneMatch = o.customer.phone.includes(term);
-                
-                const name = o.customer.name ? o.customer.name.toLowerCase() : '';
-                const nameNoAccents = removeVietnameseTones(name);
-                const nameMatch = name.includes(term) || nameNoAccents.includes(termNoAccents);
-
-                return idMatch || phoneMatch || nameMatch;
-            });
+            const searchLower = orderSearch.trim().toLowerCase();
+            result = result.filter(o => 
+                o.id.toLowerCase().includes(searchLower) || 
+                o.customer.phone.includes(searchLower) ||
+                (o.customer.name && o.customer.name.toLowerCase().includes(searchLower))
+            );
         }
-        
         if (filterStatus !== 'all') {
             result = result.filter(o => o.status === filterStatus);
         }
@@ -372,6 +362,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         alert("Đã lưu thay đổi!");
     };
 
+    // Calculate Price Helper for Admin View consistency
     const calculateOrderPriceDetails = (orderItems: FrameConfig[]) => {
         let subtotal = 0;
         const partLookup = allKnownParts;
@@ -421,6 +412,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
     };
 
+    // ... (Add/Remove char/draggable logic)
     const handleAddCharacter = (itemIndex: number) => {
         if (!editForm) return;
         const newChar: LegoCharacterConfig = { id: Date.now(), x: 50, y: 50, rotation: 0, scale: 1 };
@@ -515,6 +507,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const isOrderPacked = selectedOrder ? ['Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng'].includes(selectedOrder.status) : false;
 
+    // --- UPDATED BILLING BREAKDOWN ---
     const BillingBreakdown = () => {
         const order = isEditingOrder && editForm ? editForm : selectedOrder;
         if (!order) return null;
@@ -559,13 +552,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         );
     };
 
+    // ... (Main Render)
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] animate-fade-in relative">
+            {/* ... Loading Overlay ... */}
             {isLoading && (
                 <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]"><div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div><span className="font-bold text-sm">Đang xử lý...</span></div></div>
             )}
             
+            {/* Left Panel (List) - Same logic */}
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-10 ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
+                {/* List Content */}
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
                     <div className="flex gap-2 p-1 bg-gray-200 rounded-lg">
                         <button onClick={() => setOrderTab('active')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})</button>
@@ -581,6 +578,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         />
                         <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
+                    {/* ... Sort and Status filters ... */}
                     {orderTab === 'active' && (
                         <div className="flex gap-2 w-full mt-1">
                             <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
@@ -606,15 +604,18 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
                     ))}
                 </div>
+                {/* Pagination */}
                 <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-2"><span className="text-xs text-gray-500">Hiển thị:</span><select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-white border border-gray-300 rounded text-xs p-1 focus:outline-none"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></div>
                     <div className="flex items-center gap-1"><button disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-100 disabled:opacity-50">&lt;</button><span className="text-xs font-medium px-2">Trang {currentPage} / {totalPages || 1}</span><button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:bg-gray-100 disabled:opacity-50">&gt;</button></div>
                 </div>
             </div>
 
+            {/* Right Panel: Order Detail */}
             <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-20 ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                 {selectedOrder ? (
                     <div className="flex flex-col h-full relative">
+                        {/* Header Actions */}
                         <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-start bg-white sticky top-0 z-30 shadow-sm">
                             <div className="flex items-start gap-2 w-full">
                                 <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 mr-2 p-2 -ml-2 hover:bg-gray-100 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg></button>
@@ -636,6 +637,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
+                            {/* Payment Proof Block */}
                             {selectedOrder.paymentProofUrl && (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                                     <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2"><span>📸</span> Ảnh xác nhận chuyển khoản</h4>
@@ -651,11 +653,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             
                             {selectedOrder.packedAt && (<div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shadow-sm"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">🎁</div><div><p className="text-sm font-bold text-purple-900">Đã đóng gói xong</p><p className="text-xs text-purple-700">Nhân viên: <span className="font-semibold">{selectedOrder.packedBy || 'N/A'}</span></p></div></div><div className="text-right pl-12 sm:pl-0"><p className="text-[10px] text-purple-500 uppercase font-bold tracking-wider">Thời gian hoàn thành</p><p className="text-sm font-mono text-purple-900 font-bold">{formatDateTime(new Date(selectedOrder.packedAt).getTime())}</p></div></div>)}
                             
+                            {/* Notes */}
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ghi chú nội bộ</label><textarea className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" rows={2} placeholder="Ghi chú cho admin..." value={noteInput} onChange={(e) => setNoteInput(e.target.value)} /></div><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline Xưởng</label><input type="date" className="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-gray-900 focus:ring-0 outline-none" value={adminDeadlineInput} onChange={(e) => setAdminDeadlineInput(e.target.value)} /><div className="mt-2 text-right"><button onClick={handleSaveAdminInfo} className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 rounded hover:bg-black transition-colors">Lưu Ghi chú</button></div></div></div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Customer Column */}
                                 <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><p><span className="text-gray-500 w-20 inline-block">Tên:</span> {selectedOrder.customer.name}</p><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p><p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>{selectedOrder.customer.socialLink && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Liên hệ:</span><a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">Mở liên kết ↗</a></p>)}<p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p><p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p></>)}</div></div>
                                 
+                                {/* Billing Column */}
                                 <div className="flex flex-col">
                                     <BillingBreakdown />
                                     {!isEditingOrder && (selectedOrder.totalPrice - (selectedOrder.amountPaid || 0)) > 0 && selectedOrder.status !== 'Đã giao hàng' && (
@@ -664,8 +669,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 </div>
                             </div>
 
+                            {/* Shipping Info */}
                             <div className="bg-orange-50 border border-orange-100 rounded-lg p-4"><h3 className="text-sm font-bold text-orange-800 mb-2 uppercase tracking-wider flex items-center gap-2">🚚 Thông tin vận chuyển</h3><div className="flex flex-col sm:flex-row gap-4"><div className="flex-1"><p className="text-sm text-gray-600">Phương thức: <span className="font-bold text-gray-900">{selectedOrder.shipping.method}</span></p><p className="text-sm text-gray-600 mt-1">Phí vận chuyển: <span className="font-medium">{formatCurrency(selectedOrder.shipping.fee, 'admin')}</span></p></div><div className="flex-1 border-t sm:border-t-0 sm:border-l border-orange-200 pt-2 sm:pt-0 sm:pl-4">{isEditingOrder && editForm ? (<div><label className="block text-xs font-bold text-orange-700 mb-1">Mã Vận Đơn (Tracking Code)</label><input className="w-full p-2 border border-orange-300 rounded text-sm uppercase font-mono" value={editForm.trackingCode || ''} onChange={(e) => handleEditFormChange('trackingCode', e.target.value.toUpperCase())} placeholder="VD: SPEVN..." /></div>) : (<div><span className="text-xs font-bold text-gray-500 uppercase block mb-1">Mã Vận Đơn</span>{selectedOrder.trackingCode ? (<span className="text-lg font-mono font-bold text-orange-700 bg-white px-2 py-1 rounded border border-orange-200 inline-block select-all">{selectedOrder.trackingCode}</span>) : (<span className="text-sm text-gray-400 italic">Chưa có mã vận đơn</span>)}</div>)}</div></div></div>
 
+                            {/* Product Details & Editing */}
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
@@ -673,6 +680,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
                                         return (
                                         <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white shadow-sm">
+                                            {/* Visual Editing Area */}
                                             {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={() => {}} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
 
                                             <div className="flex gap-4 items-start flex-col md:flex-row">
@@ -707,6 +715,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                         </div>
                                                     </div>
                                                     
+                                                    {/* Character & Draggable Items editing */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                                         {item.characters.map((char, charIdx) => (
                                                             <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
@@ -736,6 +745,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 )}
             </div>
 
+            {/* ZOOM LIGHTBOX */}
             {zoomedImageUrl && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fade-in" onClick={() => setZoomedImageUrl(null)}><button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg></button><img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} /></div>)}
         </div>
     );
