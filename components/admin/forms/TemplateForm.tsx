@@ -4,7 +4,7 @@ import { CollectionTemplate } from '../../../types';
 import { INITIAL_FRAME_CONFIG } from '../../../constants';
 import { uploadToCloudinary } from '../../../services/uploadService';
 
-const CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Khác'];
+const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Màu trơn'];
 
 export const TemplateForm: React.FC<{
     initialData?: CollectionTemplate | null;
@@ -55,44 +55,72 @@ export const TemplateForm: React.FC<{
                 </button>
             </div>
             
-            <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tên mẫu</label>
-                        <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm focus:bg-white" placeholder="VD: Kỷ niệm ngày cưới..." />
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Tên mẫu thiết kế</label>
+                        <input 
+                            name="name" 
+                            value={formData.name} 
+                            onChange={handleChange} 
+                            className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
+                            placeholder="VD: Kỷ niệm ngày cưới..." 
+                        />
                     </div>
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Danh mục (Dịp)</label>
-                        <select name="category" value={formData.category} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm focus:bg-white">
-                            {CATEGORIES.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                        </select>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Danh mục (Gõ mới để thêm dịp)</label>
+                        <div className="relative">
+                            <input 
+                                list="category-suggestions"
+                                name="category" 
+                                value={formData.category} 
+                                onChange={handleChange} 
+                                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none"
+                                placeholder="Chọn hoặc nhập dịp mới..."
+                            />
+                            <datalist id="category-suggestions">
+                                {SUGGESTED_CATEGORIES.map(cat => (
+                                    <option key={cat} value={cat} />
+                                ))}
+                            </datalist>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1.5">Trang chủ sẽ tự động hiển thị tab theo các tên bạn nhập ở đây.</p>
                     </div>
                 </div>
                 
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hình ảnh đại diện</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 hover:bg-gray-100 relative">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Hình ảnh đại diện</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
                         <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
-                        {isUploading ? <span className="text-xs">Đang tải ảnh lên...</span> : formData.imageUrl ? <img src={formData.imageUrl} className="max-h-64 mx-auto object-contain rounded" /> : <span className="text-xs text-gray-400">Bấm để chọn hoặc kéo thả ảnh vào đây</span>}
+                        {isUploading ? (
+                            <div className="flex flex-col items-center py-4">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                                <span className="text-xs text-blue-600 font-bold">Đang tải...</span>
+                            </div>
+                        ) : formData.imageUrl ? (
+                            <img src={formData.imageUrl} className="max-h-64 mx-auto object-contain rounded shadow-sm" />
+                        ) : (
+                            <div className="py-8">
+                                <span className="text-2xl block mb-2">📸</span>
+                                <span className="text-xs text-gray-400 font-medium">Bấm để tải ảnh đại diện mẫu</span>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cấu hình kỹ thuật (JSON)</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Cấu hình kỹ thuật (JSON)</label>
                     <textarea 
                         value={configJson} 
                         onChange={(e) => setConfigJson(e.target.value)} 
-                        className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-xs font-mono h-64 focus:bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-xs font-mono h-64 focus:bg-white focus:border-blue-500 outline-none"
                         placeholder="Paste frame config JSON here..." 
                     />
-                    <p className="text-[10px] text-gray-400 mt-1 italic">* Lưu ý: Chỉ nên chỉnh sửa nếu bạn hiểu về cấu trúc dữ liệu thiết kế.</p>
                 </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-                <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded">Hủy</button>
-                <button onClick={handleSave} disabled={isUploading || !formData.imageUrl || !formData.name} className="px-6 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded disabled:opacity-50 transition-all shadow-md">
-                    {initialData ? 'Cập nhật mẫu' : 'Lưu mẫu thiết kế'}
+                <button onClick={onCancel} className="px-5 py-2 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-lg transition-colors">Hủy</button>
+                <button onClick={handleSave} disabled={isUploading || !formData.imageUrl || !formData.name} className="px-8 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded-lg disabled:opacity-50 transition-all shadow-md">
+                    {initialData ? 'Cập nhật mẫu' : 'Lưu mẫu mới'}
                 </button>
             </div>
         </div>
