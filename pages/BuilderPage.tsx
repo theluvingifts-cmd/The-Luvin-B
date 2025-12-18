@@ -20,6 +20,15 @@ declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
+// Helper để kiểm tra xem một phụ kiện có phải là đồ vướng cổ không
+const isNeckAccessory = (part?: LegoPart) => {
+    if (!part || part.type !== 'accessory') return false;
+    const cat = (part.category || '').toLowerCase();
+    const name = (part.name || '').toLowerCase();
+    return cat.includes('khăn') || cat.includes('vòng cổ') || cat.includes('huy chương') || 
+           name.includes('khăn') || name.includes('vòng cổ') || name.includes('huy chương');
+};
+
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
 
@@ -561,7 +570,8 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
     showToast?: (msg: string, type: 'success' | 'error') => void;
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast }) => {
+    allParts: Record<string, LegoPart>; // ADDED
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -625,10 +635,10 @@ const Step3Characters: React.FC<{
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
         
         if (activeCharacter) {
-            const isScarf = part.type === 'accessory';
+            const isNeck = isNeckAccessory(part);
             
-            if (isScarf && activeCharacter.hair?.preventScarf) {
-                if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/phụ kiện!', 'error');
+            if (isNeck && activeCharacter.hair?.preventScarf) {
+                if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/vòng cổ!', 'error');
                 return;
             }
         }
@@ -701,6 +711,7 @@ const Step3Characters: React.FC<{
             })
         });
 
+        // Chỉ xóa các phụ kiện ở CỔ khi đổi sang tóc dài
         if (part.type === 'hair' && part.preventScarf) {
             setTimeout(() => { 
                 setConfig((prev: FrameConfig) => {
@@ -708,8 +719,11 @@ const Step3Characters: React.FC<{
                     if (!char || !char.hair?.preventScarf) return prev;
 
                     const conflictingItems = prev.draggableItems.filter(
-                        item => (item.type === 'accessory') && 
-                                item.linkedCharId === activeCharId
+                        item => {
+                            if (item.linkedCharId !== activeCharId) return false;
+                            const itemPart = allParts[item.partId];
+                            return isNeckAccessory(itemPart);
+                        }
                     );
 
                     if (conflictingItems.length > 0) {
@@ -1911,7 +1925,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           showToast={showToast} 
           preferredSquareFrameId={lastSquareFrameId}
       />;
-      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
