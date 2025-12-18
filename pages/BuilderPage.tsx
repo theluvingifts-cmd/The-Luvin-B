@@ -13,40 +13,13 @@ import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice, PriceBreakdownItem } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
-import { trackAddToCart } from '../services/analyticsService';
+import { trackAddToCart } from '../services/analyticsService'; // Import tracking service
 
 declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-// --- COMPONENT: MINI DESIGNER NOTICE MODAL ---
-const DesignerNoticeModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-[2px] animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-[340px] w-full overflow-hidden transform animate-bounce-small border border-pink-100">
-                <div className="p-5 text-center">
-                    <div className="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">✨</div>
-                    <h3 className="font-heading text-lg font-bold text-gray-900 mb-2">Ghi chú thiết kế</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                        Bạn chỉ cần chèn <b>thông tin tạm thời</b> và chọn mẫu nền yêu thích. 
-                        <br/><br/>
-                        Đội ngũ Designer sẽ <b>thiết kế lại Background</b> và căn chỉnh mọi thứ thật nghệ thuật trước khi gửi bạn duyệt in!
-                    </p>
-                    <div className="mt-5">
-                        <button 
-                            onClick={onClose}
-                            className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-luvin-pink transition-colors shadow-md active:scale-95"
-                        >
-                            Đã hiểu nha!
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
+// ... (StepIndicator and Step1Frame components remain unchanged) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
 
@@ -210,6 +183,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   );
 };
 
+// ... (PresetBackgroundButton component remains unchanged) ...
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
@@ -217,6 +191,7 @@ const PresetBackgroundButton: React.FC<{
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
     const imageSrc = bg.previewUrl || bg.url;
+    // Check if it's a color (starts with #)
     const isColor = imageSrc.startsWith('#');
     
     let line1 = bg.name;
@@ -244,26 +219,40 @@ const PresetBackgroundButton: React.FC<{
         >
             <div className="w-full aspect-[4/5] rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
                 {isColor ? (
-                    <div className="w-full h-full" style={{ backgroundColor: imageSrc }}></div>
+                    <div 
+                        className="w-full h-full"
+                        style={{ backgroundColor: imageSrc }}
+                    ></div>
                 ) : imageSrc ? (
                     <>
                         <img
                             src={imageSrc}
                             alt={bg.name}
                             className="w-full h-full object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error'; }}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                            }}
                         />
                         <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
-                            <div className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer" onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}>
+                            <div 
+                                className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}
+                                title="Zoom"
+                            >
                                 <ZoomIcon className="w-4 h-4" />
                             </div>
                         </div>
                     </>
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-400">No Image</div>
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] text-gray-400">
+                        No Image
+                    </div>
                 )}
+                
                 {bg.overlayConfig && (
-                    <div className="absolute top-1 left-1 bg-yellow-400 text-[8px] font-bold px-1.5 py-0.5 rounded text-yellow-900 shadow-sm">MẪU</div>
+                    <div className="absolute top-1 left-1 bg-yellow-400 text-[8px] font-bold px-1.5 py-0.5 rounded text-yellow-900 shadow-sm">
+                        MẪU
+                    </div>
                 )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-9 leading-tight">
@@ -274,6 +263,7 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
+// ... (Step2BackgroundAndDecorations, PartButton components remain unchanged) ...
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;
@@ -316,6 +306,8 @@ const Step2BackgroundAndDecorations: React.FC<{
     let message = '';
 
     const currentFrameOption = frames.find(f => f.id === config.frameId);
+    
+    // FIX: Using currentFrameOption instead of undefined currentFrame
     const isCurrentFrameSquare = currentFrameOption ? Math.abs(currentFrameOption.frameWidthCm - currentFrameOption.frameHeightCm) < 1 : true;
 
     if (bg.type === 'rectangle' && isCurrentFrameSquare) {
@@ -331,6 +323,7 @@ const Step2BackgroundAndDecorations: React.FC<{
              targetId = 'lg';
         }
         const squareFrame = frames.find(f => f.id === targetId) || frames.find(f => f.id === 'lg') || frames.find(f => Math.abs(f.frameWidthCm - f.frameHeightCm) < 1);
+
         if (squareFrame) {
             newFrameId = squareFrame.id;
             message = `Đã tự động chuyển sang khung ${squareFrame.name} để vừa với nền`;
@@ -343,6 +336,7 @@ const Step2BackgroundAndDecorations: React.FC<{
     }
 
     const newBackground = { type: isColor ? 'color' : 'image', value: bg.url } as any;
+    
     const newTexts = bg.overlayConfig?.texts ? JSON.parse(JSON.stringify(bg.overlayConfig.texts)) : [];
     const newDraggableItems = bg.overlayConfig?.draggableItems ? JSON.parse(JSON.stringify(bg.overlayConfig.draggableItems)) : [];
     const newShapes = bg.overlayConfig?.shapes ? JSON.parse(JSON.stringify(bg.overlayConfig.shapes)) : [];
@@ -378,7 +372,12 @@ const Step2BackgroundAndDecorations: React.FC<{
                  const currentFrame = frames.find(f => f.id === config.frameId);
                  const isRect = currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) > 1;
                  const shouldRotate = isRect && isLandscape;
-                 setConfig({ ...config, background: { type: 'upload', value: imageUrl }, isRotated: shouldRotate });
+
+                 setConfig({ 
+                     ...config, 
+                     background: { type: 'upload', value: imageUrl },
+                     isRotated: shouldRotate
+                 });
             };
             img.src = imageUrl;
         }
@@ -401,44 +400,67 @@ const Step2BackgroundAndDecorations: React.FC<{
 
   return (
     <div className="space-y-4">
-      {/* PERSISTENT NOTICE BOX - Updated for more concise vibe */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex gap-3 animate-fade-in mb-2">
-          <div className="text-xl flex-shrink-0">🎨</div>
-          <div className="text-[11px] text-blue-900 leading-relaxed">
-              <p className="font-bold">Mẹo:</p>
-              <p>Chèn <b>tạm</b> thông tin để lên ý tưởng. Designer của shop sẽ <b>thiết kế lại Background</b> thật đẹp và gửi bạn duyệt trước khi in!</p>
-          </div>
-      </div>
-
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">A. CHỌN MẪU NỀN CÓ SẴN</h4>
+        
         <div className="mb-4 pb-3 border-b border-gray-200">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                 {categories.map(category => (
-                    <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${selectedCategory === category ? 'bg-luvin-pink text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                    <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
+                            selectedCategory === category
+                                ? 'bg-luvin-pink text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
                         {category}
                     </button>
                 ))}
             </div>
         </div>
+
         <div className="grid grid-cols-3 gap-2 min-h-[150px]">
-          {filteredBackgrounds.length > 0 ? filteredBackgrounds.map((bg) => (
-                <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url && !bg.overlayConfig} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} />
-          )) : (
-            <p className="col-span-3 text-center text-sm text-gray-500 py-10">{backgrounds.length === 0 ? "Đang tải dữ liệu..." : "Không có mẫu nào phù hợp."}</p>
+          {filteredBackgrounds.length > 0 ? (
+            filteredBackgrounds.map((bg) => {
+              return (
+                <PresetBackgroundButton
+                  key={bg.id}
+                  bg={bg}
+                  // Prevent templates from being auto-selected visually to avoid confusion, 
+                  // as templates are often just "starting points" and share same background color (e.g. white).
+                  // Standard backgrounds (no overlay) will still show as selected if active.
+                  isSelected={config.background.value === bg.url && !bg.overlayConfig}
+                  onClick={() => handleBackgroundSelect(bg)}
+                  onZoom={onZoomImage}
+                />
+              );
+            })
+          ) : (
+            <p className="col-span-3 text-center text-sm text-gray-500 py-10">
+              {backgrounds.length === 0 ? "Đang tải dữ liệu..." : "Không có mẫu nào phù hợp."}
+            </p>
           )}
         </div>
       </div>
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">B. HOẶC TẢI ẢNH CỦA BẠN</h4>
-        <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">Tải ảnh nền</button>
+        <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
+          Tải ảnh nền
+        </button>
       </div>
+
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-2">C. THÊM CHỮ & TRANG TRÍ</h4>
         <p className="text-sm text-gray-600 mb-3">Chỉnh sửa trực tiếp trên khung xem trước.</p>
         <div className="flex gap-2">
-            <button onClick={addText} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">+ Thêm chữ mới</button>
-            <button onClick={() => charmUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">Tải ảnh nhỏ</button>
+            <button onClick={addText} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
+              + Thêm chữ mới
+            </button>
+            <button onClick={() => charmUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
+              Tải ảnh nhỏ
+            </button>
         </div>
       </div>
       <input type="file" ref={bgUploadRef} accept="image/*" onChange={handleBgFileUpload} className="hidden" />
@@ -489,6 +511,7 @@ const PartButton: React.FC<{
                     SALE
                 </div>
             )}
+            {/* Show Combo Badge */}
             {isBulk && !isSale && (
                 <div className="absolute top-0 left-0 z-20 bg-green-500 text-white text-[8px] px-1 rounded-br shadow-sm font-bold" title="Mua nhiều giảm giá">
                     COMBO
@@ -511,11 +534,17 @@ const PartButton: React.FC<{
                 <span className="text-[11px] font-semibold text-gray-800 line-clamp-1">{part.name}</span>
                 {isSale ? (
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-normal text-gray-400 line-through">{formatCurrency(originalPrice!)}</span>
-                        <span className={`text-[11px] font-bold ${isSelected ? 'text-red-600' : 'text-red-500'}`}>{formatCurrency(priceToDisplay)}</span>
+                        <span className="text-[9px] font-normal text-gray-400 line-through">
+                            {formatCurrency(originalPrice!)}
+                        </span>
+                        <span className={`text-[11px] font-bold ${isSelected ? 'text-red-600' : 'text-red-500'}`}>
+                            {formatCurrency(priceToDisplay)}
+                        </span>
                     </div>
                 ) : (
-                    <span className={`text-[11px] font-bold ${isSelected ? 'text-red-600' : 'text-luvin-pink'}`}>{formatCurrency(priceToDisplay)}</span>
+                    <span className={`text-[11px] font-bold ${isSelected ? 'text-red-600' : 'text-luvin-pink'}`}>
+                        {formatCurrency(priceToDisplay)}
+                    </span>
                 )}
             </div>
         </button>
@@ -540,7 +569,7 @@ const Step3Characters: React.FC<{
     activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
-    showToast?: (msg: string, type: 'success' | 'error') => void;
+    showToast?: (msg: string, type: 'success' | 'error') => void; // New Prop
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -604,8 +633,12 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
         
+        // CONFLICT CHECK: Hair Volume vs Scarf/Neck Accessory
+        // Hat is allowed always as per request "tóc nào cũng đội được mũ"
         if (activeCharacter) {
+            // Only check conflict if it's an accessory (likely neck item) and hair has flag
             const isScarf = part.type === 'accessory';
+            
             if (isScarf && activeCharacter.hair?.preventScarf) {
                 if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/phụ kiện!', 'error');
                 return;
@@ -633,45 +666,77 @@ const Step3Characters: React.FC<{
             scale: 1, 
             isFlipped: false, 
             selectedColor: part.colors?.[0],
-            linkedCharId: activeCharacter?.id 
+            linkedCharId: activeCharacter?.id // Link to character for future checks
         };
         setConfig({...config, draggableItems: [...config.draggableItems, newItem]});
     }
 
     const handlePartSelect = (part: LegoPart | undefined) => {
         if (!activeCharId || !part) return;
-        if (part.type === 'hat') { addDraggableItem(part); return; }
+
+        if (part.type === 'hat') {
+            addDraggableItem(part);
+            return;
+        }
 
         setConfig({
             ...config,
             characters: config.characters.map(c => {
                 if (c.id === activeCharId) {
                     const newChar = { ...c };
-                    if (part.type === 'set') { newChar.shirt = part; newChar.pants = undefined; } else { (newChar as any)[part.type] = part; }
+                    
+                    if (part.type === 'set') {
+                        newChar.shirt = part;
+                        newChar.pants = undefined; 
+                    } else {
+                        (newChar as any)[part.type] = part;
+                    }
+
+                    // No internal slot blocking logic here anymore for hats.
+                    // We rely on filtering Draggable Items if hair changes to preventScarf
+
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
-                        if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) { partColors = defaultShirtColors; }
-                        if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) { partColors = defaultPantsColors; }
+                        if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) {
+                            partColors = defaultShirtColors;
+                        }
+                        if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) {
+                            partColors = defaultPantsColors;
+                        }
                     }
+
                     if (part.type === 'shirt' || part.type === 'set') newChar.selectedShirtColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
+                    
                     return newChar;
                 }
                 return c;
             })
         });
 
+        // SECOND PASS: Remove conflicting Accessories (Scarves) if Hair changed to Bulky
+        // BUT KEEP HATS
         if (part.type === 'hair' && part.preventScarf) {
-            setTimeout(() => { 
+            // We need to filter draggableItems
+            setTimeout(() => { // Small timeout to ensure state update flow or do it in one setConfig
                 setConfig((prev: FrameConfig) => {
                     const char = prev.characters.find(c => c.id === activeCharId);
                     if (!char || !char.hair?.preventScarf) return prev;
-                    const conflictingItems = prev.draggableItems.filter(item => (item.type === 'accessory') && item.linkedCharId === activeCharId);
+
+                    // Find linked ACCESSORIES (scarves/neck items) only
+                    const conflictingItems = prev.draggableItems.filter(
+                        item => (item.type === 'accessory') && 
+                                item.linkedCharId === activeCharId
+                    );
+
                     if (conflictingItems.length > 0) {
                         if (showToast) showToast("Đã tháo phụ kiện ở cổ để phù hợp với kiểu tóc mới", 'error');
-                        return { ...prev, draggableItems: prev.draggableItems.filter(item => !conflictingItems.includes(item)) };
+                        return {
+                            ...prev,
+                            draggableItems: prev.draggableItems.filter(item => !conflictingItems.includes(item))
+                        };
                     }
                     return prev;
                 });
@@ -682,44 +747,80 @@ const Step3Characters: React.FC<{
     const handlePartDeselect = (partType: 'hair' | 'hat') => {
       if (!activeCharId) return;
       if (partType === 'hat') return;
-      setConfig({ ...config, characters: config.characters.map(c => c.id === activeCharId ? { ...c, [partType]: undefined } : c) });
+
+      setConfig({
+        ...config,
+        characters: config.characters.map(c => {
+            if (c.id === activeCharId) {
+                const updatedChar = { ...c, [partType]: undefined };
+                return updatedChar;
+            }
+            return c;
+        })
+      });
     }
+    
+    // ... (Rest of Step3Characters logic remains unchanged: handleCustomPrintSelect, handleRandomizeOutfit, partTypes, currentPartList, etc.)
     
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
-      setConfig({ ...config, characters: config.characters.map(c => c.id === printDialogCharId ? { ...c, customPrintPrice: price } : c) });
+      setConfig({
+        ...config,
+        characters: config.characters.map(c => 
+          c.id === printDialogCharId ? { ...c, customPrintPrice: price } : c
+        )
+      });
       setPrintDialogCharId(null);
     };
 
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
+        
         const availableHair = getAvailableParts(legoParts.hair);
         const availableFace = getAvailableParts(legoParts.face);
         const availableShirt = getAvailableParts(legoParts.shirt);
         const availablePants = getAvailableParts(legoParts.pants);
+
         const getRandomItem = (list: LegoPart[]) => list.length > 0 ? list[Math.floor(Math.random() * list.length)] : undefined;
+        
         const getRandomColor = (colors: OutfitColor[] | undefined) => {
             if (!colors) return undefined;
             const availableColors = colors.filter(c => c.stock === undefined || c.stock > 0);
             return availableColors.length > 0 ? availableColors[Math.floor(Math.random() * availableColors.length)] : undefined;
         };
+
         const randomHair = getRandomItem(availableHair);
         const randomFace = getRandomItem(availableFace);
         const randomShirt = getRandomItem(availableShirt);
         const randomPants = getRandomItem(availablePants);
+
         setConfig({
             ...config,
             characters: config.characters.map(c => {
                 if (c.id === activeCharId) {
                     const newChar: LegoCharacterConfig = { ...c };
-                    newChar.face = randomFace || c.face; newChar.shirt = randomShirt || c.shirt; newChar.pants = randomPants || c.pants; newChar.hair = randomHair || c.hair;
+                    
+                    newChar.face = randomFace || c.face;
+                    newChar.shirt = randomShirt || c.shirt;
+                    newChar.pants = randomPants || c.pants;
+                    newChar.hair = randomHair || c.hair;
+
                     let shirtColors = newChar.shirt?.colors;
-                    if (!shirtColors || shirtColors.length === 0) { const nameLower = newChar.shirt?.name.toLowerCase() || ''; if (nameLower.includes('trơn') || nameLower.includes('basic')) shirtColors = defaultShirtColors; }
+                    if (!shirtColors || shirtColors.length === 0) {
+                         const nameLower = newChar.shirt?.name.toLowerCase() || '';
+                         if (nameLower.includes('trơn') || nameLower.includes('basic')) shirtColors = defaultShirtColors;
+                    }
+                    
                     let pantsColors = newChar.pants?.colors;
-                    if (!pantsColors || pantsColors.length === 0) { const nameLower = newChar.pants?.name.toLowerCase() || ''; if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors; }
+                    if (!pantsColors || pantsColors.length === 0) {
+                         const nameLower = newChar.pants?.name.toLowerCase() || '';
+                         if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors;
+                    }
+
                     newChar.selectedShirtColor = getRandomColor(shirtColors) || shirtColors?.[0];
                     newChar.selectedPantsColor = getRandomColor(pantsColors) || pantsColors?.[0];
                     newChar.selectedHairColor = getRandomColor(newChar.hair?.colors) || newChar.hair?.colors?.[0];
+
                     return newChar;
                 }
                 return c;
@@ -728,8 +829,12 @@ const Step3Characters: React.FC<{
     };
     
     const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set', label: string }[] = [
-        { key: 'shirt', label: 'Áo' }, { key: 'pants', label: 'Quần' }, { key: 'set', label: 'Theo bộ' },
-        { key: 'face', label: 'Mặt' }, { key: 'hair', label: 'Tóc' }, { key: 'hat', label: 'Mũ' },
+        { key: 'shirt', label: 'Áo' },
+        { key: 'pants', label: 'Quần' },
+        { key: 'set', label: 'Theo bộ' },
+        { key: 'face', label: 'Mặt' },
+        { key: 'hair', label: 'Tóc' },
+        { key: 'hat', label: 'Mũ' },
     ];
 
     const currentPartList = useMemo(() => {
@@ -739,23 +844,33 @@ const Step3Characters: React.FC<{
 
     const uniqueAccessoryCategories = useMemo(() => {
         const cats = new Set<string>();
-        legoParts.accessory.forEach(p => { if (p.category) cats.add(p.category); });
+        legoParts.accessory.forEach(p => {
+            if (p.category) cats.add(p.category);
+        });
         return ['Tất cả', ...Array.from(cats)];
     }, [legoParts.accessory]);
 
     const filteredAccessories = useMemo(() => {
         let list = getAvailableParts(legoParts.accessory);
-        if (accessoryCategory !== 'Tất cả') { list = list.filter(p => p.category === accessoryCategory); }
+        if (accessoryCategory !== 'Tất cả') {
+            list = list.filter(p => p.category === accessoryCategory);
+        }
+
         if (accessorySortMode === 'hot_trend') {
              return list.sort((a, b) => {
-                const indexA = hotPartIds.indexOf(a.id); const indexB = hotPartIds.indexOf(b.id);
-                const aIsHot = indexA !== -1; const bIsHot = indexB !== -1;
+                const indexA = hotPartIds.indexOf(a.id);
+                const indexB = hotPartIds.indexOf(b.id);
+                const aIsHot = indexA !== -1;
+                const bIsHot = indexB !== -1;
+
                 if (aIsHot && bIsHot) return indexA - indexB;
                 if (aIsHot) return -1;
                 if (bIsHot) return 1;
+                
                 return 0;
             });
         }
+
         return sortParts(list, accessorySortMode as any);
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, hotPartIds]);
 
@@ -769,7 +884,9 @@ const Step3Characters: React.FC<{
                   <div className="space-y-2">
                     <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">In thường - {formatCurrency(150000)}</button>
                     <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">In cao cấp - {formatCurrency(300000)}</button>
-                    {config.characters.find(c => c.id === printDialogCharId)?.customPrintPrice && <button onClick={() => handleCustomPrintSelect(0)} className="w-full bg-red-100 text-red-700 font-semibold py-2 rounded-lg hover:bg-red-200">Bỏ in yêu cầu</button>}
+                    {config.characters.find(c => c.id === printDialogCharId)?.customPrintPrice && 
+                      <button onClick={() => handleCustomPrintSelect(0)} className="w-full bg-red-100 text-red-700 font-semibold py-2 rounded-lg hover:bg-red-200">Bỏ in yêu cầu</button>
+                    }
                   </div>
                   <button onClick={() => setPrintDialogCharId(null)} className="text-xs text-gray-500 mt-4 hover:underline">Hủy</button>
                 </div>
@@ -779,7 +896,11 @@ const Step3Characters: React.FC<{
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-bold text-gray-800">QUẢN LÝ NHÂN VẬT</h4>
                     {activeCharacter && (
-                        <button onClick={handleRandomizeOutfit} className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95" title="Chọn ngẫu nhiên trang phục">
+                        <button 
+                            onClick={handleRandomizeOutfit}
+                            className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
+                            title="Chọn ngẫu nhiên trang phục"
+                        >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                             Ngẫu nhiên
                         </button>
@@ -788,13 +909,25 @@ const Step3Characters: React.FC<{
                 <div className="flex items-center gap-2 flex-wrap">
                     {config.characters.map((char, index) => (
                         <div key={char.id} className="relative">
-                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>NV {index + 1}</button>
-                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">&times;</button>
+                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
+                                NV {index + 1}
+                            </button>
+                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">
+                                &times;
+                            </button>
                         </div>
                     ))}
                     <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
                 </div>
-                {activeCharacter && <div className="mt-4 pt-4 border-t flex items-center justify-start"><button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">{activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}</button></div>}
+                {activeCharacter && 
+                  <div className="mt-4 pt-4 border-t flex items-center justify-start">
+                    <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
+                      {activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}
+                    </button>
+                  </div>
+                }
+                {config.characters.length > 0 && !activeCharacter && <p className="text-sm text-center text-gray-500 mt-2">Hãy chọn một nhân vật để bắt đầu thiết kế.</p>}
+                {config.characters.length === 0 && <p className="text-sm text-center text-gray-500 mt-2">Chưa có nhân vật nào. Hãy thêm một nhân vật!</p>}
             </div>
 
             {activeCharacter && (
@@ -802,24 +935,55 @@ const Step3Characters: React.FC<{
                     <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
                         <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1">
                             {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>{pt.label}</button>
+                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
+                                    {pt.label}
+                                </button>
                             ))}
                         </div>
                     </div>
                      <div className="grid grid-cols-4 gap-2">
-                         {activePartType === 'hair' && <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400"><span className="text-2xl font-bold">&times;</span><span className="text-[11px] font-semibold">Không chọn</span></button>}
+                         {(activePartType === 'hair') && (
+                             <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
+                               <span className="text-2xl font-bold">&times;</span>
+                               <span className="text-[11px] font-semibold">Không chọn</span>
+                             </button>
+                         )}
                         {currentPartList.length > 0 ? currentPartList.map(part => {
                             const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
-                            let effPrice = getEffectivePrice(part); let origPrice = part.price;
+                            
+                            // Base Effective Price for the part
+                            let effectiveBasePrice = getEffectivePrice(part);
+                            let originalBasePrice = part.price;
+
+                            // Calculate final display price including color surcharge
+                            let priceToDisplay = effectiveBasePrice;
+                            let originalPriceToDisplay = originalBasePrice;
+
                             if (isSelected) {
                                 let surcharge = 0;
                                 if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
                                 else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
                                 else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
-                                effPrice += surcharge; origPrice += surcharge;
+                                
+                                priceToDisplay += surcharge;
+                                originalPriceToDisplay += surcharge;
                             }
-                            return <PartButton key={part.id} part={part} isSelected={isSelected} onClick={() => handlePartSelect(part)} priceToDisplay={effPrice} originalPrice={origPrice} />;
-                        }) : <div className="col-span-4 text-center text-sm text-gray-400 py-4">Các sản phẩm này đang hết hàng.</div>}
+
+                            return (
+                                <PartButton 
+                                    key={part.id} 
+                                    part={part}
+                                    isSelected={isSelected}
+                                    onClick={() => handlePartSelect(part)}
+                                    priceToDisplay={priceToDisplay}
+                                    originalPrice={originalPriceToDisplay}
+                                />
+                            );
+                        }) : (
+                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
+                                {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -827,27 +991,66 @@ const Step3Characters: React.FC<{
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex flex-col gap-3 mb-4">
                     <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
+                    
                     {uniqueAccessoryCategories.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                             {uniqueAccessoryCategories.map(cat => (
-                                <button key={cat} onClick={() => setAccessoryCategory(cat)} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${accessoryCategory === cat ? 'bg-gray-900 text-white border-gray-900 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50'}`}>{cat}</button>
+                                <button
+                                    key={cat}
+                                    onClick={() => setAccessoryCategory(cat)}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                                        accessoryCategory === cat 
+                                            ? 'bg-gray-900 text-white border-gray-900 shadow-md transform scale-105' 
+                                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
                             ))}
                         </div>
                     )}
+
                     <div className="flex justify-end">
                         <div className="relative inline-block w-32">
-                            <select value={accessorySortMode} onChange={(e) => setAccessorySortMode(e.target.value as any)} className="appearance-none w-full pl-3 pr-8 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:border-gray-400 focus:outline-none cursor-pointer">
-                                <option value="hot_trend">Hot Trend 🔥</option><option value="default">Mặc định</option><option value="price_asc">Giá tăng dần</option><option value="price_desc">Giá giảm dần</option>
+                            <select 
+                                value={accessorySortMode}
+                                onChange={(e) => setAccessorySortMode(e.target.value as any)}
+                                className="appearance-none w-full pl-3 pr-8 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-900 cursor-pointer"
+                            >
+                                <option value="hot_trend">Hot Trend 🔥</option>
+                                <option value="default">Mặc định</option>
+                                <option value="price_asc">Giá tăng dần</option>
+                                <option value="price_desc">Giá giảm dần</option>
                             </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"><svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg></div>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
                         </div>
                     </div>
                 </div>
+
                 <div className="grid grid-cols-4 gap-2">
                     {filteredAccessories.length > 0 ? filteredAccessories.map(part => {
-                        const effPrice = getEffectivePrice(part); const defColPrice = part.colors?.[0]?.price || 0;
-                        return <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={effPrice + defColPrice} originalPrice={part.price + defColPrice} isHot={hotPartIds.includes(part.id)} />;
-                    }) : <p className="col-span-4 text-center text-sm text-gray-400 py-4">Không tìm thấy phụ kiện nào.</p>}
+                        const effectivePrice = getEffectivePrice(part);
+                        // Add color surcharge if default color has price
+                        const defaultColorPrice = part.colors?.[0]?.price || 0;
+                        const finalPrice = effectivePrice + defaultColorPrice;
+                        const originalPrice = part.price + defaultColorPrice;
+
+                        return (
+                            <PartButton 
+                                key={part.id} 
+                                part={part} 
+                                isSelected={false} 
+                                onClick={() => addDraggableItem(part)} 
+                                priceToDisplay={finalPrice} 
+                                originalPrice={originalPrice}
+                                isHot={hotPartIds.includes(part.id)}
+                            />
+                        );
+                    }) : (
+                        <p className="col-span-4 text-center text-sm text-gray-400 py-4">Không tìm thấy phụ kiện nào.</p>
+                    )}
                 </div>
             </div>
 
@@ -855,8 +1058,23 @@ const Step3Characters: React.FC<{
                 <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => {
-                        const effPrice = getEffectivePrice(part); const defColPrice = part.colors?.[0]?.price || 0;
-                        return <PartButton key={part.id} part={part} isSelected={false} onClick={() => addDraggableItem(part)} priceToDisplay={effPrice + defColPrice} originalPrice={part.price + defColPrice} isHot={hotPartIds.includes(part.id)} />;
+                        const effectivePrice = getEffectivePrice(part);
+                        // Add color surcharge if default color has price
+                        const defaultColorPrice = part.colors?.[0]?.price || 0;
+                        const finalPrice = effectivePrice + defaultColorPrice;
+                        const originalPrice = part.price + defaultColorPrice;
+
+                        return (
+                            <PartButton 
+                                key={part.id} 
+                                part={part} 
+                                isSelected={false} 
+                                onClick={() => addDraggableItem(part)} 
+                                priceToDisplay={finalPrice}
+                                originalPrice={originalPrice}
+                                isHot={hotPartIds.includes(part.id)}
+                            />
+                        );
                     })}
                 </div>
             </div>
@@ -864,29 +1082,84 @@ const Step3Characters: React.FC<{
     );
 };
 
+// ... (Step4Summary, FontSelector, TextEditor, BuilderPage remain unchanged) ...
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
+  // ... existing code ...
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
+
   return (
     <div>
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
-            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center"><span>CHI TIẾT HÓA ĐƠN</span><span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{charCount} Nhân vật</span></h4>
+            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
+                <span>CHI TIẾT HÓA ĐƠN</span>
+                <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{charCount} Nhân vật</span>
+            </h4>
+            
             <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                 {priceBreakdown.map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-1">
-                        <div className="flex flex-col"><span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>{item.label}</span>{item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}</div>
-                        <div className="text-right">{item.originalValue !== undefined && item.originalValue > item.value && <span className="block text-[10px] text-gray-400 line-through">{formatCurrency(item.originalValue)}</span>}<span className={`font-medium ${item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>{item.value > 0 ? formatCurrency(item.value) : 'Miễn phí'}</span></div>
+                        <div className="flex flex-col">
+                            <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
+                                {item.label}
+                            </span>
+                            {item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}
+                        </div>
+                        <div className="text-right">
+                            {item.originalValue !== undefined && item.originalValue > item.value && (
+                                <span className="block text-[10px] text-gray-400 line-through">
+                                    {formatCurrency(item.originalValue)}
+                                </span>
+                            )}
+                            <span className={`font-medium ${item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                                {item.value > 0 ? formatCurrency(item.value) : 'Miễn phí'}
+                            </span>
+                        </div>
                     </div>
                 ))}
             </div>
-            <div className="border-t border-gray-200 my-3 pt-2"><div className="flex justify-between text-base font-bold text-gray-800 items-center"><span>Tạm tính</span><span className="text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span></div></div>
+            
+            <div className="border-t border-gray-200 my-3 pt-2">
+                <div className="flex justify-between text-base font-bold text-gray-800 items-center">
+                    <span>Tạm tính</span>
+                    <span className="text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span>
+                </div>
+            </div>
+            
             <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200 mt-2">
-                {remainingForFreeShip > 0 ? <p className="text-xs text-gray-600 text-center">Thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span></p> : <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1"><span>🎉</span> Đơn hàng đủ điều kiện Freeship!</p>}
+                {remainingForFreeShip > 0 ? (
+                    <p className="text-xs text-gray-600 text-center">
+                        Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span>
+                    </p>
+                ) : (
+                    <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1">
+                        <span>🎉</span> Đơn hàng đủ điều kiện Freeship!
+                    </p>
+                )}
             </div>
         </div>
-        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in"><span className="text-xl">📅</span><div><p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p><p className="text-xs text-indigo-700 leading-relaxed">Sản phẩm thủ công cần 1-3 ngày hoàn thiện. Đặt trước 20 ngày để được Giảm ngay 5%!</p></div></div>
+
+        {/* EARLY BIRD PROMO NOTIFICATION */}
+        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in">
+            <span className="text-xl">📅</span>
+            <div>
+                <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
+                <p className="text-xs text-indigo-700 leading-relaxed">
+                    Sản phẩm thủ công cần <strong>1-3 ngày hoàn thiện</strong> và 2-4 ngày vận chuyển.
+                    <br/>
+                    Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <strong>sau 20 ngày</strong> ở bước thanh toán để được <strong>Giảm ngay 5%</strong>!
+                </p>
+            </div>
+        </div>
+
         <div className="mt-4 space-y-2">
-            {!isEditingOrder && <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors shadow-md">{isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}</button>}
-            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>{isSaving ? '...' : (isEditingOrder ? 'Lưu mẫu thiết kế' : 'Thêm vào giỏ hàng')}</button>
+            {!isEditingOrder && (
+                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-md">
+                    {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
+                </button>
+            )}
+            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors disabled:opacity-50 disabled:cursor-wait ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
+                {isSaving ? '...' : (isEditingOrder ? 'Lưu mẫu thiết kế' : 'Thêm vào giỏ hàng')}
+            </button>
         </div>
     </div>
   );
@@ -902,16 +1175,51 @@ const FontSelector: React.FC<{
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) { setIsOpen(false); } };
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const groups = [{ label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS }, { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }];
+    const groups = [
+        { label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS },
+        { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }
+    ];
+
     return (
         <div className="relative" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
-            <button onClick={() => setIsOpen(!isOpen)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"><span className="truncate">{value}</span><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
-            {isOpen && <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">{groups.map((group) => group.fonts.length > 0 && (<div key={group.label}><div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>{group.fonts.map(font => (<div key={font} className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`} onMouseEnter={() => onPreview(font)} onClick={() => { onChange(font); setIsOpen(false); }}><span style={{ fontFamily: font }}>{font}</span></div>))}</div>))}</div>}
+            <button 
+                onClick={() => setIsOpen(!isOpen)} 
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
+            >
+                <span className="truncate">{value}</span>
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {groups.map((group) => (
+                        group.fonts.length > 0 && (
+                            <div key={group.label}>
+                                <div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
+                                {group.fonts.map(font => (
+                                    <div 
+                                        key={font}
+                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`}
+                                        onMouseEnter={() => onPreview(font)}
+                                        onClick={() => { onChange(font); setIsOpen(false); }}
+                                    >
+                                        <span style={{ fontFamily: font }}>{font}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -924,19 +1232,94 @@ const TextEditor: React.FC<{
     deselect: () => void;
     onAddText: () => void;
     uploadedFonts: CustomFont[];
-    setPreviewFont: (font: string | null) => void;
+    setPreviewFont: (font: string | null) => void; // New prop
 }> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
-    const updateActiveText = (updates: Partial<TextConfig>) => { setConfig({ ...config, texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t) }); }
+    
+    const updateActiveText = (updates: Partial<TextConfig>) => {
+        setConfig({
+            ...config,
+            texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
+        });
+    }
+
     const isLocked = activeText.lockedContent;
+    
     return (
         <div className="p-4 border border-gray-200 rounded-lg relative">
-            {isLocked && <div className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"><span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>🔒 Nội dung đã bị khóa bởi Admin</span></div>}
-            <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-800">CHỈNH SỬA CHỮ</h3><div className="flex gap-2 relative z-30"><button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">+ Thêm chữ</button><button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">Xong</button></div></div>
+            {isLocked && (
+                <div 
+                    className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
+                    onClick={(e) => e.stopPropagation()} // Stop click propagation to inputs behind
+                >
+                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
+                        🔒 Nội dung đã bị khóa bởi Admin
+                    </span>
+                </div>
+            )}
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800">CHỈNH SỬA CHỮ</h3>
+                <div className="flex gap-2 relative z-30">
+                    <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
+                        + Thêm chữ
+                    </button>
+                    <button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
+                        Xong
+                    </button>
+                </div>
+            </div>
             <div className="space-y-4">
-                <div><label className="text-sm font-bold text-gray-600 block mb-1">Nội dung</label><textarea value={activeText.content} onChange={e => updateActiveText({ content: e.target.value })} disabled={isLocked} readOnly={isLocked} rows={3} className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`} placeholder="Nhập nội dung văn bản..." /></div>
-                <div><label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label><FontSelector value={activeText.font} onChange={(font) => updateActiveText({ font })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} /></div>
-                <div><label className="text-sm font-bold text-gray-600 block mb-1">Cỡ chữ</label><input type="number" min="8" max="100" value={activeText.size} onChange={e => updateActiveText({ size: parseInt(e.target.value)})} disabled={isLocked} readOnly={isLocked} className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`} /></div>
-                <div className="flex items-center justify-between gap-2"><button onClick={() => updateActiveText({background: !activeText.background})} disabled={isLocked} className={`text-sm px-3 py-2 rounded-lg flex-1 ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>{activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}</button><div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>{(['left', 'center', 'right'] as const).map(align => (<button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-3 py-1 text-sm ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'}`}>{align.charAt(0).toUpperCase()}</button>))}</div></div>
+                <div>
+                    <label className="text-sm font-bold text-gray-600 block mb-1">Nội dung</label>
+                    <textarea
+                        value={activeText.content}
+                        onChange={e => updateActiveText({ content: e.target.value })}
+                        disabled={isLocked}
+                        readOnly={isLocked}
+                        rows={3}
+                        className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
+                        placeholder="Nhập nội dung văn bản..."
+                    />
+                </div>
+                <div>
+                    <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
+                    {/* Replaced Select with FontSelector */}
+                    <FontSelector 
+                        value={activeText.font}
+                        onChange={(font) => updateActiveText({ font })}
+                        onPreview={setPreviewFont}
+                        uploadedFonts={uploadedFonts}
+                    />
+                </div>
+                <div>
+                    <label className="text-sm font-bold text-gray-600 block mb-1">Cỡ chữ</label>
+                    <input 
+                      type="number" 
+                      min="8" 
+                      max="100" 
+                      value={activeText.size} 
+                      onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
+                      disabled={isLocked}
+                      readOnly={isLocked}
+                      className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
+                    />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                    <button 
+                        onClick={() => updateActiveText({background: !activeText.background})} 
+                        disabled={isLocked}
+                        className={`text-sm px-3 py-2 rounded-lg flex-1 ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}
+                    </button>
+                    <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {(['left', 'center', 'right'] as const).map(align => (
+                           <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-3 py-1 text-sm ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'}`}>
+                             {align.charAt(0).toUpperCase()}
+                           </button>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -964,9 +1347,14 @@ interface BuilderPageProps {
 }
 
 const base64ToBlob = (base64: string) => {
-    const arr = base64.split(','); const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-    const bstr = atob(arr[1]); let n = bstr.length; const u8arr = new Uint8Array(n);
-    while (n--) { u8arr[n] = bstr.charCodeAt(n); }
+    const arr = base64.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
     return new Blob([u8arr], { type: mime });
 };
 
@@ -983,47 +1371,122 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
-  const [previewFont, setPreviewFont] = useState<string | null>(null); 
-  const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
-  
-  // DESIGNER NOTICE STATE
-  const [showDesignerNotice, setShowDesignerNotice] = useState(false);
+  const [previewFont, setPreviewFont] = useState<string | null>(null); // New state for font preview
+  const [showRestoreDraft, setShowRestoreDraft] = useState(false); // AUTO SAVE STATE
   
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
-  // AUTO SHOW NOTICE WHEN STEP 2 REACHED
+  // ... (Auto Save, Restore Draft, Hot Trends logic remain unchanged) ...
+  // --- AUTO SAVE EFFECT ---
   useEffect(() => {
-      if (step === 2) {
-          const hasSeen = sessionStorage.getItem('hasSeenStep2NoticeCompact');
-          if (!hasSeen) {
-              setShowDesignerNotice(true);
-              sessionStorage.setItem('hasSeenStep2NoticeCompact', 'true');
+      // Only save if user has made changes (history > 1) and not editing an existing order
+      if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
+          const draft = JSON.stringify(config);
+          localStorage.setItem('builder_draft', draft);
+      }
+  }, [config, history, isEditingOrder, editingCartIndex]);
+
+  // --- CHECK DRAFT ON MOUNT ---
+  useEffect(() => {
+      if (editingCartIndex === null && !isEditingOrder) {
+          const draft = localStorage.getItem('builder_draft');
+          if (draft) {
+              try {
+                  const parsedDraft = JSON.parse(draft);
+                  // Check if draft is different from initial
+                  if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) {
+                      setShowRestoreDraft(true);
+                  }
+              } catch (e) {
+                  console.error("Failed to parse draft", e);
+              }
           }
       }
-  }, [step]);
+  }, [editingCartIndex, isEditingOrder]);
 
-  useEffect(() => { if (history.length > 1 && !isEditingOrder && editingCartIndex === null) { localStorage.setItem('builder_draft', JSON.stringify(config)); } }, [config, history, isEditingOrder, editingCartIndex]);
-  useEffect(() => { if (editingCartIndex === null && !isEditingOrder) { const draft = localStorage.getItem('builder_draft'); if (draft) { try { const parsedDraft = JSON.parse(draft); if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) { setShowRestoreDraft(true); } } catch (e) {} } } }, [editingCartIndex, isEditingOrder]);
-  const handleRestoreDraft = () => { try { const draft = localStorage.getItem('builder_draft'); if (draft) { const parsed = JSON.parse(draft); setConfig(parsed); setHistory([parsed]); setHistoryIndex(0); showToast("Đã khôi phục thiết kế gần nhất!", 'success'); } } catch(e) {} setShowRestoreDraft(false); };
-  const handleDiscardDraft = () => { localStorage.removeItem('builder_draft'); setShowRestoreDraft(false); };
-  useEffect(() => { const currentFrame = frames.find(f => f.id === config.frameId); if (currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) < 1) { setLastSquareFrameId(currentFrame.id); } }, [config.frameId, frames]);
+  const handleRestoreDraft = () => {
+      try {
+          const draft = localStorage.getItem('builder_draft');
+          if (draft) {
+              const parsed = JSON.parse(draft);
+              setConfig(parsed);
+              setHistory([parsed]);
+              setHistoryIndex(0);
+              showToast("Đã khôi phục thiết kế gần nhất!", 'success');
+          }
+      } catch(e) {
+          showToast("Lỗi khôi phục.", 'error');
+      }
+      setShowRestoreDraft(false);
+  };
+
+  const handleDiscardDraft = () => {
+      localStorage.removeItem('builder_draft');
+      setShowRestoreDraft(false);
+  };
+
+  useEffect(() => {
+      const currentFrame = frames.find(f => f.id === config.frameId);
+      if (currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) < 1) {
+          setLastSquareFrameId(currentFrame.id);
+      }
+  }, [config.frameId, frames]);
+
   useEffect(() => {
     const fetchHotTrends = async () => {
         try {
-            const orders = await getAllOrders(); const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            const orders = await getAllOrders();
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
             const recentOrders = orders.filter(o => (o.createdAt || 0) > sevenDaysAgo);
+            
             const counts: Record<string, number> = {};
-            recentOrders.forEach(o => { o.items.forEach(item => { item.draggableItems.forEach(d => { if (d.type !== 'charm') { counts[d.partId] = (counts[d.partId] || 0) + 1; } }); item.characters.forEach(c => { if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1; }); }); });
-            let topIds = Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 3).map(([id]) => id);
-            if (topIds.length < 3) { const availableAccessories = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet]; const staticHotItems = availableAccessories.filter(p => p.isHot && !topIds.includes(p.id)).map(p => p.id); topIds = [...topIds, ...staticHotItems]; if (topIds.length < 3) { const randomFillers = availableAccessories.filter(p => !topIds.includes(p.id)).map(p => p.id); topIds = [...topIds, ...randomFillers]; } }
+            recentOrders.forEach(o => {
+                o.items.forEach(item => {
+                    item.draggableItems.forEach(d => {
+                        if (d.type !== 'charm') {
+                            counts[d.partId] = (counts[d.partId] || 0) + 1;
+                        }
+                    });
+                    item.characters.forEach(c => {
+                        if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
+                    });
+                });
+            });
+
+            let topIds = Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 3)
+                .map(([id]) => id);
+            
+            if (topIds.length < 3) {
+                const availableAccessories = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet];
+                const staticHotItems = availableAccessories
+                    .filter(p => p.isHot && !topIds.includes(p.id))
+                    .map(p => p.id);
+                
+                topIds = [...topIds, ...staticHotItems];
+
+                if (topIds.length < 3) {
+                    const randomFillers = availableAccessories
+                        .filter(p => !topIds.includes(p.id))
+                        .map(p => p.id);
+                    topIds = [...topIds, ...randomFillers];
+                }
+            }
+
             setHotPartIds(topIds.slice(0, 3));
-        } catch (e) { const defaults = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].slice(0, 3).map(p => p.id); setHotPartIds(defaults); }
+        } catch (e) {
+            console.error(e);
+            const defaults = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].slice(0, 3).map(p => p.id);
+            setHotPartIds(defaults);
+        }
     };
     fetchHotTrends();
   }, []);
@@ -1031,72 +1494,706 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
       setConfig(prev => {
           const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
-          if (JSON.stringify(newConfig) !== JSON.stringify(prev)) { const newHistory = history.slice(0, historyIndex + 1); newHistory.push(newConfig); if (newHistory.length > 20) newHistory.shift(); setHistory(newHistory); setHistoryIndex(newHistory.length - 1); }
+          
+          if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
+              const newHistory = history.slice(0, historyIndex + 1);
+              newHistory.push(newConfig);
+              if (newHistory.length > 20) newHistory.shift();
+              setHistory(newHistory);
+              setHistoryIndex(newHistory.length - 1);
+          }
           return newConfig;
       });
   }, [history, historyIndex, setConfig]);
 
-  const handleUndo = () => { if (historyIndex > 0) { const newIndex = historyIndex - 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } };
-  const handleRedo = () => { if (historyIndex < history.length - 1) { const newIndex = historyIndex + 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } };
-  const handleShare = async () => { setIsSaving(true); const image = await captureFrameAsImage(); setIsSaving(false); if (!image) return; if (navigator.share) { try { const blob = await (await fetch(image)).blob(); const file = new File([blob], "the-luvin-design.png", { type: blob.type }); await navigator.share({ title: 'My LEGO Frame Design', text: 'Check out my custom LEGO frame design from The Luvin!', files: [file] }); } catch (e) { const link = document.createElement('a'); link.href = image; link.download = 'the-luvin-design.png'; link.click(); } } else { const link = document.createElement('a'); link.href = image; link.download = 'the-luvin-design.png'; link.click(); } };
-  useEffect(() => { const isMobile = window.innerWidth < 1024; if (isMobile) { const element = document.getElementById('builder-action-area'); if (element) { const headerOffset = 100; const elementPosition = element.getBoundingClientRect().top; const offsetPosition = elementPosition + window.scrollY - headerOffset; window.scrollTo({ top: offsetPosition, behavior: "smooth" }); } } else { window.scrollTo({ top: 0, behavior: 'smooth' }); } }, [step]);
-  useEffect(() => { const controlNavbar = () => { const currentScrollY = window.scrollY; if (currentScrollY > lastScrollY.current && currentScrollY > 100) { setIsBottomBarVisible(false); } else { setIsBottomBarVisible(true); } lastScrollY.current = currentScrollY; }; window.addEventListener('scroll', controlNavbar); return () => { window.removeEventListener('scroll', controlNavbar); }; }, []);
-  useEffect(() => { const observer = new ResizeObserver(entries => { if (entries[0]) { const { width } = entries[0].contentRect; setPreviewWidth(width > 520 ? 520 : width); } }); if (previewContainerParentRef.current) { observer.observe(previewContainerParentRef.current); } return () => { if (previewContainerParentRef.current) { observer.unobserve(previewContainerParentRef.current); } }; }, []);
-  const selectedText = useMemo(() => { if (selectedItemId?.startsWith('text-')) { const id = parseInt(selectedItemId.split('-')[1], 10); return config.texts.find(t => t.id === id) || null; } return null; }, [selectedItemId, config.texts]);
-  const handleItemTransform = useCallback((id: string, newTransform: Transform) => { const [type, ...rest] = id.split('-'); const rawId = rest.join('-'); setConfigWithHistory((prev: FrameConfig) => { if (type === 'text') { const idToUpdate = parseInt(rawId); return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) }; } const itemId = parseInt(rawId); if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...newTransform } : item) }; if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...newTransform } : item) }; if (type === 'shape') { return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...newTransform } : item) }; } return prev; }); }, [setConfigWithHistory]);
-  const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => { if (!selectedItemId) return; if (direction === 'horizontal') direction = 'center-x'; if (direction === 'vertical') direction = 'center-y'; const [type, ...rest] = selectedItemId.split('-'); const rawId = rest.join('-'); const idToUpdate = parseInt(rawId); setConfigWithHistory((prev: FrameConfig) => { let updates: Partial<Transform> = {}; if (direction === 'center') updates = { x: 50, y: 50 }; else if (direction === 'center-x') updates = { x: 50 }; else if (direction === 'center-y') updates = { y: 50 }; if (type === 'text') return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) }; else if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) }; else if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) }; else if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) }; return prev; }); };
-  const handleItemFlip = useCallback((id: string) => { const [type, ...rest] = id.split('-'); const rawId = rest.join('-'); if (type === 'item') { const itemId = parseInt(rawId); setConfigWithHistory((prev: FrameConfig) => ({ ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item) })); } }, [setConfigWithHistory]);
-  const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => { const [type, ...rest] = id.split('-'); const rawId = rest.join('-'); if (type === 'item') { const itemId = parseInt(rawId); setConfigWithHistory((prev: FrameConfig) => ({ ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...updates } : item) })); } }, [setConfigWithHistory]);
-  const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => { setConfigWithHistory((prev: FrameConfig) => ({ ...prev, characters: prev.characters.map((c: LegoCharacterConfig) => c.id === id ? { ...c, ...updates } : c) })); }, [setConfigWithHistory]);
-  const handleItemRemoveCompletely = useCallback((id: string) => { const [type, ...rest] = id.split('-'); const rawId = rest.join('-'); setSelectedItemId(null); setConfigWithHistory((prev: FrameConfig) => { if (type === 'text') { const idToDelete = parseInt(rawId, 10); return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) }; } const itemId = parseInt(rawId, 10); if (type === 'character') return { ...prev, characters: prev.characters.filter((item: LegoCharacterConfig) => item.id !== itemId) }; if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: DraggableItem) => item.id !== itemId) }; if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== itemId) }; return prev; }); }, [setConfigWithHistory]);
-  const handleItemDelete = useCallback((id: string) => { const [type, ...rest] = id.split('-'); const rawId = rest.join('-'); if (type === 'text') { const idToUpdate = parseInt(rawId, 10); const textItem = config.texts.find(t => t.id === idToUpdate); if (textItem && textItem.content && textItem.content.trim() !== '') { setConfigWithHistory((prev: FrameConfig) => ({ ...prev, texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t) })); } else { handleItemRemoveCompletely(id); } } else { handleItemRemoveCompletely(id); } }, [setConfigWithHistory, handleItemRemoveCompletely, config.texts]);
-  useEffect(() => { const handleKeyDown = (e: KeyboardEvent) => { if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isEditingText) { if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); } handleItemDelete(selectedItemId); } if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) handleRedo(); else handleUndo(); } }; window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown); }, [selectedItemId, handleItemDelete, isEditingText, handleUndo, handleRedo]);
-  const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => { setConfigWithHistory((prev: FrameConfig) => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) })); }, [setConfigWithHistory]);
-  const addText = () => { const newId = Date.now(); const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 }; setConfigWithHistory((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]})); setSelectedItemId(`text-${newId}`); };
-  const addCharm = (dataUrl: string) => { const newCharm: DraggableItem = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 }; setConfigWithHistory((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]})); }
-  const captureFrameAsImage = async (): Promise<string> => { const originalSelectedId = selectedItemId; setSelectedItemId(null); return new Promise((resolve) => { setTimeout(async () => { try { const container = frameCaptureRef.current; if (container && typeof html2canvas !== 'undefined') { const canvas = await html2canvas(container, { backgroundColor: null, useCORS: true, allowTaint: true, scale: 3, logging: false, scrollX: 0, scrollY: 0, ignoreElements: (element: Element) => false }); resolve(canvas.toDataURL('image/png')); } else { resolve(''); } } catch (error: any) { resolve(''); } finally { setSelectedItemId(originalSelectedId); } }, 1000); }); };
-  const animateAddToCart = (imageSrc: string) => { const desktopCart = document.getElementById('cart-icon-desktop'); const mobileCart = document.getElementById('cart-icon-mobile'); const targetIcon = window.innerWidth >= 768 ? desktopCart : mobileCart; const sourceContainer = frameCaptureRef.current; if (!targetIcon || !sourceContainer || !imageSrc) return; const startRect = sourceContainer.getBoundingClientRect(); const endRect = targetIcon.getBoundingClientRect(); const flyImg = document.createElement('img'); flyImg.src = imageSrc; flyImg.classList.add('flying-product-item'); flyImg.style.left = `${startRect.left}px`; flyImg.style.top = `${startRect.top}px`; flyImg.style.width = `${startRect.width}px`; flyImg.style.height = `${startRect.height}px`; document.body.appendChild(flyImg); flyImg.getBoundingClientRect(); const endX = endRect.left + endRect.width / 2; const endY = endRect.top + endRect.height / 2; const targetSize = 20; flyImg.style.left = `${endX - targetSize/2}px`; flyImg.style.top = `${endY - targetSize/2}px`; flyImg.style.width = `${targetSize}px`; flyImg.style.height = `${targetSize}px`; flyImg.style.opacity = '0.5'; flyImg.addEventListener('transitionend', () => { if (document.body.contains(flyImg)) { document.body.removeChild(flyImg); } }); };
-  const handleAddToCartWrapper = async (andCheckout: boolean) => { trackAddToCart(); setIsSaving(true); try { const base64Image = await captureFrameAsImage(); if (!base64Image) { showToast('Lỗi tạo ảnh. Có thể do lỗi CORS.', 'error'); setIsSaving(false); return; } animateAddToCart(base64Image); const imageBlob = base64ToBlob(base64Image); const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" }); const cloudUrl = await uploadToCloudinary(imageFile); if (!cloudUrl) { showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error'); setIsSaving(false); return; } const finalConfig = { ...config, previewImageUrl: cloudUrl }; localStorage.removeItem('builder_draft'); if (editingCartIndex !== null && !andCheckout) { onUpdateCart(finalConfig); } else { onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout); } if (andCheckout) { navigateTo('checkout'); } } catch (e) { showToast('Đã có lỗi xảy ra.', 'error'); } finally { setIsSaving(false); } };
-  const handleCharacterDoubleClick = (charId: number) => { setStep(3); setSelectedItemId(`character-${charId}`); };
-  const handleAutoAdvance = () => { if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-') || selectedItemId.startsWith('shape-'))) { setSelectedItemId(null); return; } const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat']; let currentIndex = order.indexOf(activePartType as any); if (activePartType === 'set') { setActivePartType('hair'); return; } if (currentIndex !== -1 && currentIndex < order.length - 1) { setActivePartType(order[currentIndex + 1]); } else { setActivePartType('shirt'); } };
+  const handleUndo = () => {
+      if (historyIndex > 0) {
+          const newIndex = historyIndex - 1;
+          setHistoryIndex(newIndex);
+          setConfig(history[newIndex]);
+      }
+  };
+
+  const handleRedo = () => {
+      if (historyIndex < history.length - 1) {
+          const newIndex = historyIndex + 1;
+          setHistoryIndex(newIndex);
+          setConfig(history[newIndex]);
+      }
+  };
+
+  const handleShare = async () => {
+      setIsSaving(true);
+      const image = await captureFrameAsImage();
+      setIsSaving(false);
+      
+      if (!image) return;
+
+      if (navigator.share) {
+          try {
+              const blob = await (await fetch(image)).blob();
+              const file = new File([blob], "the-luvin-design.png", { type: blob.type });
+              await navigator.share({
+                  title: 'My LEGO Frame Design',
+                  text: 'Check out my custom LEGO frame design from The Luvin!',
+                  files: [file]
+              });
+          } catch (e) {
+              const link = document.createElement('a');
+              link.href = image;
+              link.download = 'the-luvin-design.png';
+              link.click();
+          }
+      } else {
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = 'the-luvin-design.png';
+          link.click();
+      }
+  };
+
+  useEffect(() => {
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile) {
+          const element = document.getElementById('builder-action-area');
+          if (element) {
+              const headerOffset = 100;
+              const elementPosition = element.getBoundingClientRect().top;
+              const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+              window.scrollTo({
+                  top: offsetPosition,
+                  behavior: "smooth"
+              });
+          }
+      } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+  }, [step]);
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsBottomBarVisible(false);
+      } else {
+        setIsBottomBarVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+    window.addEventListener('scroll', controlNavbar);
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, []);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(entries => {
+      if (entries[0]) {
+        const { width } = entries[0].contentRect;
+        setPreviewWidth(width > 520 ? 520 : width);
+      }
+    });
+
+    if (previewContainerParentRef.current) {
+      observer.observe(previewContainerParentRef.current);
+    }
+
+    return () => {
+      if (previewContainerParentRef.current) {
+        observer.unobserve(previewContainerParentRef.current);
+      }
+    };
+  }, []);
+  
+  const selectedText = useMemo(() => {
+    if (selectedItemId?.startsWith('text-')) {
+        const id = parseInt(selectedItemId.split('-')[1], 10);
+        return config.texts.find(t => t.id === id) || null;
+    }
+    return null;
+  }, [selectedItemId, config.texts]);
+
+  const handleItemTransform = useCallback((id: string, newTransform: Transform) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      setConfigWithHistory((prev: FrameConfig) => {
+          if (type === 'text') {
+              const idToUpdate = parseInt(rawId);
+              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) };
+          }
+          const itemId = parseInt(rawId);
+          if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'shape') {
+              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
+          }
+          return prev;
+      });
+  }, [setConfigWithHistory]);
+
+  const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => {
+      if (!selectedItemId) return;
+      
+      // Normalize 'horizontal'/'vertical' from FramePreview prop to internal logic
+      if (direction === 'horizontal') direction = 'center-x';
+      if (direction === 'vertical') direction = 'center-y';
+
+      const [type, ...rest] = selectedItemId.split('-');
+      const rawId = rest.join('-');
+      const idToUpdate = parseInt(rawId);
+
+      setConfigWithHistory((prev: FrameConfig) => {
+          let updates: Partial<Transform> = {};
+          if (direction === 'center') updates = { x: 50, y: 50 };
+          else if (direction === 'center-x') updates = { x: 50 };
+          else if (direction === 'center-y') updates = { y: 50 };
+
+          if (type === 'text') {
+              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          } else if (type === 'character') {
+              return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          } else if (type === 'item') {
+              return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          } else if (type === 'shape') {
+              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          }
+          return prev;
+      });
+  };
+
+  const handleItemFlip = useCallback((id: string) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      if (type === 'item') {
+          const itemId = parseInt(rawId);
+          setConfigWithHistory((prev: FrameConfig) => ({
+              ...prev,
+              draggableItems: prev.draggableItems.map((item: DraggableItem) => 
+                  item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
+              )
+          }));
+      }
+  }, [setConfigWithHistory]);
+
+  const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
+      const [type, ...rest] = id.split('-');
+      const rawId = rest.join('-');
+      
+      if (type === 'item') {
+          const itemId = parseInt(rawId);
+          setConfigWithHistory((prev: FrameConfig) => ({
+              ...prev,
+              draggableItems: prev.draggableItems.map((item: DraggableItem) => 
+                  item.id === itemId ? { ...item, ...updates } : item
+              )
+          }));
+      }
+  }, [setConfigWithHistory]);
+
+  const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
+      setConfigWithHistory((prev: FrameConfig) => ({
+          ...prev,
+          characters: prev.characters.map((c: LegoCharacterConfig) => c.id === id ? { ...c, ...updates } : c)
+      }));
+  }, [setConfigWithHistory]);
+
+  const handleItemRemoveCompletely = useCallback((id: string) => {
+    const [type, ...rest] = id.split('-');
+    const rawId = rest.join('-');
+    
+    setSelectedItemId(null);
+
+    setConfigWithHistory((prev: FrameConfig) => {
+        if (type === 'text') {
+            const idToDelete = parseInt(rawId, 10);
+            return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
+        }
+        const itemId = parseInt(rawId, 10);
+        if (type === 'character') return { ...prev, characters: prev.characters.filter((item: LegoCharacterConfig) => item.id !== itemId) };
+        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: DraggableItem) => item.id !== itemId) };
+        if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== itemId) };
+        return prev;
+    });
+  }, [setConfigWithHistory]);
+  
+  const handleItemDelete = useCallback((id: string) => {
+    const [type, ...rest] = id.split('-');
+    const rawId = rest.join('-');
+    
+    if (type === 'text') {
+        const idToUpdate = parseInt(rawId, 10);
+        const textItem = config.texts.find(t => t.id === idToUpdate);
+        
+        if (textItem && textItem.content && textItem.content.trim() !== '') {
+             setConfigWithHistory((prev: FrameConfig) => ({
+                ...prev,
+                texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
+            }));
+        } else {
+             handleItemRemoveCompletely(id);
+        }
+    } else {
+        handleItemRemoveCompletely(id);
+    }
+  }, [setConfigWithHistory, handleItemRemoveCompletely, config.texts]);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isEditingText) {
+            if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+                e.preventDefault();
+            }
+            handleItemDelete(selectedItemId);
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) handleRedo();
+            else handleUndo();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItemId, handleItemDelete, isEditingText, handleUndo, handleRedo]);
+
+  const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
+    setConfigWithHistory((prev: FrameConfig) => ({
+        ...prev,
+        texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
+    }));
+  }, [setConfigWithHistory]);
+  
+  const addText = () => {
+      const newId = Date.now();
+      const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
+      setConfigWithHistory((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
+      setSelectedItemId(`text-${newId}`);
+  };
+
+  const addCharm = (dataUrl: string) => {
+      const newCharm: DraggableItem = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
+      setConfigWithHistory((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
+  }
+  
+  const captureFrameAsImage = async (): Promise<string> => {
+    const originalSelectedId = selectedItemId;
+    setSelectedItemId(null); 
+
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          const container = frameCaptureRef.current;
+          if (container && typeof html2canvas !== 'undefined') {
+            const canvas = await html2canvas(container, {
+              backgroundColor: null,
+              useCORS: true, 
+              allowTaint: true, 
+              scale: 3,      
+              logging: false,
+              scrollX: 0,    
+              scrollY: 0,
+              ignoreElements: (element: Element) => false
+            });
+            resolve(canvas.toDataURL('image/png'));
+          } else {
+            console.error('html2canvas error');
+            resolve('');
+          }
+        } catch (error: any) {
+          console.error('Snapshot error:', error);
+          if (error.message && error.message.includes('Tainted')) {
+              alert("Lỗi CORS: Không thể lưu ảnh do chưa cấu hình CORS cho Firebase Storage. Vui lòng xem hướng dẫn trong README để chạy lệnh 'gsutil cors'.");
+          }
+          resolve('');
+        } finally {
+          setSelectedItemId(originalSelectedId); 
+        }
+      }, 1000); 
+    });
+  };
+
+  const animateAddToCart = (imageSrc: string) => {
+      const desktopCart = document.getElementById('cart-icon-desktop');
+      const mobileCart = document.getElementById('cart-icon-mobile');
+      const targetIcon = window.innerWidth >= 768 ? desktopCart : mobileCart;
+      const sourceContainer = frameCaptureRef.current;
+
+      if (!targetIcon || !sourceContainer || !imageSrc) return;
+
+      const startRect = sourceContainer.getBoundingClientRect();
+      const endRect = targetIcon.getBoundingClientRect();
+
+      const flyImg = document.createElement('img');
+      flyImg.src = imageSrc;
+      flyImg.classList.add('flying-product-item');
+      
+      flyImg.style.left = `${startRect.left}px`;
+      flyImg.style.top = `${startRect.top}px`;
+      flyImg.style.width = `${startRect.width}px`;
+      flyImg.style.height = `${startRect.height}px`;
+
+      document.body.appendChild(flyImg);
+      flyImg.getBoundingClientRect();
+
+      const endX = endRect.left + endRect.width / 2;
+      const endY = endRect.top + endRect.height / 2;
+      const targetSize = 20;
+
+      flyImg.style.left = `${endX - targetSize/2}px`;
+      flyImg.style.top = `${endY - targetSize/2}px`;
+      flyImg.style.width = `${targetSize}px`;
+      flyImg.style.height = `${targetSize}px`;
+      flyImg.style.opacity = '0.5';
+
+      flyImg.addEventListener('transitionend', () => {
+          if (document.body.contains(flyImg)) {
+              document.body.removeChild(flyImg);
+          }
+      });
+  };
+
+  const handleAddToCartWrapper = async (andCheckout: boolean) => {
+    // TRACKING CALL:
+    trackAddToCart(); // Fire and forget
+
+    setIsSaving(true);
+    try {
+        const base64Image = await captureFrameAsImage();
+        
+        if (!base64Image) {
+            showToast('Lỗi tạo ảnh. Có thể do lỗi CORS.', 'error');
+            setIsSaving(false);
+            return;
+        }
+
+        animateAddToCart(base64Image);
+
+        const imageBlob = base64ToBlob(base64Image);
+        const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
+
+        const cloudUrl = await uploadToCloudinary(imageFile);
+        
+        if (!cloudUrl) {
+             showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error');
+             setIsSaving(false);
+             return;
+        }
+
+        const finalConfig = { 
+            ...config, 
+            previewImageUrl: cloudUrl
+        };
+
+        // Clear draft after adding to cart
+        localStorage.removeItem('builder_draft');
+
+        if (editingCartIndex !== null && !andCheckout) {
+            onUpdateCart(finalConfig);
+        } else {
+            onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
+        }
+        
+        if (andCheckout) {
+            navigateTo('checkout');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Đã có lỗi xảy ra.', 'error');
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleCharacterDoubleClick = (charId: number) => {
+      setStep(3); 
+      setSelectedItemId(`character-${charId}`);
+  };
+
+  const handleAutoAdvance = () => {
+      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-') || selectedItemId.startsWith('shape-'))) {
+          setSelectedItemId(null);
+          return;
+      }
+
+      const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
+      let currentIndex = order.indexOf(activePartType as any);
+      
+      if (activePartType === 'set') {
+          setActivePartType('hair');
+          return;
+      }
+
+      if (currentIndex !== -1 && currentIndex < order.length - 1) {
+          setActivePartType(order[currentIndex + 1]);
+      } else {
+          setActivePartType('shirt'); 
+      }
+  };
 
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfigWithHistory} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfigWithHistory} addText={addText} addCharm={addCharm} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
+      case 2: return <Step2BackgroundAndDecorations 
+          config={config} 
+          setConfig={setConfigWithHistory} 
+          addText={addText} 
+          addCharm={addCharm} 
+          backgrounds={backgrounds} 
+          frames={frames} 
+          onZoomImage={onZoomImage} 
+          showToast={showToast} 
+          preferredSquareFrameId={lastSquareFrameId}
+      />;
       case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} />;
-      case 4: return <Step4Summary totalPrice={totalPrice} priceBreakdown={priceBreakdown} frameName={frames.find(f => f.id === config.frameId)?.name || ''} charCount={config.characters.length} onAddToCart={() => handleAddToCartWrapper(false)} onBuyNow={() => handleAddToCartWrapper(true)} isSaving={isSaving} isEditingOrder={isEditingOrder} />;
+      case 4: return <Step4Summary 
+        totalPrice={totalPrice} 
+        priceBreakdown={priceBreakdown} 
+        frameName={frames.find(f => f.id === config.frameId)?.name || ''} 
+        charCount={config.characters.length} 
+        onAddToCart={() => handleAddToCartWrapper(false)} 
+        onBuyNow={() => handleAddToCartWrapper(true)}
+        isSaving={isSaving} 
+        isEditingOrder={isEditingOrder}
+      />;
       default: return null;
     }
   };
 
   return (
     <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
-      <DesignerNoticeModal isOpen={showDesignerNotice} onClose={() => setShowDesignerNotice(false)} />
-      
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-4"><div className="text-sm text-gray-500"><button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế</div></div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">{isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}</h1>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-gray-500">
+                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
+            </div>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
+            {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
+        </h1>
+        
+        {/* Layout */}
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
+            {/* Preview Section */}
             <div className="lg:sticky lg:top-24">
-                <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3><div className="flex gap-2"><button onClick={handleUndo} disabled={historyIndex <= 0} className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all" title="Hoàn tác (Undo)"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button><button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all" title="Làm lại (Redo)"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg></button><button onClick={handleShare} className="w-8 h-8 rounded border bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all" title="Chia sẻ thiết kế"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg></button></div></div>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-32 lg:mb-0 shadow-inner"><FramePreview ref={frameCaptureRef} config={config} containerWidth={previewWidth - 32} onItemTransform={handleItemTransform} onItemRemove={handleItemRemoveCompletely} onTextUpdate={handleTextUpdate} onItemUpdate={handleItemUpdate} onCharacterUpdate={handleCharacterUpdate} onItemFlip={handleItemFlip} onCharacterDoubleClick={handleCharacterDoubleClick} onAutoAdvance={handleAutoAdvance} className="w-full h-full" selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={setIsEditingText} allParts={allParts} activePartType={activePartType} logoUrl={logoUrl} previewFont={previewFont} onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} /></div>
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex"><span className="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg></span><div className="text-xs text-amber-900 leading-relaxed"><p className="font-bold mb-1">Lưu ý quan trọng:</p><p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <b>Designer sẽ thiết kế lại bố cục & màu sắc</b> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p></div></div>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                        ẢNH XEM TRƯỚC
+                    </h3>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={handleUndo} 
+                            disabled={historyIndex <= 0}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            title="Hoàn tác (Undo)"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                        </button>
+                        <button 
+                            onClick={handleRedo} 
+                            disabled={historyIndex >= history.length - 1}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            title="Làm lại (Redo)"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
+                        </button>
+                        <button 
+                            onClick={handleShare}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+                            title="Chia sẻ thiết kế"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-32 lg:mb-0 shadow-inner">
+                    <FramePreview 
+                        ref={frameCaptureRef}
+                        config={config} 
+                        containerWidth={previewWidth - 32} 
+                        onItemTransform={handleItemTransform} 
+                        onItemRemove={handleItemRemoveCompletely}
+                        onTextUpdate={handleTextUpdate}
+                        onItemUpdate={handleItemUpdate}
+                        onCharacterUpdate={handleCharacterUpdate} 
+                        onItemFlip={handleItemFlip}
+                        onCharacterDoubleClick={handleCharacterDoubleClick}
+                        onAutoAdvance={handleAutoAdvance} 
+                        className="w-full h-full"
+                        selectedItemId={selectedItemId}
+                        setSelectedItemId={setSelectedItemId}
+                        setIsEditingText={setIsEditingText}
+                        allParts={allParts}
+                        activePartType={activePartType} 
+                        logoUrl={logoUrl} 
+                        previewFont={previewFont} // PASS PREVIEW FONT
+                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} // Pass Alignment Handler
+                    />
+                </div>
+                
+                {/* REMOVED: FLOATING ALIGNMENT TOOLBAR (Shows when item selected) */}
+
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
+                    <span className="text-amber-500 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                        </svg>
+                    </span>
+                    <div className="text-xs text-amber-900 leading-relaxed">
+                        <p className="font-bold mb-1">Lưu ý quan trọng:</p>
+                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
+                    </div>
+                </div>
                 <div className="h-10 mt-4 hidden lg:block"></div>
             </div>
           </div>
+
           <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> 
-              {(step === 2 || step === 3) && (<div className="mb-3 px-1 animate-fade-in"><div className="flex justify-between items-center text-[10px] mb-1"><span className="text-gray-500 font-medium">{remainingForFreeShip > 0 ? (<>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>) : (<b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>)}</span><span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span></div><div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" style={{ width: `${freeShipPercent}%` }}></div></div></div>)}
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">{selectedText ? (<TextEditor activeText={selectedText} setConfig={setConfigWithHistory} config={config} selectedTextId={selectedText.id} deselect={() => setSelectedItemId(null)} onAddText={addText} uploadedFonts={uploadedFonts} setPreviewFont={setPreviewFont} />) : (<><div className="min-h-[400px]">{renderStepContent()}</div></>)}</div>
-              {!selectedText && (<><div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span></div>{editingCartIndex !== null && step === 4 && (<div className="mt-4 mb-2"><button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">Hủy sửa</button></div>)}{step === 4 && editingCartIndex !== null && (<div className="mt-2 hidden lg:flex items-center gap-4"><button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">{isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn hàng' : 'Cập nhật giỏ hàng')}</button></div>)}{!(editingCartIndex !== null && step === 4) && (<div className="mt-2 hidden lg:flex items-center gap-4"><button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">&larr; Quay lại</button><button onClick={() => setStep(s => Math.min(4, s + 1))} disabled={step === 4} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md">Tiếp theo</button></div>)}</>)}
-               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}><div className="flex justify-between items-center mb-3"><span className="text-xs font-medium text-gray-500">Tạm tính:</span><span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span></div>{editingCartIndex !== null && step === 4 ? (<div className="flex gap-2"><button onClick={onCancelEdit} className="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors text-sm">Hủy</button><button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">{isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn' : 'Cập nhật')}</button></div>) : (<div className="flex gap-3"><button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm">Quay lại</button><button onClick={() => setStep(s => Math.min(4, s + 1))} disabled={step === 4} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm">Tiếp theo</button></div>)}</div>
+              {(step === 2 || step === 3) && (
+                  <div className="mb-3 px-1 animate-fade-in">
+                      <div className="flex justify-between items-center text-[10px] mb-1">
+                          <span className="text-gray-500 font-medium">
+                              {remainingForFreeShip > 0 ? (
+                                <>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>
+                              ) : (
+                                <b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>
+                              )}
+                          </span>
+                          <span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span>
+                      </div>
+                      <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                              className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" 
+                              style={{ width: `${freeShipPercent}%` }}
+                          ></div>
+                      </div>
+                  </div>
+              )}
+
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  {selectedText ? (
+                      <TextEditor 
+                          activeText={selectedText}
+                          setConfig={setConfigWithHistory}
+                          config={config}
+                          selectedTextId={selectedText.id}
+                          deselect={() => setSelectedItemId(null)}
+                          onAddText={addText}
+                          uploadedFonts={uploadedFonts}
+                          setPreviewFont={setPreviewFont} // PASS SET PREVIEW
+                      />
+                  ) : (
+                      <>
+                          <div className="min-h-[400px]">
+                              {renderStepContent()}
+                          </div>
+                      </>
+                  )}
+              </div>
+              
+              {!selectedText && (
+                <>
+                  <div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">
+                    Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
+                  </div>
+                  {editingCartIndex !== null && step === 4 && (
+                        <div className="mt-4 mb-2">
+                            <button 
+                                onClick={onCancelEdit} 
+                                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                Hủy sửa
+                            </button>
+                        </div>
+                  )}
+                  {step === 4 && editingCartIndex !== null && (
+                        <div className="mt-2 hidden lg:flex items-center gap-4">
+                             <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                                {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn hàng' : 'Cập nhật giỏ hàng')}
+                            </button>
+                        </div>
+                  )}
+                  
+                  {!(editingCartIndex !== null && step === 4) && (
+                      <div className="mt-2 hidden lg:flex items-center gap-4">
+                          <button
+                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              disabled={step === 1}
+                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                          >
+                              &larr; Quay lại
+                          </button>
+                          <button
+                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              disabled={step === 4}
+                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md"
+                          >
+                              Tiếp theo
+                          </button>
+                      </div>
+                  )}
+                </>
+              )}
+               
+               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+                     <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-medium text-gray-500">Tạm tính:</span>
+                        <span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span>
+                      </div>
+                     
+                     {editingCartIndex !== null && step === 4 ? (
+                        <div className="flex gap-2">
+                            <button onClick={onCancelEdit} className="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                                Hủy
+                            </button>
+                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">
+                                {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn' : 'Cập nhật')}
+                            </button>
+                        </div>
+                     ) : (
+                         <div className="flex gap-3">
+                           <button
+                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              disabled={step === 1}
+                              className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm"
+                          >
+                              Quay lại
+                          </button>
+                          <button
+                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              disabled={step === 4}
+                              className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm"
+                          >
+                              Tiếp theo
+                          </button>
+                         </div>
+                     )}
+                </div>
                <div className="lg:hidden h-24"></div>
           </div>
         </div>
       </div>
-      {showRestoreDraft && (<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-w-sm animate-bounce-small"><div className="flex items-start gap-3"><span>💾</span><div><h4 className="font-bold text-gray-900 text-sm">Bản nháp chưa hoàn thành</h4><p className="text-xs text-gray-600 mt-1">Chúng tôi tìm thấy thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?</p></div></div><div className="flex gap-3 mt-3 justify-end"><button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button><button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button></div></div>)}
+
+      {/* RESTORE DRAFT BANNER */}
+      {showRestoreDraft && (
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-w-sm animate-bounce-small">
+              <div className="flex items-start gap-3">
+                  <span className="text-2xl">💾</span>
+                  <div>
+                      <h4 className="font-bold text-gray-900 text-sm">Bản nháp chưa hoàn thành</h4>
+                      <p className="text-xs text-gray-600 mt-1">Chúng tôi tìm thấy thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?</p>
+                  </div>
+              </div>
+              <div className="flex gap-3 mt-3 justify-end">
+                  <button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button>
+                  <button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
