@@ -10,7 +10,7 @@ export interface StoreConfig {
     logoUrl?: string;
     faviconUrl?: string;
     siteName?: string;
-    // Added missing property for gift box image customization
+    // Ảnh gói quà tùy chỉnh để Admin có thể thay đổi
     giftBoxImageUrl?: string;
     
     // Content Fields

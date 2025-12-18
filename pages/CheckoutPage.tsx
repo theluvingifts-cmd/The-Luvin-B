@@ -347,11 +347,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               <div className="mb-6 border-b border-gray-200 pb-6">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">2. Địa chỉ & Vận chuyển</h3>
-                    {isApiError && (
-                        <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold animate-pulse">
-                            ⚠️ API Địa chỉ đang bảo trì - Vui lòng nhập thủ công
-                        </span>
-                    )}
                   </div>
                   
                   <div className="space-y-4">
@@ -410,7 +405,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder="Phường / Xã" 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" 
                                 required 
                             />
                         </div>
