@@ -521,8 +521,10 @@ export const AdminDesign: React.FC = () => {
             let frameId = 'lg'; // Default square
             if (bg.type === 'rectangle') frameId = 'md';
             
+            // Fix: Added missing required property 'frameColor'
             setConfigWithHistory({
                 frameId: frameId,
+                frameColor: 'white',
                 background: { type: isColor ? 'color' : 'image', value: bg.url },
                 texts: bg.overlayConfig?.texts || [],
                 draggableItems: bg.overlayConfig?.draggableItems || [],
