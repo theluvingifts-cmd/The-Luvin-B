@@ -1,4 +1,5 @@
 
+// ... (imports giữ nguyên)
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
@@ -39,7 +40,6 @@ declare var confetti: any;
 // Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
-    // Nếu là font tùy chỉnh (đã có trong danh sách upload), không load từ Google
     if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
         const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
         if (!document.getElementById(linkId)) {
@@ -52,7 +52,6 @@ const loadGoogleFont = (fontName: string) => {
     }
 };
 
-// Helper để load Custom Fonts từ danh sách
 const loadUploadedFonts = (fonts: CustomFont[]) => {
     const styleId = 'uploaded-custom-fonts';
     let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -64,7 +63,6 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     
     let css = '';
     fonts.forEach(font => {
-        // Simple sanitization for font name
         const safeName = font.name.replace(/[^a-zA-Z0-9\s]/g, '');
         css += `
             @font-face {
@@ -79,21 +77,17 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     style.innerHTML = css;
 };
 
-// HELPER: UPDATE SEO META TAGS
 const updateMetaTags = (config: StoreConfig) => {
-    // Title
     if (config.seoTitle) {
         document.title = config.seoTitle;
         document.querySelector('meta[property="og:title"]')?.setAttribute('content', config.seoTitle);
         document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', config.seoTitle);
     }
-    // Desc
     if (config.seoDescription) {
         document.querySelector('meta[name="description"]')?.setAttribute('content', config.seoDescription);
         document.querySelector('meta[property="og:description"]')?.setAttribute('content', config.seoDescription);
         document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', config.seoDescription);
     }
-    // Image
     if (config.seoImageUrl) {
         document.querySelector('meta[property="og:image"]')?.setAttribute('content', config.seoImageUrl);
         document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', config.seoImageUrl);
@@ -103,36 +97,28 @@ const updateMetaTags = (config: StoreConfig) => {
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
-  
   const [builderInitialStep, setBuilderInitialStep] = useState(1);
-
   const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
       try {
           const savedCart = localStorage.getItem('shopping_cart');
           return savedCart ? JSON.parse(savedCart) : [];
       } catch (error) {
-          console.error("Failed to load cart from storage", error);
           return [];
       }
   });
 
-  // State to track if we are editing an existing order (Order Update Mode)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  // NEW: Track action type for confirmation page message
   const [lastOrderAction, setLastOrderAction] = useState<'create' | 'update'>('create');
 
   useEffect(() => {
       try {
           localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
-      } catch (error) {
-          console.error("Failed to save cart to storage", error);
-      }
+      } catch (error) {}
   }, [cartItems]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-  
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); 
   
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
@@ -141,7 +127,6 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
 
-  // Initialize StoreConfig from LocalStorage to prevent flicker (FOUC)
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
       try {
           const savedConfig = localStorage.getItem('store_config');
@@ -151,32 +136,25 @@ const App: React.FC = () => {
       }
   });
 
-  // State for cart animation
   const [isCartShaking, setIsCartShaking] = useState(false);
 
-  // Function to apply theme variables to DOM
   const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
       const { global, sections } = themeData;
 
-      // Global Colors
       root.style.setProperty('--color-primary', global.colors.primary);
       root.style.setProperty('--color-secondary', global.colors.secondary);
       root.style.setProperty('--color-text', global.colors.text);
       root.style.setProperty('--color-bg', global.colors.background);
       root.style.setProperty('--color-accent', global.colors.accent);
 
-      // Typography
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
 
       root.style.setProperty('--font-heading', `'${cleanHeadingFont}'`);
       root.style.setProperty('--font-body', `'${cleanBodyFont}'`);
-      
-      // Border Radius
       root.style.setProperty('--radius-global', global.borderRadius);
 
-      // Section Specifics
       if (sections) {
           if (sections.header) {
               root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
@@ -188,10 +166,7 @@ const App: React.FC = () => {
           }
       }
 
-      // Load Custom Fonts
       loadUploadedFonts(uploadedFonts);
-
-      // Load Google Fonts
       const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
       const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
 
@@ -199,7 +174,6 @@ const App: React.FC = () => {
       if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
 
-  // useLayoutEffect runs before browser paint, preventing theme flicker
   useLayoutEffect(() => {
       if (storeConfig.theme) {
           applyTheme(storeConfig.theme, storeConfig.uploadedFonts || []);
@@ -228,10 +202,7 @@ const App: React.FC = () => {
 
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
-                // Cache config to LocalStorage for next visit
                 localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
-                
-                // --- UPDATE SEO META TAGS ---
                 updateMetaTags(fetchedConfig);
 
                 if (fetchedConfig.faviconUrl) {
@@ -259,7 +230,6 @@ const App: React.FC = () => {
     if (page === 'builder') {
         setBuilderInitialStep(1);
     }
-    // If navigating away from checkout/cart and we were editing an order, verify if we should clear it
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
        if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
            setEditingOrder(null);
@@ -335,44 +305,30 @@ const App: React.FC = () => {
       setCartItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
   };
 
-  // Special Handler for "Edit Existing Order"
   const handleEditOrder = (order: Order) => {
-      // 1. Load items to cart
       setCartItems(order.items);
-      // 2. Set editing mode
       setEditingOrder(order);
-      // 3. Go to cart
       navigateTo('cart');
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
-    // If editing existing order, calculate diff and update
     if (editingOrder) {
         setLastOrderAction('update');
-        
-        // 1. Calculate Stock Differences
         const oldParts = countPartsInOrder(editingOrder.items);
         const newParts = countPartsInOrder(orderData.items);
-        
         const stockAdjustments: Record<string, number> = {};
-        
-        // Stock Change Calculation:
         const allKeys = new Set([...Object.keys(oldParts), ...Object.keys(newParts)]);
         allKeys.forEach(partId => {
             const oldQty = oldParts[partId] || 0;
             const newQty = newParts[partId] || 0;
-            const diff = oldQty - newQty; // +1 means we return 1 to stock, -1 means we take 1 more
-            if (diff !== 0) {
-                stockAdjustments[partId] = diff;
-            }
+            const diff = oldQty - newQty; 
+            if (diff !== 0) stockAdjustments[partId] = diff;
         });
 
-        // 2. Adjust Stock if needed
         if (Object.keys(stockAdjustments).length > 0) {
             await adjustStock(stockAdjustments);
         }
 
-        // 3. Update Order in DB
         const success = await updateOrder(editingOrder.id, {
             ...orderData,
             status: orderData.totalPrice !== editingOrder.totalPrice ? 'Chờ thanh toán' : editingOrder.status
@@ -388,42 +344,30 @@ const App: React.FC = () => {
             setCartItems([]);
             setEditingOrder(null);
             navigateTo('order-confirmation');
-            
-            // Notify admin about update
             sendOrderTelegram(updatedOrder, storeConfig); 
         } else {
-            throw new Error("Không thể cập nhật đơn hàng. Có thể do lỗi mạng hoặc quyền truy cập.");
+            throw new Error("Không thể cập nhật đơn hàng.");
         }
         return;
     }
 
-    // Normal Create Flow
     setLastOrderAction('create');
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
-        
         try {
             const rawSaved = localStorage.getItem('my_orders');
             let saved: { id: string; date: number }[] = [];
             if (rawSaved) {
                 const parsed = JSON.parse(rawSaved);
-                if (Array.isArray(parsed)) {
-                    saved = parsed as { id: string; date: number }[];
-                }
+                if (Array.isArray(parsed)) saved = parsed;
             }
-            
             const newEntry = { id: res.data.id, date: Date.now() };
             const updated = [newEntry, ...saved.filter((o) => o.id !== res.data.id)].slice(0, 5);
             localStorage.setItem('my_orders', JSON.stringify(updated));
-        } catch (e) {
-            console.error("Failed to save local order history", e);
-        }
-
+        } catch (e) {}
         setCartItems([]); 
         navigateTo('order-confirmation');
-        
-        // --- NOTIFICATIONS ---
         sendOrderEmail(res.data);
         sendOrderTelegram(res.data, storeConfig); 
     } else {
@@ -472,64 +416,28 @@ const App: React.FC = () => {
                     onZoomImage={setZoomedImageUrl} 
                     logoUrl={storeConfig.logoUrl}
                     initialStep={builderInitialStep}
-                    isEditingOrder={!!editingOrder} // Pass Edit Mode
-                    uploadedFonts={storeConfig.uploadedFonts || []} // Pass uploaded fonts
+                    isEditingOrder={!!editingOrder}
+                    uploadedFonts={storeConfig.uploadedFonts || []}
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
-            {currentPage === 'cart' && <CartPage 
-                cartItems={cartItems} 
-                onRemoveItem={handleRemoveCartItem} 
-                onEditItem={handleEditCartItem} 
-                allParts={allParts} 
-                navigateTo={navigateTo}
-                onUpdateQuantity={handleUpdateCartQuantity}
-                onZoomImage={setZoomedImageUrl} 
-                isEditingOrder={!!editingOrder} // Pass Edit Mode
-            />}
-            {currentPage === 'checkout' && (
-                <CheckoutPage 
-                    cartItems={cartItems} 
-                    allParts={allParts} 
-                    onPlaceOrder={handlePlaceOrder} 
-                    onZoomImage={(url) => setZoomedImageUrl(url)}
-                    initialOrder={editingOrder} // Pass existing order if editing
-                />
-            )}
-            {currentPage === 'order-confirmation' && (
-                <OrderConfirmationPage 
-                    order={currentOrder} 
-                    navigateTo={navigateTo} 
-                    onZoomImage={setZoomedImageUrl}
-                    actionType={lastOrderAction} // Pass action type
-                />
-            )}
+            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} />}
+            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} initialOrder={editingOrder} />}
+            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
-            {currentPage === 'business' && <BusinessPage config={storeConfig} />}
+            {currentPage === 'business' && <BusinessPage config={storeConfig} legoParts={legoParts} />}
         </main>
 
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
 
-        <CartPanel 
-            isOpen={isCartOpen} 
-            onClose={() => setIsCartOpen(false)} 
-            cartItems={cartItems} 
-            onRemoveItem={handleRemoveCartItem} 
-            onEditItem={handleEditCartItem}
-            allParts={allParts} 
-            navigateTo={navigateTo}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onZoomImage={setZoomedImageUrl} 
-        />
+        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} />
 
         {zoomedImageUrl && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
-                <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+                <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg></button>
                 <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
             </div>
         )}

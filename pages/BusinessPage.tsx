@@ -1,170 +1,365 @@
 
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { StoreConfig } from '../services/configService';
+import { getAllFrames } from '../services/frameService';
+import { FrameOption, LegoPart } from '../types';
+import { formatCurrency, CHARACTER_BASE_PRICE } from '../utils/pricing';
 
-// Placeholder images for B2B context
-const B2B_HERO_IMG = "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop";
-const GIFT_IMG_1 = "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?q=80&w=2070&auto=format&fit=crop"; 
+interface BusinessPageProps {
+    config?: StoreConfig;
+    legoParts: {
+        accessory: LegoPart[];
+        pet: LegoPart[];
+    };
+}
 
-export const BusinessPage: React.FC<{ config?: StoreConfig }> = ({ config }) => {
+const B2B_HERO_IMG = "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop";
+
+export const BusinessPage: React.FC<BusinessPageProps> = ({ config, legoParts }) => {
+    const [frames, setFrames] = useState<FrameOption[]>([]);
+    const [selectedFrameId, setSelectedFrameId] = useState<string>('');
+    const [charCount, setCharCount] = useState<number>(1);
+    const [orderQty, setOrderQty] = useState<number>(10);
+    const [charmPackage, setCharmPackage] = useState<'standard' | 'vip'>('standard');
+    const [charmsPerFrame, setCharmsPerFrame] = useState<number>(0); 
+    const [showCharmModal, setShowCharmModal] = useState<'standard' | 'vip' | null>(null);
+
+    useEffect(() => {
+        getAllFrames().then(data => {
+            if (data.length > 0) {
+                setFrames(data);
+                setSelectedFrameId(data[0].id);
+            }
+        });
+    }, []);
+
+    const categorizedCharms = useMemo(() => {
+        const allAccessories = [...(legoParts.accessory || []), ...(legoParts.pet || [])];
+        return {
+            standard: allAccessories.filter(p => p.price <= 15000),
+            vip: allAccessories
+        };
+    }, [legoParts]);
+
+    const selectedFrame = useMemo(() => frames.find(f => f.id === selectedFrameId), [frames, selectedFrameId]);
+
+    const quote = useMemo(() => {
+        if (!selectedFrame) return null;
+
+        // 1. Tính giá lẻ niêm yết
+        const estimatedPartsPrice = 25000; 
+        const unitBaseRetail = selectedFrame.price + (charCount * (CHARACTER_BASE_PRICE + estimatedPartsPrice));
+        
+        let totalCharmRetail = 0;
+        if (charmsPerFrame > 0) {
+            const charmUnitPrice = charmPackage === 'vip' ? 20000 : 10000;
+            totalCharmRetail = charmsPerFrame * charmUnitPrice;
+        }
+
+        const totalRetailPerUnit = unitBaseRetail + totalCharmRetail;
+        
+        // 2. Chính sách B2B - CHIẾT KHẤU 5%
+        const discountRate = 0.95; 
+        const b2bPricePerUnit = Math.round(totalRetailPerUnit * discountRate);
+        const totalOrderAmount = b2bPricePerUnit * orderQty;
+        
+        // Tính tiền tiết kiệm dựa trên 5%
+        const totalSavings = (totalRetailPerUnit - b2bPricePerUnit) * orderQty;
+
+        return {
+            retailBase: totalRetailPerUnit,
+            b2bUnit: b2bPricePerUnit,
+            total: totalOrderAmount,
+            totalSavings: totalSavings,
+            discountPercent: 5
+        };
+    }, [selectedFrame, charCount, orderQty, charmPackage, charmsPerFrame]);
+
     const handleContact = () => {
         const hotline = config?.hotline?.replace(/\s/g, '') || '0964393115';
-        window.open(`https://zalo.me/${hotline}`, '_blank');
+        const charmInfo = charmsPerFrame === 0 ? "Basic (không charm)" : `${charmsPerFrame} món (${charmPackage.toUpperCase()})`;
+        const message = `Chào The Luvin, tôi cần báo giá B2B: ${charCount}NV/bộ, Khung ${selectedFrame?.name}, ${charmInfo}, SL ${orderQty} bộ.`;
+        window.open(`https://zalo.me/${hotline}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
     return (
-        <div className="min-h-screen bg-white font-body text-site-text transition-colors duration-300">
-            {/* Hero Section */}
-            <div className="relative h-[60vh] min-h-[500px] flex items-center justify-center overflow-hidden">
+        <div className="min-h-screen bg-secondary/30 font-body text-site-text transition-colors duration-300">
+            {/* 1. Brand-Aligned Hero */}
+            <div className="relative h-[30vh] min-h-[300px] flex items-center overflow-hidden">
                 <div className="absolute inset-0">
-                    <img src={B2B_HERO_IMG} className="w-full h-full object-cover" alt="Business Office" />
-                    <div className="absolute inset-0 bg-gray-900/60 mix-blend-multiply"></div>
+                    <img src={B2B_HERO_IMG} className="w-full h-full object-cover" alt="B2B Hero" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent"></div>
                 </div>
-                <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-                    <span className="text-white/80 font-bold tracking-[0.2em] text-xs uppercase mb-4 block">The Luvin B2B</span>
-                    <h1 className="text-4xl md:text-6xl font-heading font-bold text-white mb-6 leading-tight">
-                        Quà Tặng Doanh Nghiệp <br/>
-                        <span className="text-primary italic">Độc Đáo & Tinh Tế</span>
-                    </h1>
-                    <p className="text-lg text-gray-200 mb-8 max-w-2xl mx-auto font-light">
-                        Nâng tầm thương hiệu, gắn kết đội ngũ và tri ân đối tác với những khung tranh LEGO được cá nhân hóa riêng biệt.
-                    </p>
-                    <button 
-                        onClick={handleContact}
-                        className="bg-primary text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-white hover:text-primary transition-all shadow-lg transform hover:-translate-y-1"
-                    >
-                        Liên hệ nhận báo giá
-                    </button>
+                <div className="relative z-10 container mx-auto px-6">
+                    <div className="max-w-2xl animate-fade-in">
+                        <span className="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase mb-4 inline-block shadow-sm">
+                            Corporate Gift Solutions
+                        </span>
+                        <h1 className="text-4xl md:text-5xl font-heading font-bold text-gray-900 mb-2 leading-tight">
+                            Quà tặng Doanh nghiệp <br/>
+                            <span className="text-primary italic font-light">Tinh tế & Độc bản</span>
+                        </h1>
+                        <p className="text-sm text-gray-500 max-w-md font-medium leading-relaxed">
+                            Nâng tầm thương hiệu qua những món quà LEGO thủ công. Giải pháp tối ưu cho sự kiện, quà tặng nhân sự và đối tác VIP.
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            {/* Why Choose Us */}
-            <section className="py-20 bg-gray-50">
-                <div className="container mx-auto px-6">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl font-heading font-bold text-gray-900 mb-4">Tại sao chọn The Luvin?</h2>
-                        <p className="text-gray-500 max-w-xl mx-auto">Chúng tôi hiểu rằng quà tặng doanh nghiệp không chỉ là vật chất, mà còn là bộ mặt và sự trân trọng của công ty.</p>
+            {/* 2. Professional Workspace */}
+            <section className="container mx-auto px-4 sm:px-6 py-12 -mt-12 relative z-20">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* LEFT: CONFIGURATION */}
+                    <div className="lg:col-span-7 space-y-8">
+                        <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] shadow-xl shadow-pink-100/50 border border-pink-50">
+                            <div className="flex items-center gap-4 mb-10">
+                                <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center font-bold text-xl shadow-lg shadow-primary/20">1</div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900 uppercase tracking-tight">Cấu hình quà tặng</h2>
+                                    <p className="text-xs text-gray-400 font-bold">Lựa chọn các thông số cơ bản cho mỗi đơn vị quà</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-12">
+                                {/* Frame Choice */}
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">1. Kích thước khung tranh</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {frames.map(f => (
+                                            <button 
+                                                key={f.id}
+                                                onClick={() => setSelectedFrameId(f.id)}
+                                                className={`py-4 rounded-2xl border-2 transition-all duration-300 ${selectedFrameId === f.id ? 'border-primary bg-primary/5 text-primary' : 'border-gray-50 text-gray-400 hover:border-gray-200'}`}
+                                            >
+                                                <span className="block text-sm font-black uppercase">{f.name}</span>
+                                                <span className="text-[9px] opacity-60 font-bold">{f.frameWidthCm}cm</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Characters per Frame */}
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">2. Số nhân vật LEGO mỗi bộ</label>
+                                    <div className="flex gap-3">
+                                        {[1, 2, 3, 4].map(num => (
+                                            <button 
+                                                key={num}
+                                                onClick={() => setCharCount(num)}
+                                                className={`flex-1 py-4 rounded-2xl border-2 transition-all ${charCount === num ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-gray-50 text-gray-400'}`}
+                                            >
+                                                <span className="text-sm font-black">{num} Nhân vật</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Charm Config */}
+                                <div className="p-8 bg-secondary/50 rounded-[2rem] border border-pink-100 relative overflow-hidden">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                        <div>
+                                            <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] block mb-1">3. Trang trí Charm linh kiện</label>
+                                            <p className="text-[11px] text-gray-400 font-bold">Chọn số lượng món dán trang trí thêm trên nền tranh</p>
+                                        </div>
+                                        {charmsPerFrame > 0 && (
+                                            <div className="flex bg-white p-1 rounded-xl border border-pink-100 shadow-sm animate-fade-in">
+                                                <button 
+                                                    onClick={() => setCharmPackage('standard')}
+                                                    className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${charmPackage === 'standard' ? 'bg-gray-800 text-white' : 'text-gray-400'}`}
+                                                >
+                                                    PHỔ THÔNG
+                                                </button>
+                                                <button 
+                                                    onClick={() => setCharmPackage('vip')}
+                                                    className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${charmPackage === 'vip' ? 'bg-accent text-white' : 'text-gray-400'}`}
+                                                >
+                                                    CAO CẤP
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-6 gap-2">
+                                            {[0, 1, 2, 3, 4, 5].map(num => (
+                                                <button 
+                                                    key={num}
+                                                    onClick={() => setCharmsPerFrame(num)}
+                                                    className={`py-4 rounded-xl border-2 font-black text-sm transition-all ${charmsPerFrame === num ? 'bg-white border-primary text-primary shadow-md scale-105' : 'bg-white/50 border-transparent text-gray-300'}`}
+                                                >
+                                                    {num === 0 ? 'Basic' : num}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        
+                                        {charmsPerFrame > 0 && (
+                                            <button 
+                                                onClick={() => setShowCharmModal(charmPackage)}
+                                                className="w-full text-center text-[10px] font-black text-gray-400 hover:text-primary transition-colors uppercase tracking-[0.2em] animate-fade-in py-2 border border-dashed border-gray-200 rounded-lg"
+                                            >
+                                                Xem mẫu linh kiện {charmPackage === 'vip' ? 'VIP' : 'Thường'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Order Qty */}
+                                <div className="pt-10 border-t border-gray-100">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">4. Tổng số lượng đặt hàng</label>
+                                        <span className="bg-primary text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm">ĐƠN DOANH NGHIỆP ≥ 10</span>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row items-center gap-8">
+                                        <div className="relative">
+                                            <input 
+                                                type="number" min="10" 
+                                                value={orderQty} 
+                                                onChange={(e) => setOrderQty(Math.max(1, Number(e.target.value)))}
+                                                onBlur={() => { if(orderQty < 10) setOrderQty(10); }}
+                                                className={`w-40 p-5 border-2 rounded-3xl font-black text-4xl text-center outline-none transition-all ${orderQty < 10 ? 'border-red-200 bg-red-50 text-red-500' : 'border-gray-100 focus:border-primary bg-secondary/50'}`}
+                                            />
+                                            <span className="absolute -bottom-6 left-0 right-0 text-center text-[9px] font-bold text-gray-300 uppercase">Bộ quà tặng</span>
+                                        </div>
+                                        <div className="flex-grow p-6 bg-primary/5 rounded-3xl border border-primary/10">
+                                            <p className="text-[13px] font-bold text-gray-700 leading-tight">
+                                                ✨ ƯU ĐÃI ĐẶC QUYỀN: <br/>
+                                                Tự động áp dụng <span className="text-primary font-black text-xl">giảm {quote?.discountPercent}%</span> sỉ doanh nghiệp vào bảng dự toán bên dưới.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-6">🎯</div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">Cá Nhân Hóa Logo</h3>
-                            <p className="text-gray-600 text-sm leading-relaxed">
-                                Thiết kế khung tranh theo màu sắc thương hiệu, in logo công ty và khắc tên từng nhân viên/đối tác lên sản phẩm.
-                            </p>
-                        </div>
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                            <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center text-3xl mb-6">💰</div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">Chiết Khấu Hấp Dẫn</h3>
-                            <p className="text-gray-600 text-sm leading-relaxed">
-                                Chính sách giá ưu đãi đặc biệt cho đơn hàng số lượng lớn (từ 10 sản phẩm).
-                            </p>
-                        </div>
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                            <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-3xl mb-6">🎁</div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">Trọn Gói Quà Tặng</h3>
-                            <p className="text-gray-600 text-sm leading-relaxed">
-                                Hỗ trợ đóng gói hộp quà cao cấp, thiệp viết tay và giao hàng tận nơi đến từng địa chỉ theo yêu cầu.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                    {/* RIGHT: PREMIUM QUOTE - Sticky */}
+                    <div className="lg:col-span-5 lg:sticky lg:top-24">
+                        <div className="bg-white rounded-[3rem] shadow-2xl shadow-pink-200/40 border border-white p-8 sm:p-10 flex flex-col relative overflow-hidden">
+                            {/* Decorative Background Element */}
+                            <div className="absolute -top-10 -right-10 w-48 h-48 bg-primary/5 rounded-full blur-3xl"></div>
 
-            {/* Use Cases */}
-            <section className="py-20">
-                <div className="container mx-auto px-6">
-                    <div className="flex flex-col md:flex-row items-center gap-16">
-                        <div className="w-full md:w-1/2 order-2 md:order-1">
-                            <h2 className="text-3xl font-heading font-bold text-gray-900 mb-6">Giải pháp quà tặng cho mọi dịp</h2>
-                            <ul className="space-y-6">
-                                <li className="flex gap-4">
-                                    <span className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">👋</span>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">Welcome Kit / Onboarding</h4>
-                                        <p className="text-sm text-gray-500 mt-1">Chào đón nhân viên mới với khung tranh chứa nhân vật LEGO mô phỏng chính họ.</p>
+                            <div className="relative z-10 space-y-10">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="text-2xl font-heading font-bold text-gray-900 italic">Bản dự toán ngân sách</h3>
+                                    <span className="text-[10px] font-mono text-gray-300">REF_{Date.now().toString().slice(-4)}</span>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-400 font-bold uppercase tracking-widest">Đơn giá bán lẻ</span>
+                                        <span className="font-bold text-gray-300 line-through">{formatCurrency(quote?.retailBase || 0)} / bộ</span>
                                     </div>
-                                </li>
-                                <li className="flex gap-4">
-                                    <span className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">🏆</span>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">Kỷ niệm thâm niên / Vinh danh</h4>
-                                        <p className="text-sm text-gray-500 mt-1">Ghi nhận cống hiến 1 năm, 5 năm, 10 năm với thiết kế trang trọng và ý nghĩa.</p>
+                                    <div className="flex justify-between items-center py-8 border-y border-dashed border-gray-100">
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Đơn giá ưu đãi B2B</p>
+                                            <p className="text-5xl font-heading font-bold text-primary leading-none tracking-tighter">{formatCurrency(quote?.b2bUnit || 0)}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg shadow-primary/20">
+                                                -{quote?.discountPercent}% ƯU ĐÃI
+                                            </span>
+                                        </div>
                                     </div>
-                                </li>
-                                <li className="flex gap-4">
-                                    <span className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">🤝</span>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">Quà tặng Đối tác / Sự kiện</h4>
-                                        <p className="text-sm text-gray-500 mt-1">Món quà độc lạ thay lời cảm ơn, gây ấn tượng mạnh mẽ với khách hàng VIP.</p>
+                                </div>
+
+                                <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                                        <img src={config?.logoUrl} className="w-20 grayscale brightness-200" alt="Watermark" />
                                     </div>
-                                </li>
-                            </ul>
-                        </div>
-                        <div className="w-full md:w-1/2 order-1 md:order-2">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-primary/20 rounded-2xl transform rotate-3"></div>
-                                <img src={GIFT_IMG_1} className="relative rounded-2xl shadow-xl w-full" alt="Gift Example" />
+                                    
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em] mb-3">TỔNG DỰ TOÁN ({orderQty} BỘ)</p>
+                                    <p className="text-5xl font-heading font-bold text-white mb-8 tracking-tighter">{formatCurrency(quote?.total || 0)}</p>
+                                    
+                                    <div className="bg-white/10 border border-white/20 rounded-2xl p-5 text-center shadow-inner">
+                                        <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-1">Doanh nghiệp tiết kiệm được:</p>
+                                        <p className="text-3xl font-black text-primary">{formatCurrency(quote?.totalSavings || 0)}</p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2 mt-8 border-t border-white/10 pt-6">
+                                        <p className="text-[10px] text-gray-400 flex items-center gap-2 font-bold uppercase">
+                                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span> Đã bao gồm thiết kế Market 3D miễn phí
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 flex items-center gap-2 font-bold uppercase">
+                                            <span className="w-1.5 h-1.5 bg-primary rounded-full"></span> Hợp đồng & VAT (8-10%)
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 pt-4">
+                                    <button 
+                                        onClick={handleContact}
+                                        className="w-full bg-primary text-white font-bold py-6 rounded-2xl hover:brightness-105 transition-all shadow-xl shadow-primary/30 active:scale-95 flex items-center justify-center gap-3 text-lg uppercase tracking-widest"
+                                    >
+                                        NHẬN MẪU THIẾT KẾ & BÁO GIÁ
+                                    </button>
+                                    <p className="text-center text-[10px] text-gray-400 font-bold px-6 leading-relaxed uppercase tracking-wide">
+                                        Market 3D và báo giá chi tiết sẽ được gửi tới Quý khách qua Zalo/Email trong 60 phút.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Process */}
-            <section className="py-20 bg-gray-900 text-white">
-                <div className="container mx-auto px-6 text-center">
-                    <h2 className="text-3xl font-heading font-bold mb-12">Quy trình hợp tác</h2>
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative">
-                        <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gray-700 -z-0"></div>
-                        
+            {/* 3. Features Section - Synced with Brand */}
+            <section className="py-24 border-t border-gray-100 bg-white">
+                <div className="container mx-auto px-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {[
-                            { step: 1, title: "Liên hệ & Tư vấn", desc: "Trao đổi nhu cầu, số lượng và ngân sách." },
-                            { step: 2, title: "Thiết kế mẫu", desc: "Lên demo thiết kế có logo và màu sắc thương hiệu." },
-                            { step: 3, title: "Ký HĐ & Sản xuất", desc: "Đặt cọc và tiến hành sản xuất hàng loạt." },
-                            { step: 4, title: "Giao hàng", desc: "Kiểm tra chất lượng và giao tận nơi." }
-                        ].map((item, idx) => (
-                            <div key={idx} className="relative z-10 bg-gray-900 px-4 w-full md:w-1/4">
-                                <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4 border-4 border-gray-800">
-                                    {item.step}
+                            { title: 'Tư vấn Market 3D', desc: 'Lên mẫu thiết kế nhân vật và background theo bộ nhận diện thương hiệu công ty miễn phí.', icon: '📐' },
+                            { title: 'In Ấn Logo', desc: 'Hỗ trợ in Logo doanh nghiệp lên bao bì, thiệp và hộp quà cao cấp đồng bộ.', icon: '🏷️' },
+                            { title: 'Pháp lý đầy đủ', desc: 'Cung cấp hợp đồng kinh tế và hóa đơn điện tử VAT cho mọi đơn hàng doanh nghiệp.', icon: '🧾' }
+                        ].map((item, i) => (
+                            <div key={i} className="text-center group">
+                                <div className="w-16 h-16 bg-secondary rounded-2xl flex items-center justify-center text-4xl mx-auto mb-6 group-hover:scale-110 group-hover:bg-primary/10 transition-all duration-300">
+                                    {item.icon}
                                 </div>
-                                <h4 className="font-bold text-lg mb-2">{item.title}</h4>
-                                <p className="text-gray-400 text-sm">{item.desc}</p>
+                                <h4 className="font-bold text-gray-900 uppercase text-sm mb-3 tracking-tighter">{item.title}</h4>
+                                <p className="text-xs text-gray-500 leading-relaxed max-w-[280px] mx-auto font-medium">{item.desc}</p>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* CTA Contact */}
-            <section className="py-20 bg-white">
-                <div className="container mx-auto px-6">
-                    <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto">
-                        <h2 className="text-3xl font-heading font-bold text-gray-900 mb-6">Liên hệ hợp tác</h2>
-                        <p className="text-gray-600 mb-8 max-w-lg mx-auto">
-                            Bạn đã sẵn sàng tạo nên những món quà đặc biệt cho doanh nghiệp mình? Hãy để lại thông tin hoặc liên hệ trực tiếp với chúng tôi.
-                        </p>
+            {/* Modal Library */}
+            {showCharmModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-fade-in" onClick={() => setShowCharmModal(null)}>
+                    <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-secondary/30">
+                            <div>
+                                <h3 className="text-2xl font-heading font-bold text-gray-900">
+                                    Thư viện linh kiện {showCharmModal === 'standard' ? 'Phổ thông' : 'VIP Premium'}
+                                </h3>
+                                <p className="text-[10px] text-primary font-black uppercase mt-2 tracking-widest">
+                                    QUY ĐỊNH: TỐI ĐA {charmsPerFrame} MÓN / KHUNG
+                                </p>
+                            </div>
+                            <button onClick={() => setShowCharmModal(null)} className="w-12 h-12 bg-white shadow-xl flex items-center justify-center rounded-2xl hover:text-primary transition-all border border-gray-100 font-bold">✕</button>
+                        </div>
                         
-                        <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <button 
-                                onClick={handleContact}
-                                className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-base shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.8.48 3.5 1.32 5L2.04 22l5.18-1.26C8.42 21.56 10.17 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
-                                Chat Zalo: {config?.hotline || '0964 393 115'}
+                        <div className="p-10 overflow-y-auto custom-scrollbar flex-grow bg-white">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6">
+                                {categorizedCharms[showCharmModal].map(charm => (
+                                    <div key={charm.id} className="bg-secondary/20 p-4 rounded-3xl border border-transparent hover:border-primary hover:bg-white transition-all group">
+                                        <div className="aspect-square rounded-2xl bg-white p-4 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                                            <img src={charm.imageUrl} alt={charm.name} className="max-w-full max-h-full object-contain" />
+                                        </div>
+                                        <p className="text-[10px] font-bold text-gray-600 text-center uppercase truncate px-2">{charm.name}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-8 bg-white text-center border-t border-gray-100">
+                            <button onClick={() => setShowCharmModal(null)} className="bg-gray-900 text-white px-16 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+                                Đóng thư viện mẫu
                             </button>
-                            <a 
-                                href="mailto:theluvin.gifts@gmail.com"
-                                className="bg-white border-2 border-gray-200 text-gray-800 px-8 py-4 rounded-full font-bold text-base hover:border-gray-900 hover:text-gray-900 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                Gửi Email
-                            </a>
                         </div>
                     </div>
                 </div>
-            </section>
+            )}
         </div>
     );
 };
