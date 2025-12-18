@@ -240,7 +240,7 @@ const PresetBackgroundButton: React.FC<{
                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
                             }}
                         />
-                        <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-auto">
+                        <div className="absolute bottom-1 right-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none">
                             <div 
                                 className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer"
                                 onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}
@@ -1130,7 +1130,7 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdow
             <div>
                 <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
                 <p className="text-xs text-indigo-700 leading-relaxed">
-                    Sản phẩm thủ công cần <strong>1-3 ngày hoàn thiện</strong> và 2-4 ngày vận chuyển.
+                    Sản phẩm thủ công cần <strong>1-2 ngày hoàn thiện</strong> và 2-4 ngày vận chuyển.
                     <br/>
                     Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <strong>sau 20 ngày</strong> ở bước thanh toán để được <strong>Giảm ngay 5%</strong>!
                 </p>
@@ -1958,7 +1958,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                        ẢNH XEM TRƯỚC
+                        ẢNH XEM TRƯƯỚC
                     </h3>
                     <div className="flex gap-2">
                         <button 

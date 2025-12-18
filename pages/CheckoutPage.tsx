@@ -410,7 +410,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder="Phường / Xã" 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
                                 required 
                             />
                         </div>
@@ -476,7 +476,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
                       <span className="text-xl">ℹ️</span>
                       <div className="text-xs text-blue-900 leading-relaxed">
-                          <p><b>Lưu ý:</b> Sản phẩm thiết kế thủ công cần 1-3 ngày để hoàn thiện trước khi gửi đi. Thời gian vận chuyển được tính từ khi shop giao hàng.</p>
+                          <p><b>Lưu ý:</b> Sản phẩm thiết kế thủ công cần 1-2 ngày để hoàn thiện trước khi gửi đi. Thời gian vận chuyển được tính từ khi shop giao hàng.</p>
                       </div>
                   </div>
               </div>
