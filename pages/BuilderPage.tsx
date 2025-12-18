@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -13,13 +12,13 @@ import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice, PriceBreakdownItem } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
-import { trackAddToCart } from '../services/analyticsService'; // Import tracking service
+import { trackAddToCart } from '../services/analyticsService'; 
+import { dataURLToBlob } from '../utils/helpers';
 
 declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-// ... (StepIndicator and Step1Frame components remain unchanged) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
 
@@ -183,7 +182,6 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   );
 };
 
-// ... (PresetBackgroundButton component remains unchanged) ...
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
@@ -191,7 +189,6 @@ const PresetBackgroundButton: React.FC<{
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
     const imageSrc = bg.previewUrl || bg.url;
-    // Check if it's a color (starts with #)
     const isColor = imageSrc.startsWith('#');
     
     let line1 = bg.name;
@@ -263,7 +260,6 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
-// ... (Step2BackgroundAndDecorations, PartButton components remain unchanged) ...
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;
@@ -306,8 +302,6 @@ const Step2BackgroundAndDecorations: React.FC<{
     let message = '';
 
     const currentFrameOption = frames.find(f => f.id === config.frameId);
-    
-    // FIX: Using currentFrameOption instead of undefined currentFrame
     const isCurrentFrameSquare = currentFrameOption ? Math.abs(currentFrameOption.frameWidthCm - currentFrameOption.frameHeightCm) < 1 : true;
 
     if (bg.type === 'rectangle' && isCurrentFrameSquare) {
@@ -428,9 +422,6 @@ const Step2BackgroundAndDecorations: React.FC<{
                 <PresetBackgroundButton
                   key={bg.id}
                   bg={bg}
-                  // Prevent templates from being auto-selected visually to avoid confusion, 
-                  // as templates are often just "starting points" and share same background color (e.g. white).
-                  // Standard backgrounds (no overlay) will still show as selected if active.
                   isSelected={config.background.value === bg.url && !bg.overlayConfig}
                   onClick={() => handleBackgroundSelect(bg)}
                   onZoom={onZoomImage}
@@ -502,7 +493,7 @@ const PartButton: React.FC<{
                 <div className="absolute inset-0 bg-luvin-pink opacity-20 z-10 animate-ping rounded-lg"></div>
             )}
             {isHot && (
-                <div className="absolute top-0 right-0 z-20 bg-red-500 text-white text-[10px] px-1 rounded-bl shadow-sm flex items-center justify-center w-5 h-5" title="Hot Trend - Được chọn nhiều nhất tuần qua">
+                <div className="absolute top-0 right-0 z-20 bg-red-500 text-white text-[10px] px-1 rounded-bl shadow-sm flex items-center justify-center w-5 h-5" title="Hot Trend">
                     🔥
                 </div>
             )}
@@ -511,7 +502,6 @@ const PartButton: React.FC<{
                     SALE
                 </div>
             )}
-            {/* Show Combo Badge */}
             {isBulk && !isSale && (
                 <div className="absolute top-0 left-0 z-20 bg-green-500 text-white text-[8px] px-1 rounded-br shadow-sm font-bold" title="Mua nhiều giảm giá">
                     COMBO
@@ -569,7 +559,7 @@ const Step3Characters: React.FC<{
     activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
-    showToast?: (msg: string, type: 'success' | 'error') => void; // New Prop
+    showToast?: (msg: string, type: 'success' | 'error') => void;
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -633,10 +623,7 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
         
-        // CONFLICT CHECK: Hair Volume vs Scarf/Neck Accessory
-        // Hat is allowed always as per request "tóc nào cũng đội được mũ"
         if (activeCharacter) {
-            // Only check conflict if it's an accessory (likely neck item) and hair has flag
             const isScarf = part.type === 'accessory';
             
             if (isScarf && activeCharacter.hair?.preventScarf) {
@@ -666,7 +653,7 @@ const Step3Characters: React.FC<{
             scale: 1, 
             isFlipped: false, 
             selectedColor: part.colors?.[0],
-            linkedCharId: activeCharacter?.id // Link to character for future checks
+            linkedCharId: activeCharacter?.id 
         };
         setConfig({...config, draggableItems: [...config.draggableItems, newItem]});
     }
@@ -692,9 +679,6 @@ const Step3Characters: React.FC<{
                         (newChar as any)[part.type] = part;
                     }
 
-                    // No internal slot blocking logic here anymore for hats.
-                    // We rely on filtering Draggable Items if hair changes to preventScarf
-
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
@@ -716,16 +700,12 @@ const Step3Characters: React.FC<{
             })
         });
 
-        // SECOND PASS: Remove conflicting Accessories (Scarves) if Hair changed to Bulky
-        // BUT KEEP HATS
         if (part.type === 'hair' && part.preventScarf) {
-            // We need to filter draggableItems
-            setTimeout(() => { // Small timeout to ensure state update flow or do it in one setConfig
+            setTimeout(() => { 
                 setConfig((prev: FrameConfig) => {
                     const char = prev.characters.find(c => c.id === activeCharId);
                     if (!char || !char.hair?.preventScarf) return prev;
 
-                    // Find linked ACCESSORIES (scarves/neck items) only
                     const conflictingItems = prev.draggableItems.filter(
                         item => (item.type === 'accessory') && 
                                 item.linkedCharId === activeCharId
@@ -759,8 +739,6 @@ const Step3Characters: React.FC<{
         })
       });
     }
-    
-    // ... (Rest of Step3Characters logic remains unchanged: handleCustomPrintSelect, handleRandomizeOutfit, partTypes, currentPartList, etc.)
     
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
@@ -951,11 +929,9 @@ const Step3Characters: React.FC<{
                         {currentPartList.length > 0 ? currentPartList.map(part => {
                             const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
                             
-                            // Base Effective Price for the part
                             let effectiveBasePrice = getEffectivePrice(part);
                             let originalBasePrice = part.price;
 
-                            // Calculate final display price including color surcharge
                             let priceToDisplay = effectiveBasePrice;
                             let originalPriceToDisplay = originalBasePrice;
 
@@ -1032,7 +1008,6 @@ const Step3Characters: React.FC<{
                 <div className="grid grid-cols-4 gap-2">
                     {filteredAccessories.length > 0 ? filteredAccessories.map(part => {
                         const effectivePrice = getEffectivePrice(part);
-                        // Add color surcharge if default color has price
                         const defaultColorPrice = part.colors?.[0]?.price || 0;
                         const finalPrice = effectivePrice + defaultColorPrice;
                         const originalPrice = part.price + defaultColorPrice;
@@ -1059,7 +1034,6 @@ const Step3Characters: React.FC<{
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => {
                         const effectivePrice = getEffectivePrice(part);
-                        // Add color surcharge if default color has price
                         const defaultColorPrice = part.colors?.[0]?.price || 0;
                         const finalPrice = effectivePrice + defaultColorPrice;
                         const originalPrice = part.price + defaultColorPrice;
@@ -1082,9 +1056,7 @@ const Step3Characters: React.FC<{
     );
 };
 
-// ... (Step4Summary, FontSelector, TextEditor, BuilderPage remain unchanged) ...
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
-  // ... existing code ...
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1138,7 +1110,6 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdow
             </div>
         </div>
 
-        {/* EARLY BIRD PROMO NOTIFICATION */}
         <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in">
             <span className="text-xl">📅</span>
             <div>
@@ -1232,7 +1203,7 @@ const TextEditor: React.FC<{
     deselect: () => void;
     onAddText: () => void;
     uploadedFonts: CustomFont[];
-    setPreviewFont: (font: string | null) => void; // New prop
+    setPreviewFont: (font: string | null) => void; 
 }> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
@@ -1249,7 +1220,7 @@ const TextEditor: React.FC<{
             {isLocked && (
                 <div 
                     className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
-                    onClick={(e) => e.stopPropagation()} // Stop click propagation to inputs behind
+                    onClick={(e) => e.stopPropagation()} 
                 >
                     <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
@@ -1283,7 +1254,6 @@ const TextEditor: React.FC<{
                 </div>
                 <div>
                     <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
-                    {/* Replaced Select with FontSelector */}
                     <FontSelector 
                         value={activeText.font}
                         onChange={(font) => updateActiveText({ font })}
@@ -1346,18 +1316,6 @@ interface BuilderPageProps {
     uploadedFonts: CustomFont[];
 }
 
-const base64ToBlob = (base64: string) => {
-    const arr = base64.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-};
-
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -1371,8 +1329,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
-  const [previewFont, setPreviewFont] = useState<string | null>(null); // New state for font preview
-  const [showRestoreDraft, setShowRestoreDraft] = useState(false); // AUTO SAVE STATE
+  const [previewFont, setPreviewFont] = useState<string | null>(null); 
+  const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
   
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -1383,24 +1341,19 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
-  // ... (Auto Save, Restore Draft, Hot Trends logic remain unchanged) ...
-  // --- AUTO SAVE EFFECT ---
   useEffect(() => {
-      // Only save if user has made changes (history > 1) and not editing an existing order
       if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
           const draft = JSON.stringify(config);
           localStorage.setItem('builder_draft', draft);
       }
   }, [config, history, isEditingOrder, editingCartIndex]);
 
-  // --- CHECK DRAFT ON MOUNT ---
   useEffect(() => {
       if (editingCartIndex === null && !isEditingOrder) {
           const draft = localStorage.getItem('builder_draft');
           if (draft) {
               try {
                   const parsedDraft = JSON.parse(draft);
-                  // Check if draft is different from initial
                   if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) {
                       setShowRestoreDraft(true);
                   }
@@ -1531,7 +1484,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
       if (navigator.share) {
           try {
-              const blob = await (await fetch(image)).blob();
+              const blob = dataURLToBlob(image);
+              if (!blob) throw new Error("Conversion failed");
               const file = new File([blob], "the-luvin-design.png", { type: blob.type });
               await navigator.share({
                   title: 'My LEGO Frame Design',
@@ -1636,7 +1590,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => {
       if (!selectedItemId) return;
       
-      // Normalize 'horizontal'/'vertical' from FramePreview prop to internal logic
       if (direction === 'horizontal') direction = 'center-x';
       if (direction === 'vertical') direction = 'center-y';
 
@@ -1803,9 +1756,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           }
         } catch (error: any) {
           console.error('Snapshot error:', error);
-          if (error.message && error.message.includes('Tainted')) {
-              alert("Lỗi CORS: Không thể lưu ảnh do chưa cấu hình CORS cho Firebase Storage. Vui lòng xem hướng dẫn trong README để chạy lệnh 'gsutil cors'.");
-          }
           resolve('');
         } finally {
           setSelectedItemId(originalSelectedId); 
@@ -1855,8 +1805,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleAddToCartWrapper = async (andCheckout: boolean) => {
-    // TRACKING CALL:
-    trackAddToCart(); // Fire and forget
+    trackAddToCart(); 
 
     setIsSaving(true);
     try {
@@ -1870,7 +1819,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
         animateAddToCart(base64Image);
 
-        const imageBlob = base64ToBlob(base64Image);
+        const imageBlob = dataURLToBlob(base64Image);
+        if (!imageBlob) {
+            showToast('Lỗi xử lý ảnh.', 'error');
+            setIsSaving(false);
+            return;
+        }
         const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
 
         const cloudUrl = await uploadToCloudinary(imageFile);
@@ -1886,7 +1840,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             previewImageUrl: cloudUrl
         };
 
-        // Clear draft after adding to cart
         localStorage.removeItem('builder_draft');
 
         if (editingCartIndex !== null && !andCheckout) {
@@ -1964,7 +1917,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   return (
     <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-500">
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
@@ -1974,11 +1926,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
-        {/* Layout */}
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
-            {/* Preview Section */}
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">
@@ -2030,13 +1980,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         allParts={allParts}
                         activePartType={activePartType} 
                         logoUrl={logoUrl} 
-                        previewFont={previewFont} // PASS PREVIEW FONT
-                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} // Pass Alignment Handler
+                        previewFont={previewFont} 
+                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} 
                     />
                 </div>
                 
-                {/* REMOVED: FLOATING ALIGNMENT TOOLBAR (Shows when item selected) */}
-
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -2084,7 +2032,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
                           uploadedFonts={uploadedFonts}
-                          setPreviewFont={setPreviewFont} // PASS SET PREVIEW
+                          setPreviewFont={setPreviewFont} 
                       />
                   ) : (
                       <>
@@ -2178,7 +2126,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         </div>
       </div>
 
-      {/* RESTORE DRAFT BANNER */}
       {showRestoreDraft && (
           <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-w-sm animate-bounce-small">
               <div className="flex items-start gap-3">

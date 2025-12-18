@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { Order, Page } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { uploadToCloudinary } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
+import { dataURLToBlob } from '../utils/helpers';
 
 declare var confetti: any;
 
@@ -115,7 +115,6 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                            <p className="font-bold text-gray-800 tracking-wider text-lg">{order.id}</p>
                         </div>
 
-                        {/* Payment Proof Upload Section */}
                         <div className="mt-6 pt-6 border-t border-gray-200">
                             <h3 className="text-sm font-bold text-gray-700 mb-2">Đã chuyển khoản?</h3>
                             {proofUrl ? (

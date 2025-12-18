@@ -1,7 +1,7 @@
-
 // services/uploadService.ts
 import { storage } from '../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { dataURLToBlob } from '../utils/helpers';
 
 /**
  * Uploads a file or base64 string to Firebase Storage
@@ -9,19 +9,18 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
  * @returns Download URL or null
  */
 export const uploadToCloudinary = async (file: File | string): Promise<string | null> => {
-    // Note: Function name kept as 'uploadToCloudinary' for backward compatibility,
-    // but logic now uses Firebase Storage.
-    
     try {
-        let blob: Blob;
-        // Tạo tên file unique để tránh trùng lặp
+        let blob: Blob | null;
         let fileName = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
         if (typeof file === 'string') {
-            // Handle Base64 String (from html2canvas or charms)
+            // Handle Base64 String
             if (file.startsWith('data:')) {
-                const response = await fetch(file);
-                blob = await response.blob();
+                blob = dataURLToBlob(file);
+                if (!blob) {
+                    console.error("Failed to convert dataURL to blob");
+                    return null;
+                }
                 
                 // Try to detect extension from mime type
                 const mimeType = file.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1];
@@ -31,13 +30,12 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
                 // If it's already a URL, just return it
                 return file;
             } else {
-                console.error("Invalid file format provided to upload service");
+                console.error("Invalid string provided to upload service (not dataURL or HTTP)");
                 return null;
             }
         } else {
-            // Handle File Object (from input type='file')
+            // Handle File Object
             blob = file;
-            // Sanitize filename
             const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
             fileName += `_${cleanName}`;
         }
@@ -56,15 +54,10 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
     } catch (error: any) {
         console.error("Firebase Storage Upload Error:", error);
         
-        // Gợi ý lỗi thường gặp cho người dùng
         if (error.code === 'storage/unauthorized') {
-            alert("Lỗi quyền truy cập (403): Vui lòng vào Firebase Console -> Storage -> Rules và đổi 'allow write: if false' thành 'allow write: if true' (chế độ test).");
-        } else if (error.code === 'storage/canceled') {
-            alert("Đã hủy upload.");
-        } else if (error.code === 'storage/unknown') {
-            alert("Lỗi không xác định. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình bucket.");
+            alert("Lỗi quyền truy cập (403): Vui lòng kiểm tra Firebase Rules.");
         } else {
-            alert(`Lỗi upload ảnh: ${error.message}`);
+            alert(`Lỗi upload: ${error.message || "Failed to fetch"}`);
         }
         return null;
     }

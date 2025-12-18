@@ -1,4 +1,3 @@
-
 import { LegoPart } from '../types';
 import { LEGO_PARTS } from '../constants';
 
@@ -12,4 +11,32 @@ export const categorizeParts = (parts: LegoPart[]) => {
         }
     });
     return categories;
+};
+
+/**
+ * Converts a data URL (base64) to a Blob object without using fetch().
+ * This avoids "Failed to fetch" errors in restricted environments.
+ */
+export const dataURLToBlob = (dataURL: string): Blob | null => {
+    try {
+        const arr = dataURL.split(',');
+        if (arr.length < 2) return null;
+        
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        if (!mimeMatch) return null;
+        
+        const mime = mimeMatch[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        
+        return new Blob([u8arr], { type: mime });
+    } catch (e) {
+        console.error("Error converting dataURL to Blob", e);
+        return null;
+    }
 };
