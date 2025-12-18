@@ -2,22 +2,24 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
+    FRAME_OPTIONS, 
     LEGO_PARTS, 
-    INITIAL_FRAME_CONFIG, 
     defaultShirtColors,
     defaultPantsColors,
+    INITIAL_FRAME_CONFIG,
 } from '../constants';
 import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice, PriceBreakdownItem } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
-import { trackAddToCart } from '../services/analyticsService';
+import { trackAddToCart } from '../services/analyticsService'; // Import tracking service
 
 declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
+// ... (StepIndicator and Step1Frame components remain unchanged) ...
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
   const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
 
@@ -181,6 +183,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   );
 };
 
+// ... (PresetBackgroundButton component remains unchanged) ...
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
     isSelected: boolean;
@@ -188,6 +191,7 @@ const PresetBackgroundButton: React.FC<{
     onZoom: (url: string) => void;
 }> = ({ bg, isSelected, onClick, onZoom }) => {
     const imageSrc = bg.previewUrl || bg.url;
+    // Check if it's a color (starts with #)
     const isColor = imageSrc.startsWith('#');
     
     let line1 = bg.name;
@@ -259,6 +263,7 @@ const PresetBackgroundButton: React.FC<{
     );
 };
 
+// ... (Step2BackgroundAndDecorations, PartButton components remain unchanged) ...
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
   setConfig: (c: FrameConfig) => void;
@@ -273,16 +278,6 @@ const Step2BackgroundAndDecorations: React.FC<{
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [showHintModal, setShowHintModal] = useState(false);
-
-  useEffect(() => {
-    // Show one-time hint modal for Step 2
-    const hasSeenHint = localStorage.getItem('luvin_seen_step2_hint');
-    if (!hasSeenHint) {
-        setShowHintModal(true);
-        localStorage.setItem('luvin_seen_step2_hint', 'true');
-    }
-  }, []);
 
   const availableBackgrounds = useMemo(() => {
     return backgrounds;
@@ -311,6 +306,8 @@ const Step2BackgroundAndDecorations: React.FC<{
     let message = '';
 
     const currentFrameOption = frames.find(f => f.id === config.frameId);
+    
+    // FIX: Using currentFrameOption instead of undefined currentFrame
     const isCurrentFrameSquare = currentFrameOption ? Math.abs(currentFrameOption.frameWidthCm - currentFrameOption.frameHeightCm) < 1 : true;
 
     if (bg.type === 'rectangle' && isCurrentFrameSquare) {
@@ -364,8 +361,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   };
 
   const handleBgFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.currentTarget.files;
-    if (files && files[0]) {
+    if (e.target.files && e.target.files[0]) {
       const fileReader = new FileReader();
       fileReader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
@@ -386,42 +382,24 @@ const Step2BackgroundAndDecorations: React.FC<{
             img.src = imageUrl;
         }
       };
-      fileReader.readAsDataURL(files[0]);
+      fileReader.readAsDataURL(e.target.files[0]);
     }
   };
 
   const handleCharmFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.currentTarget.files;
-    if (files && files[0]) {
+    if (e.target.files && e.target.files[0]) {
       const fileReader = new FileReader();
       fileReader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
           addCharm(event.target.result as string);
         }
       };
-      fileReader.readAsDataURL(files[0]);
+      fileReader.readAsDataURL(e.target.files[0]);
     }
   };
 
   return (
     <div className="space-y-4">
-      {showHintModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center transform animate-bounce-small">
-                  <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🎨</div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2 font-heading">Thỏa sức trang trí!</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                      Bạn cứ thoải mái lên ý tưởng với các mẫu nền và chữ. Sau khi bạn đặt hàng, <b>Designer của The Luvin sẽ thiết kế lại</b> background chuyên nghiệp dựa trên yêu cầu của bạn để đảm bảo thành phẩm đẹp nhất!
-                  </p>
-                  <button 
-                    onClick={() => setShowHintModal(false)}
-                    className="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-luvin-pink transition-colors shadow-md"
-                  >
-                      Tôi đã hiểu
-                  </button>
-              </div>
-          </div>
-      )}
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3">A. CHỌN MẪU NỀN CÓ SẴN</h4>
         
@@ -450,6 +428,9 @@ const Step2BackgroundAndDecorations: React.FC<{
                 <PresetBackgroundButton
                   key={bg.id}
                   bg={bg}
+                  // Prevent templates from being auto-selected visually to avoid confusion, 
+                  // as templates are often just "starting points" and share same background color (e.g. white).
+                  // Standard backgrounds (no overlay) will still show as selected if active.
                   isSelected={config.background.value === bg.url && !bg.overlayConfig}
                   onClick={() => handleBackgroundSelect(bg)}
                   onZoom={onZoomImage}
@@ -530,6 +511,7 @@ const PartButton: React.FC<{
                     SALE
                 </div>
             )}
+            {/* Show Combo Badge */}
             {isBulk && !isSale && (
                 <div className="absolute top-0 left-0 z-20 bg-green-500 text-white text-[8px] px-1 rounded-br shadow-sm font-bold" title="Mua nhiều giảm giá">
                     COMBO
@@ -587,9 +569,8 @@ const Step3Characters: React.FC<{
     activePartType: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
-    showToast?: (msg: string, type: 'success' | 'error') => void;
-    allParts: Record<string, LegoPart>;
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts }) => {
+    showToast?: (msg: string, type: 'success' | 'error') => void; // New Prop
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -652,16 +633,14 @@ const Step3Characters: React.FC<{
     const addDraggableItem = (part: LegoPart) => {
         if (part.type !== 'accessory' && part.type !== 'pet' && part.type !== 'hat') return;
         
+        // CONFLICT CHECK: Hair Volume vs Scarf/Neck Accessory
+        // Hat is allowed always as per request "tóc nào cũng đội được mũ"
         if (activeCharacter) {
-            const isNeckItem = part.type === 'accessory' && (
-                part.category?.toLowerCase().includes('cổ') || 
-                part.category?.toLowerCase().includes('khăn') ||
-                part.name?.toLowerCase().includes('khăn') ||
-                part.name?.toLowerCase().includes('vòng cổ')
-            );
+            // Only check conflict if it's an accessory (likely neck item) and hair has flag
+            const isScarf = part.type === 'accessory';
             
-            if (isNeckItem && activeCharacter.hair?.preventScarf) {
-                if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/phụ kiện ở cổ!', 'error');
+            if (isScarf && activeCharacter.hair?.preventScarf) {
+                if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/phụ kiện!', 'error');
                 return;
             }
         }
@@ -687,7 +666,7 @@ const Step3Characters: React.FC<{
             scale: 1, 
             isFlipped: false, 
             selectedColor: part.colors?.[0],
-            linkedCharId: activeCharacter?.id 
+            linkedCharId: activeCharacter?.id // Link to character for future checks
         };
         setConfig({...config, draggableItems: [...config.draggableItems, newItem]});
     }
@@ -713,6 +692,9 @@ const Step3Characters: React.FC<{
                         (newChar as any)[part.type] = part;
                     }
 
+                    // No internal slot blocking logic here anymore for hats.
+                    // We rely on filtering Draggable Items if hair changes to preventScarf
+
                     let partColors = part.colors;
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
@@ -734,26 +716,19 @@ const Step3Characters: React.FC<{
             })
         });
 
+        // SECOND PASS: Remove conflicting Accessories (Scarves) if Hair changed to Bulky
+        // BUT KEEP HATS
         if (part.type === 'hair' && part.preventScarf) {
-            setTimeout(() => {
+            // We need to filter draggableItems
+            setTimeout(() => { // Small timeout to ensure state update flow or do it in one setConfig
                 setConfig((prev: FrameConfig) => {
                     const char = prev.characters.find(c => c.id === activeCharId);
                     if (!char || !char.hair?.preventScarf) return prev;
 
+                    // Find linked ACCESSORIES (scarves/neck items) only
                     const conflictingItems = prev.draggableItems.filter(
-                        item => {
-                            if (item.linkedCharId !== activeCharId) return false;
-                            if (item.type !== 'accessory') return false;
-                            
-                            const partData = allParts[item.partId];
-                            const isNeckItem = partData && (
-                                partData.category?.toLowerCase().includes('cổ') || 
-                                partData.category?.toLowerCase().includes('khăn') ||
-                                partData.name?.toLowerCase().includes('khăn') ||
-                                partData.name?.toLowerCase().includes('vòng cổ')
-                            );
-                            return isNeckItem;
-                        }
+                        item => (item.type === 'accessory') && 
+                                item.linkedCharId === activeCharId
                     );
 
                     if (conflictingItems.length > 0) {
@@ -784,6 +759,8 @@ const Step3Characters: React.FC<{
         })
       });
     }
+    
+    // ... (Rest of Step3Characters logic remains unchanged: handleCustomPrintSelect, handleRandomizeOutfit, partTypes, currentPartList, etc.)
     
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
@@ -973,8 +950,12 @@ const Step3Characters: React.FC<{
                          )}
                         {currentPartList.length > 0 ? currentPartList.map(part => {
                             const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
+                            
+                            // Base Effective Price for the part
                             let effectiveBasePrice = getEffectivePrice(part);
                             let originalBasePrice = part.price;
+
+                            // Calculate final display price including color surcharge
                             let priceToDisplay = effectiveBasePrice;
                             let originalPriceToDisplay = originalBasePrice;
 
@@ -1051,6 +1032,7 @@ const Step3Characters: React.FC<{
                 <div className="grid grid-cols-4 gap-2">
                     {filteredAccessories.length > 0 ? filteredAccessories.map(part => {
                         const effectivePrice = getEffectivePrice(part);
+                        // Add color surcharge if default color has price
                         const defaultColorPrice = part.colors?.[0]?.price || 0;
                         const finalPrice = effectivePrice + defaultColorPrice;
                         const originalPrice = part.price + defaultColorPrice;
@@ -1077,6 +1059,7 @@ const Step3Characters: React.FC<{
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => {
                         const effectivePrice = getEffectivePrice(part);
+                        // Add color surcharge if default color has price
                         const defaultColorPrice = part.colors?.[0]?.price || 0;
                         const finalPrice = effectivePrice + defaultColorPrice;
                         const originalPrice = part.price + defaultColorPrice;
@@ -1099,7 +1082,9 @@ const Step3Characters: React.FC<{
     );
 };
 
+// ... (Step4Summary, FontSelector, TextEditor, BuilderPage remain unchanged) ...
 const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
+  // ... existing code ...
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1153,6 +1138,7 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdow
             </div>
         </div>
 
+        {/* EARLY BIRD PROMO NOTIFICATION */}
         <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in">
             <span className="text-xl">📅</span>
             <div>
@@ -1246,7 +1232,7 @@ const TextEditor: React.FC<{
     deselect: () => void;
     onAddText: () => void;
     uploadedFonts: CustomFont[];
-    setPreviewFont: (font: string | null) => void;
+    setPreviewFont: (font: string | null) => void; // New prop
 }> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
@@ -1263,7 +1249,7 @@ const TextEditor: React.FC<{
             {isLocked && (
                 <div 
                     className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
-                    onClick={(e) => e.stopPropagation()} 
+                    onClick={(e) => e.stopPropagation()} // Stop click propagation to inputs behind
                 >
                     <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
@@ -1297,6 +1283,7 @@ const TextEditor: React.FC<{
                 </div>
                 <div>
                     <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
+                    {/* Replaced Select with FontSelector */}
                     <FontSelector 
                         value={activeText.font}
                         onChange={(font) => updateActiveText({ font })}
@@ -1384,8 +1371,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [activePartType, setActivePartType] = useState<'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set'>('shirt');
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
-  const [previewFont, setPreviewFont] = useState<string | null>(null); 
-  const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
+  const [previewFont, setPreviewFont] = useState<string | null>(null); // New state for font preview
+  const [showRestoreDraft, setShowRestoreDraft] = useState(false); // AUTO SAVE STATE
   
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -1396,19 +1383,24 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
+  // ... (Auto Save, Restore Draft, Hot Trends logic remain unchanged) ...
+  // --- AUTO SAVE EFFECT ---
   useEffect(() => {
+      // Only save if user has made changes (history > 1) and not editing an existing order
       if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
           const draft = JSON.stringify(config);
           localStorage.setItem('builder_draft', draft);
       }
   }, [config, history, isEditingOrder, editingCartIndex]);
 
+  // --- CHECK DRAFT ON MOUNT ---
   useEffect(() => {
       if (editingCartIndex === null && !isEditingOrder) {
           const draft = localStorage.getItem('builder_draft');
           if (draft) {
               try {
                   const parsedDraft = JSON.parse(draft);
+                  // Check if draft is different from initial
                   if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) {
                       setShowRestoreDraft(true);
                   }
@@ -1502,6 +1494,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
       setConfig(prev => {
           const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
+          
           if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
               const newHistory = history.slice(0, historyIndex + 1);
               newHistory.push(newConfig);
@@ -1642,6 +1635,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => {
       if (!selectedItemId) return;
+      
+      // Normalize 'horizontal'/'vertical' from FramePreview prop to internal logic
       if (direction === 'horizontal') direction = 'center-x';
       if (direction === 'vertical') direction = 'center-y';
 
@@ -1808,6 +1803,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           }
         } catch (error: any) {
           console.error('Snapshot error:', error);
+          if (error.message && error.message.includes('Tainted')) {
+              alert("Lỗi CORS: Không thể lưu ảnh do chưa cấu hình CORS cho Firebase Storage. Vui lòng xem hướng dẫn trong README để chạy lệnh 'gsutil cors'.");
+          }
           resolve('');
         } finally {
           setSelectedItemId(originalSelectedId); 
@@ -1857,34 +1855,46 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleAddToCartWrapper = async (andCheckout: boolean) => {
-    trackAddToCart(); 
+    // TRACKING CALL:
+    trackAddToCart(); // Fire and forget
+
     setIsSaving(true);
     try {
         const base64Image = await captureFrameAsImage();
+        
         if (!base64Image) {
             showToast('Lỗi tạo ảnh. Có thể do lỗi CORS.', 'error');
             setIsSaving(false);
             return;
         }
+
         animateAddToCart(base64Image);
+
         const imageBlob = base64ToBlob(base64Image);
         const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
+
         const cloudUrl = await uploadToCloudinary(imageFile);
+        
         if (!cloudUrl) {
              showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error');
              setIsSaving(false);
              return;
         }
+
         const finalConfig = { 
             ...config, 
             previewImageUrl: cloudUrl
         };
+
+        // Clear draft after adding to cart
         localStorage.removeItem('builder_draft');
+
         if (editingCartIndex !== null && !andCheckout) {
             onUpdateCart(finalConfig);
         } else {
             onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
         }
+        
         if (andCheckout) {
             navigateTo('checkout');
         }
@@ -1906,12 +1916,15 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           setSelectedItemId(null);
           return;
       }
+
       const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
       let currentIndex = order.indexOf(activePartType as any);
+      
       if (activePartType === 'set') {
           setActivePartType('hair');
           return;
       }
+
       if (currentIndex !== -1 && currentIndex < order.length - 1) {
           setActivePartType(order[currentIndex + 1]);
       } else {
@@ -1933,7 +1946,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           showToast={showToast} 
           preferredSquareFrameId={lastSquareFrameId}
       />;
-      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} />;
       case 4: return <Step4Summary 
         totalPrice={totalPrice} 
         priceBreakdown={priceBreakdown} 
@@ -1951,6 +1964,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   return (
     <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
       <div className="container mx-auto px-4">
+        {/* Header */}
         <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-500">
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
@@ -1960,20 +1974,38 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
+        {/* Layout */}
         <StepIndicator currentStep={step} setStep={setStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
+            {/* Preview Section */}
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">ẢNH XEM TRƯỚC</h3>
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                        ẢNH XEM TRƯỚC
+                    </h3>
                     <div className="flex gap-2">
-                        <button onClick={handleUndo} disabled={historyIndex <= 0} className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all" title="Hoàn tác (Undo)">
+                        <button 
+                            onClick={handleUndo} 
+                            disabled={historyIndex <= 0}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            title="Hoàn tác (Undo)"
+                        >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
                         </button>
-                        <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all" title="Làm lại (Redo)">
+                        <button 
+                            onClick={handleRedo} 
+                            disabled={historyIndex >= history.length - 1}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            title="Làm lại (Redo)"
+                        >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
                         </button>
-                        <button onClick={handleShare} className="w-8 h-8 rounded border bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all" title="Chia sẻ thiết kế">
+                        <button 
+                            onClick={handleShare}
+                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+                            title="Chia sẻ thiết kế"
+                        >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     </div>
@@ -1998,14 +2030,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         allParts={allParts}
                         activePartType={activePartType} 
                         logoUrl={logoUrl} 
-                        previewFont={previewFont}
-                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')}
+                        previewFont={previewFont} // PASS PREVIEW FONT
+                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} // Pass Alignment Handler
                     />
                 </div>
+                
+                {/* REMOVED: FLOATING ALIGNMENT TOOLBAR (Shows when item selected) */}
+
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 12c0 5.385-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
                         </svg>
                     </span>
                     <div className="text-xs text-amber-900 leading-relaxed">
@@ -2049,12 +2084,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                           deselect={() => setSelectedItemId(null)}
                           onAddText={addText}
                           uploadedFonts={uploadedFonts}
-                          setPreviewFont={setPreviewFont}
+                          setPreviewFont={setPreviewFont} // PASS SET PREVIEW
                       />
                   ) : (
-                      <div className="min-h-[400px]">
-                          {renderStepContent()}
-                      </div>
+                      <>
+                          <div className="min-h-[400px]">
+                              {renderStepContent()}
+                          </div>
+                      </>
                   )}
               </div>
               
@@ -2141,6 +2178,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         </div>
       </div>
 
+      {/* RESTORE DRAFT BANNER */}
       {showRestoreDraft && (
           <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-w-sm animate-bounce-small">
               <div className="flex items-start gap-3">
