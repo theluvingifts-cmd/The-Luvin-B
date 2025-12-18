@@ -14,30 +14,50 @@ interface CollectionPageProps {
 }
 
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, templates, onZoomImage, allParts, frames }) => {
-    const displayTemplates = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
+    // Fix: Explicitly type displayTemplates as CollectionTemplate[] to ensure category property is recognized across both data sources
+    const displayTemplates: CollectionTemplate[] = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('Tất cả');
 
-    const categories = ['Tất cả', 'Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh'];
+    // Lấy danh sách danh mục duy nhất từ các mẫu hiện có, cộng với danh mục mặc định
+    const categories = useMemo(() => {
+        const dynamicCats = new Set<string>();
+        displayTemplates.forEach(t => {
+            // Fix: Category property is now correctly recognized as existing on displayTemplates items
+            if (t.category) dynamicCats.add(t.category);
+        });
+        const baseCats = ['Tất cả', 'Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh'];
+        return Array.from(new Set([...baseCats, ...Array.from(dynamicCats)]));
+    }, [displayTemplates]);
 
     const filteredTemplates = useMemo(() => {
         return displayTemplates.filter(template => {
             const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
             
-            let matchesCategory = true;
-            if (activeCategory !== 'Tất cả') {
-                const keywords: Record<string, string[]> = {
-                    'Tình yêu': ['yêu', 'love', 'couple', 'valentine'],
-                    'Sinh nhật': ['sinh nhật', 'birthday', 'sn'],
-                    'Kỷ niệm': ['kỷ niệm', 'anniversary', 'tháng'],
-                    'Gia đình': ['gia đình', 'family', 'nhà'],
-                    'Giáng sinh': ['noel', 'christmas', 'giáng sinh', 'xmas']
-                };
-                
-                const currentKeywords = keywords[activeCategory] || [];
-                const nameLower = template.name.toLowerCase();
-                matchesCategory = currentKeywords.some(kw => nameLower.includes(kw));
+            // Logic lọc theo Category: Ưu tiên lọc theo trường category, nếu không có thì fallback về quét từ khóa cũ
+            let matchesCategory = activeCategory === 'Tất cả';
+            
+            if (!matchesCategory) {
+                // 1. Kiểm tra trường category của template
+                // Fix: Category property is now correctly recognized as existing on displayTemplates items
+                if (template.category === activeCategory) {
+                    matchesCategory = true;
+                } 
+                // 2. Fallback: Nếu template chưa có category, quét từ khóa trong tên (để hỗ trợ dữ liệu cũ)
+                // Fix: Category property is now correctly recognized as existing on displayTemplates items
+                else if (!template.category) {
+                    const keywords: Record<string, string[]> = {
+                        'Tình yêu': ['yêu', 'love', 'couple', 'valentine'],
+                        'Sinh nhật': ['sinh nhật', 'birthday', 'sn'],
+                        'Kỷ niệm': ['kỷ niệm', 'anniversary', 'tháng'],
+                        'Gia đình': ['gia đình', 'family', 'nhà'],
+                        'Giáng sinh': ['noel', 'christmas', 'giáng sinh', 'xmas']
+                    };
+                    const currentKeywords = keywords[activeCategory] || [];
+                    const nameLower = template.name.toLowerCase();
+                    matchesCategory = currentKeywords.some(kw => nameLower.includes(kw));
+                }
             }
 
             return matchesSearch && matchesCategory;
@@ -63,10 +83,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 <div className="mt-8 max-w-md mx-auto relative group">
                     <input 
                         type="text" 
-                        placeholder="Tìm kiếm mẫu (VD: Sinh nhật, Tình yêu...)" 
+                        placeholder="Tìm kiếm mẫu thiết kế..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-full text-sm transition-all outline-none shadow-sm focus:shadow-md focus:border-primary focus:ring-1 focus:ring-primary/20"
+                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-full text-sm transition-all outline-none shadow-sm focus:shadow-md focus:border-primary focus:ring-1 focus:ring-primary/20"
                     />
                     <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -143,7 +163,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="mt-auto pt-4 flex items-end justify-between border-t border-gray-50">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Giá tham khảo</span>
+                                        {/* Fix: Category property is now correctly recognized as existing on displayTemplates items */}
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{template.category || 'Mẫu thiết kế'}</span>
                                         <span className="text-lg font-bold text-gray-900">{formatCurrency(totalPrice)}</span>
                                     </div>
                                     <div className="text-right">

@@ -1,4 +1,4 @@
-// ... (previous imports)
+
 import React, { useState, useMemo } from 'react';
 import { LegoPart, FrameOption, PresetBackground, CollectionTemplate } from '../../types';
 import { addPart, updatePart, deletePart, seedDatabase, reorderParts } from '../../services/productService';
@@ -26,7 +26,6 @@ type ProductSubTab = 'parts' | 'backgrounds' | 'frames' | 'templates';
 type ViewMode = 'list' | 'edit';
 
 export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, templates, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds, onRefreshTemplates }) => {
-// ... (Component logic same as original file)
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     
@@ -443,7 +442,6 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                         </>
                     )}
 
-                    {/* Templates tab logic remains same... */}
                     {activeProductSubTab === 'templates' && (
                         <>
                             <div className="flex justify-end gap-2 mb-4">
@@ -456,7 +454,10 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <img src={tpl.imageUrl} className="w-full h-48 object-cover" />
                                         <div className="p-3">
                                             <h4 className="font-bold text-gray-800">{tpl.name}</h4>
-                                            <p className="text-xs text-gray-500 mt-1">{tpl.config.characters.length} Nhân vật</p>
+                                            <div className="flex justify-between items-center mt-2">
+                                                <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{tpl.category || 'Mẫu thiết kế'}</span>
+                                                <span className="text-xs text-gray-500">{tpl.config.characters.length} Nhân vật</span>
+                                            </div>
                                         </div>
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             <button onClick={() => switchToEdit(tpl, 'templates')} className="px-3 py-1 bg-white text-gray-900 rounded font-bold text-sm hover:bg-gray-100">Sửa</button>

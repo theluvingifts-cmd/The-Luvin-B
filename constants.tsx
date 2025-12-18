@@ -1,5 +1,5 @@
 
-import type { FrameOption, LegoPart, FrameConfig, OutfitColor, Order } from './types';
+import type { FrameOption, LegoPart, FrameConfig, OutfitColor, Order, CollectionTemplate } from './types';
 
 
 export const FRAME_OPTIONS: FrameOption[] = [
@@ -66,7 +66,11 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
   shapes: [], // Initialize shapes array
 };
 
-export const COLLECTION_TEMPLATES: { id: string; name: string; imageUrl: string; config: FrameConfig }[] = [];
+/**
+ * COLLECTION_TEMPLATES is used as a fallback when no templates are fetched from the database.
+ * Explicitly type it as CollectionTemplate[] to ensure the category property is recognized.
+ */
+export const COLLECTION_TEMPLATES: CollectionTemplate[] = [];
 
 export const FEEDBACK_ITEMS = [];
 
