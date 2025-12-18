@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -279,6 +280,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   onZoomImage: (url: string) => void;
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
+// FIX: Removed 'backgroundsCount' as it's not defined in props interface
 }> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const bgUploadRef = useRef<HTMLInputElement>(null);
   const charmUploadRef = useRef<HTMLInputElement>(null);
@@ -364,11 +366,15 @@ const Step2BackgroundAndDecorations: React.FC<{
   };
 
   const handleBgFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    // FIX: Using safer reference to the selected file
+    const file = e.target.files?.[0];
+    if (file) {
       const fileReader = new FileReader();
-      fileReader.onload = (event) => {
-        if (event.target && typeof event.target.result === 'string') {
-            const imageUrl = event.target.result as string;
+      fileReader.onload = () => {
+        // FIX: Safer access to fileReader.result
+        const result = fileReader.result;
+        if (typeof result === 'string') {
+            const imageUrl = result;
             const img = new Image();
             img.onload = () => {
                  const isLandscape = img.naturalWidth > img.naturalHeight;
@@ -385,19 +391,23 @@ const Step2BackgroundAndDecorations: React.FC<{
             img.src = imageUrl;
         }
       };
-      fileReader.readAsDataURL(e.target.files[0]);
+      fileReader.readAsDataURL(file);
     }
   };
 
   const handleCharmFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    // FIX: Get file reference properly
+    const file = e.target.files?.[0];
+    if (file) {
       const fileReader = new FileReader();
-      fileReader.onload = (event) => {
-        if (event.target && typeof event.target.result === 'string') {
-          addCharm(event.target.result as string);
+      fileReader.onload = () => {
+        // FIX: Safer result access and corrected readAsDataURL call
+        const result = fileReader.result;
+        if (typeof result === 'string') {
+          addCharm(result);
         }
       };
-      fileReader.readAsDataURL(e.target.files[0]);
+      fileReader.readAsDataURL(file);
     }
   };
 
@@ -569,7 +579,7 @@ const Step3Characters: React.FC<{
     setActivePartType: (type: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set') => void;
     hotPartIds: string[];
     showToast?: (msg: string, type: 'success' | 'error') => void;
-    allParts: Record<string, LegoPart>; // ADDED
+    allParts: Record<string, LegoPart>; 
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -1058,7 +1068,7 @@ const Step3Characters: React.FC<{
                                 part={part} 
                                 isSelected={false} 
                                 onClick={() => addDraggableItem(part)} 
-                                priceToDisplay={finalPrice}
+                                priceToDisplay={finalPrice} 
                                 originalPrice={originalPrice}
                                 isHot={hotPartIds.includes(part.id)}
                             />
@@ -1070,11 +1080,62 @@ const Step3Characters: React.FC<{
     );
 };
 
-const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; isSaving: boolean; isEditingOrder?: boolean }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder }) => {
+// NEW COMPONENT: TRUST NUDGE (DESIGNER COMMITMENT)
+const DesignerCommitment: React.FC = () => (
+    <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 flex gap-3 items-start animate-fade-in">
+        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0 text-xl">
+            🛡️
+        </div>
+        <div>
+            <p className="font-bold text-green-900 text-sm mb-1">An tâm tuyệt đối!</p>
+            <p className="text-xs text-green-700 leading-relaxed">
+                Sau khi đặt hàng, <b>Designer của The Luvin</b> sẽ trực tiếp căn chỉnh lại bố cục, font chữ đẹp nhất và <b>gửi ảnh thực tế</b> cho bạn duyệt trước khi đóng gói & gửi đi.
+            </p>
+        </div>
+    </div>
+);
+
+// NEW COMPONENT: URGENCY NUDGE (COUNTDOWN)
+const UrgencyFlashSale: React.FC<{ timeLeft: number }> = ({ timeLeft }) => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const formatTime = (val: number) => val.toString().padStart(2, '0');
+
+    return (
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-xl p-4 mb-4 text-white shadow-lg animate-pulse">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <span className="text-xl">🔥</span>
+                    <div>
+                        <p className="font-black text-sm uppercase tracking-wider">Ưu đãi phút chót!</p>
+                        <p className="text-[10px] opacity-90 font-bold">Hoàn tất đơn để nhận 1 Sticker quà tặng</p>
+                    </div>
+                </div>
+                <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg font-mono font-bold text-lg border border-white/30">
+                    {formatTime(minutes)}:{formatTime(seconds)}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Step4Summary: React.FC<{ 
+    totalPrice: number; 
+    priceBreakdown: PriceBreakdownItem[]; 
+    frameName: string; 
+    charCount: number; 
+    onAddToCart: () => void; 
+    onBuyNow: () => void; 
+    isSaving: boolean; 
+    isEditingOrder?: boolean;
+    urgencyTimeLeft: number;
+}> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
     <div>
+        {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
+        
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
             <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
                 <span>CHI TIẾT HÓA ĐƠN</span>
@@ -1129,20 +1190,22 @@ const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdow
             <div>
                 <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
                 <p className="text-xs text-indigo-700 leading-relaxed">
-                    Sản phẩm thủ công cần <strong>1-2 ngày hoàn thiện</strong> và 2-4 ngày vận chuyển.
+                    Sản phẩm thủ công cần <b>1-2 ngày hoàn thiện</b> và 2-4 ngày vận chuyển.
                     <br/>
-                    Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <strong>sau 20 ngày</strong> ở bước thanh toán để được <strong>Giảm ngay 5%</strong>!
+                    Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <b>sau 20 ngày</b> ở bước thanh toán để được <b>Giảm ngay 5%</b>!
                 </p>
             </div>
         </div>
 
         <div className="mt-4 space-y-2">
+            {!isEditingOrder && <DesignerCommitment />}
+            
             {!isEditingOrder && (
-                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-md">
+                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors shadow-md">
                     {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
                 </button>
             )}
-            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors disabled:opacity-50 disabled:cursor-wait ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
+            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
                 {isSaving ? '...' : (isEditingOrder ? 'Lưu mẫu thiết kế' : 'Thêm vào giỏ hàng')}
             </button>
         </div>
@@ -1269,7 +1332,7 @@ const TextEditor: React.FC<{
                 <div>
                     <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
                     <FontSelector 
-                        value={activeText.font}
+                        value={activeText.font} 
                         onChange={(font) => updateActiveText({ font })}
                         onPreview={setPreviewFont}
                         uploadedFonts={uploadedFonts}
@@ -1346,6 +1409,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [previewFont, setPreviewFont] = useState<string | null>(null); 
   const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
   
+  // NEW: Urgency Countdown Logic (15 minutes = 900 seconds)
+  const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
+  const urgencyTimerRef = useRef<any>(null);
+
   // NEW: Step 2 Hint Modal States with Cooldown
   const [showStep2Hint, setShowStep2Hint] = useState(false);
   const [hasSeenStep2Hint, setHasSeenStep2Hint] = useState(false);
@@ -1359,6 +1426,24 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
+
+  // TRIGGER: URGENCY COUNTDOWN WHEN REACHING STEP 4
+  useEffect(() => {
+    if (step === 4 && !isEditingOrder && !urgencyTimerRef.current) {
+        urgencyTimerRef.current = setInterval(() => {
+            setUrgencyTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(urgencyTimerRef.current);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    }
+    return () => {
+        // We don't clear it on unmount to keep it running if they navigate back/forth in builder
+    };
+  }, [step, isEditingOrder]);
 
   // Trigger Step 2 Hint with Countdown
   useEffect(() => {
@@ -1947,6 +2032,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         onBuyNow={() => handleAddToCartWrapper(true)}
         isSaving={isSaving} 
         isEditingOrder={isEditingOrder}
+        urgencyTimeLeft={urgencyTimeLeft}
       />;
       default: return null;
     }
@@ -2031,7 +2117,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                     </span>
                     <div className="text-xs text-amber-900 leading-relaxed">
                         <p className="font-bold mb-1">Lưu ý quan trọng:</p>
-                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <strong>Designer sẽ thiết kế lại bố cục & màu sắc</strong> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
+                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <b>Designer sẽ thiết kế lại bố cục & màu sắc</b> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
                     </div>
                 </div>
                 <div className="h-10 mt-4 hidden lg:block"></div>
@@ -2180,7 +2266,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
       )}
 
-      {/* NEW: Step 2 Hint Popup (Modal) with 3s Lock */}
+      {/* Step 2 Hint Popup (Modal) with 3s Lock */}
       {showStep2Hint && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small border-2 border-luvin-pink">

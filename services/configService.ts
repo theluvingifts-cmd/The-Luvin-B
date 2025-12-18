@@ -6,11 +6,10 @@ import { ThemeConfig, CustomFont, StaffMember } from '../types';
 const CONFIG_DOC_ID = 'general';
 
 export interface StoreConfig {
-    // Legacy fields (kept for backward compatibility during migration)
+    // Legacy fields
     logoUrl?: string;
     faviconUrl?: string;
     siteName?: string;
-    // Ảnh gói quà tùy chỉnh để Admin có thể thay đổi
     giftBoxImageUrl?: string;
     
     // Content Fields
@@ -42,6 +41,9 @@ export interface StoreConfig {
 
     // Ads Config
     dailyAdsBudget?: number; 
+    
+    // B2B Config
+    b2bDiscountPercent?: number;
 
     // NEW: Telegram Notification Config
     telegramBotToken?: string;
@@ -69,7 +71,6 @@ export const DEFAULT_THEME: ThemeConfig = {
         },
         borderRadius: '8px'
     },
-    // Updated default section styles
     sections: {
         header: {
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -93,28 +94,24 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             const data = docSnap.data() as StoreConfig;
-            // Ensure theme object exists with defaults if missing
             if (!data.theme) {
                 data.theme = DEFAULT_THEME;
             }
-            // Ensure uploadedFonts exists
             if (!data.uploadedFonts) {
                 data.uploadedFonts = [];
             }
-            // Ensure staff exists
             if (!data.staff) {
                 data.staff = [];
             }
+            if (data.b2bDiscountPercent === undefined) {
+                data.b2bDiscountPercent = 5;
+            }
             return data;
         }
-        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
+        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
     } catch (error: any) {
-        if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
-            console.warn("Firestore: Unable to fetch config (Permission Denied). Using default settings.");
-            return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
-        }
-        console.error("Error fetching config:", error);
-        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [] };
+        console.warn("Firestore: Unable to fetch config. Using default settings.");
+        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
     }
 };
 
@@ -128,15 +125,10 @@ export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
     }
 };
 
-// --- DAILY ADS COSTS FUNCTIONS (SWITCHED TO LOCAL STORAGE) ---
-
 export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Record<string, number>> => {
-    // Local Storage Implementation
     try {
         const stored = localStorage.getItem('ads_costs');
         const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};
-        
-        // Filter by date range
         const filteredCosts: Record<string, number> = {};
         const startStr = startDate.toISOString().split('T')[0];
         const endStr = endDate.toISOString().split('T')[0];
@@ -148,23 +140,18 @@ export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Recor
         }
         return filteredCosts;
     } catch (e) {
-        console.error("Error reading ads costs from local storage", e);
         return {};
     }
 };
 
 export const saveAdsCost = async (date: string, cost: number) => {
-    // Local Storage Implementation
     try {
         const stored = localStorage.getItem('ads_costs');
         const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};
-        
         allCosts[date] = cost;
-        
         localStorage.setItem('ads_costs', JSON.stringify(allCosts));
         return true;
     } catch (e) {
-        console.error("Error saving ads cost to local storage:", e);
         return false;
     }
 };
