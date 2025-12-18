@@ -175,7 +175,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                         onClick={() => navigateTo('collection')}
                         className="px-8 py-4 rounded-full font-bold text-sm tracking-wide text-gray-900 border border-gray-300 hover:border-gray-900 transition-colors"
                     >
-                        Tùy chỉnh từ mẫu
+                        Tùy chỉnh mẫu
                     </button>
                 </div>
             </div>
