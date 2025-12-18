@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -879,7 +880,7 @@ const Step3Characters: React.FC<{
                             className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
                             title="Chọn ngẫu nhiên trang phục"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                             Ngẫu nhiên
                         </button>
                     )}
@@ -1332,6 +1333,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [previewFont, setPreviewFont] = useState<string | null>(null); 
   const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
   
+  // NEW: Step 2 Hint Modal States
+  const [showStep2Hint, setShowStep2Hint] = useState(false);
+  const [hasSeenStep2Hint, setHasSeenStep2Hint] = useState(false);
+
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -1340,6 +1345,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
+
+  // Trigger Step 2 Hint
+  useEffect(() => {
+    if (step === 2 && !hasSeenStep2Hint) {
+        setShowStep2Hint(true);
+    }
+  }, [step, hasSeenStep2Hint]);
 
   useEffect(() => {
       if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
@@ -2138,6 +2150,40 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               <div className="flex gap-3 mt-3 justify-end">
                   <button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button>
                   <button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button>
+              </div>
+          </div>
+      )}
+
+      {/* NEW: Step 2 Hint Popup (Modal) */}
+      {showStep2Hint && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small">
+                  <div className="bg-luvin-pink/10 p-6 flex flex-col items-center text-center">
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 text-3xl">
+                          🎨
+                      </div>
+                      <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Hỗ trợ thiết kế miễn phí</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                          Đừng quá lo lắng về thẩm mỹ lúc này! Bạn chỉ cần đặt các thông tin (tên, ngày kỷ niệm, lời nhắn...) vào vị trí mong muốn bằng tính năng <b>Thêm chữ</b>. 
+                          <br/><br/>
+                          Sau khi đặt hàng, Designer của <b>The Luvin</b> sẽ thiết kế lại toàn bộ background chuyên nghiệp và gửi bạn duyệt. 
+                          Bạn cũng có thể <b>trao đổi chi tiết hơn qua tin nhắn</b> Zalo/Messenger sau khi đặt đơn thành công!
+                      </p>
+                  </div>
+                  <div className="p-4 bg-white border-t border-gray-100">
+                      <button 
+                          onClick={() => { setShowStep2Hint(false); setHasSeenStep2Hint(true); }}
+                          className="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-luvin-pink transition-colors shadow-lg active:scale-95"
+                      >
+                          Tôi đã hiểu
+                      </button>
+                      <button 
+                          onClick={() => { setShowStep2Hint(false); setHasSeenStep2Hint(true); }}
+                          className="w-full mt-2 text-xs text-gray-400 font-medium hover:text-gray-600 py-1"
+                      >
+                          Đóng
+                      </button>
+                  </div>
               </div>
           </div>
       )}
