@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import type { Page, FeedbackItem, CollectionTemplate } from '../types';
 import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
@@ -176,7 +175,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
                         onClick={() => navigateTo('collection')}
                         className="px-8 py-4 rounded-full font-bold text-sm tracking-wide text-gray-900 border border-gray-300 hover:border-gray-900 transition-colors"
                     >
-                        Xem mẫu có sẵn
+                        Tùy chỉnh từ mẫu
                     </button>
                 </div>
             </div>
