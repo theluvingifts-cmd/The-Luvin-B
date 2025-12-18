@@ -32,7 +32,6 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
-import { QuotationPage } from './pages/QuotationPage';
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
@@ -97,7 +96,6 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
       const hash = window.location.hash;
       if (hash === '#/admin') return 'admin';
-      if (hash === '#/bao-gia-si') return 'quotation-client';
       return 'home';
   });
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
@@ -191,8 +189,7 @@ const App: React.FC = () => {
        } else return;
     }
     setCurrentPage(page);
-    if (page === 'quotation-client') window.location.hash = '#/bao-gia-si';
-    else if (page === 'admin') window.location.hash = '#/admin';
+    if (page === 'admin') window.location.hash = '#/admin';
     else window.location.hash = '';
     window.scrollTo(0, 0);
   };
@@ -201,7 +198,6 @@ const App: React.FC = () => {
       const checkHash = () => {
           const hash = window.location.hash;
           if (hash === '#/admin') setCurrentPage('admin');
-          else if (hash === '#/bao-gia-si') setCurrentPage('quotation-client');
       };
       window.addEventListener('hashchange', checkHash);
       return () => window.removeEventListener('hashchange', checkHash);
@@ -250,8 +246,7 @@ const App: React.FC = () => {
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
-            {currentPage === 'business' && <BusinessPage config={storeConfig} navigateTo={navigateTo} />}
-            {currentPage === 'quotation-client' && <QuotationPage frames={frames} config={storeConfig} />}
+            {currentPage === 'business' && <BusinessPage config={storeConfig} frames={frames} products={Object.values(legoParts).flat()} />}
         </main>
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
         <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={()=>{}} onEditItem={()=>{}} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={()=>{}} onZoomImage={setZoomedImageUrl} />

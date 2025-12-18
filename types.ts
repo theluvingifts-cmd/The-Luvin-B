@@ -1,20 +1,5 @@
 
-export type Page = 'home' | 'builder' | 'collection' | 'cart' | 'checkout' | 'order-confirmation' | 'order-lookup' | 'admin' | 'about' | 'warranty' | 'business' | 'marketing' | 'customers' | 'design' | 'quotation' | 'quotation-client';
-
-export type StaffRole = 'admin' | 'warehouse';
-
-export interface BulkPriceTier {
-    quantity: number;
-    price: number;
-}
-
-export interface OutfitColor {
-    name: string;
-    hex: string;
-    imageUrl?: string;
-    price: number;
-    stock?: number;
-}
+export type Page = 'home' | 'builder' | 'collection' | 'cart' | 'checkout' | 'order-confirmation' | 'order-lookup' | 'admin' | 'about' | 'warranty' | 'business' | 'marketing' | 'customers' | 'design' | 'quotation';
 
 export interface LegoPart {
     id: string;
@@ -24,16 +9,29 @@ export interface LegoPart {
     salePrice?: number;
     saleEndDate?: string;
     imageUrl: string;
-    type: string;
+    type: 'hair' | 'face' | 'shirt' | 'pants' | 'hat' | 'accessory' | 'pet' | 'set';
     widthCm: number;
     heightCm: number;
-    isHot?: boolean;
     colors?: OutfitColor[];
     category?: string;
     bulkPricing?: BulkPriceTier[];
-    preventScarf?: boolean;
+    isHot?: boolean;
     order?: number;
     stock?: number;
+    preventScarf?: boolean;
+}
+
+export interface OutfitColor {
+    name: string;
+    hex: string;
+    imageUrl: string;
+    price: number;
+    stock?: number;
+}
+
+export interface BulkPriceTier {
+    quantity: number;
+    price: number;
 }
 
 export interface FrameOption {
@@ -54,6 +52,39 @@ export interface FrameOption {
     order?: number;
 }
 
+export interface FrameConfig {
+    frameId: string;
+    frameColor: string;
+    background: {
+        type: 'color' | 'image' | 'upload';
+        value: string;
+    };
+    characters: LegoCharacterConfig[];
+    texts: TextConfig[];
+    draggableItems: DraggableItem[];
+    shapes?: ShapeConfig[];
+    isRotated?: boolean;
+    previewImageUrl?: string;
+    quantity?: number;
+}
+
+export interface LegoCharacterConfig {
+    id: number;
+    x: number;
+    y: number;
+    rotation: number;
+    scale: number;
+    hair?: LegoPart;
+    face?: LegoPart;
+    shirt?: LegoPart;
+    pants?: LegoPart;
+    hat?: LegoPart;
+    selectedShirtColor?: OutfitColor;
+    selectedPantsColor?: OutfitColor;
+    selectedHairColor?: OutfitColor;
+    customPrintPrice?: number;
+}
+
 export interface TextConfig {
     id: number;
     content: string;
@@ -64,16 +95,16 @@ export interface TextConfig {
     y: number;
     rotation: number;
     scale: number;
-    background?: boolean;
+    background: boolean;
     textAlign?: 'left' | 'center' | 'right';
-    width: number;
-    lockedPosition?: boolean;
-    lockedContent?: boolean;
+    width?: number;
     fontWeight?: 'normal' | 'bold';
     border?: boolean;
-    borderColor?: string;
-    borderWidth?: number;
     borderStyle?: 'solid' | 'dashed' | 'dotted';
+    borderWidth?: number;
+    borderColor?: string;
+    lockedPosition?: boolean;
+    lockedContent?: boolean;
 }
 
 export interface DraggableItem {
@@ -86,15 +117,15 @@ export interface DraggableItem {
     scale: number;
     isFlipped?: boolean;
     selectedColor?: OutfitColor;
-    linkedCharId?: number;
+    maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
     lockedPosition?: boolean;
     lockedContent?: boolean;
-    maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
+    linkedCharId?: number;
 }
 
 export interface ShapeConfig {
     id: number;
-    type: 'rect';
+    type: 'rect' | 'circle';
     x: number;
     y: number;
     rotation: number;
@@ -108,39 +139,6 @@ export interface ShapeConfig {
     lockedPosition?: boolean;
 }
 
-export interface LegoCharacterConfig {
-    id: number;
-    hair?: LegoPart;
-    face?: LegoPart;
-    shirt?: LegoPart;
-    pants?: LegoPart;
-    hat?: LegoPart;
-    selectedShirtColor?: OutfitColor;
-    selectedPantsColor?: OutfitColor;
-    selectedHairColor?: OutfitColor;
-    customPrintPrice?: number;
-    x: number;
-    y: number;
-    rotation: number;
-    scale: number;
-}
-
-export interface FrameConfig {
-    frameId: string;
-    frameColor: string;
-    background: {
-        type: 'color' | 'image' | 'upload';
-        value: string;
-    };
-    characters: LegoCharacterConfig[];
-    texts: TextConfig[];
-    draggableItems: DraggableItem[];
-    shapes: ShapeConfig[];
-    isRotated?: boolean;
-    previewImageUrl?: string;
-    quantity?: number;
-}
-
 export interface Order {
     id: string;
     customer: {
@@ -150,16 +148,12 @@ export interface Order {
         address: string;
         socialLink?: string;
     };
-    items: FrameConfig[];
-    totalPrice: number;
-    amountToPay: number;
-    amountPaid?: number;
-    status: string;
-    createdAt: number;
     delivery: {
         date: string;
         notes: string;
     };
+    items: FrameConfig[];
+    addGiftBox: boolean;
     shipping: {
         method: 'standard' | 'express' | 'bookship';
         fee: number;
@@ -167,7 +161,11 @@ export interface Order {
     payment: {
         method: 'deposit' | 'full';
     };
-    addGiftBox: boolean;
+    totalPrice: number;
+    amountToPay: number;
+    amountPaid?: number;
+    createdAt: number;
+    status: string;
     internalNotes?: string;
     isUrgent?: boolean;
     adminDeadline?: string;
@@ -190,9 +188,9 @@ export interface PresetBackground {
     orientation?: 'portrait' | 'landscape';
     order?: number;
     overlayConfig?: {
-        texts: TextConfig[];
-        draggableItems: DraggableItem[];
-        shapes: ShapeConfig[];
+        texts?: TextConfig[];
+        draggableItems?: DraggableItem[];
+        shapes?: ShapeConfig[];
     };
 }
 
@@ -215,32 +213,6 @@ export interface CustomFont {
     id: string;
     name: string;
     url: string;
-}
-
-export interface Voucher {
-    id: string;
-    code: string;
-    type: 'fixed' | 'percent';
-    value: number;
-    minOrderValue: number;
-    maxUsage?: number;
-    usedCount: number;
-    expiryDate?: string;
-    isActive: boolean;
-    description?: string;
-}
-
-export interface StaffMember {
-    email: string;
-    role: StaffRole;
-    addedAt: string;
-}
-
-export interface SavedAsset {
-    id: string;
-    url: string;
-    type: 'background' | 'sticker';
-    createdAt: number;
 }
 
 export interface ThemeConfig {
@@ -276,6 +248,27 @@ export interface ThemeConfig {
     };
 }
 
+export type StaffRole = 'admin' | 'warehouse';
+
+export interface StaffMember {
+    email: string;
+    role: StaffRole;
+    addedAt: string;
+}
+
+export interface Voucher {
+    id: string;
+    code: string;
+    type: 'fixed' | 'percent';
+    value: number;
+    minOrderValue: number;
+    maxUsage: number;
+    usedCount: number;
+    expiryDate: string;
+    isActive: boolean;
+    description: string;
+}
+
 export interface CustomerStats {
     phone: string;
     name: string;
@@ -287,21 +280,27 @@ export interface CustomerStats {
     orders: Order[];
 }
 
+export interface SavedAsset {
+    id: string;
+    url: string;
+    type: 'background' | 'sticker';
+    createdAt: number;
+}
+
 export interface QuoteItem {
     id: string;
     name: string;
-    type: 'frame' | 'part' | 'other';
+    type: 'frame' | 'part';
     quantity: number;
     unitPrice: number;
     total: number;
-    imageUrl?: string;
 }
 
 export interface QuotationData {
     customerName: string;
-    companyName?: string;
-    address?: string;
-    phone?: string;
+    companyName: string;
+    address: string;
+    phone: string;
     date: string;
     validUntil: string;
     items: QuoteItem[];

@@ -37,7 +37,6 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
     { label: 'Thiết kế', page: 'builder' }, 
     { label: 'Bộ sưu tập', page: 'collection' }, 
     { label: 'Doanh nghiệp', page: 'business' },
-    { label: 'Báo giá sỉ', page: 'quotation-client' }, // THÊM MỤC NÀY
     { label: 'Tra cứu', page: 'order-lookup' },
   ];
   
