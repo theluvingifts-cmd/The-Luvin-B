@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, Order, Voucher } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
@@ -411,16 +412,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                      )}
 
                      <input type="text" placeholder="Số nhà, tên đường" value={street} onChange={e => setStreet(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required />
-                     
-                     {isApiError && (
-                         <button 
-                            type="button" 
-                            onClick={() => { setIsApiError(false); setProvinces([]); window.location.reload(); }}
-                            className="text-[10px] text-blue-600 hover:underline"
-                        >
-                            Thử tải lại danh sách tự động?
-                        </button>
-                     )}
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
