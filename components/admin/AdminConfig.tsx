@@ -370,6 +370,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
                             </div>
                             <ConfigImageUpload label="Banner Inspire" description="Ảnh nền phần Collection" currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
+                            {/* Added giftBoxImageUrl upload field to allow admins to customize the gift box icon */}
+                            <div ref={(el) => { inputRefs.current['giftBoxImageUrl'] = el; }}>
+                                <ConfigImageUpload label="Ảnh Hộp Quà" description="Ảnh hiển thị khi chọn gói quà" currentUrl={storeConfig.giftBoxImageUrl} onUpload={(f) => handleConfigUpload(f, 'giftBoxImageUrl')} isUploading={uploadingField === 'giftBoxImageUrl'} />
+                            </div>
                         </div>
                     )}
 

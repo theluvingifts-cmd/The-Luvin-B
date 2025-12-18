@@ -5,7 +5,8 @@ import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../util
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
-import { getOrdersByPhone } from '../services/orderService'; 
+import { getOrdersByPhone, getOrderById } from '../services/orderService'; 
+import { getStoreConfig, StoreConfig } from '../services/configService';
 
 // Danh sách tỉnh thành phổ biến làm fallback nếu API lỗi
 const POPULAR_PROVINCES = [
@@ -51,6 +52,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [submissionError, setSubmissionError] = useState('');
+  
+  const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
 
   // Voucher State
   const [voucherCode, setVoucherCode] = useState('');
@@ -67,6 +70,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const EARLY_BIRD_THRESHOLD = 20; 
   const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; 
   const LOYALTY_DISCOUNT_PERCENT = 0.05; 
+
+  useEffect(() => {
+    getStoreConfig().then(cfg => setStoreConfig(cfg));
+  }, []);
 
   useEffect(() => {
       if (initialOrder) {
@@ -111,7 +118,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         .then(data => setDistricts(data.districts))
         .catch(err => {
             console.error("District fetch error:", err);
-            // Nếu lỗi API khi đã chọn tỉnh, cho phép nhập text
         });
       setSelectedDistrict('');
       setWards([]);
@@ -215,7 +221,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
                   if (!street && lastOrder.customer.address) {
                       setStreet(lastOrder.customer.address);
-                      // Khi autofill, ưu tiên dùng địa chỉ thô
                   }
               }
           } catch (e) {
@@ -430,7 +435,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                               </p>
                           ) : (
                               <p className="text-xs text-gray-500 mt-1">
-                                  Mẹo: Đặt trước 20 ngày để được giảm ngay 5.
+                                  Mẹo: Đặt trước 20 ngày để được giảm ngay 5%.
                               </p>
                           )}
                         </div>
@@ -439,7 +444,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             <div className="space-y-2">
                                 <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="standard" checked={shippingOption === 'standard'} onChange={() => setShippingOption('standard')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
-                                    <span className="ml-2 text-sm flex-grow text-gray-700">Giao hàng thường</span>
+                                    <div className="ml-2 flex-grow">
+                                        <span className="text-sm block text-gray-700 font-medium">Ship thường (3-5 ngày)</span>
+                                    </div>
                                     {isFreeShippingEligible ? (
                                         <div className="text-right">
                                             <span className="text-xs text-gray-400 line-through mr-1">{formatCurrency(SHIPPING_FEES.standard)}</span>
@@ -451,7 +458,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="express" checked={shippingOption === 'express'} onChange={() => setShippingOption('express')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
-                                    <span className="ml-2 text-sm flex-grow text-gray-700">Hỏa tốc (Nội thành)</span>
+                                    <div className="ml-2 flex-grow">
+                                        <span className="text-sm block text-gray-700 font-medium">Ship nhanh (1-3 ngày)</span>
+                                    </div>
                                      <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.express)}</span>
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
@@ -463,6 +472,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         </div>
                      </div>
                   </div>
+
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
+                      <span className="text-xl">ℹ️</span>
+                      <div className="text-xs text-blue-900 leading-relaxed">
+                          <p><b>Lưu ý:</b> Sản phẩm thiết kế thủ công cần 1-3 ngày để hoàn thiện trước khi gửi đi. Thời gian vận chuyển được tính từ khi shop giao hàng.</p>
+                      </div>
+                  </div>
               </div>
 
               <div>
@@ -473,10 +489,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
             <div className="bg-gray-50 p-4 rounded-lg border">
                  <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
-                    <img src={GENERAL_ASSETS.giftbox} alt="Gift Box" className="w-12 h-12 object-contain mr-4"/>
+                    <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
                     <div className="flex-grow">
-                        <span className="font-semibold text-gray-800">Thêm hộp quà</span>
-                        <p className="text-xs text-gray-500">Hộp quà cao cấp, rơm & thiệp viết tay.</p>
+                        <span className="font-semibold text-gray-800">Thêm gói quà</span>
+                        <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
                     </div>
                     <span className="font-bold text-luvin-pink mr-4">+{formatCurrency(GIFT_BOX_PRICE)}</span>
                     <input type="checkbox" checked={addGiftBox} onChange={e => setAddGiftBox(e.target.checked)} className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink"/>
@@ -545,7 +561,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>Tạm tính</span><span>{formatCurrency(subtotal)}</span></div>
-                {addGiftBox && <div className="flex justify-between"><span>Hộp quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
+                {addGiftBox && <div className="flex justify-between"><span>Gói quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
                 <div className="flex justify-between">
                     <span>Phí vận chuyển</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (

@@ -10,6 +10,8 @@ export interface StoreConfig {
     logoUrl?: string;
     faviconUrl?: string;
     siteName?: string;
+    // Added missing property for gift box image customization
+    giftBoxImageUrl?: string;
     
     // Content Fields
     heroImageUrl?: string;
@@ -67,6 +69,7 @@ export const DEFAULT_THEME: ThemeConfig = {
         },
         borderRadius: '8px'
     },
+    // Updated default section styles
     sections: {
         header: {
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
