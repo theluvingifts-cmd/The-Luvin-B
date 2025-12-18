@@ -239,7 +239,7 @@ export const QuotationPage: React.FC<QuotationPageProps> = ({ frames, config }) 
                             </button>
                             
                             <p className="text-[10px] text-gray-500 mt-6 text-center italic leading-relaxed">
-                                * Lưu ý: Báo giá trên mang tính chất tham khảo. Chiết khấu thêm cho số lượng lớn (>50 khung) sẽ được Designer chốt trực tiếp sau khi nhận yêu cầu.
+                                * Lưu ý: Báo giá trên mang tính chất tham khảo. Chiết khấu thêm cho số lượng lớn {` (>50 khung) `} sẽ được Designer chốt trực tiếp sau khi nhận yêu cầu.
                             </p>
                         </div>
                         
