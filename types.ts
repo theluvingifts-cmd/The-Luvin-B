@@ -1,5 +1,5 @@
 
-export type Page = 'home' | 'builder' | 'collection' | 'cart' | 'checkout' | 'order-confirmation' | 'order-lookup' | 'admin' | 'about' | 'warranty' | 'business' | 'marketing' | 'customers' | 'design' | 'quotation';
+export type Page = 'home' | 'builder' | 'collection' | 'cart' | 'checkout' | 'order-confirmation' | 'order-lookup' | 'admin' | 'about' | 'warranty' | 'business' | 'marketing' | 'customers' | 'design' | 'quotation' | 'quotation-client';
 
 export type StaffRole = 'admin' | 'warehouse';
 

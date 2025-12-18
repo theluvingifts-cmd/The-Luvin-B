@@ -32,14 +32,13 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
+import { QuotationPage } from './pages/QuotationPage'; // NEW
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
-// Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
-    // Nếu là font tùy chỉnh (đã có trong danh sách upload), không load từ Google
     if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
         const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
         if (!document.getElementById(linkId)) {
@@ -52,7 +51,6 @@ const loadGoogleFont = (fontName: string) => {
     }
 };
 
-// Helper để load Custom Fonts từ danh sách
 const loadUploadedFonts = (fonts: CustomFont[]) => {
     const styleId = 'uploaded-custom-fonts';
     let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -64,7 +62,6 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     
     let css = '';
     fonts.forEach(font => {
-        // Simple sanitization for font name
         const safeName = font.name.replace(/[^a-zA-Z0-9\s]/g, '');
         css += `
             @font-face {
@@ -79,21 +76,17 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     style.innerHTML = css;
 };
 
-// HELPER: UPDATE SEO META TAGS
 const updateMetaTags = (config: StoreConfig) => {
-    // Title
     if (config.seoTitle) {
         document.title = config.seoTitle;
         document.querySelector('meta[property="og:title"]')?.setAttribute('content', config.seoTitle);
         document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', config.seoTitle);
     }
-    // Desc
     if (config.seoDescription) {
         document.querySelector('meta[name="description"]')?.setAttribute('content', config.seoDescription);
         document.querySelector('meta[property="og:description"]')?.setAttribute('content', config.seoDescription);
         document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', config.seoDescription);
     }
-    // Image
     if (config.seoImageUrl) {
         document.querySelector('meta[property="og:image"]')?.setAttribute('content', config.seoImageUrl);
         document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', config.seoImageUrl);
@@ -101,82 +94,40 @@ const updateMetaTags = (config: StoreConfig) => {
 };
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
-  
-  const [builderInitialStep, setBuilderInitialStep] = useState(1);
-
-  const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
-      try {
-          const savedCart = localStorage.getItem('shopping_cart');
-          return savedCart ? JSON.parse(savedCart) : [];
-      } catch (error) {
-          console.error("Failed to load cart from storage", error);
-          return [];
-      }
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+      if (window.location.hash === '#/bao-gia-si') return 'quotation-client';
+      return 'home';
   });
-
-  // State to track if we are editing an existing order (Order Update Mode)
+  const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
+  const [builderInitialStep, setBuilderInitialStep] = useState(1);
+  const [cartItems, setCartItems] = useState<FrameConfig[]>([]);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  // NEW: Track action type for confirmation page message
   const [lastOrderAction, setLastOrderAction] = useState<'create' | 'update'>('create');
-
-  useEffect(() => {
-      try {
-          localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
-      } catch (error) {
-          console.error("Failed to save cart to storage", error);
-      }
-  }, [cartItems]);
-
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
-  
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); 
-  
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
   const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
   const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
-
-  // Initialize StoreConfig from LocalStorage to prevent flicker (FOUC)
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
-      try {
-          const savedConfig = localStorage.getItem('store_config');
-          return savedConfig ? JSON.parse(savedConfig) : {};
-      } catch (e) {
-          return {};
-      }
-  });
-
-  // State for cart animation
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
   const [isCartShaking, setIsCartShaking] = useState(false);
 
-  // Function to apply theme variables to DOM
   const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
       const { global, sections } = themeData;
-
-      // Global Colors
       root.style.setProperty('--color-primary', global.colors.primary);
       root.style.setProperty('--color-secondary', global.colors.secondary);
       root.style.setProperty('--color-text', global.colors.text);
       root.style.setProperty('--color-bg', global.colors.background);
       root.style.setProperty('--color-accent', global.colors.accent);
-
-      // Typography
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
-
       root.style.setProperty('--font-heading', `'${cleanHeadingFont}'`);
       root.style.setProperty('--font-body', `'${cleanBodyFont}'`);
-      
-      // Border Radius
       root.style.setProperty('--radius-global', global.borderRadius);
-
-      // Section Specifics
       if (sections) {
           if (sections.header) {
               root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
@@ -187,19 +138,13 @@ const App: React.FC = () => {
               root.style.setProperty('--footer-text', sections.footer.textColor || '#374151');
           }
       }
-
-      // Load Custom Fonts
       loadUploadedFonts(uploadedFonts);
-
-      // Load Google Fonts
       const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
       const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
-
       if (!isCustomHeading) loadGoogleFont(cleanHeadingFont);
       if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
 
-  // useLayoutEffect runs before browser paint, preventing theme flicker
   useLayoutEffect(() => {
       if (storeConfig.theme) {
           applyTheme(storeConfig.theme, storeConfig.uploadedFonts || []);
@@ -219,36 +164,16 @@ const App: React.FC = () => {
                 getAllFeedbacks(),
                 getAllFrames()
             ]);
-            
             if (parts && parts.length > 0) setLegoParts(categorizeParts(parts));
             if (bgs && bgs.length > 0) setBackgrounds(bgs);
             if (tpls && tpls.length > 0) setTemplates(tpls);
             if (fbs && fbs.length > 0) setFeedbacks(fbs);
             if (fetchedFrames && fetchedFrames.length > 0) setFrames(fetchedFrames);
-
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
-                // Cache config to LocalStorage for next visit
-                localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
-                
-                // --- UPDATE SEO META TAGS ---
                 updateMetaTags(fetchedConfig);
-
-                if (fetchedConfig.faviconUrl) {
-                    const link = document.querySelector("link[rel~='icon']");
-                    if (link instanceof HTMLLinkElement) {
-                        link.href = fetchedConfig.faviconUrl;
-                    } else {
-                        const newLink = document.createElement('link');
-                        newLink.rel = 'icon';
-                        newLink.href = fetchedConfig.faviconUrl;
-                        document.head.appendChild(newLink);
-                    }
-                }
             }
-          } catch (error) {
-              console.error("Initial fetch error:", error);
-          }
+          } catch (error) { console.error("Initial fetch error:", error); }
       };
       fetchData();
   }, []);
@@ -256,34 +181,23 @@ const App: React.FC = () => {
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
-    if (page === 'builder') {
-        setBuilderInitialStep(1);
-    }
-    // If navigating away from checkout/cart and we were editing an order, verify if we should clear it
+    if (page === 'builder') setBuilderInitialStep(1);
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
        if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
            setEditingOrder(null);
            setCartItems([]);
-       } else {
-           return;
-       }
+       } else return;
     }
     setCurrentPage(page);
+    if (page === 'quotation-client') window.location.hash = '#/bao-gia-si';
+    else if (page !== 'admin') window.location.hash = '';
     window.scrollTo(0, 0);
-  };
-
-  const handleCustomizeTemplate = (templateConfig: FrameConfig) => {
-      setConfig(templateConfig);
-      setBuilderInitialStep(3); 
-      setCurrentPage('builder');
-      window.scrollTo(0, 0);
   };
 
   useEffect(() => {
       const checkHash = () => {
-          if (window.location.hash === '#/admin') {
-              setCurrentPage('admin');
-          }
+          if (window.location.hash === '#/admin') setCurrentPage('admin');
+          if (window.location.hash === '#/bao-gia-si') setCurrentPage('quotation-client');
       };
       checkHash();
       window.addEventListener('hashchange', checkHash);
@@ -292,152 +206,21 @@ const App: React.FC = () => {
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
     setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
-    triggerCartShake();
-    if (openCart) {
-        setTimeout(() => setIsCartOpen(true), 800); 
-    }
-  };
-
-  const triggerCartShake = () => {
-      setIsCartShaking(true);
-      setTimeout(() => setIsCartShaking(false), 500); 
-  };
-
-  const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
-      if (editingCartIndex !== null) {
-          setCartItems(prev => prev.map((item, i) => i === editingCartIndex ? { ...updatedConfig, quantity: item.quantity } : item)); 
-          setEditingCartIndex(null);
-          setConfig(INITIAL_FRAME_CONFIG); 
-          setIsCartOpen(true); 
-      }
-  };
-
-  const handleEditCartItem = (index: number) => {
-      setConfig(cartItems[index]);
-      setEditingCartIndex(index);
-      setIsCartOpen(false);
-      setBuilderInitialStep(4); 
-      navigateTo('builder');
-  };
-
-  const handleCancelEdit = () => {
-      setEditingCartIndex(null);
-      setConfig(INITIAL_FRAME_CONFIG);
-      setIsCartOpen(true);
-  };
-
-  const handleRemoveCartItem = (index: number) => {
-    setCartItems(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleUpdateCartQuantity = (index: number, newQuantity: number) => {
-      if (newQuantity < 1) return;
-      setCartItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
-  };
-
-  // Special Handler for "Edit Existing Order"
-  const handleEditOrder = (order: Order) => {
-      // 1. Load items to cart
-      setCartItems(order.items);
-      // 2. Set editing mode
-      setEditingOrder(order);
-      // 3. Go to cart
-      navigateTo('cart');
+    setIsCartShaking(true);
+    setTimeout(() => setIsCartShaking(false), 500); 
+    if (openCart) setTimeout(() => setIsCartOpen(true), 800); 
   };
 
   const handlePlaceOrder = async (orderData: Omit<Order, 'status' | 'createdAt'>) => {
-    // If editing existing order, calculate diff and update
-    if (editingOrder) {
-        setLastOrderAction('update');
-        
-        // 1. Calculate Stock Differences
-        const oldParts = countPartsInOrder(editingOrder.items);
-        const newParts = countPartsInOrder(orderData.items);
-        
-        const stockAdjustments: Record<string, number> = {};
-        
-        // Stock Change Calculation:
-        const allKeys = new Set([...Object.keys(oldParts), ...Object.keys(newParts)]);
-        allKeys.forEach(partId => {
-            const oldQty = oldParts[partId] || 0;
-            const newQty = newParts[partId] || 0;
-            const diff = oldQty - newQty; // +1 means we return 1 to stock, -1 means we take 1 more
-            if (diff !== 0) {
-                stockAdjustments[partId] = diff;
-            }
-        });
-
-        // 2. Adjust Stock if needed
-        if (Object.keys(stockAdjustments).length > 0) {
-            await adjustStock(stockAdjustments);
-        }
-
-        // 3. Update Order in DB
-        const success = await updateOrder(editingOrder.id, {
-            ...orderData,
-            status: orderData.totalPrice !== editingOrder.totalPrice ? 'Chờ thanh toán' : editingOrder.status
-        });
-        
-        if (success) {
-            const updatedOrder = { 
-                ...editingOrder, 
-                ...orderData,
-                status: orderData.totalPrice !== editingOrder.totalPrice ? 'Chờ thanh toán' : editingOrder.status
-            };
-            setCurrentOrder(updatedOrder);
-            setCartItems([]);
-            setEditingOrder(null);
-            navigateTo('order-confirmation');
-            
-            // Notify admin about update
-            sendOrderTelegram(updatedOrder, storeConfig); 
-        } else {
-            throw new Error("Không thể cập nhật đơn hàng. Có thể do lỗi mạng hoặc quyền truy cập.");
-        }
-        return;
-    }
-
-    // Normal Create Flow
     setLastOrderAction('create');
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
-        
-        try {
-            const rawSaved = localStorage.getItem('my_orders');
-            let saved: { id: string; date: number }[] = [];
-            if (rawSaved) {
-                const parsed = JSON.parse(rawSaved);
-                if (Array.isArray(parsed)) {
-                    saved = parsed as { id: string; date: number }[];
-                }
-            }
-            
-            const newEntry = { id: res.data.id, date: Date.now() };
-            const updated = [newEntry, ...saved.filter((o) => o.id !== res.data.id)].slice(0, 5);
-            localStorage.setItem('my_orders', JSON.stringify(updated));
-        } catch (e) {
-            console.error("Failed to save local order history", e);
-        }
-
         setCartItems([]); 
         navigateTo('order-confirmation');
-        
-        // --- NOTIFICATIONS ---
         sendOrderEmail(res.data);
         sendOrderTelegram(res.data, storeConfig); 
-    } else {
-        const errMsg = res.error && typeof res.error === 'object' && 'message' in res.error 
-            ? (res.error as any).message 
-            : "Lỗi kết nối cơ sở dữ liệu.";
-        throw new Error(errMsg);
     }
-  };
-
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const showToast = (message: string, type: 'success' | 'error') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
   };
 
   return (
@@ -453,94 +236,23 @@ const App: React.FC = () => {
                 currentPage={currentPage}
              />
         )}
-        
         <main className="flex-grow">
             {currentPage === 'home' && <HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />}
-            {currentPage === 'builder' && (
-                <BuilderPage 
-                    config={config} 
-                    setConfig={setConfig} 
-                    navigateTo={navigateTo} 
-                    onAddToCart={handleAddToCart} 
-                    onUpdateCart={handleUpdateCartItem} 
-                    showToast={showToast}
-                    legoParts={legoParts}
-                    backgrounds={backgrounds}
-                    frames={frames}
-                    editingCartIndex={editingCartIndex} 
-                    onCancelEdit={handleCancelEdit} 
-                    onZoomImage={setZoomedImageUrl} 
-                    logoUrl={storeConfig.logoUrl}
-                    initialStep={builderInitialStep}
-                    isEditingOrder={!!editingOrder} // Pass Edit Mode
-                    uploadedFonts={storeConfig.uploadedFonts || []} // Pass uploaded fonts
-                />
-            )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
-            {currentPage === 'cart' && <CartPage 
-                cartItems={cartItems} 
-                onRemoveItem={handleRemoveCartItem} 
-                onEditItem={handleEditCartItem} 
-                allParts={allParts} 
-                navigateTo={navigateTo}
-                onUpdateQuantity={handleUpdateCartQuantity}
-                onZoomImage={setZoomedImageUrl} 
-                isEditingOrder={!!editingOrder} // Pass Edit Mode
-            />}
-            {currentPage === 'checkout' && (
-                <CheckoutPage 
-                    cartItems={cartItems} 
-                    allParts={allParts} 
-                    onPlaceOrder={handlePlaceOrder} 
-                    onZoomImage={(url) => setZoomedImageUrl(url)}
-                    initialOrder={editingOrder} // Pass existing order if editing
-                />
-            )}
-            {currentPage === 'order-confirmation' && (
-                <OrderConfirmationPage 
-                    order={currentOrder} 
-                    navigateTo={navigateTo} 
-                    onZoomImage={setZoomedImageUrl}
-                    actionType={lastOrderAction} // Pass action type
-                />
-            )}
-            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
+            {currentPage === 'builder' && <BuilderPage config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} onUpdateCart={()=>{}} showToast={()=>{}} legoParts={legoParts} backgrounds={backgrounds} frames={frames} editingCartIndex={null} onCancelEdit={()=>{}} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl} initialStep={builderInitialStep} uploadedFonts={storeConfig.uploadedFonts || []} />}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={()=>{}} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
+            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={()=>{}} onEditItem={()=>{}} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={()=>{}} onZoomImage={setZoomedImageUrl} />}
+            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} />}
+            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />}
+            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={()=>{}} />}
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
             {currentPage === 'business' && <BusinessPage config={storeConfig} />}
+            {currentPage === 'quotation-client' && <QuotationPage frames={frames} config={storeConfig} />}
         </main>
-
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
-
-        <CartPanel 
-            isOpen={isCartOpen} 
-            onClose={() => setIsCartOpen(false)} 
-            cartItems={cartItems} 
-            onRemoveItem={handleRemoveCartItem} 
-            onEditItem={handleEditCartItem}
-            allParts={allParts} 
-            navigateTo={navigateTo}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onZoomImage={setZoomedImageUrl} 
-        />
-
-        {zoomedImageUrl && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
-                <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-                <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
-            </div>
-        )}
-
-        {toast && (
-            <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 animate-fade-in-down ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-                {toast.message}
-            </div>
-        )}
+        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={()=>{}} onEditItem={()=>{}} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={()=>{}} onZoomImage={setZoomedImageUrl} />
     </div>
   );
 };
-
 export default App;
