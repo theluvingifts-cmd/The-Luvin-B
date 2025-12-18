@@ -31,11 +31,8 @@
         theme: {
           extend: {
             colors: {
-              // Legacy support
               'luvin-pink': 'var(--color-primary)',
               'luvin-cream': 'var(--color-secondary)',
-              
-              // New Semantic Design System
               primary: 'var(--color-primary)',
               secondary: 'var(--color-secondary)',
               accent: 'var(--color-accent)',
@@ -43,7 +40,6 @@
               'site-text': 'var(--color-text)',
             },
             fontFamily: {
-              // Dynamic Fonts via Variables
               heading: ['var(--font-heading)', 'Playfair Display', 'serif'],
               body: ['var(--font-body)', 'Montserrat', 'sans-serif'],
               script: ['Dancing Script', 'cursive'], 
@@ -58,6 +54,7 @@
               marquee: 'marquee 80s linear infinite',
               'fade-in': 'fadeIn 0.5s ease-out forwards',
               'bounce-small': 'bounceSmall 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              'fade-in-up': 'fadeInUp 0.4s ease-out forwards',
             },
             keyframes: {
               marquee: {
@@ -66,6 +63,10 @@
               },
               fadeIn: {
                 '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
               },
               bounceSmall: {
@@ -80,32 +81,18 @@
     <style>
       :root {
         color-scheme: light;
-        /* --- DEFAULT THEME VARIABLES --- */
         --color-primary: #efa3b5;
         --color-secondary: #f9f4ef;
         --color-text: #3a2a28;
         --color-bg: #ffffff;
         --color-accent: #e5a84b;
-
-        /* Global Typography */
         --font-heading: 'Playfair Display'; 
         --font-body: 'Montserrat';
-        
-        /* Global Shape */
         --radius-global: 8px;
-        
-        /* Section Specifics (Defaults) */
         --header-bg: rgba(255, 255, 255, 0.8);
         --header-text: #1f2937;
-        
         --footer-bg: #ffffff;
         --footer-text: #374151;
-      }
-      
-      @font-face {
-        font-family: 'CustomBrandFont';
-        src: local('Arial');
-        font-display: swap;
       }
       
       body {
@@ -118,58 +105,32 @@
         font-family: var(--font-heading), serif;
       }
 
-      /* Scrollbar */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
-      /* Skeleton Loading */
-      @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
-      }
       .skeleton {
         animation: shimmer 2s infinite linear;
         background: linear-gradient(to right, #f6f7f8 4%, #edeef1 25%, #f6f7f8 36%);
         background-size: 1000px 100%;
       }
 
-      /* Form Elements */
-      input, select, textarea {
-        background-color: #ffffff !important;
-        color: var(--color-text) !important;
-        border-color: #d1d5db;
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
       }
 
-      /* Animations */
-      @keyframes cart-shake {
-        0%, 100% { transform: rotate(0deg); }
-        20% { transform: rotate(-15deg); }
-        40% { transform: rotate(15deg); }
-        60% { transform: rotate(-10deg); }
-        80% { transform: rotate(10deg); }
+      @media print {
+        header, footer, nav, .print-hidden { display: none !important; }
+        main { padding: 0 !important; margin: 0 !important; }
+        .print-only { display: block !important; }
+        @page { margin: 0; size: A4; }
+        body { background: white; }
       }
-      .animate-cart-shake {
-        animation: cart-shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-      }
-      .flying-product-item {
-        position: fixed;
-        z-index: 9999;
-        pointer-events: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 8px;
-        transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-        opacity: 1;
-      }
-      
-      /* Mobile adjustments */
-      .safe-bottom {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
+
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
     </style>
   <script type="importmap">
 {
@@ -186,7 +147,6 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
