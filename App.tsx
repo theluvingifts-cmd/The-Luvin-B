@@ -32,7 +32,7 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
-import { QuotationPage } from './pages/QuotationPage'; // NEW
+import { QuotationPage } from './pages/QuotationPage';
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
@@ -95,7 +95,9 @@ const updateMetaTags = (config: StoreConfig) => {
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
-      if (window.location.hash === '#/bao-gia-si') return 'quotation-client';
+      const hash = window.location.hash;
+      if (hash === '#/admin') return 'admin';
+      if (hash === '#/bao-gia-si') return 'quotation-client';
       return 'home';
   });
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
@@ -190,16 +192,17 @@ const App: React.FC = () => {
     }
     setCurrentPage(page);
     if (page === 'quotation-client') window.location.hash = '#/bao-gia-si';
-    else if (page !== 'admin') window.location.hash = '';
+    else if (page === 'admin') window.location.hash = '#/admin';
+    else window.location.hash = '';
     window.scrollTo(0, 0);
   };
 
   useEffect(() => {
       const checkHash = () => {
-          if (window.location.hash === '#/admin') setCurrentPage('admin');
-          if (window.location.hash === '#/bao-gia-si') setCurrentPage('quotation-client');
+          const hash = window.location.hash;
+          if (hash === '#/admin') setCurrentPage('admin');
+          else if (hash === '#/bao-gia-si') setCurrentPage('quotation-client');
       };
-      checkHash();
       window.addEventListener('hashchange', checkHash);
       return () => window.removeEventListener('hashchange', checkHash);
   }, []);
@@ -247,7 +250,7 @@ const App: React.FC = () => {
             {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
-            {currentPage === 'business' && <BusinessPage config={storeConfig} />}
+            {currentPage === 'business' && <BusinessPage config={storeConfig} navigateTo={navigateTo} />}
             {currentPage === 'quotation-client' && <QuotationPage frames={frames} config={storeConfig} />}
         </main>
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}

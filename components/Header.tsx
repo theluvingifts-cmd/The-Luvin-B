@@ -16,7 +16,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartClick, logoUrl, isCartShaking, config, currentPage }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Dynamic Styles from Config
   const headerStyle = {
       backgroundColor: 'var(--header-bg)',
       color: 'var(--header-text)',
@@ -38,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
     { label: 'Thiết kế', page: 'builder' }, 
     { label: 'Bộ sưu tập', page: 'collection' }, 
     { label: 'Doanh nghiệp', page: 'business' },
+    { label: 'Báo giá sỉ', page: 'quotation-client' }, // THÊM MỤC NÀY
     { label: 'Tra cứu', page: 'order-lookup' },
   ];
   
@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
           </div>
           <div className="hidden md:flex items-center space-x-6 font-body">
             {navItems.map(item => {
-              const isActive = currentPage === item.page || (currentPage === 'home' && item.page === 'home' && !currentPage);
+              const isActive = currentPage === item.page;
               return (
                 <button 
                   key={item.page} 
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
                 {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-primary text-white text-xs rounded-full h-4 w-4 flex items-center justify-center shadow-sm font-bold">{cartCount}</span>}
             </button>
             <button onClick={() => setIsMenuOpen(true)} className="focus:outline-none" style={{ color: 'inherit' }}>
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7"></path></svg>
             </button>
           </div>
         </nav>
@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
             <div className="flex flex-col h-full">
               <div className="p-5 flex justify-end border-b border-gray-100">
                 <button onClick={() => setIsMenuOpen(false)} className="text-gray-500 hover:text-primary transition-colors">
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
               </div>
               <div className="flex flex-col items-start space-y-6 p-8 font-body">

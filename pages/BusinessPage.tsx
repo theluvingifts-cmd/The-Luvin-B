@@ -1,15 +1,25 @@
 
 import React from 'react';
 import { StoreConfig } from '../services/configService';
+import { Page } from '../types';
 
 // Placeholder images for B2B context
 const B2B_HERO_IMG = "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop";
 const GIFT_IMG_1 = "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?q=80&w=2070&auto=format&fit=crop"; 
 
-export const BusinessPage: React.FC<{ config?: StoreConfig }> = ({ config }) => {
+interface BusinessPageProps {
+    config?: StoreConfig;
+    navigateTo?: (page: Page) => void;
+}
+
+export const BusinessPage: React.FC<BusinessPageProps> = ({ config, navigateTo }) => {
     const handleContact = () => {
         const hotline = config?.hotline?.replace(/\s/g, '') || '0964393115';
         window.open(`https://zalo.me/${hotline}`, '_blank');
+    };
+
+    const handleQuotation = () => {
+        if (navigateTo) navigateTo('quotation-client');
     };
 
     return (
@@ -29,12 +39,20 @@ export const BusinessPage: React.FC<{ config?: StoreConfig }> = ({ config }) => 
                     <p className="text-lg text-gray-200 mb-8 max-w-2xl mx-auto font-light">
                         Nâng tầm thương hiệu, gắn kết đội ngũ và tri ân đối tác với những khung tranh LEGO được cá nhân hóa riêng biệt.
                     </p>
-                    <button 
-                        onClick={handleContact}
-                        className="bg-primary text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-white hover:text-primary transition-all shadow-lg transform hover:-translate-y-1"
-                    >
-                        Liên hệ nhận báo giá
-                    </button>
+                    <div className="flex flex-col sm:flex-row justify-center gap-4">
+                        <button 
+                            onClick={handleQuotation}
+                            className="bg-primary text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-white hover:text-primary transition-all shadow-lg transform hover:-translate-y-1"
+                        >
+                            Dự toán báo giá ngay
+                        </button>
+                        <button 
+                            onClick={handleContact}
+                            className="bg-white/10 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-white hover:text-gray-900 transition-all shadow-lg"
+                        >
+                            Liên hệ tư vấn Zalo
+                        </button>
+                    </div>
                 </div>
             </div>
 
