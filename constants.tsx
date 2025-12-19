@@ -81,7 +81,7 @@ export const PRODUCT_HIGHLIGHTS = []
 export const GENERAL_ASSETS = {
   hero: '',
   inspire: '',
-  giftbox: 'https://cdn-icons-png.flaticon.com/512/4530/4530625.png', // Icon hộp quà nhẹ
+  giftbox: 'https://firebasestorage.googleapis.com/v0/b/the-lu…=media&token=e7da2f4e-00d3-4f49-b60f-11b21ae161c4', // Icon hộp quà nhẹ
   vietqr: '',
-  watermark: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png' // Thay link ảnh watermark của bạn vào đây
+  watermark: '' // Đã xóa link logo tròn mặc định ở đây
 }

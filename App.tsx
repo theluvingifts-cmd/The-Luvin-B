@@ -92,10 +92,13 @@ const updateMetaTags = (config: StoreConfig) => {
     document.getElementById('og-description')?.setAttribute('content', desc);
     document.getElementById('twitter-description')?.setAttribute('content', desc);
 
-    // 3. Cập nhật Ảnh SEO (Ưu tiên ảnh SEO, sau đó mới đến Logo)
-    const shareImage = config.seoImageUrl || config.logoUrl || "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
-    document.getElementById('og-image')?.setAttribute('content', shareImage);
-    document.getElementById('twitter-image')?.setAttribute('content', shareImage);
+    // 3. Cập nhật Ảnh SEO (ƯU TIÊN TUYỆT ĐỐI ẢNH VUÔNG ADMIN UP)
+    // Sửa fallback: Nếu không có ảnh SEO, lấy ảnh Banner Hero (Thường là ảnh đẹp), rồi mới đến Logo.
+    const shareImage = config.seoImageUrl || config.heroImageUrl || config.logoUrl || "";
+    if (shareImage) {
+        document.getElementById('og-image')?.setAttribute('content', shareImage);
+        document.getElementById('twitter-image')?.setAttribute('content', shareImage);
+    }
 
     // 4. Cập nhật Favicon
     if (config.faviconUrl) {
