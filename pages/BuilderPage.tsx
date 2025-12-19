@@ -33,7 +33,7 @@ const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => 
   const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
 
   return (
-    <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
+    <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-4 px-2 scroll-mt-24">
       <div className="flex justify-between md:justify-start md:gap-4 items-center relative md:w-max">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 transform -translate-y-1/2 hidden sm:block"></div>
         
@@ -280,10 +280,8 @@ const Step2BackgroundAndDecorations: React.FC<{
   onZoomImage: (url: string) => void;
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
-// FIX: Removed 'backgroundsCount' as it's not defined in props interface
-}> = ({ config, setConfig, addText, addCharm, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
+}> = ({ config, setConfig, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const bgUploadRef = useRef<HTMLInputElement>(null);
-  const charmUploadRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   const availableBackgrounds = useMemo(() => {
@@ -366,12 +364,10 @@ const Step2BackgroundAndDecorations: React.FC<{
   };
 
   const handleBgFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // FIX: Using safer reference to the selected file
     const file = e.target.files?.[0];
     if (file) {
       const fileReader = new FileReader();
       fileReader.onload = () => {
-        // FIX: Safer access to fileReader.result
         const result = fileReader.result;
         if (typeof result === 'string') {
             const imageUrl = result;
@@ -395,26 +391,10 @@ const Step2BackgroundAndDecorations: React.FC<{
     }
   };
 
-  const handleCharmFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // FIX: Get file reference properly
-    const file = e.target.files?.[0];
-    if (file) {
-      const fileReader = new FileReader();
-      fileReader.onload = () => {
-        // FIX: Safer result access and corrected readAsDataURL call
-        const result = fileReader.result;
-        if (typeof result === 'string') {
-          addCharm(result);
-        }
-      };
-      fileReader.readAsDataURL(file);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="p-4 border border-gray-200 rounded-lg">
-        <h4 className="font-bold text-gray-800 mb-3">A. CHỌN MẪU NỀN CÓ SẴN</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">A. CHỌN MẪU NỀN CÓ SẴN</h4>
         
         <div className="mb-4 pb-3 border-b border-gray-200">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
@@ -455,26 +435,12 @@ const Step2BackgroundAndDecorations: React.FC<{
         </div>
       </div>
       <div className="p-4 border border-gray-200 rounded-lg">
-        <h4 className="font-bold text-gray-800 mb-3">B. HOẶC TẢI ẢNH CỦA BẠN</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">B. HOẶC TẢI ẢNH CỦA BẠN</h4>
         <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
           Tải ảnh nền
         </button>
       </div>
-
-      <div className="p-4 border border-gray-200 rounded-lg">
-        <h4 className="font-bold text-gray-800 mb-2">C. THÊM CHỮ & TRANG TRÍ</h4>
-        <p className="text-sm text-gray-600 mb-3">Chỉnh sửa trực tiếp trên khung xem trước.</p>
-        <div className="flex gap-2">
-            <button onClick={addText} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
-              + Thêm chữ mới
-            </button>
-            <button onClick={() => charmUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
-              Tải ảnh nhỏ
-            </button>
-        </div>
-      </div>
       <input type="file" ref={bgUploadRef} accept="image/*" onChange={handleBgFileUpload} className="hidden" />
-      <input type="file" ref={charmUploadRef} accept="image/*" onChange={handleCharmFileUpload} className="hidden" />
     </div>
   );
 };
@@ -720,7 +686,6 @@ const Step3Characters: React.FC<{
             })
         });
 
-        // Chỉ xóa các phụ kiện ở CỔ khi đổi sang tóc dài
         if (part.type === 'hair' && part.preventScarf) {
             setTimeout(() => { 
                 setConfig((prev: FrameConfig) => {
@@ -896,7 +861,7 @@ const Step3Characters: React.FC<{
             )}
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-bold text-gray-800">QUẢN LÝ NHÂN VẬT</h4>
+                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">QUẢN LÝ NHÂN VẬT</h4>
                     {activeCharacter && (
                         <button 
                             onClick={handleRandomizeOutfit}
@@ -990,7 +955,7 @@ const Step3Characters: React.FC<{
             
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex flex-col gap-3 mb-4">
-                    <h4 className="font-bold text-gray-800">THÊM PHỤ KIỆN</h4>
+                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">THÊM PHỤ KIỆN</h4>
                     
                     {uniqueAccessoryCategories.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -1054,7 +1019,7 @@ const Step3Characters: React.FC<{
             </div>
 
             <div className="p-4 border border-gray-200 rounded-lg">
-                <h4 className="font-bold text-gray-800 mb-3">THÊM THÚ CƯNG</h4>
+                <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
                     {getAvailableParts(legoParts.pet).map(part => {
                         const effectivePrice = getEffectivePrice(part);
@@ -1215,7 +1180,7 @@ const Step4Summary: React.FC<{
 
 const FontSelector: React.FC<{ 
     value: string; 
-    onChange: (font: string) => void;
+    onChange: (font: string) => void; 
     onPreview: (font: string | null) => void;
     uploadedFonts: CustomFont[];
 }> = ({ value, onChange, onPreview, uploadedFonts }) => {
@@ -1409,11 +1374,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [previewFont, setPreviewFont] = useState<string | null>(null); 
   const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
   
-  // NEW: Urgency Countdown Logic (15 minutes = 900 seconds)
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
 
-  // NEW: Step 2 Hint Modal States with Cooldown
   const [showStep2Hint, setShowStep2Hint] = useState(false);
   const [hasSeenStep2Hint, setHasSeenStep2Hint] = useState(false);
   const [hintCountdown, setHintCountdown] = useState(3);
@@ -1421,13 +1384,15 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
+  // New Ref for the top "Add Charm" button
+  const topCharmUploadRef = useRef<HTMLInputElement>(null);
+
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
-  // TRIGGER: URGENCY COUNTDOWN WHEN REACHING STEP 4
   useEffect(() => {
     if (step === 4 && !isEditingOrder && !urgencyTimerRef.current) {
         urgencyTimerRef.current = setInterval(() => {
@@ -1440,12 +1405,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             });
         }, 1000);
     }
-    return () => {
-        // We don't clear it on unmount to keep it running if they navigate back/forth in builder
-    };
   }, [step, isEditingOrder]);
 
-  // Trigger Step 2 Hint with Countdown
   useEffect(() => {
     if (step === 2 && !hasSeenStep2Hint) {
         setShowStep2Hint(true);
@@ -1453,7 +1414,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     }
   }, [step, hasSeenStep2Hint]);
 
-  // Countdown timer for Hint
   useEffect(() => {
     let timer: any;
     if (showStep2Hint && hintCountdown > 0) {
@@ -1628,25 +1588,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           link.click();
       }
   };
-
-  useEffect(() => {
-      const isMobile = window.innerWidth < 1024;
-      if (isMobile) {
-          const element = document.getElementById('builder-action-area');
-          if (element) {
-              const headerOffset = 100;
-              const elementPosition = element.getBoundingClientRect().top;
-              const offsetPosition = elementPosition + window.scrollY - headerOffset;
-
-              window.scrollTo({
-                  top: offsetPosition,
-                  behavior: "smooth"
-              });
-          }
-      } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-  }, [step]);
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -2038,15 +1979,31 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     }
   };
 
+  const handleTopCharmUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fileReader = new FileReader();
+      fileReader.onload = () => {
+        const result = fileReader.result;
+        if (typeof result === 'string') {
+          addCharm(result);
+          // Auto switch to step 2 if they are adding decorations
+          if (step !== 2) setStep(2);
+        }
+      };
+      fileReader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <div className="bg-gray-50 py-4 sm:py-8 safe-bottom">
+    <div className="bg-gray-50 py-2 sm:py-6 safe-bottom">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-2">
             <div className="text-sm text-gray-500">
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
             </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
@@ -2054,15 +2011,36 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
-                <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight">
                         ẢNH XEM TRƯỚC
                     </h3>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        {/* New Tool Buttons beside Undo - Refined style */}
+                        <div className="flex gap-1 pr-2 mr-2 border-r border-gray-200">
+                            <button 
+                                onClick={addText}
+                                className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+                                title="Thêm chữ nhanh"
+                            >
+                                <span className="text-sm font-black">T+</span>
+                                <span className="text-[10px] font-bold hidden sm:inline">Chữ</span>
+                            </button>
+                            <button 
+                                onClick={() => topCharmUploadRef.current?.click()}
+                                className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+                                title="Tải ảnh nhỏ nhanh"
+                            >
+                                <span className="text-sm">🖼️</span>
+                                <span className="text-[10px] font-bold hidden sm:inline">Ảnh</span>
+                            </button>
+                            <input type="file" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" />
+                        </div>
+
                         <button 
                             onClick={handleUndo} 
                             disabled={historyIndex <= 0}
-                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
                             title="Hoàn tác (Undo)"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
@@ -2070,21 +2048,21 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         <button 
                             onClick={handleRedo} 
                             disabled={historyIndex >= history.length - 1}
-                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
+                            className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
                             title="Làm lại (Redo)"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
                         </button>
                         <button 
                             onClick={handleShare}
-                            className="w-8 h-8 rounded border bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+                            className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm"
                             title="Chia sẻ thiết kế"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     </div>
                 </div>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-4 mb-32 lg:mb-0 shadow-inner">
+                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-2 mb-2 lg:mb-0 shadow-inner">
                     <FramePreview 
                         ref={frameCaptureRef}
                         config={config} 
@@ -2120,11 +2098,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <b>Designer sẽ thiết kế lại bố cục & màu sắc</b> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
                     </div>
                 </div>
-                <div className="h-10 mt-4 hidden lg:block"></div>
+                <div className="h-4 mt-2 hidden lg:block"></div>
             </div>
           </div>
 
-          <div className="lg:col-span-5 mt-4 lg:mt-0" id="builder-action-area"> 
+          <div className="lg:col-span-5 mt-2 lg:mt-0" id="builder-action-area"> 
               {(step === 2 || step === 3) && (
                   <div className="mb-3 px-1 animate-fade-in">
                       <div className="flex justify-between items-center text-[10px] mb-1">
@@ -2160,7 +2138,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                       />
                   ) : (
                       <>
-                          <div className="min-h-[400px]">
+                          <div className="min-h-[350px]">
                               {renderStepContent()}
                           </div>
                       </>
@@ -2266,7 +2244,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
       )}
 
-      {/* Step 2 Hint Popup (Modal) with 3s Lock */}
       {showStep2Hint && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small border-2 border-luvin-pink">
