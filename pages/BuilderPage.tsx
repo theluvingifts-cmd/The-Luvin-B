@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
@@ -105,8 +104,8 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
 
   return (
     <div className="space-y-4">
-      <div className="p-4 border border-gray-200 rounded-lg">
-        <h4 className="font-bold text-gray-800 mb-3">CHỌN KÍCH THƯỚC</h4>
+      <div className="p-4 border border-gray-200 rounded-lg text-left">
+        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHỌN KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
           {frames.map(frame => {
             const effectivePrice = getEffectivePrice(frame);
@@ -177,8 +176,8 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
         )}
       </div>
        {selectedFrame && (
-        <div className="p-4 border border-gray-200 rounded-lg">
-            <h4 className="font-bold text-gray-800 mb-3">GIÁ CƠ BẢN BAO GỒM</h4>
+        <div className="p-4 border border-gray-200 rounded-lg text-left">
+            <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">GIÁ CƠ BẢN BAO GỒM</h4>
             <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
                 <li>1 Khung ảnh {selectedFrame.name} ({selectedFrame.description}).</li>
                 <li>1 Nền tùy chọn (mẫu có sẵn hoặc ảnh của bạn).</li>
@@ -392,7 +391,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-left">
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">A. CHỌN MẪU NỀN CÓ SẴN</h4>
         
@@ -435,7 +434,7 @@ const Step2BackgroundAndDecorations: React.FC<{
         </div>
       </div>
       <div className="p-4 border border-gray-200 rounded-lg">
-        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">B. HOẶC TẢIẢNH CỦA BẠN</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">B. HOẶC TẢI ẢNH CỦA BẠN</h4>
         <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
           Tải ảnh nền
         </button>
@@ -516,7 +515,7 @@ const PartButton: React.FC<{
                     <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
                 )}
 
-                {/* COLOR BADGE - SOLUTION 1 REFINED */}
+                {/* COLOR BADGE - REFINED POSITION TO AVOID OVERFLOW */}
                 {hasMultipleColors && (
                     <div className="absolute bottom-1 right-1 z-20 bg-white/95 rounded-full w-6 h-6 flex items-center justify-center shadow-md border border-pink-100 animate-fade-in" title="Có thể đổi màu">
                         <span className="text-[11px]">🎨</span>
@@ -797,6 +796,7 @@ const Step3Characters: React.FC<{
                     }
                     
                     let pantsColors = newChar.pants?.colors;
+                    // Fixed typo 'LogopantsColors' to 'pantsColors'
                     if (!pantsColors || pantsColors.length === 0) {
                          const nameLower = newChar.pants?.name.toLowerCase() || '';
                          if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors;
@@ -860,7 +860,7 @@ const Step3Characters: React.FC<{
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, hotPartIds]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 text-left">
             {printDialogCharId && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
@@ -925,7 +925,6 @@ const Step3Characters: React.FC<{
                                 </button>
                             ))}
                         </div>
-                        {/* SMART HINT - SOLUTION 2 */}
                         <div className="flex items-center gap-1 text-[10px] sm:text-xs text-luvin-pink font-bold italic animate-pulse px-1">
                             <span>✨ Mẹo:</span> Linh kiện có huy hiệu 🎨 có thể tùy chỉnh màu sắc bên dưới!
                         </div>
@@ -1067,25 +1066,24 @@ const Step3Characters: React.FC<{
     );
 };
 
-// NEW COMPONENT: PREMIUM TRUST NUDGE
+// NEW COMPONENT: PREMIUM TRUST NUDGE - FIXED FOR MOBILE (NO OVERFLOW)
 const DesignerCommitment: React.FC = () => (
-    <div className="relative mt-8 mb-6">
-        {/* Floating Shield Icon with Pulse */}
-        <div className="absolute -left-3 -top-3 z-10 w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-green-100 animate-bounce-small">
-            <span className="text-2xl animate-pulse">🛡️</span>
-        </div>
-        
-        {/* Main Card */}
-        <div className="bg-white border-2 border-green-500 rounded-[2rem] p-6 pl-10 shadow-[0_10px_30px_rgba(34,197,94,0.15)] overflow-hidden group">
+    <div className="mt-8 mb-6 animate-fade-in text-left">
+        <div className="bg-white border-2 border-green-500 rounded-[2rem] p-5 shadow-[0_10px_30px_rgba(34,197,94,0.12)] overflow-hidden relative group">
             {/* Background Decorative Element */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700 pointer-events-none"></div>
             
             <div className="relative z-10">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h4 className="font-heading text-xl font-black text-green-700 uppercase tracking-tight">An tâm tuyệt đối</h4>
-                    <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                        MIỄN PHÍ 100%
-                    </span>
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center shadow-sm border border-green-100 flex-shrink-0">
+                        <span className="text-xl animate-pulse">🛡️</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-heading text-lg font-black text-green-700 uppercase tracking-tight">An tâm tuyệt đối</h4>
+                        <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                            MIỄN PHÍ 100%
+                        </span>
+                    </div>
                 </div>
                 
                 <p className="text-sm text-gray-700 leading-relaxed font-medium">
@@ -1112,7 +1110,7 @@ const UrgencyFlashSale: React.FC<{ timeLeft: number }> = ({ timeLeft }) => {
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <span className="text-xl">🔥</span>
-                    <div>
+                    <div className="text-left">
                         <p className="font-black text-sm uppercase tracking-wider">Ưu đãi phút chót!</p>
                         <p className="text-[10px] opacity-90 font-bold">Hoàn tất đơn để nhận 1 Sticker quà tặng</p>
                     </div>
@@ -1139,7 +1137,7 @@ const Step4Summary: React.FC<{
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
-    <div>
+    <div className="text-left">
         {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
         
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
@@ -1148,7 +1146,7 @@ const Step4Summary: React.FC<{
                 <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{charCount} Nhân vật</span>
             </h4>
             
-            <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+            <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1 text-left">
                 {priceBreakdown.map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-1">
                         <div className="flex flex-col">
@@ -1244,7 +1242,7 @@ const FontSelector: React.FC<{
     ];
 
     return (
-        <div className="relative" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
+        <div className="relative text-left" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
@@ -1312,7 +1310,7 @@ const TextEditor: React.FC<{
                 </div>
             )}
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800">CHỈNH SỬA CHỮ</h3>
+                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight text-sm">CHỈNH SỬA CHỮ</h3>
                 <div className="flex gap-2 relative z-30">
                     <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
                         + Thêm chữ
@@ -1324,19 +1322,19 @@ const TextEditor: React.FC<{
             </div>
             <div className="space-y-4">
                 <div>
-                    <label className="text-sm font-bold text-gray-600 block mb-1">Nội dung</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Nội dung</label>
                     <textarea
                         value={activeText.content}
                         onChange={e => updateActiveText({ content: e.target.value })}
                         disabled={isLocked}
                         readOnly={isLocked}
                         rows={3}
-                        className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
+                        className={`w-full p-3 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
                         placeholder="Nhập nội dung văn bản..."
                     />
                 </div>
                 <div>
-                    <label className="text-sm font-bold text-gray-600 block mb-1">Font Chữ</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Font Chữ</label>
                     <FontSelector 
                         value={activeText.font} 
                         onChange={(font) => updateActiveText({ font })}
@@ -1345,7 +1343,7 @@ const TextEditor: React.FC<{
                     />
                 </div>
                 <div>
-                    <label className="text-sm font-bold text-gray-600 block mb-1">Cỡ chữ</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Cỡ chữ</label>
                     <input 
                       type="number" 
                       min="8" 
@@ -1354,20 +1352,20 @@ const TextEditor: React.FC<{
                       onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
                       disabled={isLocked}
                       readOnly={isLocked}
-                      className={`w-full p-2 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'}`}
+                      className={`w-full p-2.5 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
                     />
                 </div>
                 <div className="flex items-center justify-between gap-2">
                     <button 
                         onClick={() => updateActiveText({background: !activeText.background})} 
                         disabled={isLocked}
-                        className={`text-sm px-3 py-2 rounded-lg flex-1 ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-sm px-3 py-2 rounded-lg flex-1 font-bold ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} transition-all`}
                     >
                       {activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}
                     </button>
                     <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                         {(['left', 'center', 'right'] as const).map(align => (
-                           <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-3 py-1 text-sm ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'}`}>
+                           <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-4 py-2 text-sm font-bold ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'} transition-all`}>
                              {align.charAt(0).toUpperCase()}
                            </button>
                         ))}
