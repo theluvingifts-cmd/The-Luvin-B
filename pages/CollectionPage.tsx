@@ -1,32 +1,25 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page } from '../types';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
 
 interface CollectionPageProps {
-    navigateTo: (page: Page, category?: string) => void, 
+    navigateTo: (page: Page) => void, 
     onCustomize: (config: FrameConfig) => void, 
     templates?: CollectionTemplate[],
     onZoomImage: (url: string) => void,
     allParts: Record<string, LegoPart>,
-    frames: FrameOption[],
-    initialCategory?: string
+    frames: FrameOption[]
 }
 
-export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, templates, onZoomImage, allParts, frames, initialCategory }) => {
+export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, templates, onZoomImage, allParts, frames }) => {
     const displayTemplates: CollectionTemplate[] = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeCategory, setActiveCategory] = useState(initialCategory || 'Tất cả');
+    const [activeCategory, setActiveCategory] = useState('Tất cả');
 
-    // Đồng bộ state activeCategory khi initialCategory từ prop thay đổi (khi bấm từ Footer)
-    useEffect(() => {
-        if (initialCategory) {
-            setActiveCategory(initialCategory);
-        }
-    }, [initialCategory]);
-
+    // Lấy danh mục động hoàn toàn từ dữ liệu thực tế của templates
     const categories = useMemo(() => {
         const dynamicCats = new Set<string>();
         displayTemplates.forEach(t => {
@@ -34,6 +27,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 dynamicCats.add(t.category.trim());
             }
         });
+        // Sắp xếp danh mục theo bảng chữ cái và thêm "Tất cả" lên đầu
         return ['Tất cả', ...Array.from(dynamicCats).sort()];
     }, [displayTemplates]);
 
@@ -47,6 +41,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     return ( 
       <div className="min-h-screen bg-[#fdfcfb] pb-20 font-body text-site-text">
+        {/* Header Section - Clean & Modern */}
         <div className="bg-white border-b border-gray-100 pt-20 pb-10 px-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
             
@@ -58,6 +53,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     Mỗi mẫu thiết kế là một câu chuyện. Hãy chọn một mẫu bạn thích nhất và bắt đầu tùy chỉnh cho riêng mình.
                 </p>
                 
+                {/* Search Bar - Optimized for Mobile */}
                 <div className="mt-8 max-w-md mx-auto relative px-2">
                     <input 
                         type="text" 
@@ -73,6 +69,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             </div>
         </div>
 
+        {/* Filter Section - Sticky & Horizontal Scroll */}
         <div className="sticky top-14 sm:top-16 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 py-3 shadow-sm transition-all">
             <div className="container mx-auto px-4 overflow-x-auto no-scrollbar flex items-center justify-start sm:justify-center gap-2">
                 {categories.map(cat => (
@@ -91,6 +88,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             </div>
         </div>
 
+        {/* Content Grid - Better Mobile Spacing */}
         <div className="container mx-auto px-3 sm:px-6 py-8">
             {filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -99,6 +97,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     
                     return ( 
                         <div key={template.id || index} className="group flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100">
+                            {/* Image Area - Always Interactive */}
                             <div className="relative aspect-square overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer" onClick={() => onCustomize(template.config)}>
                                 <img 
                                     src={template.imageUrl} 
@@ -106,6 +105,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     className="w-full h-full object-contain p-2 sm:p-4 transition-transform duration-500 group-hover:scale-110" 
                                 />
                                 
+                                {/* Quick View Button (Top Right) */}
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); onZoomImage(template.imageUrl); }}
                                     className="absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 bg-white/80 backdrop-blur text-gray-600 rounded-full flex items-center justify-center hover:bg-white shadow-sm border border-gray-100"
@@ -114,6 +114,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </button>
                             </div>
 
+                            {/* Info Area */}
                             <div className="p-3 sm:p-4 flex flex-col flex-grow">
                                 <span className="text-[9px] text-luvin-pink font-bold uppercase tracking-wider mb-1">
                                     {template.category || 'Mẫu thiết kế'}
@@ -130,6 +131,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         </span>
                                     </div>
                                     
+                                    {/* Action Button - Always visible & prominent on mobile */}
                                     <button 
                                         onClick={() => onCustomize(template.config)} 
                                         className="w-full py-2 sm:py-2.5 bg-gray-900 text-white rounded-xl text-[10px] sm:text-xs font-bold shadow-sm hover:bg-luvin-pink transition-colors active:scale-95 flex items-center justify-center gap-1.5"

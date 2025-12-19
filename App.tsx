@@ -1,4 +1,5 @@
 
+// ... (imports giữ nguyên)
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
@@ -36,6 +37,7 @@ import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
+// Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
     if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
@@ -96,8 +98,6 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
   const [builderInitialStep, setBuilderInitialStep] = useState(1);
-  const [collectionInitialCategory, setCollectionInitialCategory] = useState('Tất cả');
-  
   const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
       try {
           const savedCart = localStorage.getItem('shopping_cart');
@@ -137,17 +137,6 @@ const App: React.FC = () => {
   });
 
   const [isCartShaking, setIsCartShaking] = useState(false);
-
-  // Tính toán danh sách dịp duy nhất từ templates
-  const collectionOccasions = useMemo(() => {
-      const dynamicCats = new Set<string>();
-      templates.forEach(t => {
-          if (t.category && t.category.trim() !== '') {
-              dynamicCats.add(t.category.trim());
-          }
-      });
-      return Array.from(dynamicCats).sort();
-  }, [templates]);
 
   const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
@@ -237,12 +226,9 @@ const App: React.FC = () => {
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
-  const navigateTo = (page: Page, category?: string) => {
+  const navigateTo = (page: Page) => {
     if (page === 'builder') {
         setBuilderInitialStep(1);
-    }
-    if (page === 'collection') {
-        setCollectionInitialCategory(category || 'Tất cả');
     }
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
        if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
@@ -434,17 +420,18 @@ const App: React.FC = () => {
                     uploadedFonts={storeConfig.uploadedFonts || []}
                 />
             )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} initialCategory={collectionInitialCategory} />}
+            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
             {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} />}
             {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} initialOrder={editingOrder} />}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
+            {currentPage === 'admin' && <AdminPage />}
             {currentPage === 'about' && <AboutPage config={storeConfig} />}
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
             {currentPage === 'business' && <BusinessPage config={storeConfig} legoParts={legoParts} />}
         </main>
 
-        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} occasions={collectionOccasions} />}
+        {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
 
         <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} />
 
