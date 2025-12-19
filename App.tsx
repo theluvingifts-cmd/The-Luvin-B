@@ -1,5 +1,4 @@
 
-// ... (imports giữ nguyên)
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
@@ -18,6 +17,8 @@ import { getAllFeedbacks } from './services/feedbackService';
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
 import { sendOrderTelegram } from './services/telegramService'; 
+import { db } from './config/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 import AdminPage from './pages/AdminPage'; 
 import { Header } from './components/Header';
@@ -37,7 +38,6 @@ import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
-// Helper để load font Google
 const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
     if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
@@ -78,19 +78,31 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
 };
 
 const updateMetaTags = (config: StoreConfig) => {
-    if (config.seoTitle) {
-        document.title = config.seoTitle;
-        document.querySelector('meta[property="og:title"]')?.setAttribute('content', config.seoTitle);
-        document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', config.seoTitle);
-    }
-    if (config.seoDescription) {
-        document.querySelector('meta[name="description"]')?.setAttribute('content', config.seoDescription);
-        document.querySelector('meta[property="og:description"]')?.setAttribute('content', config.seoDescription);
-        document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', config.seoDescription);
-    }
-    if (config.seoImageUrl) {
-        document.querySelector('meta[property="og:image"]')?.setAttribute('content', config.seoImageUrl);
-        document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', config.seoImageUrl);
+    if (!config) return;
+
+    // 1. Cập nhật Tiêu đề
+    const title = config.seoTitle || "The Luvin - Thương hiệu quà tặng tinh tế";
+    document.title = title;
+    document.getElementById('og-title')?.setAttribute('content', title);
+    document.getElementById('twitter-title')?.setAttribute('content', title);
+
+    // 2. Cập nhật Mô tả
+    const desc = config.seoDescription || "Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn, tinh tế và đầy cảm xúc.";
+    document.getElementById('meta-description')?.setAttribute('content', desc);
+    document.getElementById('og-description')?.setAttribute('content', desc);
+    document.getElementById('twitter-description')?.setAttribute('content', desc);
+
+    // 3. Cập nhật Ảnh SEO (Ưu tiên ảnh SEO, sau đó mới đến Logo)
+    const shareImage = config.seoImageUrl || config.logoUrl || "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
+    document.getElementById('og-image')?.setAttribute('content', shareImage);
+    document.getElementById('twitter-image')?.setAttribute('content', shareImage);
+
+    // 4. Cập nhật Favicon
+    if (config.faviconUrl) {
+        const faviconLink = document.getElementById('favicon-link') as HTMLLinkElement;
+        if (faviconLink) {
+            faviconLink.href = config.faviconUrl;
+        }
     }
 };
 
@@ -123,9 +135,9 @@ const App: React.FC = () => {
   
   const [legoParts, setLegoParts] = useState(LEGO_PARTS);
   const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]); 
-  const [templates, setTemplates] = useState<CollectionTemplate[]>(COLLECTION_TEMPLATES);
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(FEEDBACK_ITEMS);
-  const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS); 
+  const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [frames, setFrames] = useState<FrameOption[]>([]); 
 
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
       try {
@@ -202,26 +214,25 @@ const App: React.FC = () => {
 
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
-                localStorage.setItem('store_config', JSON.stringify(fetchedConfig));
                 updateMetaTags(fetchedConfig);
-
-                if (fetchedConfig.faviconUrl) {
-                    const link = document.querySelector("link[rel~='icon']");
-                    if (link instanceof HTMLLinkElement) {
-                        link.href = fetchedConfig.faviconUrl;
-                    } else {
-                        const newLink = document.createElement('link');
-                        newLink.rel = 'icon';
-                        newLink.href = fetchedConfig.faviconUrl;
-                        document.head.appendChild(newLink);
-                    }
-                }
             }
           } catch (error) {
               console.error("Initial fetch error:", error);
           }
       };
       fetchData();
+
+      // Real-time listener for Store Config
+      const unsubscribe = onSnapshot(doc(db, 'config', 'general'), (docSnap) => {
+          if (docSnap.exists()) {
+              const updatedConfig = docSnap.data() as StoreConfig;
+              setStoreConfig(updatedConfig);
+              localStorage.setItem('store_config', JSON.stringify(updatedConfig));
+              updateMetaTags(updatedConfig);
+          }
+      });
+
+      return () => unsubscribe();
   }, []);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
