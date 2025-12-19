@@ -752,7 +752,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         {isInteractive && selectedItemId && (
             <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none">
                 {activeColors && activeColors.length > 0 && (
-                    <div className="pointer-events-auto w-fit bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto">
+                    <div className="pointer-events-auto w-fit bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto animate-subtle-pulse">
                         <div className="flex gap-2 w-max px-2">
                             {activeColors.map((color: OutfitColor, idx: number) => (
                                 <button

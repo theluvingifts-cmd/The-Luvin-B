@@ -464,6 +464,16 @@ const PartButton: React.FC<{
     
     const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
     const isBulk = part.bulkPricing && part.bulkPricing.length > 0;
+    
+    // Check if the part has customizable colors
+    const hasMultipleColors = useMemo(() => {
+        if (part.colors && part.colors.length > 1) return true;
+        const nameLower = part.name.toLowerCase();
+        // Check for basic shirts/pants that use default colors
+        if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) return true;
+        if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) return true;
+        return false;
+    }, [part]);
 
     return (
         <button
@@ -492,6 +502,7 @@ const PartButton: React.FC<{
                     COMBO
                 </div>
             )}
+            
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative">
                 {!imgError && part.imageUrl ? (
                     <img 
@@ -503,6 +514,13 @@ const PartButton: React.FC<{
                     />
                 ) : (
                     <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
+                )}
+
+                {/* COLOR BADGE - SOLUTION 1 REFINED */}
+                {hasMultipleColors && (
+                    <div className="absolute bottom-1 right-1 z-20 bg-white/95 rounded-full w-6 h-6 flex items-center justify-center shadow-md border border-pink-100 animate-fade-in" title="Có thể đổi màu">
+                        <span className="text-[11px]">🎨</span>
+                    </div>
                 )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
@@ -899,13 +917,17 @@ const Step3Characters: React.FC<{
 
             {activeCharacter && (
                 <div className="p-4 border border-gray-200 rounded-lg relative">
-                    <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
-                        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1">
+                    <div className="flex flex-col mb-4 border-b border-gray-200 pb-4">
+                        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1 mb-2">
                             {partTypes.map(pt => (
                                 <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
                                     {pt.label}
                                 </button>
                             ))}
+                        </div>
+                        {/* SMART HINT - SOLUTION 2 */}
+                        <div className="flex items-center gap-1 text-[10px] sm:text-xs text-luvin-pink font-bold italic animate-pulse px-1">
+                            <span>✨ Mẹo:</span> Linh kiện có huy hiệu 🎨 có thể tùy chỉnh màu sắc bên dưới!
                         </div>
                     </div>
                      <div className="grid grid-cols-4 gap-2">
@@ -2229,7 +2251,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       </div>
 
       {showRestoreDraft && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-w-sm animate-bounce-small">
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-sm animate-bounce-small">
               <div className="flex items-start gap-3">
                   <span className="text-2xl">💾</span>
                   <div>
