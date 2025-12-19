@@ -435,7 +435,7 @@ const Step2BackgroundAndDecorations: React.FC<{
         </div>
       </div>
       <div className="p-4 border border-gray-200 rounded-lg">
-        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">B. HOẶC TẢI ẢNH CỦA BẠN</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">B. HOẶC TẢIẢNH CỦA BẠN</h4>
         <button onClick={() => bgUploadRef.current?.click()} className="w-full font-semibold bg-gray-200 text-gray-800 py-2.5 px-3 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform">
           Tải ảnh nền
         </button>
@@ -1067,17 +1067,36 @@ const Step3Characters: React.FC<{
     );
 };
 
-// NEW COMPONENT: TRUST NUDGE (DESIGNER COMMITMENT)
+// NEW COMPONENT: PREMIUM TRUST NUDGE
 const DesignerCommitment: React.FC = () => (
-    <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 flex gap-3 items-start animate-fade-in">
-        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0 text-xl">
-            🛡️
+    <div className="relative mt-8 mb-6">
+        {/* Floating Shield Icon with Pulse */}
+        <div className="absolute -left-3 -top-3 z-10 w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-green-100 animate-bounce-small">
+            <span className="text-2xl animate-pulse">🛡️</span>
         </div>
-        <div>
-            <p className="font-bold text-green-900 text-sm mb-1">An tâm tuyệt đối!</p>
-            <p className="text-xs text-green-700 leading-relaxed">
-                Sau khi đặt hàng, <b>Designer của The Luvin</b> sẽ trực tiếp căn chỉnh lại bố cục, font chữ đẹp nhất và <b>gửi ảnh thực tế</b> cho bạn duyệt trước khi đóng gói & gửi đi.
-            </p>
+        
+        {/* Main Card */}
+        <div className="bg-white border-2 border-green-500 rounded-[2rem] p-6 pl-10 shadow-[0_10px_30px_rgba(34,197,94,0.15)] overflow-hidden group">
+            {/* Background Decorative Element */}
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700"></div>
+            
+            <div className="relative z-10">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h4 className="font-heading text-xl font-black text-green-700 uppercase tracking-tight">An tâm tuyệt đối</h4>
+                    <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                        MIỄN PHÍ 100%
+                    </span>
+                </div>
+                
+                <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                    Sau khi đặt hàng, <span className="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-lg font-bold">Designer chuyên nghiệp</span> sẽ trực tiếp căn chỉnh lại bố cục, font chữ đẹp nhất và <span className="text-green-700 font-bold border-b-2 border-green-200">gửi ảnh thực tế</span> cho bạn duyệt trước khi đóng gói & gửi đi.
+                </p>
+                
+                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-green-600 font-bold uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    Đảm bảo quà tặng hoàn hảo khi đến tay
+                </div>
+            </div>
         </div>
     </div>
 );
@@ -1172,7 +1191,7 @@ const Step4Summary: React.FC<{
             </div>
         </div>
 
-        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in">
+        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in text-left">
             <span className="text-xl">📅</span>
             <div>
                 <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
@@ -1280,7 +1299,7 @@ const TextEditor: React.FC<{
     const isLocked = activeText.lockedContent;
     
     return (
-        <div className="p-4 border border-gray-200 rounded-lg relative">
+        <div className="p-4 border border-gray-200 rounded-lg relative text-left">
             {isLocked && (
                 <div 
                     className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
@@ -2034,7 +2053,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight">
+                    <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight text-left">
                         ẢNH XEM TRƯỚC
                     </h3>
                     <div className="flex items-center gap-1.5 sm:gap-2">
@@ -2109,7 +2128,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                     />
                 </div>
                 
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex">
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex text-left">
                     <span className="text-amber-500 mt-0.5">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                             <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
@@ -2126,7 +2145,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
           <div className="lg:col-span-5 mt-2 lg:mt-0" id="builder-action-area"> 
               {(step === 2 || step === 3) && (
-                  <div className="mb-3 px-1 animate-fade-in">
+                  <div className="mb-3 px-1 animate-fade-in text-left">
                       <div className="flex justify-between items-center text-[10px] mb-1">
                           <span className="text-gray-500 font-medium">
                               {remainingForFreeShip > 0 ? (
@@ -2251,7 +2270,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       </div>
 
       {showRestoreDraft && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-sm animate-bounce-small">
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-sm animate-bounce-small text-left">
               <div className="flex items-start gap-3">
                   <span className="text-2xl">💾</span>
                   <div>
@@ -2267,7 +2286,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       )}
 
       {showStep2Hint && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in text-left">
               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small border-2 border-luvin-pink">
                   <div className="bg-luvin-pink/10 p-6 flex flex-col items-center text-center">
                       <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 text-3xl animate-pulse">
