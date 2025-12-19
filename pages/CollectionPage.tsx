@@ -20,7 +20,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState(initialCategory || 'Tất cả');
 
-    // Đồng bộ state activeCategory khi initialCategory từ prop thay đổi (khi bấm từ Footer)
     useEffect(() => {
         if (initialCategory) {
             setActiveCategory(initialCategory);
@@ -55,13 +54,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     Khám phá <span className="text-luvin-pink">Thiết kế</span> độc bản
                 </h1>
                 <p className="text-gray-500 max-w-lg mx-auto text-xs md:text-sm leading-relaxed px-4">
-                    Mỗi mẫu thiết kế là một câu chuyện. Hãy chọn một mẫu bạn thích nhất và bắt đầu tùy chỉnh cho riêng mình.
+                    Mỗi mẫu thiết kế là một gợi ý. Bạn có thể thay đổi mọi chi tiết để phù hợp với sở thích và ngân sách.
                 </p>
                 
                 <div className="mt-8 max-w-md mx-auto relative px-2">
                     <input 
                         type="text" 
-                        placeholder="Tìm kiếm mẫu..." 
+                        placeholder="Tìm kiếm mẫu theo dịp..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm transition-all outline-none focus:bg-white focus:ring-2 focus:ring-luvin-pink/20 focus:border-luvin-pink shadow-sm"
@@ -92,6 +91,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         </div>
 
         <div className="container mx-auto px-3 sm:px-6 py-8">
+            {/* SMART PRICING TIP BANNER */}
+            <div className="mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5 flex items-start gap-4 shadow-sm animate-fade-in">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 text-xl shadow-sm">💡</div>
+                <div>
+                    <h4 className="text-sm font-bold text-blue-900 mb-0.5">Mẹo tiết kiệm ngân sách</h4>
+                    <p className="text-xs text-blue-700 leading-relaxed">
+                        Bạn hoàn toàn có thể <b>bớt số lượng nhân vật</b> hoặc <b>giảm phụ kiện</b> trong các mẫu này để có giá thành rẻ hơn. Bấm "Tùy chỉnh ngay" để cân đối chi phí theo ý muốn!
+                    </p>
+                </div>
+            </div>
+
             {filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {filteredTemplates.map((template, index) => {
@@ -106,6 +116,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     className="w-full h-full object-contain p-2 sm:p-4 transition-transform duration-500 group-hover:scale-110" 
                                 />
                                 
+                                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full border border-gray-100 shadow-sm">
+                                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-tighter">Tùy chỉnh linh hoạt</span>
+                                </div>
+
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); onZoomImage(template.imageUrl); }}
                                     className="absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 bg-white/80 backdrop-blur text-gray-600 rounded-full flex items-center justify-center hover:bg-white shadow-sm border border-gray-100"
@@ -118,13 +132,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <span className="text-[9px] text-luvin-pink font-bold uppercase tracking-wider mb-1">
                                     {template.category || 'Mẫu thiết kế'}
                                 </span>
-                                <h3 className="text-xs sm:text-sm font-bold text-gray-800 line-clamp-1 mb-2 leading-tight" title={template.name}>
+                                <h3 className="text-xs sm:text-sm font-bold text-gray-800 line-clamp-1 mb-1 leading-tight" title={template.name}>
                                     {template.name}
                                 </h3>
                                 
                                 <div className="mt-auto">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <span className="text-sm sm:text-base font-bold text-gray-900">{formatCurrency(totalPrice)}</span>
+                                    <div className="flex justify-between items-end mb-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm sm:text-base font-bold text-gray-900">{formatCurrency(totalPrice)}</span>
+                                            <span className="text-[8px] text-gray-400 font-medium italic mt-0.5">* Có thể giảm giá khi bớt đồ</span>
+                                        </div>
                                         <span className="text-[9px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                                             {template.config.characters.length} NV
                                         </span>
