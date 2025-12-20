@@ -253,8 +253,13 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleCustomizeTemplate = (templateConfig: FrameConfig) => {
-      setConfig(templateConfig);
+  const handleCustomizeTemplate = (template: CollectionTemplate) => {
+      // Inject templateId to track purchases
+      const newConfig = {
+          ...template.config,
+          templateId: template.id
+      };
+      setConfig(newConfig);
       setBuilderInitialStep(3); 
       setCurrentPage('builder');
       window.scrollTo(0, 0);

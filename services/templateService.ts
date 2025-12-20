@@ -1,6 +1,6 @@
 
 import { db } from '../config/firebase';
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';
 
@@ -26,7 +26,10 @@ export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
 
 export const addTemplate = async (template: CollectionTemplate) => {
     try {
-        await setDoc(doc(db, COLLECTION_NAME, template.id), template);
+        await setDoc(doc(db, COLLECTION_NAME, template.id), {
+            ...template,
+            purchaseCount: template.purchaseCount || 0
+        });
         return true;
     } catch (error) {
         console.error("Error adding template:", error);
@@ -54,11 +57,22 @@ export const deleteTemplate = async (id: string) => {
     }
 };
 
+export const incrementTemplatePurchaseCount = async (templateId: string) => {
+    try {
+        const docRef = doc(db, COLLECTION_NAME, templateId);
+        await updateDoc(docRef, {
+            purchaseCount: increment(1)
+        });
+    } catch (error) {
+        console.error("Error incrementing purchase count:", error);
+    }
+};
+
 export const seedTemplates = async () => {
     try {
         for (const t of COLLECTION_TEMPLATES) {
             const id = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-            await setDoc(doc(db, COLLECTION_NAME, id), { ...t, id });
+            await setDoc(doc(db, COLLECTION_NAME, id), { ...t, id, purchaseCount: 0 });
         }
         return true;
     } catch (error) {

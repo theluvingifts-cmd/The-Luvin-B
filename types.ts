@@ -131,6 +131,7 @@ export interface FrameConfig {
   draggableItems: DraggableItem[];
   previewImageUrl?: string;
   quantity?: number;
+  templateId?: string; // NEW: Truy vết mẫu thiết kế gốc
 }
 
 export interface LegoCharacterConfig {
@@ -218,7 +219,8 @@ export interface CollectionTemplate {
     name: string;
     imageUrl: string;
     config: FrameConfig;
-    category?: string; // New: For organizing templates (Love, Birthday, etc.)
+    category?: string; 
+    purchaseCount?: number; // NEW: Số lượt mua thực tế
 }
 
 export interface FeedbackItem {

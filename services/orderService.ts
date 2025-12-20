@@ -1,9 +1,11 @@
+
 // services/orderService.ts
 import { db } from '../config/firebase';
-import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadToCloudinary } from './uploadService';
 import { adjustStock } from './productService';
+import { incrementTemplatePurchaseCount } from './templateService';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
@@ -32,20 +34,17 @@ export const countPartsInOrder = (orderItems: Order['items']): Record<string, nu
     return counts;
 };
 
-// HELPER: Deep clean data for Firestore (Removes undefined, empty array slots, ensuring strict plain objects)
+// HELPER: Deep clean data for Firestore
 const cleanForFirestore = (data: any): any => {
-    // 1. Primitives
     if (data === null || data === undefined) return data; 
     if (typeof data !== 'object') return data;
 
-    // 2. Arrays
     if (Array.isArray(data)) {
         return data
             .map(cleanForFirestore)
             .filter(item => item !== undefined);
     }
 
-    // 3. Objects
     const newObj: any = {};
     Object.keys(data).forEach(key => {
         const val = cleanForFirestore(data[key]);
@@ -56,48 +55,28 @@ const cleanForFirestore = (data: any): any => {
     return newObj;
 };
 
-// HELPER: Process images in order items (Upload base64 to Storage)
+// HELPER: Process images in order items
 const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfig[]> => {
     return Promise.all(items.map(async (item) => {
         let newItem = { ...item };
-
-        // 1. Upload Preview Image if Base64
         if (newItem.previewImageUrl && newItem.previewImageUrl.startsWith('data:')) {
             const cloudUrl = await uploadToCloudinary(newItem.previewImageUrl);
-            if (cloudUrl) {
-                newItem.previewImageUrl = cloudUrl;
-            } else {
-                console.error("Failed to upload preview image for item", item.frameId);
-            }
+            if (cloudUrl) newItem.previewImageUrl = cloudUrl;
         }
-
-        // 2. Upload Background Image if Base64 (User Upload)
         if (newItem.background && newItem.background.type === 'upload' && newItem.background.value.startsWith('data:')) {
              const bgCloudUrl = await uploadToCloudinary(newItem.background.value);
-             if (bgCloudUrl) {
-                 newItem.background = { ...newItem.background, value: bgCloudUrl };
-             } else {
-                 console.error("Failed to upload background image for item", item.frameId);
-             }
+             if (bgCloudUrl) newItem.background = { ...newItem.background, value: bgCloudUrl };
         }
-
-        // 3. Upload Draggable Items (Charms) if Base64 (User Uploaded Stickers)
         if (newItem.draggableItems && newItem.draggableItems.length > 0) {
             const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
                 if (di.type === 'charm' && di.partId && di.partId.startsWith('data:')) {
                     const charmUrl = await uploadToCloudinary(di.partId);
-                    if (charmUrl) {
-                        return { ...di, partId: charmUrl };
-                    } else {
-                        console.error("Failed to upload charm image", di.id);
-                        return di;
-                    }
+                    if (charmUrl) return { ...di, partId: charmUrl };
                 }
                 return di;
             }));
             newItem.draggableItems = processedDraggables;
         }
-
         return newItem; 
     }));
 };
@@ -105,9 +84,7 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
 // 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
-        // Xử lý ảnh: Upload ảnh preview và background lên Storage nếu là chuỗi base64
         const itemsWithImages = await processOrderItemsImages(order.items);
-
         const timestamp = Date.now();
         const finalOrder: Order = {
             ...order,
@@ -118,35 +95,26 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             isUrgent: false,
             adminDeadline: ""
         };
-
-        // SANITIZE: Use deep clean instead of just JSON.parse(JSON.stringify)
         const sanitizedOrder = cleanForFirestore(finalOrder);
-
-        // 1. Lưu đơn hàng vào Firestore
         await setDoc(doc(db, "orders", order.id), sanitizedOrder);
+        
+        // CẬP NHẬT LƯỢT MUA CHO TEMPLATE
+        for (const item of finalOrder.items) {
+            if (item.templateId) {
+                await incrementTemplatePurchaseCount(item.templateId);
+            }
+        }
 
-        // 2. Trừ tồn kho
         const partsUsage = countPartsInOrder(finalOrder.items);
-        // Chuyển số lượng thành số âm để trừ
         const stockAdjustments: Record<string, number> = {};
         for (const [partId, qty] of Object.entries(partsUsage)) {
             stockAdjustments[partId] = -qty;
         }
-        
-        // Gọi hàm cập nhật kho (không await để không chặn UI, chạy ngầm)
         adjustStock(stockAdjustments);
-
         return { success: true, data: finalOrder };
     } catch (error: any) {
         console.error("Lỗi tạo đơn hàng:", error);
-        
-        // Return structured error
-        let errorMessage = "Đã có lỗi xảy ra.";
-        if (error.code === 'permission-denied') errorMessage = "Lỗi quyền truy cập hệ thống. Vui lòng liên hệ Admin.";
-        else if (error.code === 'unavailable') errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.";
-        else if (error.message) errorMessage = error.message;
-
-        return { success: false, error: { message: errorMessage, original: error } };
+        return { success: false, error: { message: error.message || "Đã có lỗi xảy ra.", original: error } };
     }
 };
 
@@ -165,15 +133,10 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 // 2b. Hàm tra cứu đơn hàng bằng SĐT
 export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
     try {
-        // FIX: Removed orderBy("createdAt", "desc") from Firestore query to avoid "Requires Index" error.
-        // We sort the results on the client side instead.
         const q = query(collection(db, "orders"), where("customer.phone", "==", phone));
         const querySnapshot = await getDocs(q);
         const orders: Order[] = [];
-        querySnapshot.forEach((doc) => {
-            orders.push(doc.data() as Order);
-        });
-        // Sort desc by time (Client-side sort)
+        querySnapshot.forEach((doc) => { orders.push(doc.data() as Order); });
         return orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     } catch (error) {
         console.error("Lỗi tra cứu theo SĐT:", error);
@@ -181,15 +144,13 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
     }
 };
 
-// 3. Hàm lấy toàn bộ danh sách đơn hàng (cho trang Admin)
+// 3. Hàm lấy toàn bộ danh sách đơn hàng
 export const getAllOrders = async (): Promise<Order[]> => {
     try {
         const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
         const orders: Order[] = [];
-        querySnapshot.forEach((doc) => {
-            orders.push(doc.data() as Order);
-        });
+        querySnapshot.forEach((doc) => { orders.push(doc.data() as Order); });
         return orders;
     } catch (error: any) {
         console.error("Lỗi lấy danh sách đơn hàng:", error);
@@ -197,16 +158,25 @@ export const getAllOrders = async (): Promise<Order[]> => {
     }
 };
 
-// 4. Update Order
+// 4. Lấy tổng số lượng đơn hàng thực tế
+export const getTotalOrderCount = async (): Promise<number> => {
+    try {
+        const coll = collection(db, "orders");
+        const snapshot = await getCountFromServer(coll);
+        return snapshot.data().count;
+    } catch (error) {
+        console.error("Lỗi lấy tổng số đơn hàng:", error);
+        return 0;
+    }
+};
+
+// 5. Update Order
 export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
     try {
-        // Process images if items are updated
         if (updates.items && Array.isArray(updates.items)) {
             updates.items = await processOrderItemsImages(updates.items);
         }
-
         const orderRef = doc(db, "orders", orderId);
-        // Important: Sanitize updates to remove undefined fields which cause Firestore to crash
         const cleanUpdates = cleanForFirestore(updates);
         await updateDoc(orderRef, cleanUpdates);
         return true;
@@ -216,7 +186,7 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
     }
 };
 
-// 5. Delete Order
+// 6. Delete Order
 export const deleteOrder = async (orderId: string): Promise<boolean> => {
     try {
         await deleteDoc(doc(db, "orders", orderId));
