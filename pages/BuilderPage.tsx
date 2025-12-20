@@ -1,10 +1,8 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 import { 
-    FRAME_OPTIONS, 
     LEGO_PARTS, 
-    defaultShirtColors,
-    defaultPantsColors,
     INITIAL_FRAME_CONFIG,
 } from '../constants';
 import FramePreview from '../components/FramePreview';
@@ -571,6 +569,7 @@ const Step3Characters: React.FC<{
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('hot_trend');
     const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
+    const [accessorySearch, setAccessorySearch] = useState<string>('');
 
     const getAvailableParts = (list: LegoPart[]) => {
         return list.filter(p => p.stock === undefined || p.stock > 0);
@@ -796,7 +795,6 @@ const Step3Characters: React.FC<{
                     }
                     
                     let pantsColors = newChar.pants?.colors;
-                    // Fixed typo 'LogopantsColors' to 'pantsColors'
                     if (!pantsColors || pantsColors.length === 0) {
                          const nameLower = newChar.pants?.name.toLowerCase() || '';
                          if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors;
@@ -837,10 +835,19 @@ const Step3Characters: React.FC<{
 
     const filteredAccessories = useMemo(() => {
         let list = getAvailableParts(legoParts.accessory);
+        
+        // Category Filter
         if (accessoryCategory !== 'Tất cả') {
             list = list.filter(p => p.category === accessoryCategory);
         }
 
+        // Search Filter
+        if (accessorySearch.trim()) {
+            const query = accessorySearch.toLowerCase().trim();
+            list = list.filter(p => p.name.toLowerCase().includes(query));
+        }
+
+        // Sorting
         if (accessorySortMode === 'hot_trend') {
              return list.sort((a, b) => {
                 const indexA = hotPartIds.indexOf(a.id);
@@ -857,7 +864,7 @@ const Step3Characters: React.FC<{
         }
 
         return sortParts(list, accessorySortMode as any);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory, hotPartIds]);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
 
     return (
         <div className="space-y-4 text-left">
@@ -976,7 +983,25 @@ const Step3Characters: React.FC<{
             
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex flex-col gap-3 mb-4">
-                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">THÊM PHỤ KIỆN</h4>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">THÊM PHỤ KIỆN</h4>
+                        {/* Search Input for Accessories */}
+                        <div className="relative w-full sm:w-64">
+                            <input 
+                                type="text"
+                                placeholder="Tìm kiếm phụ kiện..."
+                                value={accessorySearch}
+                                onChange={(e) => setAccessorySearch(e.target.value)}
+                                className="w-full pl-8 pr-4 py-1.5 text-xs border border-gray-300 rounded-full focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none bg-gray-50 transition-all"
+                            />
+                            <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            {accessorySearch && (
+                                <button onClick={() => setAccessorySearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold p-1">
+                                    &times;
+                                </button>
+                            )}
+                        </div>
+                    </div>
                     
                     {uniqueAccessoryCategories.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -1034,7 +1059,11 @@ const Step3Characters: React.FC<{
                             />
                         );
                     }) : (
-                        <p className="col-span-4 text-center text-sm text-gray-400 py-4">Không tìm thấy phụ kiện nào.</p>
+                        <div className="col-span-4 flex flex-col items-center justify-center py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                             <span className="text-3xl mb-2 opacity-30">🔍</span>
+                             <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Không tìm thấy linh kiện phù hợp</p>
+                             {accessorySearch && <button onClick={() => setAccessorySearch('')} className="mt-2 text-xs text-blue-600 font-bold hover:underline">Xóa tìm kiếm</button>}
+                        </div>
                     )}
                 </div>
             </div>
