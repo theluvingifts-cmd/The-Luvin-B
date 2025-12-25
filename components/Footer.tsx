@@ -45,9 +45,9 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
                 </div>
                 <div>
                     <h3 className="font-bold text-base mb-3 uppercase tracking-wider">LIÊN HỆ</h3>
-                    <p className="opacity-80 mb-1">Địa chỉ: Khu 6, Thư Lâm, Hà Nội</p>
+                    <p className="opacity-80 mb-1">Xưởng thiết kế: Khu 6, Thư Lâm, Đông Anh, Hà Nội</p>
                     <p className="opacity-80 mb-1">
-                        Hotline: <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">0964 393 115</a>
+                        Hotline/Zalo: <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">0964 393 115</a>
                     </p>
                     <p className="opacity-80">Email: theluvin.gifts@gmail.com</p>
                 </div>

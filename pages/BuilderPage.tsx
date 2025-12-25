@@ -1,9 +1,12 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
+/* Added missing imports for default colors */
 import { 
     LEGO_PARTS, 
     INITIAL_FRAME_CONFIG,
+    defaultShirtColors,
+    defaultPantsColors,
 } from '../constants';
 import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
@@ -569,6 +572,7 @@ const Step3Characters: React.FC<{
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('hot_trend');
     const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
+    const [accessorySortOrder, setAccessorySortOrder] = useState<'asc' | 'desc'>('asc');
     const [accessorySearch, setAccessorySearch] = useState<string>('');
 
     const getAvailableParts = (list: LegoPart[]) => {
@@ -685,9 +689,11 @@ const Step3Characters: React.FC<{
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
                         if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) {
+                            /* Fixed missing defaultShirtColors reference */
                             partColors = defaultShirtColors;
                         }
                         if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) {
+                            /* Fixed missing defaultPantsColors reference */
                             partColors = defaultPantsColors;
                         }
                     }
@@ -791,12 +797,14 @@ const Step3Characters: React.FC<{
                     let shirtColors = newChar.shirt?.colors;
                     if (!shirtColors || shirtColors.length === 0) {
                          const nameLower = newChar.shirt?.name.toLowerCase() || '';
+                         /* Fixed missing defaultShirtColors reference */
                          if (nameLower.includes('trơn') || nameLower.includes('basic')) shirtColors = defaultShirtColors;
                     }
                     
                     let pantsColors = newChar.pants?.colors;
                     if (!pantsColors || pantsColors.length === 0) {
                          const nameLower = newChar.pants?.name.toLowerCase() || '';
+                         /* Fixed missing defaultPantsColors reference */
                          if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors;
                     }
 
@@ -1700,20 +1708,20 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     return null;
   }, [selectedItemId, config.texts]);
 
-  const handleItemTransform = useCallback((id: string, newTransform: Transform) => {
+  const handleItemTransform = useCallback((id: string, nTransform: Transform) => {
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
       
       setConfigWithHistory((prev: FrameConfig) => {
           if (type === 'text') {
               const idToUpdate = parseInt(rawId);
-              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...newTransform } : item) };
+              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...nTransform } : item) };
           }
           const itemId = parseInt(rawId);
-          if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...newTransform } : item) };
-          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...newTransform } : item) };
+          if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...nTransform } : item) };
+          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...nTransform } : item) };
           if (type === 'shape') {
-              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...newTransform } : item) };
+              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
           }
           return prev;
       });

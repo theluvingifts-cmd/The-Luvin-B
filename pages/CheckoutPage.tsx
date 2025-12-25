@@ -103,7 +103,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       .catch(err => {
           console.error("Province fetch error:", err);
           setIsApiError(true);
-          setProvinces(POPULAR_PROVINCES); // Sử dụng danh sách dự phòng
+          setProvinces(POPULAR_PROVINCES); 
       })
       .finally(() => setIsLoadingProvinces(false));
   }, []);
@@ -183,6 +183,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount + loyaltyDiscountAmount;
   const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee - totalDiscount);
   const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
+
+  // Cảnh báo dựa trên vị trí kho hàng (Đông Anh, Hà Nội)
+  const isNonHanoiProvince = useMemo(() => {
+      const p = provinces.find(p => p.code === parseInt(selectedProvince));
+      return p && p.name !== 'Thành phố Hà Nội' && p.name !== 'Hà Nội';
+  }, [selectedProvince, provinces]);
 
   const handleApplyVoucher = async () => {
       if (!voucherCode.trim()) return;
@@ -454,19 +460,35 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="express" checked={shippingOption === 'express'} onChange={() => setShippingOption('express')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
                                     <div className="ml-2 flex-grow">
-                                        <span className="text-sm block text-gray-700 font-medium">Ship nhanh (1-3 ngày)</span>
+                                        <span className="text-sm block text-gray-700 font-medium">Ship nhanh (1-2 ngày)</span>
                                     </div>
                                      <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.express)}</span>
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="bookship" checked={shippingOption === 'bookship'} onChange={() => setShippingOption('bookship')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
-                                    <span className="ml-2 text-sm flex-grow text-gray-700">Tự book ship / Qua lấy</span>
+                                    <div className="ml-2 flex-grow">
+                                        <span className="text-sm block text-gray-700 font-medium">Tự book ship / Qua lấy</span>
+                                        <p className="text-[10px] text-gray-400 italic leading-tight">Kho: Thư Lâm, Đông Anh, HN</p>
+                                    </div>
                                      <span className="text-sm font-bold text-gray-800">0₫</span>
                                 </label>
                             </div>
                         </div>
                      </div>
                   </div>
+
+                  {/* Cảnh báo khoảng cách nếu chọn Bookship hoặc Express */}
+                  {(shippingOption === 'bookship' || shippingOption === 'express') && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex gap-3 items-start animate-fade-in">
+                          <span className="text-xl">📍</span>
+                          <div className="text-xs text-orange-900 leading-relaxed">
+                              <p className="font-bold mb-1">Xác nhận khoảng cách:</p>
+                              <p>The Luvin gửi hàng từ <b>Thư Lâm, Đông Anh, Hà Nội</b>.</p>
+                              {shippingOption === 'bookship' && <p className="mt-1">Vui lòng cân nhắc phí dịch vụ (Ahamove/Grab) từ khu vực này trước khi chọn tự book ship.</p>}
+                              {isNonHanoiProvince && <p className="mt-1 text-red-600 font-bold">⚠️ Bạn đang ở ngoài Hà Nội, phương thức Hỏa tốc/Tự book ship có thể không khả dụng hoặc rất đắt!</p>}
+                          </div>
+                      </div>
+                  )}
 
                   <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
                       <span className="text-xl">ℹ️</span>
