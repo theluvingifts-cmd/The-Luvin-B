@@ -222,7 +222,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               const history = await getOrdersByPhone(phone);
               if (history && history.length > 0) {
                   const lastOrder = history[0];
-                  setIsLoyalCustomer(true);
+                  
+                  // FIX LỖI "KHÁCH QUEN ẢO":
+                  // Chỉ tính là khách quen nếu có ít nhất 1 đơn đã xác nhận hoặc đã hoàn thành.
+                  // Các đơn trạng thái "Chờ thanh toán", "Huỷ đơn", "Xoá đơn" sẽ bị loại bỏ khỏi logic ưu đãi.
+                  const hasConfirmedOrder = history.some(order => 
+                    !['Chờ thanh toán', 'Huỷ đơn', 'Xoá đơn'].includes(order.status)
+                  );
+
+                  if (hasConfirmedOrder) {
+                      setIsLoyalCustomer(true);
+                  }
+
+                  // Vẫn hỗ trợ tự động điền thông tin để nâng cao trải nghiệm khách hàng
                   if (!name) setName(lastOrder.customer.name);
                   if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
                   if (!street && lastOrder.customer.address) {
