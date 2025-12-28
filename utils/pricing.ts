@@ -1,4 +1,3 @@
-
 import { FrameConfig, FrameOption, LegoPart, Order } from '../types';
 import { FRAME_OPTIONS } from '../constants';
 
@@ -39,6 +38,7 @@ export interface PriceBreakdownItem {
     originalValue?: number;
     isBase?: boolean;
     details?: string;
+    id?: string; // Bổ sung id để xác định linh kiện có thể xóa
 }
 
 export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'admin' = 'price') => {
@@ -121,7 +121,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         }
     });
 
-    // 4. DRAGGABLE ITEMS
+    // 4. DRAGGABLE ITEMS (Charms, Stickers, Accessories)
     const partCounts: Record<string, number> = {};
     config.draggableItems.forEach((item) => {
         if (item.type !== 'charm' && item.partId) {
@@ -130,7 +130,17 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     });
 
     config.draggableItems.forEach((item) => {
-        if (item.type === 'charm') return; 
+        // Xử lý Sticker khách tải lên
+        if (item.type === 'charm') {
+            breakdown.push({
+                id: `item-${item.id}`,
+                label: 'Sticker trang trí',
+                value: 0,
+                details: 'Ảnh khách gửi'
+            });
+            return;
+        }; 
+
         const part = allParts[item.partId];
         if (part) {
             const quantity = partCounts[item.partId] || 1;
@@ -139,6 +149,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
             if (effPrice > 0) {
                 total += effPrice;
                 breakdown.push({
+                    id: `item-${item.id}`, // Gán ID để có thể xóa
                     label: part.name,
                     value: effPrice,
                     originalValue: part.price > effPrice ? part.price : undefined,

@@ -1167,10 +1167,11 @@ const Step4Summary: React.FC<{
     charCount: number; 
     onAddToCart: () => void; 
     onBuyNow: () => void; 
+    onRemoveItemById: (id: string) => void;
     isSaving: boolean; 
     isEditingOrder?: boolean;
     urgencyTimeLeft: number;
-}> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
+}> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, onRemoveItemById, isSaving, isEditingOrder, urgencyTimeLeft }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
@@ -1185,11 +1186,22 @@ const Step4Summary: React.FC<{
             
             <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1 text-left">
                 {priceBreakdown.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center py-1">
+                    <div key={index} className="flex justify-between items-center py-1 group">
                         <div className="flex flex-col">
-                            <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
-                                {item.label}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
+                                    {item.label}
+                                </span>
+                                {item.id && (
+                                    <button 
+                                        onClick={() => onRemoveItemById(item.id!)}
+                                        className="w-4 h-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-[10px] font-black hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Loại bỏ phụ kiện này"
+                                    >
+                                        &times;
+                                    </button>
+                                )}
+                            </div>
                             {item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}
                         </div>
                         <div className="text-right">
@@ -2059,6 +2071,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         charCount={config.characters.length} 
         onAddToCart={() => handleAddToCartWrapper(false)} 
         onBuyNow={() => handleAddToCartWrapper(true)}
+        onRemoveItemById={handleItemRemoveCompletely}
         isSaving={isSaving} 
         isEditingOrder={isEditingOrder}
         urgencyTimeLeft={urgencyTimeLeft}
