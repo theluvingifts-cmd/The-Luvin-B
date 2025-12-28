@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 /* Added missing imports for default colors */
@@ -104,7 +103,7 @@ const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) =>
   }, [selectedFrame, config.frameColor]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <div className="p-4 border border-gray-200 rounded-lg text-left">
         <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHỌN KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
@@ -197,7 +196,7 @@ const PresetBackgroundButton: React.FC<{
     isSelected: boolean;
     onClick: () => void;
     onZoom: (url: string) => void;
-}> = ({ bg, isSelected, onClick, onZoom }) => {
+}> = React.memo(({ bg, isSelected, onClick, onZoom }) => {
     const imageSrc = bg.previewUrl || bg.url;
     const isColor = imageSrc.startsWith('#');
     
@@ -236,6 +235,7 @@ const PresetBackgroundButton: React.FC<{
                             src={imageSrc}
                             alt={bg.name}
                             className="w-full h-full object-cover"
+                            loading="lazy"
                             onError={(e) => {
                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
                             }}
@@ -268,7 +268,7 @@ const PresetBackgroundButton: React.FC<{
             </div>
         </button>
     );
-};
+});
 
 const Step2BackgroundAndDecorations: React.FC<{
   config: FrameConfig;
@@ -392,7 +392,7 @@ const Step2BackgroundAndDecorations: React.FC<{
   };
 
   return (
-    <div className="space-y-4 text-left">
+    <div className="space-y-4 text-left animate-fade-in">
       <div className="p-4 border border-gray-200 rounded-lg">
         <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">A. CHỌN MẪU NỀN CÓ SẴN</h4>
         
@@ -452,7 +452,7 @@ const PartButton: React.FC<{
     priceToDisplay: number; 
     originalPrice?: number;
     isHot?: boolean;
-}> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
+}> = React.memo(({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot }) => {
     const [imgError, setImgError] = useState(false);
     const [isClicked, setIsClicked] = useState(false);
 
@@ -542,7 +542,7 @@ const PartButton: React.FC<{
             </div>
         </button>
     );
-};
+});
 
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
     if (mode === 'default') return parts;
@@ -875,7 +875,7 @@ const Step3Characters: React.FC<{
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
 
     return (
-        <div className="space-y-4 text-left">
+        <div className="space-y-4 text-left animate-fade-in">
             {printDialogCharId && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
@@ -1174,7 +1174,7 @@ const Step4Summary: React.FC<{
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
 
   return (
-    <div className="text-left">
+    <div className="text-left animate-fade-in">
         {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
         
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
@@ -1334,7 +1334,7 @@ const TextEditor: React.FC<{
     const isLocked = activeText.lockedContent;
     
     return (
-        <div className="p-4 border border-gray-200 rounded-lg relative text-left">
+        <div className="p-4 border border-gray-200 rounded-lg relative text-left animate-fade-in">
             {isLocked && (
                 <div 
                     className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
@@ -1436,6 +1436,7 @@ interface BuilderPageProps {
 
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
   const [step, setStep] = useState(initialStep || 1); 
+  const [isTransitioning, setIsTransitioning] = useState(false); // Optimization: Smooth step transition
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
   const frameCaptureRef = useRef<HTMLDivElement>(null);
@@ -1468,6 +1469,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
+
+  // Optimization: Handle step change with transition
+  const handleSetStep = (newStep: number) => {
+    if (newStep === step) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+        setStep(newStep);
+        setIsTransitioning(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 150);
+  };
 
   useEffect(() => {
     if (step === 4 && !isEditingOrder && !urgencyTimerRef.current) {
@@ -2000,7 +2012,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleCharacterDoubleClick = (charId: number) => {
-      setStep(3); 
+      handleSetStep(3); 
       setSelectedItemId(`character-${charId}`);
   };
 
@@ -2064,7 +2076,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         if (typeof result === 'string') {
           addCharm(result);
           // Auto switch to step 2 if they are adding decorations
-          if (step !== 2) setStep(2);
+          if (step !== 2) handleSetStep(2);
         }
       };
       fileReader.readAsDataURL(file);
@@ -2083,7 +2095,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
-        <StepIndicator currentStep={step} setStep={setStep} />
+        <StepIndicator currentStep={step} setStep={handleSetStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
@@ -2200,7 +2212,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   </div>
               )}
 
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div className={`bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-opacity duration-200 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
                   {selectedText ? (
                       <TextEditor 
                           activeText={selectedText}
@@ -2247,14 +2259,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   {!(editingCartIndex !== null && step === 4) && (
                       <div className="mt-2 hidden lg:flex items-center gap-4">
                           <button
-                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              onClick={() => handleSetStep(Math.max(1, step - 1))}
                               disabled={step === 1}
                               className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
                           >
                               &larr; Quay lại
                           </button>
                           <button
-                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              onClick={() => handleSetStep(Math.min(4, step + 1))}
                               disabled={step === 4}
                               className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md"
                           >
@@ -2283,14 +2295,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                      ) : (
                          <div className="flex gap-3">
                            <button
-                              onClick={() => setStep(s => Math.max(1, s - 1))}
+                              onClick={() => handleSetStep(Math.max(1, step - 1))}
                               disabled={step === 1}
                               className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm"
                           >
                               Quay lại
                           </button>
                           <button
-                              onClick={() => setStep(s => Math.min(4, s + 1))}
+                              onClick={() => handleSetStep(Math.min(4, step + 1))}
                               disabled={step === 4}
                               className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm"
                           >

@@ -40,3 +40,14 @@ export const dataURLToBlob = (dataURL: string): Blob | null => {
         return null;
     }
 };
+
+/**
+ * Preloads an array of image URLs to browser cache
+ */
+export const preloadImages = (urls: string[]) => {
+    urls.forEach(url => {
+        if (!url || url.startsWith('#')) return;
+        const img = new Image();
+        img.src = url;
+    });
+};
