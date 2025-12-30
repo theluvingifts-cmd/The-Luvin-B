@@ -1,6 +1,6 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
-/* Added missing imports for default colors */
 import { 
     LEGO_PARTS, 
     INITIAL_FRAME_CONFIG,
@@ -8,7 +8,7 @@ import {
     defaultPantsColors,
 } from '../constants';
 import FramePreview from '../components/FramePreview';
-import { uploadToCloudinary } from '../services/uploadService';
+import { uploadFile } from '../services/uploadService';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, FREE_SHIPPING_THRESHOLD, getEffectivePrice, PriceBreakdownItem } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
@@ -19,7 +19,6 @@ declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-// Helper để kiểm tra xem một phụ kiện có phải là đồ vướng cổ không
 const isNeckAccessory = (part?: LegoPart) => {
     if (!part || part.type !== 'accessory') return false;
     const cat = (part.category || '').toLowerCase();
@@ -246,7 +245,7 @@ const PresetBackgroundButton: React.FC<{
                                 onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}
                                 title="Zoom"
                             >
-                                <ZoomIcon className="w-4 h-4" />
+                                    <ZoomIcon className="w-4 h-4" />
                             </div>
                         </div>
                     </>
@@ -465,11 +464,9 @@ const PartButton: React.FC<{
     const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
     const isBulk = part.bulkPricing && part.bulkPricing.length > 0;
     
-    // Check if the part has customizable colors
     const hasMultipleColors = useMemo(() => {
         if (part.colors && part.colors.length > 1) return true;
         const nameLower = part.name.toLowerCase();
-        // Check for basic shirts/pants that use default colors
         if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) return true;
         if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) return true;
         return false;
@@ -516,7 +513,6 @@ const PartButton: React.FC<{
                     <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
                 )}
 
-                {/* COLOR BADGE - REFINED POSITION TO AVOID OVERFLOW */}
                 {hasMultipleColors && (
                     <div className="absolute bottom-1 right-1 z-20 bg-white/95 rounded-full w-6 h-6 flex items-center justify-center shadow-md border border-pink-100 animate-fade-in" title="Có thể đổi màu">
                         <span className="text-[11px]">🎨</span>
@@ -572,8 +568,15 @@ const Step3Characters: React.FC<{
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('hot_trend');
     const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
-    const [accessorySortOrder, setAccessorySortOrder] = useState<'asc' | 'desc'>('asc');
     const [accessorySearch, setAccessorySearch] = useState<string>('');
+
+    // --- STRATEGY: KEEP-ALIVE ---
+    // Track which tabs have been visited to render them lazily and keep them mounted
+    const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['shirt']));
+
+    useEffect(() => {
+        setVisitedTabs(prev => new Set(prev).add(activePartType));
+    }, [activePartType]);
 
     const getAvailableParts = (list: LegoPart[]) => {
         return list.filter(p => p.stock === undefined || p.stock > 0);
@@ -689,11 +692,9 @@ const Step3Characters: React.FC<{
                     if (!partColors || partColors.length === 0) {
                         const nameLower = part.name.toLowerCase();
                         if (part.type === 'shirt' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'shirt1')) {
-                            /* Fixed missing defaultShirtColors reference */
                             partColors = defaultShirtColors;
                         }
                         if (part.type === 'pants' && (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || part.id === 'pants1')) {
-                            /* Fixed missing defaultPantsColors reference */
                             partColors = defaultPantsColors;
                         }
                     }
@@ -797,14 +798,12 @@ const Step3Characters: React.FC<{
                     let shirtColors = newChar.shirt?.colors;
                     if (!shirtColors || shirtColors.length === 0) {
                          const nameLower = newChar.shirt?.name.toLowerCase() || '';
-                         /* Fixed missing defaultShirtColors reference */
                          if (nameLower.includes('trơn') || nameLower.includes('basic')) shirtColors = defaultShirtColors;
                     }
                     
                     let pantsColors = newChar.pants?.colors;
                     if (!pantsColors || pantsColors.length === 0) {
                          const nameLower = newChar.pants?.name.toLowerCase() || '';
-                         /* Fixed missing defaultPantsColors reference */
                          if (nameLower.includes('trơn') || nameLower.includes('basic')) pantsColors = defaultPantsColors;
                     }
 
@@ -828,11 +827,6 @@ const Step3Characters: React.FC<{
         { key: 'hat', label: 'Mũ' },
     ];
 
-    const currentPartList = useMemo(() => {
-        const list = getAvailableParts(legoParts[activePartType] || []);
-        return sortParts(list, sortMode);
-    }, [legoParts, activePartType, sortMode]);
-
     const uniqueAccessoryCategories = useMemo(() => {
         const cats = new Set<string>();
         legoParts.accessory.forEach(p => {
@@ -843,34 +837,23 @@ const Step3Characters: React.FC<{
 
     const filteredAccessories = useMemo(() => {
         let list = getAvailableParts(legoParts.accessory);
-        
-        // Category Filter
-        if (accessoryCategory !== 'Tất cả') {
-            list = list.filter(p => p.category === accessoryCategory);
-        }
-
-        // Search Filter
+        if (accessoryCategory !== 'Tất cả') list = list.filter(p => p.category === accessoryCategory);
         if (accessorySearch.trim()) {
             const query = accessorySearch.toLowerCase().trim();
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
-
-        // Sorting
         if (accessorySortMode === 'hot_trend') {
              return list.sort((a, b) => {
                 const indexA = hotPartIds.indexOf(a.id);
                 const indexB = hotPartIds.indexOf(b.id);
                 const aIsHot = indexA !== -1;
                 const bIsHot = indexB !== -1;
-
                 if (aIsHot && bIsHot) return indexA - indexB;
                 if (aIsHot) return -1;
                 if (bIsHot) return 1;
-                
                 return 0;
             });
         }
-
         return sortParts(list, accessorySortMode as any);
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
 
@@ -926,12 +909,10 @@ const Step3Characters: React.FC<{
                     </button>
                   </div>
                 }
-                {config.characters.length > 0 && !activeCharacter && <p className="text-sm text-center text-gray-500 mt-2">Hãy chọn một nhân vật để bắt đầu thiết kế.</p>}
-                {config.characters.length === 0 && <p className="text-sm text-center text-gray-500 mt-2">Chưa có nhân vật nào. Hãy thêm một nhân vật!</p>}
             </div>
 
             {activeCharacter && (
-                <div className="p-4 border border-gray-200 rounded-lg relative">
+                <div className="p-4 border border-gray-200 rounded-lg relative min-h-[350px]">
                     <div className="flex flex-col mb-4 border-b border-gray-200 pb-4">
                         <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1 mb-2">
                             {partTypes.map(pt => (
@@ -944,48 +925,55 @@ const Step3Characters: React.FC<{
                             <span>✨ Mẹo:</span> Linh kiện có huy hiệu 🎨 có thể tùy chỉnh màu sắc bên dưới!
                         </div>
                     </div>
-                     <div className="grid grid-cols-4 gap-2">
-                         {(activePartType === 'hair') && (
-                             <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
-                               <span className="text-2xl font-bold">&times;</span>
-                               <span className="text-[11px] font-semibold">Không chọn</span>
-                             </button>
-                         )}
-                        {currentPartList.length > 0 ? currentPartList.map(part => {
-                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
-                            
-                            let effectiveBasePrice = getEffectivePrice(part);
-                            let originalBasePrice = part.price;
 
-                            let priceToDisplay = effectiveBasePrice;
-                            let originalPriceToDisplay = originalBasePrice;
+                    {/* KEEP-ALIVE RENDERING BLOCK */}
+                    {partTypes.map(pt => {
+                        const isVisited = visitedTabs.has(pt.key);
+                        const isActive = activePartType === pt.key;
+                        
+                        // Lazy mount: Only render if ever visited
+                        if (!isVisited && !isActive) return null;
 
-                            if (isSelected) {
-                                let surcharge = 0;
-                                if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
-                                else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
-                                else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
-                                
-                                priceToDisplay += surcharge;
-                                originalPriceToDisplay += surcharge;
-                            }
+                        return (
+                            <div key={pt.key} className={isActive ? "grid grid-cols-4 gap-2 animate-fade-in" : "hidden"}>
+                                 {(pt.key === 'hair') && (
+                                     <button onClick={() => handlePartDeselect('hair')} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
+                                       <span className="text-2xl font-bold">&times;</span>
+                                       <span className="text-[11px] font-semibold">Không chọn</span>
+                                     </button>
+                                 )}
+                                {getAvailableParts(legoParts[pt.key] || []).map(part => {
+                                    const isSelected = pt.key === 'hat' ? false : activeCharacter[pt.key === 'set' ? 'shirt' : pt.key]?.id === part.id;
+                                    
+                                    let effectiveBasePrice = getEffectivePrice(part);
+                                    let originalBasePrice = part.price;
+                                    let priceToDisplay = effectiveBasePrice;
+                                    let originalPriceToDisplay = originalBasePrice;
 
-                            return (
-                                <PartButton 
-                                    key={part.id} 
-                                    part={part}
-                                    isSelected={isSelected}
-                                    onClick={() => handlePartSelect(part)}
-                                    priceToDisplay={priceToDisplay}
-                                    originalPrice={originalPriceToDisplay}
-                                />
-                            );
-                        }) : (
-                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
-                                {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
+                                    if (isSelected) {
+                                        let surcharge = 0;
+                                        if (pt.key === 'shirt' || pt.key === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
+                                        else if (pt.key === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
+                                        else if (pt.key === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
+                                        
+                                        priceToDisplay += surcharge;
+                                        originalPriceToDisplay += surcharge;
+                                    }
+
+                                    return (
+                                        <PartButton 
+                                            key={part.id} 
+                                            part={part}
+                                            isSelected={isSelected}
+                                            onClick={() => handlePartSelect(part)}
+                                            priceToDisplay={priceToDisplay}
+                                            originalPrice={originalPriceToDisplay}
+                                        />
+                                    );
+                                })}
                             </div>
-                        )}
-                    </div>
+                        );
+                    })}
                 </div>
             )}
             
@@ -993,123 +981,65 @@ const Step3Characters: React.FC<{
                 <div className="flex flex-col gap-3 mb-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">THÊM PHỤ KIỆN</h4>
-                        {/* Search Input for Accessories */}
                         <div className="relative w-full sm:w-64">
                             <input 
-                                type="text"
-                                placeholder="Tìm kiếm phụ kiện..."
-                                value={accessorySearch}
-                                onChange={(e) => setAccessorySearch(e.target.value)}
-                                className="w-full pl-8 pr-4 py-1.5 text-xs border border-gray-300 rounded-full focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none bg-gray-50 transition-all"
+                                type="text" 
+                                placeholder="Tìm kiếm phụ kiện..." 
+                                value={accessorySearch} 
+                                onChange={(e) => setAccessorySearch(e.target.value)} 
+                                className="w-full pl-8 pr-4 py-1.5 text-xs border border-gray-300 rounded-full focus:ring-2 focus:ring-luvin-pink outline-none bg-gray-50 transition-all" 
                             />
-                            <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            {accessorySearch && (
-                                <button onClick={() => setAccessorySearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold p-1">
-                                    &times;
-                                </button>
-                            )}
+                            <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
                     </div>
-                    
                     {uniqueAccessoryCategories.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                             {uniqueAccessoryCategories.map(cat => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setAccessoryCategory(cat)}
-                                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                                        accessoryCategory === cat 
-                                            ? 'bg-gray-900 text-white border-gray-900 shadow-md transform scale-105' 
-                                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    {cat}
-                                </button>
+                                <button key={cat} onClick={() => setAccessoryCategory(cat)} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${accessoryCategory === cat ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{cat}</button>
                             ))}
                         </div>
                     )}
-
-                    <div className="flex justify-end">
-                        <div className="relative inline-block w-32">
-                            <select 
-                                value={accessorySortMode}
-                                onChange={(e) => setAccessorySortMode(e.target.value as any)}
-                                className="appearance-none w-full pl-3 pr-8 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-900 cursor-pointer"
-                            >
-                                <option value="hot_trend">Hot Trend 🔥</option>
-                                <option value="default">Mặc định</option>
-                                <option value="price_asc">Giá tăng dần</option>
-                                <option value="price_desc">Giá giảm dần</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div className="grid grid-cols-4 gap-2">
-                    {filteredAccessories.length > 0 ? filteredAccessories.map(part => {
-                        const effectivePrice = getEffectivePrice(part);
-                        const defaultColorPrice = part.colors?.[0]?.price || 0;
-                        const finalPrice = effectivePrice + defaultColorPrice;
-                        const originalPrice = part.price + defaultColorPrice;
-
-                        return (
-                            <PartButton 
-                                key={part.id} 
-                                part={part} 
-                                isSelected={false} 
-                                onClick={() => addDraggableItem(part)} 
-                                priceToDisplay={finalPrice} 
-                                originalPrice={originalPrice}
-                                isHot={hotPartIds.includes(part.id)}
-                            />
-                        );
-                    }) : (
-                        <div className="col-span-4 flex flex-col items-center justify-center py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                             <span className="text-3xl mb-2 opacity-30">🔍</span>
-                             <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Không tìm thấy linh kiện phù hợp</p>
-                             {accessorySearch && <button onClick={() => setAccessorySearch('')} className="mt-2 text-xs text-blue-600 font-bold hover:underline">Xóa tìm kiếm</button>}
-                        </div>
-                    )}
+                    {filteredAccessories.map(part => (
+                        <PartButton 
+                            key={part.id} 
+                            part={part} 
+                            isSelected={false} 
+                            onClick={() => addDraggableItem(part)} 
+                            priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
+                            originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                            isHot={hotPartIds.includes(part.id)}
+                        />
+                    ))}
                 </div>
             </div>
 
             <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-tight text-sm">THÊM THÚ CƯNG</h4>
                 <div className="grid grid-cols-4 gap-2">
-                    {getAvailableParts(legoParts.pet).map(part => {
-                        const effectivePrice = getEffectivePrice(part);
-                        const defaultColorPrice = part.colors?.[0]?.price || 0;
-                        const finalPrice = effectivePrice + defaultColorPrice;
-                        const originalPrice = part.price + defaultColorPrice;
-
-                        return (
-                            <PartButton 
-                                key={part.id} 
-                                part={part} 
-                                isSelected={false} 
-                                onClick={() => addDraggableItem(part)} 
-                                priceToDisplay={finalPrice} 
-                                originalPrice={originalPrice}
-                                isHot={hotPartIds.includes(part.id)}
-                            />
-                        );
-                    })}
+                    {getAvailableParts(legoParts.pet).map(part => (
+                        <PartButton 
+                            key={part.id} 
+                            part={part} 
+                            isSelected={false} 
+                            onClick={() => addDraggableItem(part)} 
+                            priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
+                            originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                            isHot={hotPartIds.includes(part.id)}
+                        />
+                    ))}
                 </div>
             </div>
         </div>
     );
 };
 
-// NEW COMPONENT: PREMIUM TRUST NUDGE - FIXED FOR MOBILE (NO OVERFLOW)
 const DesignerCommitment: React.FC = () => (
     <div className="mt-8 mb-6 animate-fade-in text-left">
         <div className="bg-white border-2 border-green-500 rounded-[2rem] p-5 shadow-[0_10px_30px_rgba(34,197,94,0.12)] overflow-hidden relative group">
-            {/* Background Decorative Element */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700 pointer-events-none"></div>
-            
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center shadow-sm border border-green-100 flex-shrink-0">
@@ -1117,338 +1047,88 @@ const DesignerCommitment: React.FC = () => (
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <h4 className="font-heading text-lg font-black text-green-700 uppercase tracking-tight">An tâm tuyệt đối</h4>
-                        <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                            MIỄN PHÍ 100%
-                        </span>
+                        <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">MIỄN PHÍ 100%</span>
                     </div>
                 </div>
-                
-                <p className="text-sm text-gray-700 leading-relaxed font-medium">
-                    Sau khi đặt hàng, <span className="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-lg font-bold">Designer chuyên nghiệp</span> sẽ trực tiếp căn chỉnh lại bố cục, font chữ đẹp nhất và <span className="text-green-700 font-bold border-b-2 border-green-200">gửi ảnh thực tế</span> cho bạn duyệt trước khi đóng gói & gửi đi.
-                </p>
-                
-                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-green-600 font-bold uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                    Đảm bảo quà tặng hoàn hảo khi đến tay
-                </div>
+                <p className="text-sm text-gray-700 leading-relaxed font-medium">Sau khi đặt hàng, <span className="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-lg font-bold">Designer chuyên nghiệp</span> sẽ trực tiếp căn chỉnh lại bố cục, font chữ đẹp nhất và <span className="text-green-700 font-bold border-b-2 border-green-200">gửi ảnh thực tế</span> cho bạn duyệt trước khi đóng gói & gửi đi.</p>
+                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-green-600 font-bold uppercase tracking-wider"><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Đảm bảo quà tặng hoàn hảo khi đến tay</div>
             </div>
         </div>
     </div>
 );
 
-// NEW COMPONENT: URGENCY NUDGE (COUNTDOWN)
 const UrgencyFlashSale: React.FC<{ timeLeft: number }> = ({ timeLeft }) => {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     const formatTime = (val: number) => val.toString().padStart(2, '0');
-
     return (
         <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-xl p-4 mb-4 text-white shadow-lg animate-pulse">
             <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <span className="text-xl">🔥</span>
-                    <div className="text-left">
-                        <p className="font-black text-sm uppercase tracking-wider">Ưu đãi phút chót!</p>
-                        <p className="text-[10px] opacity-90 font-bold">Hoàn tất đơn để nhận 1 Sticker quà tặng</p>
-                    </div>
-                </div>
-                <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg font-mono font-bold text-lg border border-white/30">
-                    {formatTime(minutes)}:{formatTime(seconds)}
-                </div>
+                <div className="flex items-center gap-2"><span className="text-xl">🔥</span><div className="text-left"><p className="font-black text-sm uppercase tracking-wider">Ưu đãi phút chót!</p><p className="text-[10px] opacity-90 font-bold">Hoàn tất đơn để nhận 1 Sticker quà tặng</p></div></div>
+                <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg font-mono font-bold text-lg border border-white/30">{formatTime(minutes)}:{formatTime(seconds)}</div>
             </div>
         </div>
     );
 };
 
-const Step4Summary: React.FC<{ 
-    totalPrice: number; 
-    priceBreakdown: PriceBreakdownItem[]; 
-    frameName: string; 
-    charCount: number; 
-    onAddToCart: () => void; 
-    onBuyNow: () => void; 
-    onRemoveItemById: (id: string) => void;
-    isSaving: boolean; 
-    isEditingOrder?: boolean;
-    urgencyTimeLeft: number;
-}> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, onRemoveItemById, isSaving, isEditingOrder, urgencyTimeLeft }) => {
+const Step4Summary: React.FC<{ totalPrice: number; priceBreakdown: PriceBreakdownItem[]; frameName: string; charCount: number; onAddToCart: () => void; onBuyNow: () => void; onRemoveItemById: (id: string) => void; isSaving: boolean; isEditingOrder?: boolean; urgencyTimeLeft: number; }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, onRemoveItemById, isSaving, isEditingOrder, urgencyTimeLeft }) => {
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
-
   return (
     <div className="text-left animate-fade-in">
         {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
-        
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
-            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
-                <span>CHI TIẾT HÓA ĐƠN</span>
-                <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{charCount} Nhân vật</span>
-            </h4>
-            
+            <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center"><span>CHI TIẾT HÓA ĐƠN</span><span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{charCount} Nhân vật</span></h4>
             <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1 text-left">
                 {priceBreakdown.map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-1 group">
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                                <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
-                                    {item.label}
-                                </span>
-                                {item.id && (
-                                    <button 
-                                        onClick={() => onRemoveItemById(item.id!)}
-                                        className="w-4 h-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-[10px] font-black hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                                        title="Loại bỏ phụ kiện này"
-                                    >
-                                        &times;
-                                    </button>
-                                )}
-                            </div>
-                            {item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}
-                        </div>
-                        <div className="text-right">
-                            {item.originalValue !== undefined && item.originalValue > item.value && (
-                                <span className="block text-[10px] text-gray-400 line-through">
-                                    {formatCurrency(item.originalValue)}
-                                </span>
-                            )}
-                            <span className={`font-medium ${item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                                {item.value > 0 ? formatCurrency(item.value) : 'Miễn phí'}
-                            </span>
-                        </div>
+                        <div className="flex flex-col"><div className="flex items-center gap-2"><span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>{item.label}</span>{item.id && (<button onClick={() => onRemoveItemById(item.id!)} className="w-4 h-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-[10px] font-black hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100" title="Loại bỏ phụ kiện này">&times;</button>)}</div>{item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}</div>
+                        <div className="text-right">{item.originalValue !== undefined && item.originalValue > item.value && (<span className="block text-[10px] text-gray-400 line-through">{formatCurrency(item.originalValue)}</span>)}<span className={`font-medium ${item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>{item.value > 0 ? formatCurrency(item.value) : 'Miễn phí'}</span></div>
                     </div>
                 ))}
             </div>
-            
-            <div className="border-t border-gray-200 my-3 pt-2">
-                <div className="flex justify-between text-base font-bold text-gray-800 items-center">
-                    <span>Tạm tính</span>
-                    <span className="text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span>
-                </div>
-            </div>
-            
-            <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200 mt-2">
-                {remainingForFreeShip > 0 ? (
-                    <p className="text-xs text-gray-600 text-center">
-                        Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span>
-                    </p>
-                ) : (
-                    <p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1">
-                        <span>🎉</span> Đơn hàng đủ điều kiện Freeship!
-                    </p>
-                )}
-            </div>
+            <div className="border-t border-gray-200 my-3 pt-2"><div className="flex justify-between text-base font-bold text-gray-800 items-center"><span>Tạm tính</span><span className="text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span></div></div>
+            <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200 mt-2">{remainingForFreeShip > 0 ? (<p className="text-xs text-gray-600 text-center">Mua thêm <span className="font-bold text-luvin-pink">{formatCurrency(remainingForFreeShip)}</span> để được <span className="font-bold text-green-600 uppercase">Freeship</span></p>) : (<p className="text-xs text-green-600 font-bold text-center flex items-center justify-center gap-1"><span>🎉</span> Đơn hàng đủ điều kiện Freeship!</p>)}</div>
         </div>
-
-        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in text-left">
-            <span className="text-xl">📅</span>
-            <div>
-                <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
-                <p className="text-xs text-indigo-700 leading-relaxed">
-                    Sản phẩm thủ công cần <b>1-2 ngày hoàn thiện</b> và 2-4 ngày vận chuyển.
-                    <br/>
-                    Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <b>sau 20 ngày</b> ở bước thanh toán để được <b>Giảm ngay 5%</b>!
-                </p>
-            </div>
-        </div>
-
-        <div className="mt-4 space-y-2">
-            {!isEditingOrder && <DesignerCommitment />}
-            
-            {!isEditingOrder && (
-                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors shadow-md">
-                    {isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}
-                </button>
-            )}
-            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
-                {isSaving ? '...' : (isEditingOrder ? 'Lưu mẫu thiết kế' : 'Thêm vào giỏ hàng')}
-            </button>
-        </div>
+        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in text-left"><span className="text-xl">📅</span><div><p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p><p className="text-xs text-indigo-700 leading-relaxed">Sản phẩm thủ công cần <b>1-2 ngày hoàn thiện</b> và 2-4 ngày vận chuyển.<br/>Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <b>sau 20 ngày</b> ở bước thanh toán để được <b>Giảm ngay 5%</b>!</p></div></div>
+        <div className="mt-4 space-y-2">{!isEditingOrder && <DesignerCommitment />}{!isEditingOrder && (<button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors shadow-md">{isSaving ? 'Đang xử lý...' : 'Mua ngay & Thanh toán'}</button>)}<button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>{isSaving ? '...' : (isEditingOrder ? 'Lưu mẫu thiết kế' : 'Thêm vào giỏ hàng')}</button></div>
     </div>
   );
 };
 
-const FontSelector: React.FC<{ 
-    value: string; 
-    onChange: (font: string) => void; 
-    onPreview: (font: string | null) => void;
-    uploadedFonts: CustomFont[];
-}> = ({ value, onChange, onPreview, uploadedFonts }) => {
+const FontSelector: React.FC<{ value: string; onChange: (font: string) => void; onPreview: (font: string | null) => void; uploadedFonts: CustomFont[]; }> = ({ value, onChange, onPreview, uploadedFonts }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
+        const handleClickOutside = (event: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false); };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
-    const groups = [
-        { label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS },
-        { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }
-    ];
-
+    const groups = [{ label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS }, { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }];
     return (
         <div className="relative text-left" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
-            <button 
-                onClick={() => setIsOpen(!isOpen)} 
-                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
-            >
-                <span className="truncate">{value}</span>
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            
-            {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                    {groups.map((group) => (
-                        group.fonts.length > 0 && (
-                            <div key={group.label}>
-                                <div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
-                                {group.fonts.map(font => (
-                                    <div 
-                                        key={font}
-                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`}
-                                        onMouseEnter={() => onPreview(font)}
-                                        onClick={() => { onChange(font); setIsOpen(false); }}
-                                    >
-                                        <span style={{ fontFamily: font }}>{font}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    ))}
-                </div>
-            )}
+            <button onClick={() => setIsOpen(!isOpen)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"><span className="truncate">{value}</span><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
+            {isOpen && (<div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">{groups.map((group) => group.fonts.length > 0 && (<div key={group.label}><div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>{group.fonts.map(font => (<div key={font} className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`} onMouseEnter={() => onPreview(font)} onClick={() => { onChange(font); setIsOpen(false); }}><span style={{ fontFamily: font }}>{font}</span></div>))}</div>))}</div>)}
         </div>
     );
 };
 
-const TextEditor: React.FC<{
-    activeText: TextConfig;
-    setConfig: (c: FrameConfig) => void;
-    config: FrameConfig;
-    selectedTextId: number;
-    deselect: () => void;
-    onAddText: () => void;
-    uploadedFonts: CustomFont[];
-    setPreviewFont: (font: string | null) => void; 
-}> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
-    
-    const updateActiveText = (updates: Partial<TextConfig>) => {
-        setConfig({
-            ...config,
-            texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
-        });
-    }
-
+const TextEditor: React.FC<{ activeText: TextConfig; setConfig: (c: FrameConfig) => void; config: FrameConfig; selectedTextId: number; deselect: () => void; onAddText: () => void; uploadedFonts: CustomFont[]; setPreviewFont: (font: string | null) => void; }> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
+    const updateActiveText = (updates: Partial<TextConfig>) => { setConfig({ ...config, texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t) }); }
     const isLocked = activeText.lockedContent;
-    
     return (
-        <div className="p-4 border border-gray-200 rounded-lg relative text-left animate-fade-in">
-            {isLocked && (
-                <div 
-                    className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
-                    onClick={(e) => e.stopPropagation()} 
-                >
-                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                        🔒 Nội dung đã bị khóa bởi Admin
-                    </span>
-                </div>
-            )}
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight text-sm">CHỈNH SỬA CHỮ</h3>
-                <div className="flex gap-2 relative z-30">
-                    <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
-                        + Thêm chữ
-                    </button>
-                    <button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
-                        Xong
-                    </button>
-                </div>
-            </div>
-            <div className="space-y-4">
-                <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Nội dung</label>
-                    <textarea
-                        value={activeText.content}
-                        onChange={e => updateActiveText({ content: e.target.value })}
-                        disabled={isLocked}
-                        readOnly={isLocked}
-                        rows={3}
-                        className={`w-full p-3 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
-                        placeholder="Nhập nội dung văn bản..."
-                    />
-                </div>
-                <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Font Chữ</label>
-                    <FontSelector 
-                        value={activeText.font} 
-                        onChange={(font) => updateActiveText({ font })}
-                        onPreview={setPreviewFont}
-                        uploadedFonts={uploadedFonts}
-                    />
-                </div>
-                <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Cỡ chữ</label>
-                    <input 
-                      type="number" 
-                      min="8" 
-                      max="100" 
-                      value={activeText.size} 
-                      onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
-                      disabled={isLocked}
-                      readOnly={isLocked}
-                      className={`w-full p-2.5 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
-                    />
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                    <button 
-                        onClick={() => updateActiveText({background: !activeText.background})} 
-                        disabled={isLocked}
-                        className={`text-sm px-3 py-2 rounded-lg flex-1 font-bold ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} transition-all`}
-                    >
-                      {activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}
-                    </button>
-                    <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {(['left', 'center', 'right'] as const).map(align => (
-                           <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-4 py-2 text-sm font-bold ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'} transition-all`}>
-                             {align.charAt(0).toUpperCase()}
-                           </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div className="p-4 border border-gray-200 rounded-lg relative text-left animate-fade-in">{isLocked && (<div className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed" onClick={(e) => e.stopPropagation()}><span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>🔒 Nội dung đã bị khóa bởi Admin</span></div>)}<div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight text-sm">CHỈNH SỬA CHỮ</h3><div className="flex gap-2 relative z-30"><button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">+ Thêm chữ</button><button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">Xong</button></div></div><div className="space-y-4"><div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Nội dung</label><textarea value={activeText.content} onChange={e => updateActiveText({ content: e.target.value })} disabled={isLocked} readOnly={isLocked} rows={3} className={`w-full p-3 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink outline-none`} placeholder="Nhập nội dung văn bản..." /></div><div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Font Chữ</label><FontSelector value={activeText.font} onChange={(font) => updateActiveText({ font })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} /></div><div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Cỡ chữ</label><input type="number" min="8" max="100" value={activeText.size} onChange={e => updateActiveText({ size: parseInt(e.target.value)})} disabled={isLocked} readOnly={isLocked} className={`w-full p-2.5 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink outline-none`} /></div><div className="flex items-center justify-between gap-2"><button onClick={() => updateActiveText({background: !activeText.background})} disabled={isLocked} className={`text-sm px-3 py-2 rounded-lg flex-1 font-bold ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} transition-all`}>{activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}</button><div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>{(['left', 'center', 'right'] as const).map(align => (<button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-4 py-2 text-sm font-bold ${activeText.textAlign === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'} transition-all`}>{align.charAt(0).toUpperCase()}</button>))}</div></div></div></div>
     );
 }
 
 type Transform = { x: number; y: number; rotation: number; scale: number; width?: number; height?: number };
 
 interface BuilderPageProps { 
-    config: FrameConfig; 
-    setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; 
-    navigateTo: (p:Page) => void; 
-    onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; 
-    onUpdateCart: (config: FrameConfig) => void; 
-    showToast: (message: string, type: 'success' | 'error') => void;
-    legoParts: typeof LEGO_PARTS; 
-    backgrounds: PresetBackground[]; 
-    frames: FrameOption[]; 
-    editingCartIndex: number | null; 
-    onCancelEdit: () => void; 
-    onZoomImage: (url: string) => void; 
-    logoUrl?: string; 
-    initialStep?: number; 
-    isEditingOrder?: boolean;
-    uploadedFonts: CustomFont[];
+    config: FrameConfig; setConfig: React.Dispatch<React.SetStateAction<FrameConfig>>; navigateTo: (p:Page) => void; onAddToCart: (config: FrameConfig, openCartPanel?: boolean) => void; onUpdateCart: (config: FrameConfig) => void; showToast: (message: string, type: 'success' | 'error') => void; legoParts: typeof LEGO_PARTS; backgrounds: PresetBackground[]; frames: FrameOption[]; editingCartIndex: number | null; onCancelEdit: () => void; onZoomImage: (url: string | null) => void; logoUrl?: string; initialStep?: number; isEditingOrder?: boolean; uploadedFonts: CustomFont[];
 }
 
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
   const [step, setStep] = useState(initialStep || 1); 
-  const [isTransitioning, setIsTransitioning] = useState(false); // Optimization: Smooth step transition
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
   const frameCaptureRef = useRef<HTMLDivElement>(null);
@@ -1462,27 +1142,19 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
   const [previewFont, setPreviewFont] = useState<string | null>(null); 
   const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
-  
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
-
   const [showStep2Hint, setShowStep2Hint] = useState(false);
   const [hasSeenStep2Hint, setHasSeenStep2Hint] = useState(false);
   const [hintCountdown, setHintCountdown] = useState(3);
-
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
-
-  // New Ref for the top "Add Charm" button
   const topCharmUploadRef = useRef<HTMLInputElement>(null);
-
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
-
   const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
-  // Optimization: Handle step change with transition
   const handleSetStep = (newStep: number) => {
     if (newStep === step) return;
     setIsTransitioning(true);
@@ -1495,134 +1167,45 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   useEffect(() => {
     if (step === 4 && !isEditingOrder && !urgencyTimerRef.current) {
-        urgencyTimerRef.current = setInterval(() => {
-            setUrgencyTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(urgencyTimerRef.current);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+        urgencyTimerRef.current = setInterval(() => { setUrgencyTimeLeft(prev => prev <= 1 ? 0 : prev - 1); }, 1000);
     }
   }, [step, isEditingOrder]);
 
-  useEffect(() => {
-    if (step === 2 && !hasSeenStep2Hint) {
-        setShowStep2Hint(true);
-        setHintCountdown(3);
-    }
-  }, [step, hasSeenStep2Hint]);
+  useEffect(() => { if (step === 2 && !hasSeenStep2Hint) { setShowStep2Hint(true); setHintCountdown(3); } }, [step, hasSeenStep2Hint]);
 
   useEffect(() => {
     let timer: any;
-    if (showStep2Hint && hintCountdown > 0) {
-        timer = setTimeout(() => {
-            setHintCountdown(prev => prev - 1);
-        }, 1000);
-    }
+    if (showStep2Hint && hintCountdown > 0) timer = setTimeout(() => setHintCountdown(prev => prev - 1), 1000);
     return () => clearTimeout(timer);
   }, [showStep2Hint, hintCountdown]);
 
-  useEffect(() => {
-      if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
-          const draft = JSON.stringify(config);
-          localStorage.setItem('builder_draft', draft);
-      }
-  }, [config, history, isEditingOrder, editingCartIndex]);
+  useEffect(() => { if (history.length > 1 && !isEditingOrder && editingCartIndex === null) localStorage.setItem('builder_draft', JSON.stringify(config)); }, [config, history, isEditingOrder, editingCartIndex]);
 
   useEffect(() => {
       if (editingCartIndex === null && !isEditingOrder) {
           const draft = localStorage.getItem('builder_draft');
-          if (draft) {
-              try {
-                  const parsedDraft = JSON.parse(draft);
-                  if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) {
-                      setShowRestoreDraft(true);
-                  }
-              } catch (e) {
-                  console.error("Failed to parse draft", e);
-              }
-          }
+          if (draft) { try { const parsed = JSON.parse(draft); if (JSON.stringify(parsed) !== JSON.stringify(INITIAL_FRAME_CONFIG)) setShowRestoreDraft(true); } catch (e) {} }
       }
   }, [editingCartIndex, isEditingOrder]);
 
-  const handleRestoreDraft = () => {
-      try {
-          const draft = localStorage.getItem('builder_draft');
-          if (draft) {
-              const parsed = JSON.parse(draft);
-              setConfig(parsed);
-              setHistory([parsed]);
-              setHistoryIndex(0);
-              showToast("Đã khôi phục thiết kế gần nhất!", 'success');
-          }
-      } catch(e) {
-          showToast("Lỗi khôi phục.", 'error');
-      }
-      setShowRestoreDraft(false);
-  };
-
-  const handleDiscardDraft = () => {
-      localStorage.removeItem('builder_draft');
-      setShowRestoreDraft(false);
-  };
+  const handleRestoreDraft = () => { try { const draft = localStorage.getItem('builder_draft'); if (draft) { const parsed = JSON.parse(draft); setConfig(parsed); setHistory([parsed]); setHistoryIndex(0); showToast("Đã khôi phục thiết kế!", 'success'); } } catch(e) {} setShowRestoreDraft(false); };
+  const handleDiscardDraft = () => { localStorage.removeItem('builder_draft'); setShowRestoreDraft(false); };
 
   useEffect(() => {
       const currentFrame = frames.find(f => f.id === config.frameId);
-      if (currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) < 1) {
-          setLastSquareFrameId(currentFrame.id);
-      }
+      if (currentFrame && Math.abs(currentFrame.frameWidthCm - currentFrame.frameHeightCm) < 1) setLastSquareFrameId(currentFrame.id);
   }, [config.frameId, frames]);
 
   useEffect(() => {
     const fetchHotTrends = async () => {
         try {
             const orders = await getAllOrders();
-            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-            const recentOrders = orders.filter(o => (o.createdAt || 0) > sevenDaysAgo);
-            
             const counts: Record<string, number> = {};
-            recentOrders.forEach(o => {
-                o.items.forEach(item => {
-                    item.draggableItems.forEach(d => {
-                        if (d.type !== 'charm') {
-                            counts[d.partId] = (counts[d.partId] || 0) + 1;
-                        }
-                    });
-                    item.characters.forEach(c => {
-                        if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
-                    });
-                });
-            });
-
-            let topIds = Object.entries(counts)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 3)
-                .map(([id]) => id);
-            
-            if (topIds.length < 3) {
-                const availableAccessories = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet];
-                const staticHotItems = availableAccessories
-                    .filter(p => p.isHot && !topIds.includes(p.id))
-                    .map(p => p.id);
-                
-                topIds = [...topIds, ...staticHotItems];
-
-                if (topIds.length < 3) {
-                    const randomFillers = availableAccessories
-                        .filter(p => !topIds.includes(p.id))
-                        .map(p => p.id);
-                    topIds = [...topIds, ...randomFillers];
-                }
-            }
-
-            setHotPartIds(topIds.slice(0, 3));
-        } catch (e) {
-            console.error(e);
-            const defaults = [...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].slice(0, 3).map(p => p.id);
-            setHotPartIds(defaults);
-        }
+            orders.slice(0, 50).forEach(o => o.items.forEach(item => { item.draggableItems.forEach(d => { if (d.type !== 'charm') counts[d.partId] = (counts[d.partId] || 0) + 1; }); }));
+            let topIds = Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 3).map(([id]) => id);
+            if (topIds.length < 3) topIds = [...topIds, ...[...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].filter(p => p.isHot).map(p => p.id)].slice(0, 3);
+            setHotPartIds(topIds);
+        } catch (e) { setHotPartIds([...LEGO_PARTS.accessory, ...LEGO_PARTS.pet].slice(0, 3).map(p => p.id)); }
     };
     fetchHotTrends();
   }, []);
@@ -1630,7 +1213,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
       setConfig(prev => {
           const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
-          
           if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
               const newHistory = history.slice(0, historyIndex + 1);
               newHistory.push(newConfig);
@@ -1642,440 +1224,155 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       });
   }, [history, historyIndex, setConfig]);
 
-  const handleUndo = () => {
-      if (historyIndex > 0) {
-          const newIndex = historyIndex - 1;
-          setHistoryIndex(newIndex);
-          setConfig(history[newIndex]);
-      }
-  };
-
-  const handleRedo = () => {
-      if (historyIndex < history.length - 1) {
-          const newIndex = historyIndex + 1;
-          setHistoryIndex(newIndex);
-          setConfig(history[newIndex]);
-      }
-  };
+  const handleUndo = () => { if (historyIndex > 0) { const newIndex = historyIndex - 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } };
+  const handleRedo = () => { if (historyIndex < history.length - 1) { const newIndex = historyIndex + 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } };
 
   const handleShare = async () => {
       setIsSaving(true);
       const image = await captureFrameAsImage();
       setIsSaving(false);
-      
       if (!image) return;
-
-      if (navigator.share) {
-          try {
-              const blob = dataURLToBlob(image);
-              if (!blob) throw new Error("Conversion failed");
-              const file = new File([blob], "the-luvin-design.png", { type: blob.type });
-              await navigator.share({
-                  title: 'My LEGO Frame Design',
-                  text: 'Check out my custom LEGO frame design from The Luvin!',
-                  files: [file]
-              });
-          } catch (e) {
-              const link = document.createElement('a');
-              link.href = image;
-              link.download = 'the-luvin-design.png';
-              link.click();
-          }
-      } else {
-          const link = document.createElement('a');
-          link.href = image;
-          link.download = 'the-luvin-design.png';
-          link.click();
-      }
+      if (navigator.share) { try { const blob = dataURLToBlob(image); if (blob) { const file = new File([blob], "design.png", { type: blob.type }); await navigator.share({ title: 'My LEGO Frame', text: 'Check out my design!', files: [file] }); } } catch (e) { const link = document.createElement('a'); link.href = image; link.download = 'design.png'; link.click(); } } else { const link = document.createElement('a'); link.href = image; link.download = 'design.png'; link.click(); }
   };
 
   useEffect(() => {
     const controlNavbar = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
-        setIsBottomBarVisible(false);
-      } else {
-        setIsBottomBarVisible(true);
-      }
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) setIsBottomBarVisible(false); else setIsBottomBarVisible(true);
       lastScrollY.current = currentScrollY;
     };
     window.addEventListener('scroll', controlNavbar);
-    return () => {
-      window.removeEventListener('scroll', controlNavbar);
-    };
+    return () => window.removeEventListener('scroll', controlNavbar);
   }, []);
 
   useEffect(() => {
-    const observer = new ResizeObserver(entries => {
-      if (entries[0]) {
-        const { width } = entries[0].contentRect;
-        setPreviewWidth(width > 520 ? 520 : width);
-      }
-    });
-
-    if (previewContainerParentRef.current) {
-      observer.observe(previewContainerParentRef.current);
-    }
-
-    return () => {
-      if (previewContainerParentRef.current) {
-        observer.unobserve(previewContainerParentRef.current);
-      }
-    };
+    const observer = new ResizeObserver(entries => { if (entries[0]) setPreviewWidth(entries[0].contentRect.width > 520 ? 520 : entries[0].contentRect.width); });
+    if (previewContainerParentRef.current) observer.observe(previewContainerParentRef.current);
+    return () => { if (previewContainerParentRef.current) observer.unobserve(previewContainerParentRef.current); };
   }, []);
   
-  const selectedText = useMemo(() => {
-    if (selectedItemId?.startsWith('text-')) {
-        const id = parseInt(selectedItemId.split('-')[1], 10);
-        return config.texts.find(t => t.id === id) || null;
-    }
-    return null;
-  }, [selectedItemId, config.texts]);
+  const selectedText = useMemo(() => { if (selectedItemId?.startsWith('text-')) { const id = parseInt(selectedItemId.split('-')[1]); return config.texts.find(t => t.id === id) || null; } return null; }, [selectedItemId, config.texts]);
 
   const handleItemTransform = useCallback((id: string, nTransform: Transform) => {
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
-      
       setConfigWithHistory((prev: FrameConfig) => {
-          if (type === 'text') {
-              const idToUpdate = parseInt(rawId);
-              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...nTransform } : item) };
-          }
+          if (type === 'text') { const idToUpdate = parseInt(rawId); return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...nTransform } : item) }; }
           const itemId = parseInt(rawId);
-          if (type === 'character') return { ...prev, characters: prev.characters.map((item: LegoCharacterConfig) => item.id === itemId ? { ...item, ...nTransform } : item) };
-          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: DraggableItem) => item.id === itemId ? { ...item, ...nTransform } : item) };
-          if (type === 'shape') {
-              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
-          }
+          if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
+          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
+          if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
           return prev;
       });
   }, [setConfigWithHistory]);
 
-  const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => {
+  const handleAlignItem = (direction: string) => {
       if (!selectedItemId) return;
-      
-      if (direction === 'horizontal') direction = 'center-x';
-      if (direction === 'vertical') direction = 'center-y';
-
       const [type, ...rest] = selectedItemId.split('-');
-      const rawId = rest.join('-');
-      const idToUpdate = parseInt(rawId);
-
+      const idToUpdate = parseInt(rest.join('-'));
       setConfigWithHistory((prev: FrameConfig) => {
           let updates: Partial<Transform> = {};
           if (direction === 'center') updates = { x: 50, y: 50 };
-          else if (direction === 'center-x') updates = { x: 50 };
-          else if (direction === 'center-y') updates = { y: 50 };
-
-          if (type === 'text') {
-              return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
-          } else if (type === 'character') {
-              return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
-          } else if (type === 'item') {
-              return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
-          } else if (type === 'shape') {
-              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
-          }
+          else if (direction === 'horizontal') updates = { x: 50 };
+          else if (direction === 'vertical') updates = { y: 50 };
+          if (type === 'text') return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          else if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          else if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+          else if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           return prev;
       });
   };
 
   const handleItemFlip = useCallback((id: string) => {
       const [type, ...rest] = id.split('-');
-      const rawId = rest.join('-');
-      
-      if (type === 'item') {
-          const itemId = parseInt(rawId);
-          setConfigWithHistory((prev: FrameConfig) => ({
-              ...prev,
-              draggableItems: prev.draggableItems.map((item: DraggableItem) => 
-                  item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
-              )
-          }));
-      }
+      if (type === 'item') { const itemId = parseInt(rest.join('-')); setConfigWithHistory(prev => ({ ...prev, draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, isFlipped: !i.isFlipped } : i) })); }
   }, [setConfigWithHistory]);
 
   const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
       const [type, ...rest] = id.split('-');
-      const rawId = rest.join('-');
-      
-      if (type === 'item') {
-          const itemId = parseInt(rawId);
-          setConfigWithHistory((prev: FrameConfig) => ({
-              ...prev,
-              draggableItems: prev.draggableItems.map((item: DraggableItem) => 
-                  item.id === itemId ? { ...item, ...updates } : item
-              )
-          }));
-      }
+      if (type === 'item') { const itemId = parseInt(rest.join('-')); setConfigWithHistory(prev => ({ ...prev, draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, ...updates } : i) })); }
   }, [setConfigWithHistory]);
 
-  const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
-      setConfigWithHistory((prev: FrameConfig) => ({
-          ...prev,
-          characters: prev.characters.map((c: LegoCharacterConfig) => c.id === id ? { ...c, ...updates } : c)
-      }));
-  }, [setConfigWithHistory]);
+  const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => { setConfigWithHistory(prev => ({ ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) })); }, [setConfigWithHistory]);
 
   const handleItemRemoveCompletely = useCallback((id: string) => {
     const [type, ...rest] = id.split('-');
     const rawId = rest.join('-');
-    
     setSelectedItemId(null);
-
-    setConfigWithHistory((prev: FrameConfig) => {
-        if (type === 'text') {
-            const idToDelete = parseInt(rawId, 10);
-            return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
-        }
-        const itemId = parseInt(rawId, 10);
-        if (type === 'character') return { ...prev, characters: prev.characters.filter((item: LegoCharacterConfig) => item.id !== itemId) };
-        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: DraggableItem) => item.id !== itemId) };
-        if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== itemId) };
+    setConfigWithHistory(prev => {
+        const idToDelete = parseInt(rawId);
+        if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
+        if (type === 'character') return { ...prev, characters: prev.characters.filter(item => item.id !== idToDelete) };
+        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(item => item.id !== idToDelete) };
+        if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== idToDelete) };
         return prev;
     });
   }, [setConfigWithHistory]);
   
-  const handleItemDelete = useCallback((id: string) => {
-    const [type, ...rest] = id.split('-');
-    const rawId = rest.join('-');
-    
-    if (type === 'text') {
-        const idToUpdate = parseInt(rawId, 10);
-        const textItem = config.texts.find(t => t.id === idToUpdate);
-        
-        if (textItem && textItem.content && textItem.content.trim() !== '') {
-             setConfigWithHistory((prev: FrameConfig) => ({
-                ...prev,
-                texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
-            }));
-        } else {
-             handleItemRemoveCompletely(id);
-        }
-    } else {
-        handleItemRemoveCompletely(id);
-    }
-  }, [setConfigWithHistory, handleItemRemoveCompletely, config.texts]);
-  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isEditingText) {
-            if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-                e.preventDefault();
-            }
-            handleItemDelete(selectedItemId);
+            if (e.key === 'Backspace' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) e.preventDefault();
+            handleItemRemoveCompletely(selectedItemId);
         }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-            e.preventDefault();
-            if (e.shiftKey) handleRedo();
-            else handleUndo();
-        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) handleRedo(); else handleUndo(); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItemId, handleItemDelete, isEditingText, handleUndo, handleRedo]);
+  }, [selectedItemId, handleItemRemoveCompletely, isEditingText, handleUndo, handleRedo]);
 
-  const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-    setConfigWithHistory((prev: FrameConfig) => ({
-        ...prev,
-        texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
-    }));
-  }, [setConfigWithHistory]);
-  
-  const addText = () => {
-      const newId = Date.now();
-      const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
-      setConfigWithHistory((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
-      setSelectedItemId(`text-${newId}`);
-  };
-
-  const addCharm = (dataUrl: string) => {
-      const newCharm: DraggableItem = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
-      setConfigWithHistory((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
-  }
+  const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => { setConfigWithHistory(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) })); }, [setConfigWithHistory]);
+  const addText = () => { const newId = Date.now(); setConfigWithHistory(prev => ({ ...prev, texts: [...prev.texts, { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 }] })); setSelectedItemId(`text-${newId}`); };
+  const addCharm = (dataUrl: string) => { setConfigWithHistory(prev => ({ ...prev, draggableItems: [...prev.draggableItems, { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 }] })); };
   
   const captureFrameAsImage = async (): Promise<string> => {
     const originalSelectedId = selectedItemId;
     setSelectedItemId(null); 
-
     return new Promise((resolve) => {
       setTimeout(async () => {
         try {
           const container = frameCaptureRef.current;
           if (container && typeof html2canvas !== 'undefined') {
-            const canvas = await html2canvas(container, {
-              backgroundColor: null,
-              useCORS: true, 
-              allowTaint: true, 
-              scale: 3,      
-              logging: false,
-              scrollX: 0,    
-              scrollY: 0,
-              ignoreElements: (element: Element) => false
-            });
+            const canvas = await html2canvas(container, { backgroundColor: null, useCORS: true, allowTaint: true, scale: 3, logging: false });
             resolve(canvas.toDataURL('image/png'));
-          } else {
-            console.error('html2canvas error');
-            resolve('');
-          }
-        } catch (error: any) {
-          console.error('Snapshot error:', error);
-          resolve('');
-        } finally {
-          setSelectedItemId(originalSelectedId); 
-        }
-      }, 1000); 
+          } else resolve('');
+        } catch (error) { resolve(''); } finally { setSelectedItemId(originalSelectedId); }
+      }, 800); 
     });
-  };
-
-  const animateAddToCart = (imageSrc: string) => {
-      const desktopCart = document.getElementById('cart-icon-desktop');
-      const mobileCart = document.getElementById('cart-icon-mobile');
-      const targetIcon = window.innerWidth >= 768 ? desktopCart : mobileCart;
-      const sourceContainer = frameCaptureRef.current;
-
-      if (!targetIcon || !sourceContainer || !imageSrc) return;
-
-      const startRect = sourceContainer.getBoundingClientRect();
-      const endRect = targetIcon.getBoundingClientRect();
-
-      const flyImg = document.createElement('img');
-      flyImg.src = imageSrc;
-      flyImg.classList.add('flying-product-item');
-      
-      flyImg.style.left = `${startRect.left}px`;
-      flyImg.style.top = `${startRect.top}px`;
-      flyImg.style.width = `${startRect.width}px`;
-      flyImg.style.height = `${startRect.height}px`;
-
-      document.body.appendChild(flyImg);
-      flyImg.getBoundingClientRect();
-
-      const endX = endRect.left + endRect.width / 2;
-      const endY = endRect.top + endRect.height / 2;
-      const targetSize = 20;
-
-      flyImg.style.left = `${endX - targetSize/2}px`;
-      flyImg.style.top = `${endY - targetSize/2}px`;
-      flyImg.style.width = `${targetSize}px`;
-      flyImg.style.height = `${targetSize}px`;
-      flyImg.style.opacity = '0.5';
-
-      flyImg.addEventListener('transitionend', () => {
-          if (document.body.contains(flyImg)) {
-              document.body.removeChild(flyImg);
-          }
-      });
   };
 
   const handleAddToCartWrapper = async (andCheckout: boolean) => {
     trackAddToCart(); 
-
     setIsSaving(true);
     try {
         const base64Image = await captureFrameAsImage();
-        
-        if (!base64Image) {
-            showToast('Lỗi tạo ảnh. Có thể do lỗi CORS.', 'error');
-            setIsSaving(false);
-            return;
-        }
-
-        animateAddToCart(base64Image);
-
+        if (!base64Image) { showToast('Lỗi tạo ảnh.', 'error'); setIsSaving(false); return; }
         const imageBlob = dataURLToBlob(base64Image);
-        if (!imageBlob) {
-            showToast('Lỗi xử lý ảnh.', 'error');
-            setIsSaving(false);
-            return;
-        }
-        const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
-
-        const cloudUrl = await uploadToCloudinary(imageFile);
-        
-        if (!cloudUrl) {
-             showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error');
-             setIsSaving(false);
-             return;
-        }
-
-        const finalConfig = { 
-            ...config, 
-            previewImageUrl: cloudUrl
-        };
-
+        if (!imageBlob) { setIsSaving(false); return; }
+        const cloudUrl = await uploadFile(new File([imageBlob], "design.png", { type: "image/png" }));
+        if (!cloudUrl) { showToast('Lỗi lưu ảnh.', 'error'); setIsSaving(false); return; }
         localStorage.removeItem('builder_draft');
-
-        if (editingCartIndex !== null && !andCheckout) {
-            onUpdateCart(finalConfig);
-        } else {
-            onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
-        }
-        
-        if (andCheckout) {
-            navigateTo('checkout');
-        }
-    } catch (e) {
-        console.error(e);
-        showToast('Đã có lỗi xảy ra.', 'error');
-    } finally {
-        setIsSaving(false);
-    }
+        if (editingCartIndex !== null && !andCheckout) onUpdateCart({ ...config, previewImageUrl: cloudUrl }); else onAddToCart({ ...config, previewImageUrl: cloudUrl, quantity: 1 }, !andCheckout);
+        if (andCheckout) navigateTo('checkout');
+    } catch (e) { showToast('Đã có lỗi xảy ra.', 'error'); } finally { setIsSaving(false); }
   };
 
-  const handleCharacterDoubleClick = (charId: number) => {
-      handleSetStep(3); 
-      setSelectedItemId(`character-${charId}`);
-  };
+  const handleCharacterDoubleClick = (charId: number) => { handleSetStep(3); setSelectedItemId(`character-${charId}`); };
 
   const handleAutoAdvance = () => {
-      if (selectedItemId && (selectedItemId.startsWith('item-') || selectedItemId.startsWith('text-') || selectedItemId.startsWith('shape-'))) {
-          setSelectedItemId(null);
-          return;
-      }
-
+      if (selectedItemId && !selectedItemId.startsWith('character-')) { setSelectedItemId(null); return; }
       const order: ('shirt' | 'pants' | 'hair' | 'face' | 'hat')[] = ['shirt', 'pants', 'hair', 'face', 'hat'];
       let currentIndex = order.indexOf(activePartType as any);
-      
-      if (activePartType === 'set') {
-          setActivePartType('hair');
-          return;
-      }
-
-      if (currentIndex !== -1 && currentIndex < order.length - 1) {
-          setActivePartType(order[currentIndex + 1]);
-      } else {
-          setActivePartType('shirt'); 
-      }
+      if (activePartType === 'set') { setActivePartType('hair'); return; }
+      if (currentIndex !== -1 && currentIndex < order.length - 1) setActivePartType(order[currentIndex + 1]); else setActivePartType('shirt'); 
   };
 
   const renderStepContent = () => {
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfigWithHistory} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations 
-          config={config} 
-          setConfig={setConfigWithHistory} 
-          addText={addText} 
-          addCharm={addCharm} 
-          backgrounds={backgrounds} 
-          frames={frames} 
-          onZoomImage={onZoomImage} 
-          showToast={showToast} 
-          preferredSquareFrameId={lastSquareFrameId}
-      />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfigWithHistory} addText={addText} addCharm={addCharm} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
       case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
-      case 4: return <Step4Summary 
-        totalPrice={totalPrice} 
-        priceBreakdown={priceBreakdown} 
-        frameName={frames.find(f => f.id === config.frameId)?.name || ''} 
-        charCount={config.characters.length} 
-        onAddToCart={() => handleAddToCartWrapper(false)} 
-        onBuyNow={() => handleAddToCartWrapper(true)}
-        onRemoveItemById={handleItemRemoveCompletely}
-        isSaving={isSaving} 
-        isEditingOrder={isEditingOrder}
-        urgencyTimeLeft={urgencyTimeLeft}
-      />;
+      case 4: return <Step4Summary totalPrice={totalPrice} priceBreakdown={priceBreakdown} frameName={frames.find(f => f.id === config.frameId)?.name || ''} charCount={config.characters.length} onAddToCart={() => handleAddToCartWrapper(false)} onBuyNow={() => handleAddToCartWrapper(true)} onRemoveItemById={handleItemRemoveCompletely} isSaving={isSaving} isEditingOrder={isEditingOrder} urgencyTimeLeft={urgencyTimeLeft} />;
       default: return null;
     }
   };
@@ -2084,14 +1381,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     const file = e.target.files?.[0];
     if (file) {
       const fileReader = new FileReader();
-      fileReader.onload = () => {
-        const result = fileReader.result;
-        if (typeof result === 'string') {
-          addCharm(result);
-          // Auto switch to step 2 if they are adding decorations
-          if (step !== 2) handleSetStep(2);
-        }
-      };
+      fileReader.onload = () => { if (typeof fileReader.result === 'string') { addCharm(fileReader.result); if (step !== 2) handleSetStep(2); } };
       fileReader.readAsDataURL(file);
     }
   };
@@ -2099,289 +1389,25 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   return (
     <div className="bg-gray-50 py-2 sm:py-6 safe-bottom">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-2">
-            <div className="text-sm text-gray-500">
-                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
-            </div>
-        </div>
-        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">
-            {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
-        </h1>
-        
+        <div className="flex justify-between items-center mb-2"><div className="text-sm text-gray-500"><button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế</div></div>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">{isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}</h1>
         <StepIndicator currentStep={step} setStep={handleSetStep} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
           <div className="lg:col-span-7" ref={previewContainerParentRef}>
             <div className="lg:sticky lg:top-24">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight text-left">
-                        ẢNH XEM TRƯỚC
-                    </h3>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                        {/* New Tool Buttons beside Undo - Refined style */}
-                        <div className="flex gap-1 pr-2 mr-2 border-r border-gray-200">
-                            <button 
-                                onClick={addText}
-                                className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
-                                title="Thêm chữ nhanh"
-                            >
-                                <span className="text-sm font-black">T+</span>
-                                <span className="text-[10px] font-bold hidden sm:inline">Chữ</span>
-                            </button>
-                            <button 
-                                onClick={() => topCharmUploadRef.current?.click()}
-                                className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
-                                title="Tải ảnh nhỏ nhanh"
-                            >
-                                <span className="text-sm">🖼️</span>
-                                <span className="text-[10px] font-bold hidden sm:inline">Ảnh</span>
-                            </button>
-                            <input type="file" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" />
-                        </div>
-
-                        <button 
-                            onClick={handleUndo} 
-                            disabled={historyIndex <= 0}
-                            className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
-                            title="Hoàn tác (Undo)"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-                        </button>
-                        <button 
-                            onClick={handleRedo} 
-                            disabled={historyIndex >= history.length - 1}
-                            className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
-                            title="Làm lại (Redo)"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
-                        </button>
-                        <button 
-                            onClick={handleShare}
-                            className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm"
-                            title="Chia sẻ thiết kế"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                        </button>
-                    </div>
-                </div>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-2 mb-2 lg:mb-0 shadow-inner">
-                    <FramePreview 
-                        ref={frameCaptureRef}
-                        config={config} 
-                        containerWidth={previewWidth - 32} 
-                        onItemTransform={handleItemTransform} 
-                        onItemRemove={handleItemRemoveCompletely}
-                        onTextUpdate={handleTextUpdate}
-                        onItemUpdate={handleItemUpdate}
-                        onCharacterUpdate={handleCharacterUpdate} 
-                        onItemFlip={handleItemFlip}
-                        onCharacterDoubleClick={handleCharacterDoubleClick}
-                        onAutoAdvance={handleAutoAdvance} 
-                        className="w-full h-full"
-                        selectedItemId={selectedItemId}
-                        setSelectedItemId={setSelectedItemId}
-                        setIsEditingText={setIsEditingText}
-                        allParts={allParts}
-                        activePartType={activePartType} 
-                        logoUrl={logoUrl} 
-                        previewFont={previewFont} 
-                        onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} 
-                    />
-                </div>
-                
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex text-left">
-                    <span className="text-amber-500 mt-0.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
-                        </svg>
-                    </span>
-                    <div className="text-xs text-amber-900 leading-relaxed">
-                        <p className="font-bold mb-1">Lưu ý quan trọng:</p>
-                        <p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <b>Designer sẽ thiết kế lại bố cục & màu sắc</b> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p>
-                    </div>
-                </div>
-                <div className="h-4 mt-2 hidden lg:block"></div>
-            </div>
+                <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight text-left">ẢNH XEM TRƯỚC</h3><div className="flex items-center gap-1.5 sm:gap-2"><div className="flex gap-1 pr-2 mr-2 border-r border-gray-200"><button onClick={addText} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"><span className="text-sm font-black">T+</span><span className="text-[10px] font-bold hidden sm:inline">Chữ</span></button><button onClick={() => topCharmUploadRef.current?.click()} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"><span className="text-sm">🖼️</span><span className="text-[10px] font-bold hidden sm:inline">Ảnh</span></button><input type="file" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" /></div><button onClick={handleUndo} disabled={historyIndex <= 0} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button><button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg></button><button onClick={handleShare} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg></button></div></div><div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-2 mb-2 lg:mb-0 shadow-inner"><FramePreview ref={frameCaptureRef} config={config} containerWidth={previewWidth - 32} onItemTransform={handleItemTransform} onItemRemove={handleItemRemoveCompletely} onTextUpdate={handleTextUpdate} onItemUpdate={handleItemUpdate} onCharacterUpdate={handleCharacterUpdate} onItemFlip={handleItemFlip} onCharacterDoubleClick={handleCharacterDoubleClick} onAutoAdvance={handleAutoAdvance} className="w-full h-full" selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={setIsEditingText} allParts={allParts} activePartType={activePartType} logoUrl={logoUrl} previewFont={previewFont} onAlign={(type) => handleAlignItem(type)} /></div></div>
           </div>
-
-          <div className="lg:col-span-5 mt-2 lg:mt-0" id="builder-action-area"> 
-              {(step === 2 || step === 3) && (
-                  <div className="mb-3 px-1 animate-fade-in text-left">
-                      <div className="flex justify-between items-center text-[10px] mb-1">
-                          <span className="text-gray-500 font-medium">
-                              {remainingForFreeShip > 0 ? (
-                                <>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>
-                              ) : (
-                                <b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>
-                              )}
-                          </span>
-                          <span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span>
-                      </div>
-                      <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                              className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" 
-                              style={{ width: `${freeShipPercent}%` }}
-                          ></div>
-                      </div>
-                  </div>
-              )}
-
-              <div className={`bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-opacity duration-200 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                  {selectedText ? (
-                      <TextEditor 
-                          activeText={selectedText}
-                          setConfig={setConfigWithHistory}
-                          config={config}
-                          selectedTextId={selectedText.id}
-                          deselect={() => setSelectedItemId(null)}
-                          onAddText={addText}
-                          uploadedFonts={uploadedFonts}
-                          setPreviewFont={setPreviewFont} 
-                      />
-                  ) : (
-                      <>
-                          <div className="min-h-[350px]">
-                              {renderStepContent()}
-                          </div>
-                      </>
-                  )}
-              </div>
-              
-              {!selectedText && (
-                <>
-                  <div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">
-                    Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span>
-                  </div>
-                  {editingCartIndex !== null && step === 4 && (
-                        <div className="mt-4 mb-2">
-                            <button 
-                                onClick={onCancelEdit} 
-                                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors"
-                            >
-                                Hủy sửa
-                            </button>
-                        </div>
-                  )}
-                  {step === 4 && editingCartIndex !== null && (
-                        <div className="mt-2 hidden lg:flex items-center gap-4">
-                             <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                                {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn hàng' : 'Cập nhật giỏ hàng')}
-                            </button>
-                        </div>
-                  )}
-                  
-                  {!(editingCartIndex !== null && step === 4) && (
-                      <div className="mt-2 hidden lg:flex items-center gap-4">
-                          <button
-                              onClick={() => handleSetStep(Math.max(1, step - 1))}
-                              disabled={step === 1}
-                              className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors"
-                          >
-                              &larr; Quay lại
-                          </button>
-                          <button
-                              onClick={() => handleSetStep(Math.min(4, step + 1))}
-                              disabled={step === 4}
-                              className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md"
-                          >
-                              Tiếp theo
-                          </button>
-                      </div>
-                  )}
-                </>
-              )}
-               
-               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
-                     <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-medium text-gray-500">Tạm tính:</span>
-                        <span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span>
-                      </div>
-                     
-                     {editingCartIndex !== null && step === 4 ? (
-                        <div className="flex gap-2">
-                            <button onClick={onCancelEdit} className="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors text-sm">
-                                Hủy
-                            </button>
-                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">
-                                {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn' : 'Cập nhật')}
-                            </button>
-                        </div>
-                     ) : (
-                         <div className="flex gap-3">
-                           <button
-                              onClick={() => handleSetStep(Math.max(1, step - 1))}
-                              disabled={step === 1}
-                              className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm"
-                          >
-                              Quay lại
-                          </button>
-                          <button
-                              onClick={() => handleSetStep(Math.min(4, step + 1))}
-                              disabled={step === 4}
-                              className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm"
-                          >
-                              Tiếp theo
-                          </button>
-                         </div>
-                     )}
-                </div>
+          <div className="lg:col-span-5 mt-2 lg:mt-0"> 
+              {(step === 2 || step === 3) && (<div className="mb-3 px-1 animate-fade-in text-left"><div className="flex justify-between items-center text-[10px] mb-1"><span className="text-gray-500 font-medium">{remainingForFreeShip > 0 ? (<>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>) : (<b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>)}</span><span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span></div><div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" style={{ width: `${freeShipPercent}%` }}></div></div></div>)}
+              <div className={`bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-opacity duration-200 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>{selectedText ? (<TextEditor activeText={selectedText} setConfig={setConfigWithHistory} config={config} selectedTextId={selectedText.id} deselect={() => setSelectedItemId(null)} onAddText={addText} uploadedFonts={uploadedFonts} setPreviewFont={setPreviewFont} />) : (<div className="min-h-[350px]">{renderStepContent()}</div>)}</div>
+              {!selectedText && (<><div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span></div><div className="mt-2 hidden lg:flex items-center gap-4"><button onClick={() => handleSetStep(Math.max(1, step - 1))} disabled={step === 1} className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100">Quay lại</button><button onClick={() => { if(step === 4) handleAddToCartWrapper(false); else handleSetStep(step + 1); }} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors shadow-md">{step === 4 ? (isSaving ? '...' : 'Lưu thiết kế') : 'Tiếp theo'}</button></div></>)}
+               <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-top p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}><div className="flex justify-between items-center mb-3"><span className="text-xs font-medium text-gray-500">Tạm tính:</span><span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span></div><div className="flex gap-3"><button onClick={() => handleSetStep(Math.max(1, step - 1))} disabled={step === 1} className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm">Quay lại</button><button onClick={() => { if(step === 4) handleAddToCartWrapper(false); else handleSetStep(step + 1); }} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm">{step === 4 ? 'Xong' : 'Tiếp theo'}</button></div></div>
                <div className="lg:hidden h-24"></div>
           </div>
         </div>
       </div>
-
-      {showRestoreDraft && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-sm animate-bounce-small text-left">
-              <div className="flex items-start gap-3">
-                  <span className="text-2xl">💾</span>
-                  <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Bản nháp chưa hoàn thành</h4>
-                      <p className="text-xs text-gray-600 mt-1">Chúng tôi tìm thấy thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?</p>
-                  </div>
-              </div>
-              <div className="flex gap-3 mt-3 justify-end">
-                  <button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button>
-                  <button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button>
-              </div>
-          </div>
-      )}
-
-      {showStep2Hint && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in text-left">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small border-2 border-luvin-pink">
-                  <div className="bg-luvin-pink/10 p-6 flex flex-col items-center text-center">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 text-3xl animate-pulse">
-                          🎨
-                      </div>
-                      <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 uppercase tracking-tight">Hỗ trợ thiết kế MIỄN PHÍ</h3>
-                      <p className="text-sm text-gray-700 leading-relaxed text-left space-y-2">
-                          <span className="block">• Bạn chỉ cần <b>chèn tạm nội dung</b> (tên, ngày kỷ niệm, lời nhắn...) vào vị trí mong muốn bằng tính năng <b>Thêm chữ</b>.</span>
-                          <span className="block">• <b>Designer của The Luvin</b> sẽ dựa trên yêu cầu của bạn để <b>thiết kế lại toàn bộ background chuyên nghiệp</b> và gửi bạn duyệt trước khi in.</span>
-                          <span className="block">• Bạn cũng có thể <b>gửi ảnh riêng hoặc mô tả kỹ hơn</b> qua Zalo/Messenger ngay sau khi đặt đơn thành công!</span>
-                      </p>
-                  </div>
-                  <div className="p-4 bg-white border-t border-gray-100 space-y-2">
-                      <button 
-                          onClick={() => { if(hintCountdown === 0) { setShowStep2Hint(false); setHasSeenStep2Hint(true); } }}
-                          disabled={hintCountdown > 0}
-                          className={`w-full font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
-                              hintCountdown > 0 
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                : 'bg-gray-900 text-white hover:bg-luvin-pink'
-                          }`}
-                      >
-                          {hintCountdown > 0 ? (
-                              <>Tôi đã hiểu ({hintCountdown}s)</>
-                          ) : (
-                              <>Tôi đã hiểu, bắt đầu thôi!</>
-                          )}
-                      </button>
-                      <p className="text-[10px] text-center text-gray-400 font-medium italic">
-                          Món quà của bạn sẽ được chăm chút bởi Designer chuyên nghiệp.
-                      </p>
-                  </div>
-              </div>
-          </div>
-      )}
+      {showRestoreDraft && (<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-sm animate-bounce-small text-left"><div className="flex items-start gap-3"><span className="text-2xl">💾</span><div><h4 className="font-bold text-gray-900 text-sm">Bản nháp chưa hoàn thành</h4><p className="text-xs text-gray-600 mt-1">Chúng tôi tìm thấy thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?</p></div></div><div className="flex gap-3 mt-3 justify-end"><button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button><button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button></div></div>)}
+      {showStep2Hint && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in text-left"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small border-2 border-luvin-pink"><div className="bg-luvin-pink/10 p-6 flex flex-col items-center text-center"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 text-3xl animate-pulse">🎨</div><h3 className="font-heading text-xl font-bold text-gray-900 mb-2 uppercase tracking-tight">Hỗ trợ thiết kế MIỄN PHÍ</h3><p className="text-sm text-gray-700 leading-relaxed text-left space-y-2"><span className="block">• Bạn chỉ cần <b>chèn tạm nội dung</b> vào vị trí mong muốn.</span><span className="block">• <b>Designer của The Luvin</b> sẽ thiết kế lại toàn bộ chuyên nghiệp và gửi bạn duyệt.</span></p></div><div className="p-4 bg-white border-t border-gray-100 space-y-2"><button onClick={() => { if(hintCountdown === 0) { setShowStep2Hint(false); setHasSeenStep2Hint(true); } }} disabled={hintCountdown > 0} className={`w-full font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${hintCountdown > 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-luvin-pink'}`}>{hintCountdown > 0 ? `Tôi đã hiểu (${hintCountdown}s)` : 'Bắt đầu thôi!'}</button></div></div></div>)}
     </div>
   );
 };

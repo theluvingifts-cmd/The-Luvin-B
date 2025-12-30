@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Order, Page } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
-import { uploadToCloudinary } from '../services/uploadService';
+import { uploadFile } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
 import { dataURLToBlob } from '../utils/helpers';
 
@@ -65,7 +66,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadToCloudinary(file);
+                const url = await uploadFile(file);
                 if (url) {
                     const success = await updateOrder(order.id, { 
                         paymentProofUrl: url,

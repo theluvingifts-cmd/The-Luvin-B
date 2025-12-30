@@ -3,7 +3,7 @@
 import { db } from '../config/firebase';
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
-import { uploadToCloudinary } from './uploadService';
+import { uploadFile } from './uploadService';
 import { adjustStock } from './productService';
 import { incrementTemplatePurchaseCount } from './templateService';
 
@@ -60,17 +60,17 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
     return Promise.all(items.map(async (item) => {
         let newItem = { ...item };
         if (newItem.previewImageUrl && newItem.previewImageUrl.startsWith('data:')) {
-            const cloudUrl = await uploadToCloudinary(newItem.previewImageUrl);
+            const cloudUrl = await uploadFile(newItem.previewImageUrl);
             if (cloudUrl) newItem.previewImageUrl = cloudUrl;
         }
         if (newItem.background && newItem.background.type === 'upload' && newItem.background.value.startsWith('data:')) {
-             const bgCloudUrl = await uploadToCloudinary(newItem.background.value);
+             const bgCloudUrl = await uploadFile(newItem.background.value);
              if (bgCloudUrl) newItem.background = { ...newItem.background, value: bgCloudUrl };
         }
         if (newItem.draggableItems && newItem.draggableItems.length > 0) {
             const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
                 if (di.type === 'charm' && di.partId && di.partId.startsWith('data:')) {
-                    const charmUrl = await uploadToCloudinary(di.partId);
+                    const charmUrl = await uploadFile(di.partId);
                     if (charmUrl) return { ...di, partId: charmUrl };
                 }
                 return di;

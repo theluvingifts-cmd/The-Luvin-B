@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FeedbackItem, ThemeConfig, CustomFont, StaffMember } from '../../types';
 import { StoreConfig, updateStoreConfig, DEFAULT_THEME } from '../../services/configService';
 import { addFeedback, updateFeedback, deleteFeedback } from '../../services/feedbackService';
-import { uploadToCloudinary } from '../../services/uploadService';
+import { uploadFile } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { FeedbackForm } from './forms/FeedbackForm';
 import * as firebaseApp from 'firebase/app';
@@ -18,7 +18,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'feedbacks';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -64,27 +64,21 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [uploadingField, setUploadingField] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // Font Management State
     const [newFontName, setNewFontName] = useState('');
     const [isUploadingFont, setIsUploadingFont] = useState(false);
 
-    // Staff Management State
     const [newStaffEmail, setNewStaffEmail] = useState('');
     const [newStaffPassword, setNewStaffPassword] = useState('');
     const [newStaffRole, setNewStaffRole] = useState<'admin' | 'warehouse'>('warehouse');
 
-    // Edit Modal States
     const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
 
-    // Telegram Config
     const [telegramToken, setTelegramToken] = useState(storeConfig.telegramBotToken || '');
     const [telegramChatId, setTelegramChatId] = useState(storeConfig.telegramChatId || '');
 
-    // B2B Config
     const [b2bDiscount, setB2bDiscount] = useState(storeConfig.b2bDiscountPercent || 5);
 
-    // Refs for scrolling to inputs
     const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
     useEffect(() => {
@@ -165,7 +159,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
         setUploadingField(field);
         try {
-            const url = await uploadToCloudinary(file);
+            const url = await uploadFile(file);
             if (url) {
                 const updates = { [field]: url };
                 await updateStoreConfig(updates);
@@ -193,7 +187,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             setIsUploadingFont(true);
             try {
                 const file = e.target.files[0];
-                const url = await uploadToCloudinary(file);
+                const url = await uploadFile(file);
                 
                 if (url) {
                     const newFont: CustomFont = {
@@ -289,11 +283,22 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     };
 
     const handleSaveFeedback = async (fb: FeedbackItem) => { 
-        setIsEditingFeedback(false); 
+        setLoading(true);
         if (editingFeedback) await updateFeedback(fb.id, fb); 
         else await addFeedback(fb); 
         onRefreshFeedbacks(); 
-        setEditingFeedback(null); 
+        setEditingFeedback(null);
+        setIsEditingFeedback(false);
+        setLoading(false);
+    };
+
+    const handleDeleteFeedback = async (id: string) => {
+        if (confirm("Xóa feedback này?")) {
+            setLoading(true);
+            await deleteFeedback(id);
+            onRefreshFeedbacks();
+            setLoading(false);
+        }
     };
 
     const fontOptions = [
@@ -312,54 +317,35 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 </div>
             )}
 
-            <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
+            <div className="sticky top-14 sm:top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
-                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo'].map((tab) => (
+                    {[
+                        { id: 'branding', label: 'Hình ảnh & Logo' },
+                        { id: 'theme', label: 'Màu & Font' },
+                        { id: 'feedbacks', label: 'Quản lý Feedbacks' },
+                        { id: 'content', label: 'Nội dung' },
+                        { id: 'fonts', label: 'Upload Font' },
+                        { id: 'staff', label: 'Nhân sự & Bot' },
+                        { id: 'seo', label: 'SEO & Social' }
+                    ].map((tab) => (
                         <button 
-                            key={tab}
-                            onClick={() => setActiveTab(tab as ConfigTab)} 
-                            className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as ConfigTab)} 
+                            className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : 'SEO & Social'}
+                            {tab.label}
                         </button>
                     ))}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-4 space-y-8 order-2 lg:order-1 h-[calc(100vh-180px)] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="lg:col-span-4 space-y-8 order-2 lg:order-1 h-[calc(100vh-220px)] overflow-y-auto pr-2 custom-scrollbar">
                     
                     {activeTab === 'branding' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Thiết lập Doanh nghiệp & Logo</h3>
-                            
-                            {/* B2B DISCOUNT CONFIG - MOVED UP FOR VISIBILITY */}
-                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                <h4 className="text-sm font-black text-blue-800 uppercase tracking-tight mb-3 flex items-center gap-2">
-                                    🏢 Chiết khấu Doanh nghiệp
-                                </h4>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-blue-600 uppercase mb-1">% Chiết khấu sỉ (B2B)</label>
-                                        <div className="flex items-center gap-3">
-                                            <input 
-                                                type="number" 
-                                                className="w-full p-2.5 border-2 border-blue-200 rounded-lg text-lg font-black text-blue-900 focus:border-blue-500 outline-none"
-                                                value={b2bDiscount}
-                                                onChange={(e) => setB2bDiscount(Number(e.target.value))}
-                                                min="0" max="100"
-                                            />
-                                            <span className="font-black text-blue-400 text-xl">%</span>
-                                        </div>
-                                        <p className="text-[10px] text-blue-500 mt-2 leading-relaxed">
-                                            Mức giảm này sẽ được áp dụng trực tiếp vào bảng "Dự toán ngân sách" tại trang <b>/business</b>. 
-                                            Giúp khách hàng doanh nghiệp thấy ngay lợi ích khi đặt số lượng lớn.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Thiết lập Hình ảnh</h3>
+                            <div className="space-y-6">
                                 <div ref={(el) => { inputRefs.current['logoUrl'] = el; }}>
                                     <ConfigImageUpload label="Logo Website" description="Header & Footer (PNG trong suốt)" currentUrl={storeConfig.logoUrl} onUpload={(f) => handleConfigUpload(f, 'logoUrl')} isUploading={uploadingField === 'logoUrl'} />
                                 </div>
@@ -373,6 +359,41 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <div ref={(el) => { inputRefs.current['giftBoxImageUrl'] = el; }}>
                                     <ConfigImageUpload label="Ảnh Gói Quà" description="Ảnh hiển thị khi khách chọn Thêm Gói Quà" currentUrl={storeConfig.giftBoxImageUrl} onUpload={(f) => handleConfigUpload(f, 'giftBoxImageUrl')} isUploading={uploadingField === 'giftBoxImageUrl'} />
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'feedbacks' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold">Feedback Khách hàng</h3>
+                                <button 
+                                    onClick={() => { setEditingFeedback(null); setIsEditingFeedback(true); }}
+                                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors"
+                                >
+                                    + Thêm mới
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {feedbacks.map(fb => (
+                                    <div key={fb.id} className="flex gap-4 p-3 border rounded-lg hover:bg-gray-50 transition-colors relative group">
+                                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border">
+                                            <img src={fb.imageUrl} className="w-full h-full object-cover" alt={fb.name} />
+                                        </div>
+                                        <div className="flex-grow min-w-0">
+                                            <p className="font-bold text-sm text-gray-800">{fb.name}</p>
+                                            <p className="text-xs text-gray-500 italic line-clamp-2">"{fb.text}"</p>
+                                        </div>
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                                            <button onClick={() => { setEditingFeedback(fb); setIsEditingFeedback(true); }} className="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">✏️</button>
+                                            <button onClick={() => handleDeleteFeedback(fb.id)} className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200">🗑️</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {feedbacks.length === 0 && (
+                                    <p className="text-center py-10 text-gray-400 italic text-sm">Chưa có feedback nào được đăng.</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -450,27 +471,6 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {activeTab === 'sections' && (
-                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Cấu hình Từng Phần</h3>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Header</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input type="color" value={themeConfig.sections.header.backgroundColor} onChange={(e) => handleThemeChange('sections.header.backgroundColor', e.target.value)} className="w-full h-10 rounded cursor-pointer" />
-                                    <input type="color" value={themeConfig.sections.header.textColor} onChange={(e) => handleThemeChange('sections.header.textColor', e.target.value)} className="w-full h-10 rounded cursor-pointer" />
-                                </div>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Hero Section</h4>
-                                <input type="color" value={themeConfig.sections.hero.backgroundColor} onChange={(e) => handleThemeChange('sections.hero.backgroundColor', e.target.value)} className="w-full h-10 rounded cursor-pointer mb-4" />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input type="color" value={themeConfig.sections.hero.headingColor} onChange={(e) => handleThemeChange('sections.hero.headingColor', e.target.value)} className="w-full h-10 rounded cursor-pointer" />
-                                    <input type="color" value={themeConfig.sections.hero.textColor} onChange={(e) => handleThemeChange('sections.hero.textColor', e.target.value)} className="w-full h-10 rounded cursor-pointer" />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {activeTab === 'content' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Nội dung Website</h3>
@@ -523,14 +523,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
                     <div className="flex justify-end gap-4 border-t pt-4 sticky bottom-0 bg-gray-50 p-4 -mx-4 -mb-4">
                         <button onClick={handleResetTheme} className="px-4 py-2 text-red-600 font-bold hover:bg-red-50 rounded">Reset Mặc định</button>
-                        <button onClick={handleSaveConfig} className="px-6 py-2 bg-gray-900 text-white font-bold rounded hover:bg-black shadow-lg">Lưu cấu hình</button>
+                        <button onClick={handleSaveConfig} className="px-6 py-2 bg-gray-900 text-white font-bold rounded hover:bg-black shadow-lg">Lưu tất cả cấu hình</button>
                     </div>
                 </div>
 
                 <div className="lg:col-span-8 order-1 lg:order-2">
-                    <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+                    <div className="sticky top-24 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-180px)]">
                         <div className="bg-gray-100 p-3 border-b flex justify-between items-center flex-shrink-0">
-                            <span className="text-xs font-bold text-gray-500 uppercase">🖥️ Live Preview (Click để sửa)</span>
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">🖥️ Xem thử Giao diện (Click để nhảy tới mục sửa)</span>
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar relative" style={{ backgroundColor: themeConfig.global.colors.background, color: themeConfig.global.colors.text, fontFamily: themeConfig.global.typography.bodyFont }}>
                             <EditableZone onClick={() => scrollToField('sections', 'sections.header.backgroundColor')} label="Nền Header" className="border-b sticky top-0 z-20" style={{ backgroundColor: themeConfig.sections.header.backgroundColor, color: themeConfig.sections.header.textColor }}>
@@ -562,11 +562,32 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </EditableZone>
                                 </div>
                             </EditableZone>
+
+                            <section className="py-12 bg-gray-50 border-t border-b">
+                                <div className="text-center mb-8">
+                                    <h2 className="text-2xl font-bold font-heading">Feedback Preview</h2>
+                                </div>
+                                <div className="flex gap-4 overflow-x-auto px-6 pb-4 no-scrollbar">
+                                    {feedbacks.map(fb => (
+                                        <div key={fb.id} className="w-64 bg-white p-4 rounded-xl shadow-sm flex-shrink-0">
+                                            <img src={fb.imageUrl} className="w-full aspect-[4/5] object-cover rounded-lg mb-3" />
+                                            <p className="font-bold text-sm">{fb.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
                         </div>
                     </div>
                 </div>
             </div>
-            {isEditingFeedback && <FeedbackForm initialData={editingFeedback} onSave={handleSaveFeedback} onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }} />}
+
+            {isEditingFeedback && (
+                <FeedbackForm 
+                    initialData={editingFeedback} 
+                    onSave={handleSaveFeedback} 
+                    onCancel={() => { setIsEditingFeedback(false); setEditingFeedback(null); }} 
+                />
+            )}
         </div>
     );
 };
