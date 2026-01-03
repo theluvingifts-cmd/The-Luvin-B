@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, DraggableItem, TextConfig, LegoCharacterConfig, OutfitColor, PresetBackground, FrameOption, CustomFont } from '../types';
 /* Added missing imports for default colors */
@@ -1453,10 +1452,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
 
-  const [showStep2Hint, setShowStep2Hint] = useState(false);
-  const [hasSeenStep2Hint, setHasSeenStep2Hint] = useState(false);
-  const [hintCountdown, setHintCountdown] = useState(3);
-
   const [history, setHistory] = useState<FrameConfig[]>([config]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -1482,23 +1477,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         }, 1000);
     }
   }, [step, isEditingOrder]);
-
-  useEffect(() => {
-    if (step === 2 && !hasSeenStep2Hint) {
-        setShowStep2Hint(true);
-        setHintCountdown(3);
-    }
-  }, [step, hasSeenStep2Hint]);
-
-  useEffect(() => {
-    let timer: any;
-    if (showStep2Hint && hintCountdown > 0) {
-        timer = setTimeout(() => {
-            setHintCountdown(prev => prev - 1);
-        }, 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [showStep2Hint, hintCountdown]);
 
   useEffect(() => {
       if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
@@ -2316,44 +2294,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               <div className="flex gap-3 mt-3 justify-end">
                   <button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button>
                   <button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button>
-              </div>
-          </div>
-      )}
-
-      {showStep2Hint && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in text-left">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-bounce-small border-2 border-luvin-pink">
-                  <div className="bg-luvin-pink/10 p-6 flex flex-col items-center text-center">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 text-3xl animate-pulse">
-                          🎨
-                      </div>
-                      <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 uppercase tracking-tight">Hỗ trợ thiết kế MIỄN PHÍ</h3>
-                      <p className="text-sm text-gray-700 leading-relaxed text-left space-y-2">
-                          <span className="block">• Bạn chỉ cần <b>chèn tạm nội dung</b> (tên, ngày kỷ niệm, lời nhắn...) vào vị trí mong muốn bằng tính năng <b>Thêm chữ</b>.</span>
-                          <span className="block">• <b>Designer của The Luvin</b> sẽ dựa trên yêu cầu của bạn để <b>thiết kế lại toàn bộ background chuyên nghiệp</b> và gửi bạn duyệt trước khi in.</span>
-                          <span className="block">• Bạn cũng có thể <b>gửi ảnh riêng hoặc mô tả kỹ hơn</b> qua Zalo/Messenger ngay sau khi đặt đơn thành công!</span>
-                      </p>
-                  </div>
-                  <div className="p-4 bg-white border-t border-gray-100 space-y-2">
-                      <button 
-                          onClick={() => { if(hintCountdown === 0) { setShowStep2Hint(false); setHasSeenStep2Hint(true); } }}
-                          disabled={hintCountdown > 0}
-                          className={`w-full font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
-                              hintCountdown > 0 
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                : 'bg-gray-900 text-white hover:bg-luvin-pink'
-                          }`}
-                      >
-                          {hintCountdown > 0 ? (
-                              <>Tôi đã hiểu ({hintCountdown}s)</>
-                          ) : (
-                              <>Tôi đã hiểu, bắt đầu thôi!</>
-                          )}
-                      </button>
-                      <p className="text-[10px] text-center text-gray-400 font-medium italic">
-                          Món quà của bạn sẽ được chăm chút bởi Designer chuyên nghiệp.
-                      </p>
-                  </div>
               </div>
           </div>
       )}
