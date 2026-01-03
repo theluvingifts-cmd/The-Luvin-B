@@ -3,6 +3,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import type { FrameConfig, PresetBackground, FrameOption, FormField } from '../../types';
 import { ZoomIcon } from '../ZoomIcon';
 import { getEffectivePrice, formatCurrency } from '../../utils/pricing';
+import { resizeImage } from '../../utils/helpers';
 
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
@@ -43,23 +44,16 @@ export const Step2BackgroundAndDecorations: React.FC<{
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState<string | null>(null);
 
   const categories = useMemo(() => ['Tất cả', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
   const filteredBackgrounds = useMemo(() => selectedCategory === 'Tất cả' ? backgrounds : backgrounds.filter(bg => bg.category === selectedCategory), [selectedCategory, backgrounds]);
   
-  // Xác định background đang được chọn trong danh sách tổng
   const currentBg = backgrounds.find(bg => bg.url === config.background.value);
 
-  // LOGIC RENDER TRƯỜNG NHẬP LIỆU:
   const activeFields = useMemo((): FormField[] => {
-    // Ưu tiên 1: Dùng formFields gắn trực tiếp với config (nếu load từ Template)
     if (config.formFields && config.formFields.length > 0) return config.formFields;
-    
-    // Ưu tiên 2: Dùng formFields từ Background đang chọn (Dữ liệu bạn vừa lưu ở Admin)
     if (currentBg?.formFields && currentBg.formFields.length > 0) return currentBg.formFields;
-    
-    // Cuối cùng: Dùng bộ mặc định nếu background đó không có cấu hình form riêng
     return [
         { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
         { id: 'date', label: 'Ngày kỷ niệm (nếu có)', type: 'date', required: false },
@@ -72,12 +66,21 @@ export const Step2BackgroundAndDecorations: React.FC<{
     setConfig({ ...config, customFormData: { ...(config.customFormData || {}), [fieldId]: value } });
   };
 
-  const handleImageUpload = (fieldId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (fieldId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = () => { if (typeof reader.result === 'string') handleUpdateFormData(fieldId, reader.result); };
-        reader.readAsDataURL(file);
+        setIsProcessingImage(fieldId);
+        try {
+            // Nén ảnh xuống mức an toàn trước khi lưu vào state
+            const resizedBase64 = await resizeImage(file, 1000, 1000);
+            handleUpdateFormData(fieldId, resizedBase64);
+        } catch (error) {
+            console.error("Lỗi xử lý ảnh:", error);
+            showToast("Không thể xử lý ảnh này. Vui lòng thử ảnh khác.", "error");
+        } finally {
+            setIsProcessingImage(null);
+            e.target.value = ''; // Reset input
+        }
     }
   };
 
@@ -95,14 +98,13 @@ export const Step2BackgroundAndDecorations: React.FC<{
         if (squareFrame) newFrameId = squareFrame.id;
     }
 
-    // Khi chọn nền mới, cập nhật cả list formFields và xóa sạch dữ liệu nhập cũ để tránh "râu ông nọ cắm cằm bà kia"
     setConfig({ 
         ...config, 
         frameId: newFrameId,
         background: { type: isColor ? 'color' : 'image', value: bg.url },
         isRotated: bg.orientation === 'landscape',
         formFields: bg.formFields || [],
-        customFormData: {} // Reset dữ liệu nhập khi đổi mẫu nền
+        customFormData: {} 
     });
   };
 
@@ -146,10 +148,19 @@ export const Step2BackgroundAndDecorations: React.FC<{
                     {field.type === 'image' && (
                         <div className="flex gap-3 items-center">
                             <label className="flex-1 cursor-pointer">
-                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(field.id, e)} />
-                                <div className="p-2.5 bg-white border border-dashed border-gray-300 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    {config.customFormData?.[field.id] ? 'Đã tải ảnh ✓' : 'Tải ảnh lên'}
+                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(field.id, e)} disabled={isProcessingImage === field.id} />
+                                <div className={`p-2.5 bg-white border border-dashed border-gray-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${isProcessingImage === field.id ? 'text-gray-300 cursor-wait' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                    {isProcessingImage === field.id ? (
+                                        <>
+                                            <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                                            Đang xử lý...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            {config.customFormData?.[field.id] ? 'Đã tải ảnh ✓' : 'Tải ảnh lên'}
+                                        </>
+                                    )}
                                 </div>
                             </label>
                             {config.customFormData?.[field.id] && (

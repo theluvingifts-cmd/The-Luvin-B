@@ -115,7 +115,10 @@ const App: React.FC = () => {
   useEffect(() => {
       try {
           localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
-      } catch (error) {}
+      } catch (error) {
+          // Xử lý khi bộ nhớ LocalStorage đầy (QuotaExceededError)
+          console.warn("LocalStorage is full, cannot save cart items.");
+      }
   }, [cartItems]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -207,7 +210,9 @@ const App: React.FC = () => {
           if (docSnap.exists()) {
               const updatedConfig = docSnap.data() as StoreConfig;
               setStoreConfig(updatedConfig);
-              localStorage.setItem('store_config', JSON.stringify(updatedConfig));
+              try {
+                  localStorage.setItem('store_config', JSON.stringify(updatedConfig));
+              } catch(e) {}
               updateMetaTags(updatedConfig);
           }
       });
