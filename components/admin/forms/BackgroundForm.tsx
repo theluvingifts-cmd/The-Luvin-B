@@ -3,6 +3,13 @@ import React, { useState } from 'react';
 import { PresetBackground, FormField } from '../../../types';
 import { uploadToCloudinary } from '../../../services/uploadService';
 
+const DEFAULT_FORM_FIELDS: FormField[] = [
+    { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
+    { id: 'date', label: 'Ngày kỷ niệm (nếu có)', type: 'date', required: false },
+    { id: 'message', label: 'Thông điệp của bạn', type: 'textarea', required: false, placeholder: 'Nhập lời nhắn gửi...' },
+    { id: 'photo', label: 'Đính kèm ảnh in thêm', type: 'image', required: false },
+];
+
 export const BackgroundForm: React.FC<{
     initialData?: PresetBackground | null;
     onSave: (bg: PresetBackground) => void;
@@ -19,7 +26,7 @@ export const BackgroundForm: React.FC<{
         category: 'Khác', 
         type: 'square', 
         orientation: 'portrait',
-        formFields: []
+        formFields: DEFAULT_FORM_FIELDS // Tự động nạp bộ trường mặc định khi thêm mới
     });
 
     const [isUploading, setIsUploading] = useState(false);
@@ -78,16 +85,10 @@ export const BackgroundForm: React.FC<{
     };
 
     const loadDefaultTemplate = () => {
-        if (confirm("Thêm bộ trường mặc định (Tên, Ngày, Tin nhắn, 1 Ảnh)?")) {
-            const defaults: FormField[] = [
-                { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
-                { id: 'date', label: 'Ngày kỷ niệm', type: 'date', required: false },
-                { id: 'message', label: 'Thông điệp', type: 'textarea', required: false, placeholder: 'Nhập lời nhắn gửi...' },
-                { id: 'photo', label: 'Ảnh in thêm (1)', type: 'image', required: false },
-            ];
+        if (confirm("Ghi đè bằng bộ trường mặc định mới?")) {
             setFormData(prev => ({
                 ...prev,
-                formFields: [...(prev.formFields || []), ...defaults]
+                formFields: [...DEFAULT_FORM_FIELDS]
             }));
         }
     };
@@ -193,7 +194,7 @@ export const BackgroundForm: React.FC<{
                         </div>
                         <div className="flex gap-2">
                             <button onClick={loadDefaultTemplate} className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-bold hover:bg-gray-200 transition-all border border-gray-200">
-                                + Mẫu cơ bản
+                                Reset Mặc định
                             </button>
                             <button onClick={loadManyPhotosTemplate} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition-all border border-blue-200">
                                 + Mẫu nhiều ảnh
@@ -279,13 +280,6 @@ export const BackgroundForm: React.FC<{
                             <span className="text-xl">+</span>
                             <span>Thêm ô nhập liệu mới</span>
                         </button>
-
-                        {(!formData.formFields || formData.formFields.length === 0) && (
-                            <div className="text-center py-10">
-                                <p className="text-sm text-gray-400 italic">Mẫu này hiện chưa yêu cầu khách nhập gì.</p>
-                                <p className="text-[10px] text-gray-300 mt-1">Sử dụng nút "Mẫu cơ bản" ở trên để bắt đầu nhanh.</p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
