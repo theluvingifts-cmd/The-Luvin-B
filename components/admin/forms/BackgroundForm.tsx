@@ -7,7 +7,7 @@ const FIELD_TYPES = [
     { value: 'text', label: 'Dòng văn bản ngắn' },
     { value: 'textarea', label: 'Đoạn văn bản dài' },
     { value: 'date', label: 'Ngày tháng' },
-    { value: 'image', label: 'Tải ảnh đính kèm' }
+    { value: 'image', label: 'Thay/Thêm ảnh' }
 ];
 
 export const BackgroundForm: React.FC<{
@@ -151,7 +151,14 @@ export const BackgroundForm: React.FC<{
                                         </div>
                                         <div>
                                             <label className="text-[9px] font-bold text-gray-400 uppercase">Loại dữ liệu</label>
-                                            <select value={field.type} onChange={(e: any) => updateField(field.id, { type: e.target.value })} className="w-full p-1.5 border rounded text-xs bg-white">
+                                            <select value={field.type} onChange={(e: any) => {
+                                                const newType = e.target.value;
+                                                const updates: Partial<FormField> = { type: newType };
+                                                if (newType === 'image' && field.label === 'Thông tin mới') {
+                                                    updates.label = 'Thay/Thêm ảnh';
+                                                }
+                                                updateField(field.id, updates);
+                                            }} className="w-full p-1.5 border rounded text-xs bg-white">
                                                 {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                             </select>
                                         </div>
