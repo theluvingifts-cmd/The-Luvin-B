@@ -39,13 +39,13 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
                 id: doc.id,
                 name: data.name || doc.id,
                 url: data.url,
-                previewUrl: data.previewUrl, // Added mapping for previewUrl
+                previewUrl: data.previewUrl,
                 category: data.category || 'Khác',
                 type: data.type || 'square',
                 orientation: data.orientation || 'portrait',
                 order: data.order,
-                // IMPORTANT: Map the overlayConfig so Builder can use it
-                overlayConfig: data.overlayConfig || undefined 
+                overlayConfig: data.overlayConfig || undefined,
+                formFields: data.formFields || [] // BỔ SUNG: Ánh xạ trường formFields từ DB
             } as PresetBackground);
         });
         // Sort by order

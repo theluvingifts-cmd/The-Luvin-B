@@ -47,15 +47,19 @@ export const Step2BackgroundAndDecorations: React.FC<{
 
   const categories = useMemo(() => ['Tất cả', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
   const filteredBackgrounds = useMemo(() => selectedCategory === 'Tất cả' ? backgrounds : backgrounds.filter(bg => bg.category === selectedCategory), [selectedCategory, backgrounds]);
+  
+  // Xác định background đang được chọn trong danh sách tổng
   const currentBg = backgrounds.find(bg => bg.url === config.background.value);
 
   // LOGIC RENDER TRƯỜNG NHẬP LIỆU:
-  // 1. Nếu config hiện tại có formFields (tải từ template), dùng nó.
-  // 2. Nếu mẫu nền đang chọn có formFields, dùng nó.
-  // 3. Nếu không có gì, dùng bộ mặc định.
   const activeFields = useMemo((): FormField[] => {
+    // Ưu tiên 1: Dùng formFields gắn trực tiếp với config (nếu load từ Template)
     if (config.formFields && config.formFields.length > 0) return config.formFields;
+    
+    // Ưu tiên 2: Dùng formFields từ Background đang chọn (Dữ liệu bạn vừa lưu ở Admin)
     if (currentBg?.formFields && currentBg.formFields.length > 0) return currentBg.formFields;
+    
+    // Cuối cùng: Dùng bộ mặc định nếu background đó không có cấu hình form riêng
     return [
         { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
         { id: 'date', label: 'Ngày kỷ niệm (nếu có)', type: 'date', required: false },
@@ -91,12 +95,14 @@ export const Step2BackgroundAndDecorations: React.FC<{
         if (squareFrame) newFrameId = squareFrame.id;
     }
 
+    // Khi chọn nền mới, cập nhật cả list formFields và xóa sạch dữ liệu nhập cũ để tránh "râu ông nọ cắm cằm bà kia"
     setConfig({ 
         ...config, 
         frameId: newFrameId,
         background: { type: isColor ? 'color' : 'image', value: bg.url },
         isRotated: bg.orientation === 'landscape',
-        formFields: bg.formFields || [] // Cập nhật danh sách trường form mới
+        formFields: bg.formFields || [],
+        customFormData: {} // Reset dữ liệu nhập khi đổi mẫu nền
     });
   };
 
