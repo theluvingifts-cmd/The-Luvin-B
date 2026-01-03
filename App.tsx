@@ -18,7 +18,7 @@ import { getAllFrames } from './services/frameService';
 import { sendOrderEmail } from './services/emailService'; 
 import { sendOrderTelegram } from './services/telegramService'; 
 import { db } from './config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Ensure correct imports from firebase/firestore
 import { doc, onSnapshot } from 'firebase/firestore';
 
 import AdminPage from './pages/AdminPage'; 

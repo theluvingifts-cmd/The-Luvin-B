@@ -1,6 +1,6 @@
 
 import { db } from '../config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Proper firestore imports for modular SDK
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { PRESET_BACKGROUNDS_SQUARE, PRESET_BACKGROUNDS_RECTANGLE } from '../constants';
 import type { PresetBackground } from '../types';

@@ -1,6 +1,6 @@
 
 import { db } from '../config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Proper imports for the modular Firestore SDK
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';

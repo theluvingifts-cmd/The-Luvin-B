@@ -1,7 +1,7 @@
 
 // services/productService.ts
 import { db } from '../config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Proper modular firestore imports
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, increment, getDoc } from 'firebase/firestore';
 import { LEGO_PARTS } from '../constants'; // Lấy dữ liệu mẫu ban đầu
 import type { LegoPart } from '../types';
@@ -78,14 +78,6 @@ export const adjustStock = async (usageMap: Record<string, number>) => {
             if (change === 0) continue;
 
             const partRef = doc(db, COLLECTION_NAME, partId);
-            
-            // Note: Since we are using standard firestore now, we could use a transaction to read and write safely,
-            // but batch with increment is atomic for simple increment/decrement.
-            // However, we want to check if the doc exists first ideally, or just try to update.
-            // But writeBatch updates fail if doc doesn't exist? No, update fails, set doesn't.
-            // Let's verify existence to be safe or just attempt update.
-            // Since we're doing batch, we can't await inside loop easily for existence check unless we do it before.
-            // Assuming products exist if they are in the order.
             
             // However, to be robust against missing documents:
             const partDoc = await getDoc(partRef);

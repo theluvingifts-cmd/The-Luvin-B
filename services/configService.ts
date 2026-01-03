@@ -1,6 +1,6 @@
 
 import { db } from '../config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Standard firestore imports for modular SDK
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ThemeConfig, CustomFont, StaffMember } from '../types';
 

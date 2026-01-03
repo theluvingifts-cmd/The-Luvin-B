@@ -1,7 +1,7 @@
 
 // config/firebase.ts
 import { initializeApp } from "firebase/app";
-// Fix: Import getFirestore from 'firebase/firestore'
+// Import getFirestore from the modular SDK subpath
 import { getFirestore } from "firebase/firestore"; 
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";

@@ -1,6 +1,6 @@
 
 import { db } from '../config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Standard firestore modular SDK imports
 import { collection, getDocs, setDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import type { SavedAsset } from '../types';
 

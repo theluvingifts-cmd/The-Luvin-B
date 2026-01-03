@@ -1,7 +1,7 @@
 
 // services/frameService.ts
 import { db } from '../config/firebase';
-// Fix: Import firestore functions from 'firebase/firestore'
+// Standard imports for the firestore modular SDK
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { FRAME_OPTIONS } from '../constants';
 import type { FrameOption } from '../types';
