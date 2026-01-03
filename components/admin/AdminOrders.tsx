@@ -587,7 +587,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     </div>
                     {orderTab === 'active' && (
                         <div className="flex gap-2 w-full mt-1">
-                            <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Mới nhất</button>
+                            <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Mới nhất</button>
                             <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
                         </div>
                     )}
@@ -716,6 +716,36 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    {/* CUSTOMER FORM DATA SECTION (Step 2 inputs) */}
+                                                    {item.customFormData && Object.keys(item.customFormData).length > 0 && (
+                                                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                                            <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                                                <span>📝</span> Thông tin tùy chỉnh (Khách nhập)
+                                                            </h4>
+                                                            <div className="space-y-1.5">
+                                                                {Object.entries(item.customFormData).map(([key, value]) => {
+                                                                    if (!value) return null;
+                                                                    const isImage = typeof value === 'string' && value.startsWith('data:');
+                                                                    return (
+                                                                        <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                                                                            <span className="text-[10px] font-bold text-gray-500 uppercase sm:w-32 flex-shrink-0">{key}:</span>
+                                                                            {isImage ? (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <div className="w-12 h-12 rounded border bg-white overflow-hidden cursor-pointer" onClick={() => setZoomedImageUrl(value)}>
+                                                                                        <img src={value} className="w-full h-full object-cover" alt="custom" />
+                                                                                    </div>
+                                                                                    <button onClick={() => downloadImage(value, `TL_${selectedOrder.id}_Item${idx+1}_Field_${key}.png`)} className="text-[10px] text-blue-600 font-bold hover:underline">Tải về</button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="text-sm font-bold text-gray-800 break-words">{value}</span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
 
                                                     {/* CUSTOMER RESOURCES SECTION */}
                                                     {customerAssets.length > 0 && (
