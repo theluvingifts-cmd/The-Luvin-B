@@ -141,7 +141,6 @@ export interface FrameConfig {
   quantity?: number;
   templateId?: string; // NEW: Truy vết mẫu thiết kế gốc
   customFormData?: Record<string, string>; // NEW: Structured form data for Step 2
-  formFields?: FormField[]; // NEW: Used during design to store custom fields
 }
 
 export interface LegoCharacterConfig {

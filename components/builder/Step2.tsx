@@ -73,16 +73,15 @@ export const Step2BackgroundAndDecorations: React.FC<{
 
   const currentBg = backgrounds.find(bg => bg.url === config.background.value);
 
-  // DYNAMICALLY RENDER FIELDS FROM BACKGROUND
+  // Auto-generate fields if none defined on the background object
   const activeFields = useMemo((): FormField[] => {
-    // 1. Check if background has custom fields
     if (currentBg?.formFields && currentBg.formFields.length > 0) return currentBg.formFields;
     
-    // 2. Fallback to default fields
+    // Default generic fields for any template
     return [
         { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
         { id: 'date', label: 'Ngày kỷ niệm (nếu có)', type: 'date', required: false },
-        { id: 'message', label: 'Thông điệp của bạn', type: 'textarea', required: false, placeholder: 'Nhập lời nhắn gửi...' },
+        { id: 'message', label: 'Thông điệp của bạn', type: 'textarea', required: false, placeholder: 'Nhập lời nhắn gửi đến người nhận...' },
         { id: 'photo', label: 'Đính kèm ảnh in thêm', type: 'image', required: false },
     ];
   }, [currentBg]);
@@ -128,8 +127,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
         frameId: newFrameId,
         background: { type: isColor ? 'color' : 'image', value: bg.url },
         isRotated: bg.orientation === 'landscape',
-        // Update local config formFields for tracking what to render
-        formFields: bg.formFields || []
+        // FIX: Giữ nguyên các mảng deco (charms, text, shapes) để khách hàng không bị mất tiến trình
+        // Không gọi reset: texts: [], draggableItems: [], shapes: []
     });
   };
 
@@ -163,7 +162,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
               isSelected={config.background.value === bg.url}
               onClick={() => handleBackgroundSelect(bg)}
               onZoom={onZoomImage}
-              priority={idx < 10} 
+              priority={idx < 10} // Ưu tiên load nhanh 10 ảnh nền đầu tiên
             />
           ))}
         </div>
@@ -171,8 +170,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
 
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm animate-fade-in">
         <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            2. Thông tin in ấn (Theo mẫu)
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-50"></span>
+            2. Nhập thông tin in ấn
         </h4>
         
         <div className="space-y-4">
@@ -216,20 +215,16 @@ export const Step2BackgroundAndDecorations: React.FC<{
                         <div className="flex gap-3 items-center">
                             <button 
                                 type="button"
-                                onClick={(e) => {
-                                    const input = e.currentTarget.nextElementSibling?.nextElementSibling as HTMLInputElement;
-                                    input?.click();
-                                }}
+                                onClick={() => fileInputRef.current?.click()}
                                 className="flex-1 p-2.5 bg-white border border-dashed border-gray-300 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                {config.customFormData?.[field.id] ? 'Đã chọn ảnh' : 'Tải ảnh lên'}
+                                {config.customFormData?.[field.id] ? 'Đã tải ảnh lên' : 'Tải ảnh đính kèm'}
                             </button>
                             {config.customFormData?.[field.id] && (
-                                <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden shadow-sm relative group flex-shrink-0">
+                                <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden shadow-sm relative group">
                                     <img src={config.customFormData[field.id]} className="w-full h-full object-cover" />
                                     <button 
-                                        type="button"
                                         onClick={() => handleUpdateFormData(field.id, '')}
                                         className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold"
                                     >
@@ -239,6 +234,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                             )}
                             <input 
                                 type="file" 
+                                ref={fileInputRef} 
                                 className="hidden" 
                                 accept="image/*" 
                                 onChange={(e) => handleImageFieldUpload(field.id, e)} 
@@ -250,7 +246,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         </div>
         
         <p className="text-[10px] text-gray-400 mt-5 italic leading-tight bg-blue-50/50 p-3 rounded-lg border border-blue-100/50">
-            * Các thông tin này sẽ giúp <b>Designer</b> thiết kế bản in hoàn hảo nhất cho bạn.
+            * Các thông tin trên sẽ được <b>Designer chuyên nghiệp</b> tại The Luvin căn chỉnh font chữ & bố cục đẹp nhất cho bạn sau khi nhận đơn.
         </p>
       </div>
     </div>

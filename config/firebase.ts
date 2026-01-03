@@ -1,6 +1,6 @@
 
 // config/firebase.ts
-import { initializeApp } from "firebase/app";
+import * as firebaseApp from "firebase/app";
 import { getFirestore } from "firebase/firestore"; 
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
@@ -17,8 +17,7 @@ export const firebaseConfig = {
   measurementId: "G-1E58PMLPRP"
 };
 
-// Initialize Firebase with modular syntax
-const app = initializeApp(firebaseConfig);
+const app = firebaseApp.initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
