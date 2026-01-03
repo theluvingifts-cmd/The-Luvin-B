@@ -306,7 +306,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     }
 
     // 3. Tải trước các bộ phận nhân vật cơ bản (Hair, Face, Shirt, Pants đầu danh sách)
-    Object.values(legoParts).forEach(partsList => {
+    // Fix: Cast Object.values(legoParts) to LegoPart[][] to ensure the inferred type of partsList has a .slice() method.
+    (Object.values(legoParts) as LegoPart[][]).forEach(partsList => {
         partsList.slice(0, 3).forEach(p => preloadImage(p.imageUrl));
     });
   }, [backgrounds, hotPartIds, allParts, legoParts]);
@@ -473,7 +474,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   title: 'My LEGO Frame Design',
                   text: 'Check out my custom LEGO frame design from The Luvin!',
                   files: [file]
-              });
+                });
           } catch (e) {
               const link = document.createElement('a');
               link.href = image;

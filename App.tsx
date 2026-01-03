@@ -18,7 +18,6 @@ import { getAllFrames } from './services/frameService';
 import { sendOrderEmail } from './services/emailService'; 
 import { sendOrderTelegram } from './services/telegramService'; 
 import { db } from './config/firebase';
-// Ensure correct imports from firebase/firestore
 import { doc, onSnapshot } from 'firebase/firestore';
 
 import AdminPage from './pages/AdminPage'; 
@@ -80,30 +79,20 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
 
 const updateMetaTags = (config: StoreConfig) => {
     if (!config) return;
-
-    // 1. Cập nhật Tiêu đề
     const title = config.seoTitle || "The Luvin - Thương hiệu quà tặng tinh tế";
     document.title = title;
     document.getElementById('og-title')?.setAttribute('content', title);
     document.getElementById('twitter-title')?.setAttribute('content', title);
-
-    // 2. Cập nhật Mô tả
     const desc = config.seoDescription || "Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn, tinh tế và đầy cảm xúc.";
     document.getElementById('meta-description')?.setAttribute('content', desc);
     document.getElementById('og-description')?.setAttribute('content', desc);
     document.getElementById('twitter-description')?.setAttribute('content', desc);
-
-    // 3. Cập nhật Ảnh SEO (Ưu tiên ảnh SEO, sau đó mới đến Logo)
     const shareImage = config.seoImageUrl || config.logoUrl || "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
     document.getElementById('og-image')?.setAttribute('content', shareImage);
     document.getElementById('twitter-image')?.setAttribute('content', shareImage);
-
-    // 4. Cập nhật Favicon
     if (config.faviconUrl) {
         const faviconLink = document.getElementById('favicon-link') as HTMLLinkElement;
-        if (faviconLink) {
-            faviconLink.href = config.faviconUrl;
-        }
+        if (faviconLink) faviconLink.href = config.faviconUrl;
     }
 };
 
@@ -154,20 +143,16 @@ const App: React.FC = () => {
   const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
       const { global, sections } = themeData;
-
       root.style.setProperty('--color-primary', global.colors.primary);
       root.style.setProperty('--color-secondary', global.colors.secondary);
       root.style.setProperty('--color-text', global.colors.text);
       root.style.setProperty('--color-bg', global.colors.background);
       root.style.setProperty('--color-accent', global.colors.accent);
-
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
-
       root.style.setProperty('--font-heading', `'${cleanHeadingFont}'`);
       root.style.setProperty('--font-body', `'${cleanBodyFont}'`);
       root.style.setProperty('--radius-global', global.borderRadius);
-
       if (sections) {
           if (sections.header) {
               root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
@@ -178,11 +163,9 @@ const App: React.FC = () => {
               root.style.setProperty('--footer-text', sections.footer.textColor || '#374151');
           }
       }
-
       loadUploadedFonts(uploadedFonts);
       const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
       const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
-
       if (!isCustomHeading) loadGoogleFont(cleanHeadingFont);
       if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
@@ -206,13 +189,11 @@ const App: React.FC = () => {
                 getAllFeedbacks(),
                 getAllFrames()
             ]);
-            
             if (parts && parts.length > 0) setLegoParts(categorizeParts(parts));
             if (bgs && bgs.length > 0) setBackgrounds(bgs);
             if (tpls && tpls.length > 0) setTemplates(tpls);
             if (fbs && fbs.length > 0) setFeedbacks(fbs);
             if (fetchedFrames && fetchedFrames.length > 0) setFrames(fetchedFrames);
-
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
                 updateMetaTags(fetchedConfig);
@@ -222,8 +203,6 @@ const App: React.FC = () => {
           }
       };
       fetchData();
-
-      // Real-time listener for Store Config
       const unsubscribe = onSnapshot(doc(db, 'config', 'general'), (docSnap) => {
           if (docSnap.exists()) {
               const updatedConfig = docSnap.data() as StoreConfig;
@@ -232,34 +211,25 @@ const App: React.FC = () => {
               updateMetaTags(updatedConfig);
           }
       });
-
       return () => unsubscribe();
   }, []);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
-    if (page === 'builder') {
-        setBuilderInitialStep(1);
-    }
+    if (page === 'builder') setBuilderInitialStep(1);
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
        if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
            setEditingOrder(null);
            setCartItems([]);
-       } else {
-           return;
-       }
+       } else return;
     }
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
 
   const handleCustomizeTemplate = (template: CollectionTemplate) => {
-      // Inject templateId to track purchases
-      const newConfig = {
-          ...template.config,
-          templateId: template.id
-      };
+      const newConfig = { ...template.config, templateId: template.id };
       setConfig(newConfig);
       setBuilderInitialStep(3); 
       setCurrentPage('builder');
@@ -267,11 +237,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-      const checkHash = () => {
-          if (window.location.hash === '#/admin') {
-              setCurrentPage('admin');
-          }
-      };
+      const checkHash = () => { if (window.location.hash === '#/admin') setCurrentPage('admin'); };
       checkHash();
       window.addEventListener('hashchange', checkHash);
       return () => window.removeEventListener('hashchange', checkHash);
@@ -279,15 +245,9 @@ const App: React.FC = () => {
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
     setCartItems(prev => [...prev, { ...newConfig, quantity: 1 }]);
-    triggerCartShake();
-    if (openCart) {
-        setTimeout(() => setIsCartOpen(true), 800); 
-    }
-  };
-
-  const triggerCartShake = () => {
-      setIsCartShaking(true);
-      setTimeout(() => setIsCartShaking(false), 500); 
+    setIsCartShaking(true);
+    setTimeout(() => setIsCartShaking(false), 500); 
+    if (openCart) setTimeout(() => setIsCartOpen(true), 800); 
   };
 
   const handleUpdateCartItem = (updatedConfig: FrameConfig) => {
@@ -313,9 +273,7 @@ const App: React.FC = () => {
       setIsCartOpen(true);
   };
 
-  const handleRemoveCartItem = (index: number) => {
-    setCartItems(prev => prev.filter((_, i) => i !== index));
-  };
+  const handleRemoveCartItem = (index: number) => setCartItems(prev => prev.filter((_, i) => i !== index));
 
   const handleUpdateCartQuantity = (index: number, newQuantity: number) => {
       if (newQuantity < 1) return;
@@ -341,16 +299,11 @@ const App: React.FC = () => {
             const diff = oldQty - newQty; 
             if (diff !== 0) stockAdjustments[partId] = diff;
         });
-
-        if (Object.keys(stockAdjustments).length > 0) {
-            await adjustStock(stockAdjustments);
-        }
-
+        if (Object.keys(stockAdjustments).length > 0) await adjustStock(stockAdjustments);
         const success = await updateOrder(editingOrder.id, {
             ...orderData,
             status: orderData.totalPrice !== editingOrder.totalPrice ? 'Chờ thanh toán' : editingOrder.status
         });
-        
         if (success) {
             const updatedOrder = { 
                 ...editingOrder, 
@@ -362,37 +315,25 @@ const App: React.FC = () => {
             setEditingOrder(null);
             navigateTo('order-confirmation');
             sendOrderTelegram(updatedOrder, storeConfig); 
-        } else {
-            throw new Error("Không thể cập nhật đơn hàng.");
-        }
+        } else throw new Error("Không thể cập nhật đơn hàng.");
         return;
     }
-
     setLastOrderAction('create');
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
         try {
             const rawSaved = localStorage.getItem('my_orders');
-            let saved: { id: string; date: number }[] = [];
-            if (rawSaved) {
-                const parsed = JSON.parse(rawSaved);
-                if (Array.isArray(parsed)) saved = parsed;
-            }
+            let saved = rawSaved ? JSON.parse(rawSaved) : [];
             const newEntry = { id: res.data.id, date: Date.now() };
-            const updated = [newEntry, ...saved.filter((o) => o.id !== res.data.id)].slice(0, 5);
+            const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
             localStorage.setItem('my_orders', JSON.stringify(updated));
         } catch (e) {}
         setCartItems([]); 
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
         sendOrderTelegram(res.data, storeConfig); 
-    } else {
-        const errMsg = res.error && typeof res.error === 'object' && 'message' in res.error 
-            ? (res.error as any).message 
-            : "Lỗi kết nối cơ sở dữ liệu.";
-        throw new Error(errMsg);
-    }
+    } else throw new Error("Lỗi kết nối cơ sở dữ liệu.");
   };
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -414,32 +355,20 @@ const App: React.FC = () => {
                 currentPage={currentPage}
              />
         )}
-        
         <main className="flex-grow">
             {currentPage === 'home' && <HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />}
             {currentPage === 'builder' && (
                 <BuilderPage 
-                    config={config} 
-                    setConfig={setConfig} 
-                    navigateTo={navigateTo} 
-                    onAddToCart={handleAddToCart} 
-                    onUpdateCart={handleUpdateCartItem} 
-                    showToast={showToast}
-                    legoParts={legoParts}
-                    backgrounds={backgrounds}
-                    frames={frames}
-                    editingCartIndex={editingCartIndex} 
-                    onCancelEdit={handleCancelEdit} 
-                    onZoomImage={setZoomedImageUrl} 
-                    logoUrl={storeConfig.logoUrl}
-                    initialStep={builderInitialStep}
-                    isEditingOrder={!!editingOrder}
-                    uploadedFonts={storeConfig.uploadedFonts || []}
+                    config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} 
+                    onUpdateCart={handleUpdateCartItem} showToast={showToast} legoParts={legoParts}
+                    backgrounds={backgrounds} frames={frames} editingCartIndex={editingCartIndex} 
+                    onCancelEdit={handleCancelEdit} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl}
+                    initialStep={builderInitialStep} isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
                 />
             )}
             {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
             {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} />}
-            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={(url) => setZoomedImageUrl(url)} initialOrder={editingOrder} />}
+            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} />}
             {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />}
             {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
             {currentPage === 'admin' && <AdminPage />}
@@ -447,23 +376,15 @@ const App: React.FC = () => {
             {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
             {currentPage === 'business' && <BusinessPage config={storeConfig} legoParts={legoParts} />}
         </main>
-
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
-
         <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} />
-
         {zoomedImageUrl && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
                 <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg></button>
                 <img src={zoomedImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
             </div>
         )}
-
-        {toast && (
-            <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 animate-fade-in-down ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-                {toast.message}
-            </div>
-        )}
+        {toast && <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 animate-fade-in-down ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>{toast.message}</div>}
     </div>
   );
 };

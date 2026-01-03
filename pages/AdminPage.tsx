@@ -18,9 +18,8 @@ import { AdminProducts } from '../components/admin/AdminProducts';
 import { AdminConfig } from '../components/admin/AdminConfig';
 import { AdminVouchers } from '../components/admin/AdminVouchers';
 import { AdminCustomers } from '../components/admin/AdminCustomers';
-import { AdminDesign } from '../components/admin/AdminDesign';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -31,7 +30,7 @@ const AdminPage: React.FC = () => {
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
     const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
-    const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+    const [feedbacks, setFeedbackItems] = useState<FeedbackItem[]>([]);
     const [frames, setFrames] = useState<FrameOption[]>([]);
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
 
@@ -58,7 +57,7 @@ const AdminPage: React.FC = () => {
         const [o, p, b, t, fb, fr] = await Promise.all([
             getAllOrders(), getAllParts(), getAllBackgrounds(), getAllTemplates(), getAllFeedbacks(), getAllFrames()
         ]);
-        setOrders(o); setProducts(p); setBackgrounds(b); setTemplates(t); setFeedbacks(fb); setFrames(fr);
+        setOrders(o); setProducts(p); setBackgrounds(b); setTemplates(t); setFeedbackItems(fb); setFrames(fr);
     };
 
     const handleLogout = async () => { await signOut(auth); };
@@ -86,7 +85,7 @@ const AdminPage: React.FC = () => {
     const canManageConfig = role === 'admin';
 
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'design')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -124,7 +123,6 @@ const AdminPage: React.FC = () => {
                                     <>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
-                                        <button onClick={() => setActiveTab('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
                                         <button onClick={() => setActiveTab('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
                                     </>
                                 )}
@@ -155,7 +153,6 @@ const AdminPage: React.FC = () => {
                             <>
                                 <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
                                 <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
-                                <button onClick={() => setActiveTab('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Studio Design</button>
                                 <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
                             </>
                         )}
@@ -167,10 +164,9 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'dashboard' && canViewDashboard && <AdminDashboard orders={orders} products={products} frames={frames} />}
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
                 {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} />}
-                {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbacks(await getAllFeedbacks())} />}
+                {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
-                {activeTab === 'design' && canManageConfig && <AdminDesign />}
             </main>
         </div>
     );
