@@ -1,6 +1,7 @@
 
 // services/orderService.ts
 import { db } from '../config/firebase';
+// Fix: Import firestore functions from 'firebase/firestore'
 import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadToCloudinary } from './uploadService';

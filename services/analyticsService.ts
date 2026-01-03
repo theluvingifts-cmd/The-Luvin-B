@@ -1,5 +1,6 @@
 
 import { db } from '../config/firebase';
+// Fix: Import firestore functions from 'firebase/firestore'
 import { doc, updateDoc, increment, setDoc, getDoc } from 'firebase/firestore';
 
 const ANALYTICS_COLLECTION = 'analytics';

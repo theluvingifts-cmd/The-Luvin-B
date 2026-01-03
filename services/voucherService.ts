@@ -1,5 +1,6 @@
 
 import { db } from '../config/firebase';
+// Fix: Import firestore functions from 'firebase/firestore'
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, getDoc, increment } from 'firebase/firestore';
 import type { Voucher } from '../types';
 

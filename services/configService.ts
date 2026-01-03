@@ -1,5 +1,6 @@
 
 import { db } from '../config/firebase';
+// Fix: Import firestore functions from 'firebase/firestore'
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ThemeConfig, CustomFont, StaffMember } from '../types';
 

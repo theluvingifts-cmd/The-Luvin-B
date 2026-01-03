@@ -1,5 +1,6 @@
 
 import { db } from '../config/firebase';
+// Fix: Import firestore functions from 'firebase/firestore'
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';

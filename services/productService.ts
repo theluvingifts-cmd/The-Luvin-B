@@ -1,6 +1,7 @@
 
 // services/productService.ts
 import { db } from '../config/firebase';
+// Fix: Import firestore functions from 'firebase/firestore'
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, increment, getDoc } from 'firebase/firestore';
 import { LEGO_PARTS } from '../constants'; // Lấy dữ liệu mẫu ban đầu
 import type { LegoPart } from '../types';

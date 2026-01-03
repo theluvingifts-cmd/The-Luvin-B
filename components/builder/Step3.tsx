@@ -226,7 +226,7 @@ export const Step3Characters: React.FC<{
             linkedCharId: activeCharacter?.id 
         };
         setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
-    }
+    };
 
     const handlePartSelect = (part: LegoPart | undefined) => {
         if (!activeCharId || !part) return;
@@ -310,7 +310,7 @@ export const Step3Characters: React.FC<{
             return c;
         })
       }));
-    }
+    };
     
     const handleCustomPrintSelect = (price: number) => {
       if (!printDialogCharId) return;
@@ -401,7 +401,7 @@ export const Step3Characters: React.FC<{
     }, [legoParts.accessory]);
 
     const filteredAccessories = useMemo(() => {
-        let list = getAvailableParts(legoParts.accessory);
+        let list = getAvailableParts(legoParts.accessory || []);
         
         if (accessoryCategory !== 'Tất cả') {
             list = list.filter(p => p.category === accessoryCategory);
@@ -427,6 +427,10 @@ export const Step3Characters: React.FC<{
 
         return sortParts(list, accessorySortMode as any);
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
+
+    const availablePets = useMemo(() => {
+        return getAvailableParts(legoParts.pet || []);
+    }, [legoParts.pet]);
 
     return (
         <div className="space-y-4 text-left">
@@ -563,6 +567,27 @@ export const Step3Characters: React.FC<{
                         />
                     )) : null}
                 </div>
+
+                {/* PHẦN THÚ CƯNG (PETS) */}
+                {availablePets.length > 0 && (
+                    <div className="mt-8 border-t border-gray-100 pt-6">
+                        <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm mb-4">THÊM THÚ CƯNG</h4>
+                        <div className="grid grid-cols-4 gap-2">
+                            {availablePets.map((part, index) => (
+                                <PartButton 
+                                    key={part.id} 
+                                    part={part} 
+                                    isSelected={false} 
+                                    onClick={() => addDraggableItem(part)} 
+                                    priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
+                                    originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                                    isHot={hotPartIds.includes(part.id)}
+                                    priority={index < 4 || hotPartIds.includes(part.id)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
