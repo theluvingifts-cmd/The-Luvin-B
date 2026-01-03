@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect, useMemo, forwardRef } from 'react';
+import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
@@ -9,7 +9,7 @@ type Transform = {
   rotation: number;
   scale: number;
   width?: number;
-  height?: number; // Added height for shapes
+  height?: number;
 }
 
 interface FramePreviewProps {
@@ -33,37 +33,33 @@ interface FramePreviewProps {
   logoUrl?: string;
   previewFont?: string | null; 
   allowTextScaling?: boolean;
-  onAlign?: (type: 'center' | 'horizontal' | 'vertical') => void; // New prop for alignment
+  onAlign?: (type: 'center' | 'horizontal' | 'vertical') => void;
 }
 
-// 1. SafeImage Component with Skeleton Loading
-const SafeImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => {
-    const [isLoading, setIsLoading] = useState(true);
+// 1. Optimized SafeImage Component
+const SafeImage = memo(({ src, style, className, alt, priority, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean }) => {
     const [hasError, setHasError] = useState(false);
-
-    if (hasError) return null;
+    
+    if (hasError || !src) return null;
 
     return (
-        <>
-            {isLoading && (
-                <div 
-                    className="skeleton absolute inset-0 rounded-sm" 
-                    style={{ zIndex: 0, ...props.style }} // Matches skeleton size to image
-                ></div>
-            )}
-            <img 
-                crossOrigin="anonymous" 
-                referrerPolicy="no-referrer"
-                {...props} 
-                onLoad={() => setIsLoading(false)}
-                onError={() => { setIsLoading(false); setHasError(true); }} 
-                className={`${props.className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-            />
-        </>
+        <img 
+            crossOrigin="anonymous" 
+            referrerPolicy="no-referrer"
+            src={src}
+            alt={alt}
+            style={style}
+            onError={() => setHasError(true)} 
+            className={`${className} transition-opacity duration-200`}
+            loading={priority ? "eager" : "lazy"}
+            {...(priority ? { fetchpriority: "high" } : {})}
+            {...props}
+        />
     );
-};
+});
 
-const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number }> = ({ character, pxPerCm }) => {
+// 2. Memoized LegoCharacter
+const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterConfig; pxPerCm: number }) => {
   const { hair, face, shirt, pants } = character;
   const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
   const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
@@ -78,36 +74,34 @@ const LegoCharacter: React.FC<{ character: LegoCharacterConfig; pxPerCm: number 
 
   const px = (cm: number) => Math.round(cm * pxPerCm);
 
-  const containerStyle: React.CSSProperties = {
-    position: 'relative',
+  const containerStyle = useMemo(() => ({
+    position: 'relative' as const,
     width: px(CHARACTER_WIDTH_CM),
     height: px(CHARACTER_HEIGHT_CM),
     transformOrigin: 'center',
-  };
+  }), [pxPerCm]);
 
-  const partStyle: React.CSSProperties = {
-    position: 'absolute',
+  const partStyle = useMemo(() => ({
+    position: 'absolute' as const,
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
-    pointerEvents: 'none',
-  };
+    objectFit: 'contain' as const,
+    pointerEvents: 'none' as const,
+  }), []);
 
   return (
     <div style={containerStyle}>
-      {pants && pantsImageUrl && <SafeImage src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />}
-      {shirt && shirtImageUrl && <SafeImage src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />}
-      {face && face.imageUrl && <SafeImage src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
-      {hair && hairImageUrl && <SafeImage src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
+      {pants && pantsImageUrl && <SafeImage priority src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />}
+      {shirt && shirtImageUrl && <SafeImage priority src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />}
+      {face && face.imageUrl && <SafeImage priority src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
+      {hair && hairImageUrl && <SafeImage priority src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
     </div>
   );
-};
+});
 
-// Updated Font Family Helper to support custom fonts
 const getFontFamily = (fontName: string) => {
-    // If it's a known Google font, return specific stack
     switch (fontName) {
         case 'Anniversary': return '"Dancing Script", cursive';
         case 'Serif': return '"Noto Serif", serif';
@@ -120,26 +114,31 @@ const getFontFamily = (fontName: string) => {
         case 'Lora': return '"Lora", serif';
         case 'Nunito': return '"Nunito", sans-serif';
         case 'Pacifico': return '"Pacifico", cursive';
-        default: 
-            // For uploaded custom fonts, use the name directly
-            return `'${fontName}', sans-serif`;
+        default: return `'${fontName}', sans-serif`;
     }
 };
 
-const EditableText: React.FC<{
+const EditableText = memo(({
+    text,
+    fontSize,
+    onUpdate,
+    onBeginEditing,
+    onEndEditing,
+    isContentLocked,
+    previewFont
+}: {
     text: TextConfig;
-    fontSize: number; // Calculated font size
+    fontSize: number;
     onUpdate: (updates: Partial<TextConfig>) => void;
     onBeginEditing: () => void;
     onEndEditing: () => void;
     isContentLocked?: boolean;
     previewFont?: string | null;
-}> = ({ text, fontSize, onUpdate, onBeginEditing, onEndEditing, isContentLocked, previewFont }) => {
+}) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(text.content);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Use preview font if available, otherwise use text.font
     const activeFont = previewFont || text.font;
 
     useEffect(() => {
@@ -162,28 +161,29 @@ const EditableText: React.FC<{
         }
     };
 
-    const handleDoubleClick = () => {
-        if (isContentLocked) return; // Prevent editing if content is locked
+    const handleDoubleClick = (e: React.MouseEvent) => {
+        if (isContentLocked) return;
+        e.stopPropagation();
         setIsEditing(true);
         setEditedContent(text.content);
         onBeginEditing();
     }
 
-    const textStyle: React.CSSProperties = {
+    const textStyle = useMemo(() => ({
         fontFamily: getFontFamily(activeFont),
         fontSize: `${fontSize}px`,
         color: text.color,
-        whiteSpace: 'pre-wrap',
+        whiteSpace: 'pre-wrap' as const,
         textAlign: text.textAlign || 'center',
-        padding: '0.2em', // Changed from 10px to relative unit to scale with font size
-        wordBreak: 'break-word',
+        padding: '0.2em',
+        wordBreak: 'break-word' as const,
         textShadow: '0 0 5px white, 0 0 5px white',
         lineHeight: 1.4,
-        fontWeight: text.fontWeight || 'normal', // Apply bold
-        userSelect: isContentLocked ? 'none' : 'auto', // Prevent selection if locked (mobile fix)
-        border: text.border ? `${text.borderWidth || 2}px ${text.borderStyle || 'solid'} ${text.borderColor || text.color}` : 'none', // Apply border
+        fontWeight: text.fontWeight || 'normal',
+        userSelect: isContentLocked ? 'none' as const : 'auto' as const,
+        border: text.border ? `${text.borderWidth || 2}px ${text.borderStyle || 'solid'} ${text.borderColor || text.color}` : 'none',
         ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
-    };
+    }), [activeFont, fontSize, text, isContentLocked]);
 
     if (isEditing) {
         return (
@@ -215,9 +215,28 @@ const EditableText: React.FC<{
             <p style={textStyle}>{text.content || " "}</p>
         </div>
     );
-};
+});
 
-const Transformable: React.FC<{
+const Transformable = memo(({
+    children,
+    id,
+    initialTransform,
+    onTransform,
+    isFlipped,
+    parentRef,
+    isSelected,
+    onSelect,
+    isResizable = true,
+    isRotatable = true,
+    isDraggable = true,
+    isPositionLocked = false,
+    zIndex,
+    style,
+    resizeMode = 'scale',
+    allowTextScaling = false,
+    containerSize,
+    onDoubleClick
+}: {
     children: React.ReactNode;
     id: string;
     initialTransform: Transform;
@@ -229,15 +248,14 @@ const Transformable: React.FC<{
     isResizable?: boolean;
     isRotatable?: boolean;
     isDraggable?: boolean;
-    isPositionLocked?: boolean; // New Prop
+    isPositionLocked?: boolean;
     zIndex?: number;
     style?: React.CSSProperties;
-    resizeMode?: 'scale' | 'dimensions'; // New: Choose how to resize
-    allowTextScaling?: boolean; // New Prop: Allow scaling text via corner (deprecated by resizeMode but kept for compat)
+    resizeMode?: 'scale' | 'dimensions';
+    allowTextScaling?: boolean;
     containerSize?: { width: number; height: number; };
     onDoubleClick?: () => void;
-}> = ({ children, id, initialTransform, onTransform, isFlipped, parentRef, isSelected, onSelect, isResizable = true, isRotatable = true, isDraggable = true, isPositionLocked = false, zIndex, style, resizeMode = 'scale', allowTextScaling = false, containerSize, onDoubleClick }) => {
-    
+}) => {
     const getClientCoords = (e: MouseEvent | TouchEvent): { x: number; y: number } | null => {
       if ('touches' in e && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
       if ('clientX' in e) return { x: e.clientX, y: e.clientY };
@@ -245,9 +263,8 @@ const Transformable: React.FC<{
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if (!isDraggable || isPositionLocked) { // Prevent drag if position locked
+        if (!isDraggable || isPositionLocked) {
             if (isPositionLocked) {
-                // Still allow selection if locked, but no drag
                 e.stopPropagation();
                 onSelect(id);
             }
@@ -313,10 +330,10 @@ const Transformable: React.FC<{
         window.addEventListener('touchend', handleEnd);
     };
 
-     const handleResizeStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    const handleResizeStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!containerSize) return; // Should have container size for accurate dimension resizing
+        if (!containerSize) return;
 
         const startCoords = getClientCoords(e.nativeEvent);
         if (!startCoords) return;
@@ -332,23 +349,15 @@ const Transformable: React.FC<{
              const dy = moveCoords.y - startCoords.y;
 
              if (resizeMode === 'dimensions') {
-                 // Resizing width and height (Shapes)
                  const dwPercent = (dx / containerSize.width) * 100;
                  const dhPercent = (dy / containerSize.height) * 100;
-                 
                  onTransform(id, { 
                      ...initialTransform, 
                      width: Math.max(1, startWidth + dwPercent),
                      height: Math.max(1, startHeight + dhPercent)
                  });
              } else {
-                 if (allowTextScaling && !style?.height) { // Text scaling (corner drag -> scale)
-                     // If allowTextScaling is true and it's text (no height in style), treat corner as scale
-                     onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
-                 } else {
-                     // Standard scaling
-                     onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
-                 }
+                 onTransform(id, { ...initialTransform, scale: Math.max(0.2, startScale + dx / 100) });
              }
         };
         const handleEnd = () => {
@@ -402,8 +411,6 @@ const Transformable: React.FC<{
                 ...style,
                 left: `${initialTransform.x}%`,
                 top: `${initialTransform.y}%`,
-                // If resizeMode is dimensions, we don't scale the container itself, we expect width/height to be set via props/style
-                // EXCEPT if allowTextScaling is true (for Text), then we DO apply scale
                 transform: `translate(-50%, -50%) rotate(${rotation}deg) ${(resizeMode === 'scale' || allowTextScaling) ? `scale(${initialTransform.scale})` : ''} scaleX(${isFlipped ? -1 : 1})`,
                 touchAction: 'none',
                 cursor: isDraggable && !isPositionLocked ? (isSelected ? 'move' : 'pointer') : (isPositionLocked ? 'not-allowed' : 'default'),
@@ -414,20 +421,9 @@ const Transformable: React.FC<{
         >
             {children}
             
-            {/* Position Lock Indicator */}
-            {isSelected && isPositionLocked && (
-                <div 
-                    className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-sm pointer-events-none"
-                    style={{ transform: `scale(${handleScale})` }}
-                >
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                </div>
-            )}
-
             {isSelected && !isPositionLocked && (
                 <>
-                  {/* Text Specific Width Handle */}
-                  {resizeMode === 'dimensions' && !style?.height && ( // Hacky check if it's text (only width resizing)
+                  {resizeMode === 'dimensions' && !style?.height && (
                       <div 
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 
@@ -436,7 +432,6 @@ const Transformable: React.FC<{
                       ></div>
                   )}
 
-                  {/* Standard Rotation Handle (Top) */}
                   {isRotatable && (
                       <div 
                         onMouseDown={handleRotateStart} 
@@ -448,7 +443,6 @@ const Transformable: React.FC<{
                       </div>
                   )}
 
-                  {/* Corner Scale/Resize Handle */}
                   {isResizable && (
                       <div 
                         onMouseDown={handleResizeStart} 
@@ -463,12 +457,11 @@ const Transformable: React.FC<{
             )}
         </div>
     );
-};
+});
 
 const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont, allowTextScaling, onAlign }, ref) => {
-  const frameOption = FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0];
+  const frameOption = useMemo(() => FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0], [config.frameId]);
   const previewContainerRef = useRef<HTMLDivElement>(null);
-  
   const uniqueId = React.useId();
   const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
 
@@ -486,8 +479,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const backgroundWidth = bgW * pxPerCm;
   const backgroundHeight = bgH * pxPerCm;
 
-  // Calculate Responsive Scale for Fonts based on Background Width
-  // Admin Base Width is 500px. We scale based on actual background width.
   const responsiveScale = backgroundWidth / 500;
 
   const allParts: Record<string, LegoPart> = useMemo(() => {
@@ -495,100 +486,61 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
   }, [propAllParts]);
 
-  const getCharacterColors = (char: LegoCharacterConfig | undefined, type: string) => {
-      if (!char) return [];
-      if (type === 'shirt' || type === 'set') { 
-          if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
-          const name = char.shirt?.name.toLowerCase() || '';
-          if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultShirtColors;
-      }
-      if (type === 'pants') {
-          if (char.pants?.colors && char.pants.colors.length > 0) return char.pants.colors;
-           const name = char.pants?.name.toLowerCase() || '';
-          if (char.pants && (char.pants.id === 'pants1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultPantsColors;
-      }
-      if (type === 'hair') return char.hair?.colors;
-      return null;
-  }
-
-  const selectedItemDetails = useMemo(() => {
+  const activeColors = useMemo(() => {
       if (!selectedItemId) return null;
       const [type, idStr] = selectedItemId.split('-');
       const id = parseInt(idStr);
       if (type === 'item') {
           const item = config.draggableItems.find(i => i.id === id);
-          return { type: 'item', data: item, part: item ? allParts[item.partId] : null, canFlip: item && ['accessory', 'pet', 'hat'].includes(item.type) };
-      } else if (type === 'text') {
-          return { type: 'text', data: config.texts.find(t => t.id === id), canFlip: false };
-      } else if (type === 'character') {
-          return { type: 'character', data: config.characters.find(c => c.id === id), canFlip: false };
-      } else if (type === 'shape') {
-          return { type: 'shape', data: config.shapes?.find(s => s.id === id), canFlip: false };
+          return item ? allParts[item.partId]?.colors : null;
+      }
+      if (type === 'character' && activePartType) {
+          const char = config.characters.find(c => c.id === id);
+          if (!char) return null;
+          if (activePartType === 'shirt' || activePartType === 'set') { 
+              if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
+              const name = char.shirt?.name.toLowerCase() || '';
+              if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultShirtColors;
+          }
+          if (activePartType === 'pants') {
+              if (char.pants?.colors && char.pants.colors.length > 0) return char.pants.colors;
+               const name = char.pants?.name.toLowerCase() || '';
+              if (char.pants && (char.pants.id === 'pants1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultPantsColors;
+          }
+          if (activePartType === 'hair') return char.hair?.colors;
       }
       return null;
-  }, [selectedItemId, config, allParts]);
+  }, [selectedItemId, config, activePartType, allParts]);
 
-  const activeColors = useMemo(() => {
-      if (selectedItemDetails?.type === 'item') return selectedItemDetails.part?.colors;
-      if (selectedItemDetails?.type === 'character' && activePartType && selectedItemDetails.data) return getCharacterColors(selectedItemDetails.data as LegoCharacterConfig, activePartType);
-      return null;
-  }, [selectedItemDetails, activePartType]);
-
-  const handleColorSelect = (color: any) => {
-      if (selectedItemDetails?.type === 'item' && onItemUpdate && selectedItemId) onItemUpdate(selectedItemId, { selectedColor: color });
-      if (selectedItemDetails?.type === 'character' && onCharacterUpdate && selectedItemDetails.data) {
-          if (activePartType === 'shirt' || activePartType === 'set') onCharacterUpdate(selectedItemDetails.data.id, { selectedShirtColor: color });
-          else if (activePartType === 'pants') onCharacterUpdate(selectedItemDetails.data.id, { selectedPantsColor: color });
-          else if (activePartType === 'hair') onCharacterUpdate(selectedItemDetails.data.id, { selectedHairColor: color });
+  const handleColorSelect = useCallback((color: OutfitColor) => {
+      if (!selectedItemId) return;
+      const [type, idStr] = selectedItemId.split('-');
+      const id = parseInt(idStr);
+      if (type === 'item' && onItemUpdate) {
+          onItemUpdate(selectedItemId, { selectedColor: color });
+      } else if (type === 'character' && onCharacterUpdate) {
+          if (activePartType === 'shirt' || activePartType === 'set') onCharacterUpdate(id, { selectedShirtColor: color });
+          else if (activePartType === 'pants') onCharacterUpdate(id, { selectedPantsColor: color });
+          else if (activePartType === 'hair') onCharacterUpdate(id, { selectedHairColor: color });
       }
-  };
+  }, [selectedItemId, onItemUpdate, onCharacterUpdate, activePartType]);
 
-  const getActiveColorHex = (color: any) => {
-      if (selectedItemDetails?.type === 'item') return (selectedItemDetails.data as DraggableItem)?.selectedColor?.hex;
-      if (selectedItemDetails?.type === 'character' && activePartType) {
-          const char = selectedItemDetails.data as LegoCharacterConfig;
+  const getActiveColorHex = useMemo(() => {
+      if (!selectedItemId) return null;
+      const [type, idStr] = selectedItemId.split('-');
+      const id = parseInt(idStr);
+      if (type === 'item') {
+          return config.draggableItems.find(i => i.id === id)?.selectedColor?.hex;
+      }
+      if (type === 'character' && activePartType) {
+          const char = config.characters.find(c => c.id === id);
+          if (!char) return null;
           if (activePartType === 'shirt' || activePartType === 'set') return char.selectedShirtColor?.hex;
           if (activePartType === 'pants') return char.selectedPantsColor?.hex;
           if (activePartType === 'hair') return char.selectedHairColor?.hex;
       }
       return null;
-  };
-
-  useEffect(() => {
-    if (!isInteractive || !selectedItemId) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const id = parseInt(idStr);
-        let currentItem: any = null;
-        if (type === 'item') currentItem = config.draggableItems.find(i => i.id === id);
-        else if (type === 'character') currentItem = config.characters.find(c => c.id === id);
-        else if (type === 'text') currentItem = config.texts.find(t => t.id === id);
-        else if (type === 'shape') currentItem = config.shapes?.find(s => s.id === id);
-
-        if (!currentItem || currentItem.lockedPosition) return; // Disable keyboard move if position locked
-        
-        let dx = 0; let dy = 0;
-        const step = e.shiftKey ? 5 : 0.5;
-        switch(e.key) {
-            case 'ArrowUp': dy = -step; break;
-            case 'ArrowDown': dy = step; break;
-            case 'ArrowLeft': dx = -step; break;
-            case 'ArrowRight': dx = step; break;
-            default: return;
-        }
-        e.preventDefault();
-        onItemTransform(selectedItemId, {
-            x: Math.max(0, Math.min(100, currentItem.x + dx)),
-            y: Math.max(0, Math.min(100, currentItem.y + dy)),
-            rotation: currentItem.rotation,
-            scale: currentItem.scale,
-            width: (currentItem as TextConfig).width
-        });
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isInteractive, selectedItemId, config, onItemTransform]);
+  }, [selectedItemId, config, activePartType]);
 
   return (
     <div ref={ref} className={`flex items-center justify-center relative ${className}`} style={{ width: frameWidth, height: frameHeight }}>
@@ -607,24 +559,23 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 style={{
                     width: backgroundWidth,
                     height: backgroundHeight,
-                    border: '1px solid #c0c0c0', // 2. Darker border explicitly set
+                    border: '1px solid #c0c0c0',
                 }}
                 onClick={(e) => {
                     if (isInteractive && e.target === previewContainerRef.current) setSelectedItemId(null);
                 }}
             >
-                {/* 3. Background Layer using Img for CORS safety */}
                 {config.background.type === 'color' ? (
                     <div style={{ position: 'absolute', inset: 0, backgroundColor: config.background.value, zIndex: 0 }} />
                 ) : (
                     <SafeImage 
+                        priority
                         src={config.background.value} 
                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} 
                         alt="background"
                     />
                 )}
 
-                {/* 4. Watermark Layer - Removed mix-blend-mode for better html2canvas capture */}
                 {logoUrl && (
                     <div className="watermark-layer" style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
                         <svg width="100%" height="100%" style={{ opacity: 0.15 }} fill="transparent">
@@ -638,7 +589,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
-                {/* NEW: Shapes Layer (Layer 4) */}
                 {config.shapes && config.shapes.map(shape => (
                     <Transformable
                         key={`shape-${shape.id}`}
@@ -673,7 +623,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </Transformable>
                 ))}
 
-                {/* 5. Content Layers (Layer 10+) */}
                 {config.characters.map(char => (
                     <Transformable 
                         key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} onTransform={onItemTransform} 
@@ -695,7 +644,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     
                     if (!imageUrl) return null;
 
-                    // MASKING STYLE
                     let maskStyle: React.CSSProperties = {};
                     if (item.maskShape === 'circle') maskStyle = { borderRadius: '50%' };
                     else if (item.maskShape === 'rounded') maskStyle = { borderRadius: '15%' };
@@ -707,12 +655,12 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
                             isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
-                            isPositionLocked={item.lockedPosition} // Pass lockedPosition
+                            isPositionLocked={item.lockedPosition}
                             zIndex={item.type === 'hat' ? 12 : 10}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
                             <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm }}>
-                                <SafeImage src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                         </Transformable>
                     );
@@ -720,27 +668,24 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 
                 {config.texts.map(text => {
                     const isSelected = selectedItemId === `text-${text.id}`;
-                    // Only apply previewFont if this specific item is selected and previewFont is provided
-                    const effectiveFont = (isSelected && previewFont) ? previewFont : text.font;
-
                     return (
                         <Transformable 
                             key={`text-${text.id}`} id={`text-${text.id}`} 
                             initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
                             onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={isSelected} onSelect={setSelectedItemId}
                             isDraggable={isInteractive} zIndex={15} resizeMode="dimensions" containerSize={{ width: backgroundWidth, height: backgroundHeight }}
-                            isPositionLocked={text.lockedPosition} // Pass lockedPosition
+                            isPositionLocked={text.lockedPosition}
                             style={{ width: `${(text.width || 30) * backgroundWidth / 100}px` }}
-                            allowTextScaling={allowTextScaling} // Pass allowTextScaling
+                            allowTextScaling={allowTextScaling}
                         >
                         <EditableText 
                                 text={text} 
-                                fontSize={text.size * responsiveScale} // Pass calculated responsive font size
+                                fontSize={text.size * responsiveScale}
                                 onUpdate={(updates) => onTextUpdate(text.id, updates)} 
                                 onBeginEditing={() => setIsEditingText(true)} 
                                 onEndEditing={() => setIsEditingText(false)} 
-                                isContentLocked={text.lockedContent} // Pass lockedContent
-                                previewFont={isSelected ? previewFont : undefined} // Pass previewFont
+                                isContentLocked={text.lockedContent}
+                                previewFont={isSelected ? previewFont : undefined}
                         />
                         </Transformable>
                     );
@@ -748,7 +693,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             </div>
         </div>
 
-        {/* Toolbar - FIXED MOBILE ALIGNMENT & REMOVED NUDGE CONTROLS */}
         {isInteractive && selectedItemId && (
             <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none">
                 {activeColors && activeColors.length > 0 && (
@@ -758,7 +702,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                                 <button
                                     key={idx}
                                     onClick={() => handleColorSelect(color)}
-                                    className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex(color) === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
+                                    className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
                                     style={{ backgroundColor: color.hex }}
                                     title={`${color.name}`}
                                 >
@@ -783,7 +727,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                         </>
                     )}
-                    {selectedItemDetails?.canFlip && (
+                    {['accessory', 'pet', 'hat'].includes(selectedItemId.split('-')[0]) && (
                         <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors active:scale-90" title="Lật">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         </button>

@@ -120,6 +120,14 @@ export interface BackgroundConfig {
   value: string;
 }
 
+export interface FormField {
+    id: string;
+    label: string;
+    type: 'text' | 'textarea' | 'date' | 'image';
+    required: boolean;
+    placeholder?: string;
+}
+
 export interface FrameConfig {
   frameId: string;
   frameColor?: string;
@@ -132,6 +140,7 @@ export interface FrameConfig {
   previewImageUrl?: string;
   quantity?: number;
   templateId?: string; // NEW: Truy vết mẫu thiết kế gốc
+  customFormData?: Record<string, string>; // NEW: Structured form data for Step 2
 }
 
 export interface LegoCharacterConfig {
@@ -212,6 +221,7 @@ export interface PresetBackground {
         draggableItems: DraggableItem[];
         shapes?: ShapeConfig[];
     };
+    formFields?: FormField[]; // NEW: Specific fields for this template
 }
 
 export interface CollectionTemplate {

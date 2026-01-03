@@ -14,8 +14,16 @@ export const categorizeParts = (parts: LegoPart[]) => {
 };
 
 /**
+ * Preloads an image URL into browser cache
+ */
+export const preloadImage = (url: string) => {
+    if (!url) return;
+    const img = new Image();
+    img.src = url;
+};
+
+/**
  * Converts a data URL (base64) to a Blob object without using fetch().
- * This avoids "Failed to fetch" errors in restricted environments.
  */
 export const dataURLToBlob = (dataURL: string): Blob | null => {
     try {
