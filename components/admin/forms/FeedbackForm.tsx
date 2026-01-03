@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { FeedbackItem } from '../../../types';
-import { uploadFile } from '../../../services/uploadService';
+import { uploadToCloudinary } from '../../../services/uploadService';
 
 export const FeedbackForm: React.FC<{
     initialData?: FeedbackItem | null;
@@ -22,7 +22,7 @@ export const FeedbackForm: React.FC<{
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadFile(file);
+                const url = await uploadToCloudinary(file);
                 if (url) setFormData(prev => ({ ...prev, imageUrl: url }));
                 else alert("Lỗi tải ảnh");
             } catch (error) {

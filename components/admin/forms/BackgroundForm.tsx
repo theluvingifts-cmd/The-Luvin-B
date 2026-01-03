@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { PresetBackground } from '../../../types';
-import { uploadFile } from '../../../services/uploadService';
+import { uploadToCloudinary } from '../../../services/uploadService';
 
 export const BackgroundForm: React.FC<{
     initialData?: PresetBackground | null;
@@ -28,7 +28,7 @@ export const BackgroundForm: React.FC<{
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadFile(file);
+                const url = await uploadToCloudinary(file);
                 if (url) {
                     setFormData(prev => ({ ...prev, url: url }));
                 } else {

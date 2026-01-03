@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { LegoPart, OutfitColor, BulkPriceTier } from '../../../types';
-import { uploadFile } from '../../../services/uploadService';
+import { uploadToCloudinary } from '../../../services/uploadService';
 import { formatCurrency } from '../../../utils/pricing';
 
 export const ProductForm: React.FC<{ 
@@ -20,6 +20,7 @@ export const ProductForm: React.FC<{
     const [editingColorIndex, setEditingColorIndex] = useState<number | null>(null);
     const [draggedColorIndex, setDraggedColorIndex] = useState<number | null>(null);
 
+    // Bulk Pricing State
     const [bulkTiers, setBulkTiers] = useState<BulkPriceTier[]>(initialData?.bulkPricing || []);
     const [newTierQty, setNewTierQty] = useState<number>(0);
     const [newTierPrice, setNewTierPrice] = useState<number>(0);
@@ -44,7 +45,7 @@ export const ProductForm: React.FC<{
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadFile(file);
+                const url = await uploadToCloudinary(file);
                 if (url) {
                     setFormData(prev => ({ ...prev, imageUrl: url }));
                 } else {
@@ -64,7 +65,7 @@ export const ProductForm: React.FC<{
             const file = e.target.files[0];
             setIsUploadingColorImg(true);
             try {
-                const url = await uploadFile(file);
+                const url = await uploadToCloudinary(file);
                 if (url) {
                     setNewColor(prev => ({ ...prev, imageUrl: url }));
                 }
@@ -147,6 +148,7 @@ export const ProductForm: React.FC<{
         setDraggedColorIndex(null);
     };
 
+    // Bulk Pricing Handlers
     const addBulkTier = () => {
         if (newTierQty <= 1 || newTierPrice <= 0) {
             alert("Số lượng phải > 1 và giá phải > 0");
@@ -176,6 +178,7 @@ export const ProductForm: React.FC<{
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {/* Header */}
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h3 className="text-xl font-bold text-gray-800">{initialData ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h3>
                 <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 bg-white border border-gray-300 px-3 py-1.5 rounded text-sm font-medium transition-colors">
@@ -183,9 +186,12 @@ export const ProductForm: React.FC<{
                 </button>
             </div>
             
+            {/* Content */}
             <div className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left Column - Main Info */}
                     <div className="lg:col-span-8 space-y-6">
+                        {/* Section 1: Basic Info */}
                         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                             <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 text-base flex items-center gap-2">
                                 ℹ️ Thông tin chung
@@ -237,6 +243,7 @@ export const ProductForm: React.FC<{
                                     </div>
                                 )}
 
+                                {/* Promotion Settings */}
                                 <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
                                     <h5 className="font-bold text-sm text-blue-600 mb-3">🔥 Thiết lập Khuyến mãi</h5>
                                     <div className="grid grid-cols-2 gap-6">
@@ -258,6 +265,7 @@ export const ProductForm: React.FC<{
                             </div>
                         </div>
 
+                        {/* Section 2: Colors Variants */}
                         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                             <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 text-base flex items-center gap-2">
                                 🎨 Biến thể màu sắc
@@ -265,6 +273,7 @@ export const ProductForm: React.FC<{
                             
                             {canHaveColors ? (
                                 <>
+                                    {/* Color List */}
                                     {colors.length > 0 && (
                                         <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto border rounded-lg p-2 bg-gray-50 custom-scrollbar">
                                             {colors.map((color, idx) => (
@@ -305,6 +314,7 @@ export const ProductForm: React.FC<{
                                         </div>
                                     )}
 
+                                    {/* Add/Edit Color Form */}
                                     <div className={`p-4 rounded-xl border transition-colors ${editingColorIndex !== null ? 'bg-yellow-50 border-yellow-300' : 'bg-blue-50 border-blue-100'}`}>
                                         <div className="flex justify-between items-center mb-3">
                                             <p className={`text-sm font-bold ${editingColorIndex !== null ? 'text-yellow-800' : 'text-blue-800'}`}>
@@ -377,6 +387,7 @@ export const ProductForm: React.FC<{
                             )}
                         </div>
 
+                        {/* Section 3: Bulk Pricing (Combo) */}
                         {canHaveBulkPricing && (
                             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                                 <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 text-base flex items-center gap-2">
@@ -421,6 +432,7 @@ export const ProductForm: React.FC<{
                         )}
                     </div>
 
+                    {/* Right Column - Image & Dimensions */}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm sticky top-0">
                             <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 text-base flex items-center gap-2">
@@ -470,6 +482,7 @@ export const ProductForm: React.FC<{
                 </div>
             </div>
 
+            {/* Footer Actions */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-4">
                 <button onClick={onCancel} className="px-6 py-3 text-sm font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors">Hủy bỏ</button>
                 <button onClick={handleSave} disabled={isUploading} className="px-8 py-3 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">

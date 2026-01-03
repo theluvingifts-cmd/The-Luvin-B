@@ -1,4 +1,3 @@
-
 // services/uploadService.ts
 import { storage } from '../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -9,7 +8,7 @@ import { dataURLToBlob } from '../utils/helpers';
  * @param file File object or Base64 string
  * @returns Download URL or null
  */
-export const uploadFile = async (file: File | string): Promise<string | null> => {
+export const uploadToCloudinary = async (file: File | string): Promise<string | null> => {
     try {
         let blob: Blob | null;
         let fileName = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}`;

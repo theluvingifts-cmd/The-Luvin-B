@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CollectionTemplate } from '../../../types';
 import { INITIAL_FRAME_CONFIG } from '../../../constants';
-import { uploadFile } from '../../../services/uploadService';
+import { uploadToCloudinary } from '../../../services/uploadService';
 
 const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Màu trơn'];
 
@@ -26,7 +26,7 @@ export const TemplateForm: React.FC<{
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadFile(file);
+                const url = await uploadToCloudinary(file);
                 if (url) setFormData(prev => ({ ...prev, imageUrl: url }));
                 else alert("Lỗi tải ảnh");
             } catch (error) {

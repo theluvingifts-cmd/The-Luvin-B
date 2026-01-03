@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
@@ -33,7 +34,7 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
-import { categorizeParts, preloadImages } from './utils/helpers';
+import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
@@ -205,20 +206,8 @@ const App: React.FC = () => {
                 getAllFrames()
             ]);
             
-            if (parts && parts.length > 0) {
-                setLegoParts(categorizeParts(parts));
-                // Optimization: Preload all parts images
-                const partUrls = parts.flatMap(p => [
-                    p.imageUrl,
-                    ...(p.colors?.map(c => c.imageUrl).filter(Boolean) as string[] || [])
-                ]);
-                preloadImages(partUrls);
-            }
-            if (bgs && bgs.length > 0) {
-                setBackgrounds(bgs);
-                // Optimization: Preload background images
-                preloadImages(bgs.map(bg => bg.url).filter(u => u && !u.startsWith('#')));
-            }
+            if (parts && parts.length > 0) setLegoParts(categorizeParts(parts));
+            if (bgs && bgs.length > 0) setBackgrounds(bgs);
             if (tpls && tpls.length > 0) setTemplates(tpls);
             if (fbs && fbs.length > 0) setFeedbacks(fbs);
             if (fetchedFrames && fetchedFrames.length > 0) setFrames(fetchedFrames);

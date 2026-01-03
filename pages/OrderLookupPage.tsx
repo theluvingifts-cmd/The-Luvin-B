@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Order, FrameOption } from '../types';
 import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderService';
-import { uploadFile } from '../services/uploadService';
+import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS, FRAME_OPTIONS } from '../constants';
 import { formatCurrency } from '../utils/pricing';
 import { getAllFrames } from '../services/frameService';
@@ -89,7 +89,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadFile(file);
+                const url = await uploadToCloudinary(file);
                 if (url) {
                     const success = await updateOrder(foundOrder.id, { 
                         paymentProofUrl: url,
@@ -121,10 +121,10 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
     const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
         const steps = [
             { label: 'Chờ thanh toán', icon: '💳' },
-            { label: 'Đã xác nhận', icon: '📦' }, 
+            { label: 'Đã xác nhận', icon: '📦' }, // Changed icon to box
             { label: 'Đang xử lý', icon: '⚙️' },
-            { label: 'Đang giao', icon: '🚚' }, 
-            { label: 'Hoàn thành', icon: '❤️' } 
+            { label: 'Đang giao', icon: '🚚' }, // Shortened label
+            { label: 'Hoàn thành', icon: '❤️' } // Shortened label
         ];
 
         const getStepIndex = (status: string) => {
@@ -160,7 +160,10 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
         return (
             <div className="mb-8 px-0 sm:px-4 w-full">
                 <div className="relative">
+                    {/* Progress Bar Background */}
                     <div className="absolute top-4 sm:top-5 left-0 w-full h-1 bg-gray-100 rounded-full -z-10"></div>
+                    
+                    {/* Active Progress Bar */}
                     <div 
                         className="absolute top-4 sm:top-5 left-0 h-1 bg-luvin-pink rounded-full -z-10 transition-all duration-1000 ease-out"
                         style={{ width: `${Math.max(0, Math.min(100, progressPercentage))}%` }}
@@ -203,6 +206,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
     return (
         <div className="min-h-screen bg-gray-50 font-body text-gray-800 pb-20">
+            {/* Hero Section */}
             <div className="bg-gradient-to-b from-pink-50 to-white py-12 md:py-16 text-center border-b border-gray-100 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none" 
                      style={{backgroundImage: 'radial-gradient(#efa3b5 1px, transparent 1px)', backgroundSize: '20px 20px'}}>
@@ -219,6 +223,8 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
             <div className="container mx-auto px-4 sm:px-6 -mt-8 relative z-20">
                 <div className="max-w-3xl mx-auto space-y-8">
+                    
+                    {/* Search Card */}
                     <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-6 transition-transform duration-300">
                         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
                             <div className="relative flex-grow">
@@ -288,8 +294,10 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                         </div>
                     )}
 
+                    {/* Order Details Card */}
                     {foundOrder && typeof foundOrder === 'object' && (
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden animate-fade-in-up">
+                            {/* Header */}
                             <div className="bg-gray-50/80 p-5 md:p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
                                     <div className="flex items-center gap-3">
@@ -313,6 +321,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                             <div className="p-5 md:p-8">
                                 <StatusTracker currentStatus={foundOrder.status} />
 
+                                {/* Payment Callout */}
                                 {foundOrder.status === 'Chờ thanh toán' && (
                                     <div className="mb-8 bg-yellow-50/50 border border-yellow-100 rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
                                         <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm flex-shrink-0">
@@ -336,7 +345,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                                         disabled={isUploading}
                                                         className="bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-black transition-colors flex items-center gap-2 shadow-md"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                                                         {isUploading ? 'Đang tải...' : 'Gửi ảnh biên lai'}
                                                     </button>
                                                     <span className="text-xs text-gray-500 italic">Giúp đơn hàng được xử lý nhanh hơn</span>
@@ -348,6 +357,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                 )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Column 1: Info */}
                                     <div className="space-y-6">
                                         <div>
                                             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">Người nhận</h4>
@@ -376,6 +386,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         </div>
                                     </div>
 
+                                    {/* Column 2: Items & Total */}
                                     <div>
                                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">Sản phẩm ({foundOrder.items.length})</h4>
                                         <div className="space-y-3 mb-6">
