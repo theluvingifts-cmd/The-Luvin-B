@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../types';
+import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
 import { calculatePrice, formatCurrency } from '../../utils/pricing';
@@ -9,7 +9,6 @@ import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
 
-// Added STATUS_CONFIG constant for order status labels and colors
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
     { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
@@ -50,7 +49,6 @@ const getVietQR = (order: Order) => {
     return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
 };
 
-// Helper function to handle image download
 const downloadImage = async (url: string, filename: string) => {
     try {
         const response = await fetch(url);
@@ -588,7 +586,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     {orderTab === 'active' && (
                         <div className="flex gap-2 w-full mt-1">
                             <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Mới nhất</button>
-                            <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-900'}`}>Cần gấp</button>
+                            <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-700'}`}>Cần gấp</button>
                         </div>
                     )}
                     <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing mt-1" ref={scrollContainerRef} onMouseDown={handleMouseDown} onMouseLeave={handleMouseLeave} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove}>
@@ -675,10 +673,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
                                         const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
-                                        // Filter original assets uploaded by user
+                                        
+                                        // Filter original assets uploaded by user, including form fields
+                                        const formFieldImages = (item.formFields || [])
+                                            .filter(f => f.type === 'image' && item.customFormData?.[f.id])
+                                            .map(f => ({ url: item.customFormData![f.id], type: `Ảnh Form (${f.label})` }));
+
                                         const customerAssets = [
                                             ...(item.background.type === 'upload' ? [{ url: item.background.value, type: 'Ảnh nền' }] : []),
-                                            ...item.draggableItems.filter(di => di.type === 'charm').map(di => ({ url: di.partId, type: 'Sticker' }))
+                                            ...item.draggableItems.filter(di => di.type === 'charm').map(di => ({ url: di.partId, type: 'Sticker' })),
+                                            ...formFieldImages
                                         ];
 
                                         return (
@@ -740,6 +744,36 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                                         </div>
                                                                     </div>
                                                                 ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* CUSTOM FORM DATA SECTION */}
+                                                    {item.customFormData && Object.keys(item.customFormData).length > 0 && (
+                                                        <div className="mb-4 p-4 bg-orange-50 border border-orange-100 rounded-xl">
+                                                            <h4 className="text-[10px] font-black text-orange-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                                <span>📝</span> Thông tin in ấn (Form khách nhập)
+                                                            </h4>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                                                                {(item.formFields || []).map((field: FormField) => {
+                                                                    const val = item.customFormData?.[field.id];
+                                                                    if (!val) return null;
+                                                                    return (
+                                                                        <div key={field.id} className="border-b border-orange-100 pb-2">
+                                                                            <span className="block text-[9px] font-bold text-gray-400 uppercase mb-0.5">{field.label}</span>
+                                                                            {field.type === 'image' ? (
+                                                                                <div className="flex items-center gap-2 mt-1">
+                                                                                    <div className="w-8 h-8 rounded border border-orange-200 bg-white overflow-hidden cursor-pointer" onClick={() => setZoomedImageUrl(val)}>
+                                                                                        <img src={val} alt="form data" className="w-full h-full object-cover" />
+                                                                                    </div>
+                                                                                    <span className="text-[10px] text-gray-500 italic">Ảnh in thêm</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="text-sm font-bold text-gray-800 break-words">{val}</span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
                                                     )}
