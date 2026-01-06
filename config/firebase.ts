@@ -1,5 +1,6 @@
 
 // config/firebase.ts
+// Fix: Use standard modular imports for Firebase v9+
 import { initializeApp } from "firebase/app";
 // Import getFirestore from the modular SDK subpath
 import { getFirestore } from "firebase/firestore"; 
@@ -18,6 +19,7 @@ export const firebaseConfig = {
   measurementId: "G-1E58PMLPRP"
 };
 
+// Fix: Direct initialization as per modular SDK v9+
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);

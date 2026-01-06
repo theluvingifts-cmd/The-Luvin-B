@@ -38,20 +38,6 @@ import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
-const loadGoogleFont = (fontName: string) => {
-    if (!fontName) return;
-    if (['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'].includes(fontName)) {
-        const linkId = `font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
-        if (!document.getElementById(linkId)) {
-            const link = document.createElement('link');
-            link.id = linkId;
-            link.rel = 'stylesheet';
-            link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
-            document.head.appendChild(link);
-        }
-    }
-};
-
 const loadUploadedFonts = (fonts: CustomFont[]) => {
     const styleId = 'uploaded-custom-fonts';
     let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -116,7 +102,6 @@ const App: React.FC = () => {
       try {
           localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
       } catch (error) {
-          // Xử lý khi bộ nhớ LocalStorage đầy (QuotaExceededError)
           console.warn("LocalStorage is full, cannot save cart items.");
       }
   }, [cartItems]);
@@ -151,11 +136,15 @@ const App: React.FC = () => {
       root.style.setProperty('--color-text', global.colors.text);
       root.style.setProperty('--color-bg', global.colors.background);
       root.style.setProperty('--color-accent', global.colors.accent);
+      
+      // We only update variables if the theme specifically overrides standard branding
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
+      
       root.style.setProperty('--font-heading', `'${cleanHeadingFont}'`);
       root.style.setProperty('--font-body', `'${cleanBodyFont}'`);
       root.style.setProperty('--radius-global', global.borderRadius);
+      
       if (sections) {
           if (sections.header) {
               root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
@@ -166,11 +155,9 @@ const App: React.FC = () => {
               root.style.setProperty('--footer-text', sections.footer.textColor || '#374151');
           }
       }
+      
+      // Only load uploaded fonts dynamicially
       loadUploadedFonts(uploadedFonts);
-      const isCustomHeading = uploadedFonts.some(f => f.name === cleanHeadingFont);
-      const isCustomBody = uploadedFonts.some(f => f.name === cleanBodyFont);
-      if (!isCustomHeading) loadGoogleFont(cleanHeadingFont);
-      if (!isCustomBody) loadGoogleFont(cleanBodyFont);
   };
 
   useLayoutEffect(() => {

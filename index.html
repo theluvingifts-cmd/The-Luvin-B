@@ -8,6 +8,13 @@
     <title>The Luvin - Thương hiệu quà tặng tinh tế</title>
     <meta name="description" id="meta-description" content="Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn, tinh tế và đầy cảm xúc." />
 
+    <!-- Font Optimization: Preconnect to Google Fonts domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Hardcoded Branding Fonts: Playfair Display & Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:title" id="og-title" content="The Luvin - Thương hiệu quà tặng tinh tế" />
@@ -18,12 +25,9 @@
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:title" id="twitter-title" content="The Luvin - Thương hiệu quà tặng tinh tế" />
     <meta property="twitter:description" id="twitter-description" content="Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn, tinh tế và đầy cảm xúc." />
-    <meta property="twitter:image" id="twitter-image" content="https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png" />
+    <meta property="twitter:image" id="twitter-image" content="https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1766151159202_bl4wsh_2.png?alt=media&token=6b6fbdcd-74d5-45da-a139-a0c977a43d1d" />
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Merriweather:wght@300;400;700&family=Lora:wght@400;500;600&family=Nunito:wght@300;400;600;700&family=Pacifico&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
@@ -31,11 +35,8 @@
         theme: {
           extend: {
             colors: {
-              // Legacy support
               'luvin-pink': 'var(--color-primary)',
               'luvin-cream': 'var(--color-secondary)',
-              
-              // New Semantic Design System
               primary: 'var(--color-primary)',
               secondary: 'var(--color-secondary)',
               accent: 'var(--color-accent)',
@@ -43,7 +44,6 @@
               'site-text': 'var(--color-text)',
             },
             fontFamily: {
-              // Dynamic Fonts via Variables
               heading: ['var(--font-heading)', 'Playfair Display', 'serif'],
               body: ['var(--font-body)', 'Montserrat', 'sans-serif'],
               script: ['Dancing Script', 'cursive'], 
@@ -86,54 +86,37 @@
     <style>
       :root {
         color-scheme: light;
-        /* --- DEFAULT THEME VARIABLES --- */
         --color-primary: #efa3b5;
         --color-secondary: #f9f4ef;
         --color-text: #3a2a28;
         --color-bg: #ffffff;
         --color-accent: #e5a84b;
 
-        /* Global Typography */
-        --font-heading: 'Playfair Display'; 
-        --font-body: 'Montserrat';
+        /* Global Typography Variables - Direct Reference to Loaded Fonts */
+        --font-heading: 'Playfair Display', serif; 
+        --font-body: 'Montserrat', sans-serif;
         
-        /* Global Shape */
         --radius-global: 8px;
-        
-        /* Section Specifics (Defaults) */
         --header-bg: rgba(255, 255, 255, 0.8);
         --header-text: #1f2937;
-        
         --footer-bg: #ffffff;
         --footer-text: #374151;
       }
       
-      @font-face {
-        font-family: 'CustomBrandFont';
-        src: local('Arial');
-        font-display: swap;
-      }
-      
       body {
-        font-family: var(--font-body), 'Montserrat', sans-serif;
+        font-family: var(--font-body);
         background-color: var(--color-bg);
         color: var(--color-text);
+        -webkit-font-smoothing: antialiased;
       }
       
       h1, h2, h3, h4, h5, h6 {
-        font-family: var(--font-heading), serif;
+        font-family: var(--font-heading);
       }
 
-      /* Scrollbar */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
-      /* Skeleton Loading */
       @keyframes shimmer {
         0% { background-position: -1000px 0; }
         100% { background-position: 1000px 0; }
@@ -144,14 +127,12 @@
         background-size: 1000px 100%;
       }
 
-      /* Form Elements */
       input, select, textarea {
         background-color: #ffffff !important;
         color: var(--color-text) !important;
         border-color: #d1d5db;
       }
 
-      /* Animations */
       @keyframes cart-shake {
         0%, 100% { transform: rotate(0deg); }
         20% { transform: rotate(-15deg); }
@@ -159,9 +140,7 @@
         60% { transform: rotate(-10deg); }
         80% { transform: rotate(10deg); }
       }
-      .animate-cart-shake {
-        animation: cart-shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-      }
+      .animate-cart-shake { animation: cart-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
       .flying-product-item {
         position: fixed;
         z-index: 9999;
@@ -171,11 +150,7 @@
         transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
         opacity: 1;
       }
-      
-      /* Mobile adjustments */
-      .safe-bottom {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
   <script type="importmap">
 {
@@ -192,7 +167,6 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
