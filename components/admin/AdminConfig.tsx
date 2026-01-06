@@ -6,12 +6,11 @@ import { addFeedback, updateFeedback, deleteFeedback } from '../../services/feed
 import { uploadToCloudinary } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { FeedbackForm } from './forms/FeedbackForm';
+import * as firebaseApp from 'firebase/app';
 // Fix: Use standard modular imports for Firebase v9+
-import { initializeApp, deleteApp, getApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';
-import { Logo } from '../shared/Logo';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -233,14 +232,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
         
         setLoading(true);
-        // Fix: Use standard modular SDK approach for managing secondary apps
-        const secondaryAppName = "SecondaryApp";
-        let secondaryApp;
-        if (getApps().find(app => app.name === secondaryAppName)) {
-            secondaryApp = getApp(secondaryAppName);
-        } else {
-            secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
-        }
+        const secondaryApp = firebaseApp.initializeApp(firebaseConfig, "SecondaryApp");
         const secondaryAuth = getAuth(secondaryApp);
 
         try {
@@ -261,7 +253,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         } catch (error: any) {
             alert("Lỗi: " + error.message);
         } finally {
-            await deleteApp(secondaryApp);
+            await firebaseApp.deleteApp(secondaryApp);
             setLoading(false);
         }
     };
@@ -514,13 +506,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Nhân sự & Bot</h3>
                             <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 space-y-3">
                                 <label className="block text-xs font-bold text-indigo-700">Bot Token</label>
-                                <input type="password" name="tg_token" className="w-full p-2 border rounded text-xs font-mono" value={telegramToken} onChange={(e) => setTelegramToken(e.target.value)} />
+                                <input type="password" className="w-full p-2 border rounded text-xs font-mono" value={telegramToken} onChange={(e) => setTelegramToken(e.target.value)} />
                                 <label className="block text-xs font-bold text-indigo-700">Chat ID</label>
-                                <input type="text" name="tg_chatid" className="w-full p-2 border rounded text-xs font-mono" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} />
+                                <input type="text" className="w-full p-2 border rounded text-xs font-mono" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} />
                             </div>
                             <div className="pt-4 space-y-3">
                                 <input className="w-full p-2 border rounded text-sm" value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="Email nhân viên" />
-                                <input type="password" name="staff_pass" className="w-full p-2 border rounded text-sm" value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} placeholder="Mật khẩu" />
+                                <input type="password" className="w-full p-2 border rounded text-sm" value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} placeholder="Mật khẩu" />
                                 <select className="w-full p-2 border rounded text-sm" value={newStaffRole} onChange={(e: any) => setNewStaffRole(e.target.value)}>
                                     <option value="warehouse">Kho</option>
                                     <option value="admin">Admin</option>
@@ -546,10 +538,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <div className="container mx-auto px-6 py-4 flex justify-between items-center pointer-events-none">
                                     <div className="pointer-events-auto">
                                         <EditableZone onClick={() => scrollToField('branding', 'logoUrl')} label="Logo">
-                                            <Logo 
-                                                url={storeConfig.logoUrl} 
-                                                className="h-12"
-                                            />
+                                            {storeConfig.logoUrl ? <img src={storeConfig.logoUrl} alt="Logo" className="h-12 object-contain" /> : <span style={{ fontFamily: themeConfig.global.typography.headingFont, color: themeConfig.global.colors.primary }}>The Luvin</span>}
                                         </EditableZone>
                                     </div>
                                     <div className="hidden md:flex items-center space-x-6 text-sm font-semibold opacity-80">

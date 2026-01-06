@@ -1,13 +1,15 @@
+
 // services/uploadService.ts
 import { storage } from '../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { dataURLToBlob } from '../utils/helpers';
 
 /**
- * Uploads a file or base64 string to Firebase Storage
+ * Uploads a file or base64 string directly to Firebase Storage.
  * @param file File object or Base64 string
- * @returns Download URL or null
+ * @returns Public Download URL or null if failed
  */
+// Renamed from uploadToFirebase to uploadToCloudinary to fix missing export errors across the project
 export const uploadToCloudinary = async (file: File | string): Promise<string | null> => {
     try {
         let blob: Blob | null;
@@ -40,13 +42,13 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
             fileName += `_${cleanName}`;
         }
 
-        // Create a reference
+        // Create a reference in Firebase Storage
         const storageRef = ref(storage, fileName);
 
-        // Upload the file
+        // Upload the bytes
         const snapshot = await uploadBytes(storageRef, blob);
 
-        // Get the download URL
+        // Get the permanent download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
         
         console.log("Upload success to Firebase Storage:", downloadURL);
@@ -55,9 +57,9 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
         console.error("Firebase Storage Upload Error:", error);
         
         if (error.code === 'storage/unauthorized') {
-            alert("Lỗi quyền truy cập (403): Vui lòng kiểm tra Firebase Rules.");
+            alert("Lỗi quyền truy cập (403): Vui lòng kiểm tra Firebase Storage Rules trong Console.");
         } else {
-            alert(`Lỗi upload: ${error.message || "Failed to fetch"}`);
+            alert(`Lỗi upload: ${error.message || "Kết nối thất bại"}`);
         }
         return null;
     }

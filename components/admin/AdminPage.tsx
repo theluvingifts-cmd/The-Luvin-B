@@ -20,7 +20,6 @@ import { AdminConfig } from '../admin/AdminConfig';
 import { AdminVouchers } from '../admin/AdminVouchers'; 
 import { AdminCustomers } from '../admin/AdminCustomers'; 
 import { AdminDesign } from '../admin/AdminDesign';
-import { Logo } from '../shared/Logo';
 
 type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
 
@@ -120,12 +119,8 @@ const AdminPage: React.FC = () => {
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
                     <div className="h-14 sm:h-16 flex justify-between items-center">
                         <div className="flex items-center gap-4 lg:gap-8">
-                            <div className="flex items-center gap-2">
-                                <Logo 
-                                    url={storeConfig.logoUrl} 
-                                    className="h-8" 
-                                    textClassName="text-lg"
-                                />
+                            <div className="text-lg sm:text-xl font-bold tracking-tight whitespace-nowrap flex items-center gap-2">
+                                <span>The Luvin</span>
                                 <span className="font-normal text-gray-400 text-xs sm:text-sm bg-gray-100 px-2 py-0.5 rounded-full">Quản lý</span>
                             </div>
                             <nav className="hidden md:flex gap-1 overflow-x-auto no-scrollbar">

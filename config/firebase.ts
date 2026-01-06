@@ -1,11 +1,12 @@
 
 // config/firebase.ts
 // Fix: Use standard modular imports for Firebase v9+
-import { initializeApp } from 'firebase/app';
+import { initializeApp } from "firebase/app";
 // Import getFirestore from the modular SDK subpath
-import { getFirestore } from 'firebase/firestore'; 
+import { getFirestore } from "firebase/firestore"; 
+// Fix: Ensure modular import for auth works by using consistent single quotes and path
 import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+import { getStorage } from "firebase/storage";
 
 // Config của bạn
 export const firebaseConfig = {

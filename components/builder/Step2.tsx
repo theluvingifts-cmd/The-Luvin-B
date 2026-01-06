@@ -4,6 +4,7 @@ import type { FrameConfig, PresetBackground, FrameOption, FormField } from '../.
 import { ZoomIcon } from '../ZoomIcon';
 import { getEffectivePrice, formatCurrency } from '../../utils/pricing';
 import { resizeImage } from '../../utils/helpers';
+import { SmartImage } from '../shared/SmartImage';
 
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
@@ -22,12 +23,32 @@ const PresetBackgroundButton: React.FC<{
                 isSelected ? 'border-luvin-pink bg-pink-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
         >
-            <div className="w-full aspect-[4/5] rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100">
-                {isColor ? <div className="w-full h-full" style={{ backgroundColor: imageSrc }}></div> : (
-                    <img src={imageSrc} alt={bg.name} className="w-full h-full object-cover" loading={priority ? "eager" : "lazy"} />
+            <div className="w-full aspect-[4/5] rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100/50">
+                {isColor ? (
+                  <div className="w-full h-full" style={{ backgroundColor: imageSrc }}></div>
+                ) : (
+                  <SmartImage 
+                    src={imageSrc} 
+                    alt={bg.name} 
+                    loading={priority ? "eager" : "lazy"} 
+                    className="w-full h-full"
+                  />
                 )}
-                {isSelected && <div className="absolute top-1 right-1 bg-luvin-pink text-white rounded-full p-0.5 shadow-sm"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg></div>}
-                <div className="absolute bottom-1 right-1 z-10 bg-black/40 text-white p-1 rounded-full cursor-pointer hover:bg-black/60 transition-colors" onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}><ZoomIcon className="w-3 h-3" /></div>
+                
+                {isSelected && (
+                  <div className="absolute top-1 right-1 bg-luvin-pink text-white rounded-full p-0.5 shadow-sm z-10 animate-fade-in">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+                
+                <div 
+                  className="absolute bottom-1 right-1 z-10 bg-black/40 text-white p-1 rounded-full cursor-pointer hover:bg-black/60 transition-colors" 
+                  onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}
+                >
+                  <ZoomIcon className="w-3 h-3" />
+                </div>
             </div>
             <span className="text-[10px] font-bold text-gray-700 py-1.5 truncate w-full px-1">{bg.name}</span>
         </button>
@@ -71,7 +92,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
     if (file) {
         setIsProcessingImage(fieldId);
         try {
-            // Nén ảnh xuống mức an toàn trước khi lưu vào state
             const resizedBase64 = await resizeImage(file, 1000, 1000);
             handleUpdateFormData(fieldId, resizedBase64);
         } catch (error) {
@@ -79,7 +99,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
             showToast("Không thể xử lý ảnh này. Vui lòng thử ảnh khác.", "error");
         } finally {
             setIsProcessingImage(null);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
     }
   };
@@ -116,10 +136,10 @@ export const Step2BackgroundAndDecorations: React.FC<{
         </h4>
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
             {categories.map(category => (
-                <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-bold transition-all ${selectedCategory === category ? 'bg-luvin-pink text-white' : 'bg-gray-100 text-gray-500'}`}>{category}</button>
+                <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-bold transition-all ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`}>{category}</button>
             ))}
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
           {filteredBackgrounds.map((bg, idx) => (
             <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} priority={idx < 10} />
           ))}
@@ -165,7 +185,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                             </label>
                             {config.customFormData?.[field.id] && (
                                 <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden relative group">
-                                    <img src={config.customFormData[field.id]} className="w-full h-full object-cover" />
+                                    <SmartImage src={config.customFormData[field.id]} className="w-full h-full" />
                                     <button type="button" onClick={() => handleUpdateFormData(field.id, '')} className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] font-bold">Xóa</button>
                                 </div>
                             )}
