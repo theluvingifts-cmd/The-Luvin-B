@@ -38,6 +38,8 @@ import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
 
+const CACHE_KEY_DESIGN = 'active_design_draft';
+
 const loadUploadedFonts = (fonts: CustomFont[]) => {
     const styleId = 'uploaded-custom-fonts';
     let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -74,7 +76,6 @@ const updateMetaTags = (config: StoreConfig) => {
     document.getElementById('og-description')?.setAttribute('content', desc);
     document.getElementById('twitter-description')?.setAttribute('content', desc);
     
-    // Default branding assets alignment
     const shareImage = config.seoImageUrl || config.logoUrl || "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
     document.getElementById('og-image')?.setAttribute('content', shareImage);
     document.getElementById('twitter-image')?.setAttribute('content', shareImage);
@@ -87,7 +88,22 @@ const updateMetaTags = (config: StoreConfig) => {
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
+  
+  // Initialize config from localStorage to fix state loss on refresh
+  const [config, setConfig] = useState<FrameConfig>(() => {
+    try {
+        const saved = localStorage.getItem(CACHE_KEY_DESIGN);
+        return saved ? JSON.parse(saved) : INITIAL_FRAME_CONFIG;
+    } catch (e) {
+        return INITIAL_FRAME_CONFIG;
+    }
+  });
+
+  // Sync config to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(CACHE_KEY_DESIGN, JSON.stringify(config));
+  }, [config]);
+
   const [builderInitialStep, setBuilderInitialStep] = useState(1);
   const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
       try {
@@ -140,7 +156,6 @@ const App: React.FC = () => {
       root.style.setProperty('--color-bg', global.colors.background);
       root.style.setProperty('--color-accent', global.colors.accent);
       
-      // We only update variables if the theme specifically overrides standard branding
       const cleanHeadingFont = global.typography.headingFont.replace(/['"]/g, '');
       const cleanBodyFont = global.typography.bodyFont.replace(/['"]/g, '');
       
@@ -150,7 +165,7 @@ const App: React.FC = () => {
       
       if (sections) {
           if (sections.header) {
-              root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255,255,255,0.8)');
+              root.style.setProperty('--header-bg', sections.header.backgroundColor || 'rgba(255, 255, 255, 0.8)');
               root.style.setProperty('--header-text', sections.header.textColor || '#1f2937');
           }
           if (sections.footer) {
@@ -159,7 +174,6 @@ const App: React.FC = () => {
           }
       }
       
-      // Only load uploaded fonts dynamicially
       loadUploadedFonts(uploadedFonts);
   };
 

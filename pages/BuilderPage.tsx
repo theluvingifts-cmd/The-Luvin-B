@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Page, FrameConfig, LegoPart, TextConfig, FrameOption, CustomFont } from '../types';
 import { 
@@ -233,7 +234,6 @@ const TextEditor: React.FC<{
                     </button>
                     <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                         {(['left', 'center', 'right'] as const).map(align => (
-                           /* Fix: Using activeText.textAlign instead of undefined activePartType */
                            <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-4 py-2 text-sm font-bold ${(activeText.textAlign || 'center') === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'} transition-all`}>
                              {align.charAt(0).toUpperCase()}
                            </button>
@@ -280,7 +280,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [hotPartIds, setHotPartIds] = useState<string[]>([]);
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
   const [previewFont, setPreviewFont] = useState<string | null>(null); 
-  const [showRestoreDraft, setShowRestoreDraft] = useState(false); 
   
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
@@ -292,21 +291,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
-  // SMART PRELOADING: Tải trước các tài nguyên khi người dùng vừa vào trang
   useEffect(() => {
-    // 1. Tải trước các Background mẫu đầu tiên
     backgrounds.slice(0, 5).forEach(bg => preloadImage(bg.previewUrl || bg.url));
-    
-    // 2. Tải trước các linh kiện "Hot"
     if (hotPartIds.length > 0) {
         hotPartIds.forEach(id => {
             const part = allParts[id];
             if (part) preloadImage(part.imageUrl);
         });
     }
-
-    // 3. Tải trước các bộ phận nhân vật cơ bản (Hair, Face, Shirt, Pants đầu danh sách)
-    // Fix: Cast Object.values(legoParts) to LegoPart[][] to ensure the inferred type of partsList has a .slice() method.
     (Object.values(legoParts) as LegoPart[][]).forEach(partsList => {
         partsList.slice(0, 3).forEach(p => preloadImage(p.imageUrl));
     });
@@ -329,50 +321,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         }, 1000);
     }
   }, [step, isEditingOrder]);
-
-  useEffect(() => {
-      if (history.length > 1 && !isEditingOrder && editingCartIndex === null) {
-          const draft = JSON.stringify(config);
-          localStorage.setItem('builder_draft', draft);
-      }
-  }, [config, history, isEditingOrder, editingCartIndex]);
-
-  useEffect(() => {
-      if (editingCartIndex === null && !isEditingOrder) {
-          const draft = localStorage.getItem('builder_draft');
-          if (draft) {
-              try {
-                  const parsedDraft = JSON.parse(draft);
-                  if (JSON.stringify(parsedDraft) !== JSON.stringify(INITIAL_FRAME_CONFIG)) {
-                      setShowRestoreDraft(true);
-                  }
-              } catch (e) {
-                  console.error("Failed to parse draft", e);
-              }
-          }
-      }
-  }, [editingCartIndex, isEditingOrder]);
-
-  const handleRestoreDraft = () => {
-      try {
-          const draft = localStorage.getItem('builder_draft');
-          if (draft) {
-              const parsed = JSON.parse(draft);
-              setConfig(parsed);
-              setHistory([parsed]);
-              setHistoryIndex(0);
-              showToast("Đã khôi phục thiết kế gần nhất!", 'success');
-          }
-      } catch(e) {
-          showToast("Lỗi khôi phục.", 'error');
-      }
-      setShowRestoreDraft(false);
-  };
-
-  const handleDiscardDraft = () => {
-      localStorage.removeItem('builder_draft');
-      setShowRestoreDraft(false);
-  };
 
   useEffect(() => {
       const currentFrame = frames.find(f => f.id === config.frameId);
@@ -456,6 +404,16 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           setHistoryIndex(newIndex);
           setConfig(history[newIndex]);
       }
+  };
+
+  const handleReset = () => {
+    if (confirm("Bạn có chắc chắn muốn xóa toàn bộ thiết kế hiện tại và bắt đầu lại từ đầu?")) {
+        setConfig(INITIAL_FRAME_CONFIG);
+        setHistory([INITIAL_FRAME_CONFIG]);
+        setHistoryIndex(0);
+        localStorage.removeItem('active_design_draft');
+        showToast("Đã làm mới thiết kế!", 'success');
+    }
   };
 
   const handleShare = async () => {
@@ -773,7 +731,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
              return;
         }
         const finalConfig = { ...config, previewImageUrl: cloudUrl };
-        localStorage.removeItem('builder_draft');
         if (editingCartIndex !== null && !andCheckout) {
             onUpdateCart(finalConfig);
         } else {
@@ -836,7 +793,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     <div className="bg-gray-50 py-2 sm:py-6 safe-bottom">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-2">
-            <div className="text-sm text-gray-50">
+            <div className="text-sm text-gray-400">
                 <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
             </div>
         </div>
@@ -861,13 +818,16 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                             <input type="file" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" />
                         </div>
                         <button onClick={handleUndo} disabled={historyIndex <= 0} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title="Hoàn tác (Undo)">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
                         </button>
                         <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title="Làm lại (Redo)">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m-6-6l-6-6" /></svg>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m-6-6l-6-6" /></svg>
+                        </button>
+                        <button onClick={handleReset} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all shadow-sm" title="Làm mới thiết kế">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                         <button onClick={handleShare} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm" title="Chia sẻ thiết kế">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     </div>
                 </div>
@@ -934,7 +894,6 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
         </div>
       </div>
-      {showRestoreDraft && (<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-white border border-gray-200 shadow-xl rounded-xl p-4 w-11/12 max-sm animate-bounce-small text-left"><div className="flex items-start gap-3"><span>💾</span><div><h4 className="font-bold text-gray-900 text-sm">Bản nháp chưa hoàn thành</h4><p className="text-xs text-gray-600 mt-1">Chúng tôi tìm thấy thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?</p></div></div><div className="flex gap-3 mt-3 justify-end"><button onClick={handleDiscardDraft} className="text-xs font-bold text-gray-500 hover:text-gray-700 px-3 py-1.5">Bỏ qua</button><button onClick={handleRestoreDraft} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-lg shadow-md hover:bg-black">Khôi phục</button></div></div>)}
     </div>
   );
 };
