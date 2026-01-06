@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { FrameConfig, LegoPart, LegoCharacterConfig, DraggableItem, OutfitColor } from '../../types';
 import { LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../../constants';
 import { getEffectivePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../../utils/pricing';
+import { SmartImage } from '../shared/SmartImage';
 
 const isNeckAccessory = (part?: LegoPart) => {
     if (!part || part.type !== 'accessory') return false;
@@ -20,8 +21,8 @@ const PartButton: React.FC<{
     originalPrice?: number;
     isHot?: boolean;
     priority?: boolean;
-}> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot, priority }) => {
-    const [imgError, setImgError] = useState(false);
+    disableTransition?: boolean;
+}> = ({ part, isSelected, onClick, priceToDisplay, originalPrice, isHot, priority, disableTransition }) => {
     const [isClicked, setIsClicked] = useState(false);
 
     const handleClick = () => {
@@ -46,7 +47,7 @@ const PartButton: React.FC<{
             onClick={handleClick}
             className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative overflow-hidden ${
                 isSelected
-                    ? 'border-luvin-pink bg-pink-50'
+                    ? 'border-luvin-pink bg-pink-50 shadow-sm'
                     : 'border-gray-200 bg-white hover:border-gray-300'
             } ${isClicked ? 'ring-2 ring-luvin-pink ring-opacity-50 scale-95' : 'hover:scale-[1.02]'}`}
         >
@@ -70,18 +71,13 @@ const PartButton: React.FC<{
             )}
             
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100/50">
-                {!imgError && part.imageUrl ? (
-                    <img 
-                        src={part.imageUrl} 
-                        alt={part.name} 
-                        className="w-full h-full object-contain" 
-                        onError={() => setImgError(true)}
-                        loading={priority ? "eager" : "lazy"}
-                        {...(priority ? { fetchpriority: "high" } : {})}
-                    />
-                ) : (
-                    <div className="text-[10px] text-gray-400 text-center p-1">No Image</div>
-                )}
+                <SmartImage 
+                    src={part.imageUrl} 
+                    alt={part.name} 
+                    className="w-full h-full"
+                    loading={priority ? "eager" : "lazy"}
+                    disableTransition={disableTransition}
+                />
 
                 {hasMultipleColors && (
                     <div className="absolute bottom-1 right-1 z-20 bg-white/95 rounded-full w-6 h-6 flex items-center justify-center shadow-md border border-pink-100 animate-fade-in" title="Có thể đổi màu">
@@ -527,6 +523,7 @@ export const Step3Characters: React.FC<{
                                     priceToDisplay={priceToDisplay}
                                     originalPrice={originalPriceToDisplay}
                                     priority={index < 8} // Ưu tiên load 8 món đầu tiên cực nhanh
+                                    disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
                                 />
                             );
                         }) : (

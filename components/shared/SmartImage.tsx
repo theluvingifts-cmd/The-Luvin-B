@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 interface SmartImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackSrc?: string;
+  disableTransition?: boolean;
 }
 
 /**
@@ -15,6 +16,7 @@ export const SmartImage: React.FC<SmartImageProps> = ({
   className = "", 
   fallbackSrc = "https://placehold.co/400x500?text=Image+Not+Found",
   loading = "lazy",
+  disableTransition = false,
   ...props 
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -38,13 +40,28 @@ export const SmartImage: React.FC<SmartImageProps> = ({
     }
   };
 
+  if (disableTransition) {
+    return (
+      <div className={`relative overflow-hidden ${className}`}>
+        <img
+          {...props}
+          src={currentSrc}
+          alt={alt}
+          loading={loading}
+          onError={handleError}
+          className={`w-full h-full object-contain ${className}`}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={`relative overflow-hidden bg-gray-200 ${className}`}>
+    <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
       {/* Pulse Skeleton Overlay */}
       {!isLoaded && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 animate-pulse">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 animate-pulse">
           <svg 
-            className="w-8 h-8 text-gray-300 animate-spin" 
+            className="w-6 h-6 text-gray-200 animate-spin" 
             fill="none" 
             viewBox="0 0 24 24"
           >
@@ -54,7 +71,7 @@ export const SmartImage: React.FC<SmartImageProps> = ({
         </div>
       )}
 
-      {/* Actual Image */}
+      {/* Actual Image with Enhanced Transitions */}
       <img
         {...props}
         src={currentSrc}
@@ -63,8 +80,10 @@ export const SmartImage: React.FC<SmartImageProps> = ({
         onLoad={handleLoad}
         onError={handleError}
         className={`
-          w-full h-full object-cover transition-opacity duration-500 ease-in-out
-          ${isLoaded ? 'opacity-100' : 'opacity-0'}
+          w-full h-full object-contain transition-all duration-700 ease-out
+          ${isLoaded 
+            ? 'opacity-100 scale-100 blur-0 grayscale-0' 
+            : 'opacity-0 scale-95 blur-sm grayscale-[0.5]'}
           ${className}
         `}
       />

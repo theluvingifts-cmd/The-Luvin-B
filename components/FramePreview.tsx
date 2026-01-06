@@ -36,11 +36,34 @@ interface FramePreviewProps {
   onAlign?: (type: 'center' | 'horizontal' | 'vertical') => void;
 }
 
-// 1. Optimized SafeImage Component
-const SafeImage = memo(({ src, style, className, alt, priority, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean }) => {
+// 1. Optimized SafeImage Component with Smooth Transition
+const SafeImage = memo(({ src, style, className, alt, priority, disableTransition, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean; disableTransition?: boolean }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
     
+    useEffect(() => {
+        setIsLoaded(false);
+        setHasError(false);
+    }, [src]);
+
     if (hasError || !src) return null;
+
+    if (disableTransition) {
+        return (
+            <img 
+                crossOrigin="anonymous" 
+                referrerPolicy="no-referrer"
+                src={src}
+                alt={alt}
+                style={style}
+                onError={() => setHasError(true)} 
+                className={className}
+                loading={priority ? "eager" : "lazy"}
+                {...(priority ? { fetchpriority: "high" } : {})}
+                {...props}
+            />
+        );
+    }
 
     return (
         <img 
@@ -49,8 +72,13 @@ const SafeImage = memo(({ src, style, className, alt, priority, ...props }: Reac
             src={src}
             alt={alt}
             style={style}
+            onLoad={() => setIsLoaded(true)}
             onError={() => setHasError(true)} 
-            className={`${className} transition-opacity duration-200`}
+            className={`
+                ${className} 
+                transition-all duration-500 ease-out
+                ${isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-[2px]'}
+            `}
             loading={priority ? "eager" : "lazy"}
             {...(priority ? { fetchpriority: "high" } : {})}
             {...props}
@@ -93,10 +121,10 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
 
   return (
     <div style={containerStyle}>
-      {pants && pantsImageUrl && <SafeImage priority src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />}
-      {shirt && shirtImageUrl && <SafeImage priority src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />}
-      {face && face.imageUrl && <SafeImage priority src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
-      {hair && hairImageUrl && <SafeImage priority src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
+      {pants && pantsImageUrl && <SafeImage disableTransition priority src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />}
+      {shirt && shirtImageUrl && <SafeImage disableTransition priority src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />}
+      {face && face.imageUrl && <SafeImage disableTransition priority src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
+      {hair && hairImageUrl && <SafeImage disableTransition priority src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
     </div>
   );
 });
