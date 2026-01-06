@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ThemeConfig, CustomFont, StaffMember } from '../types';
 
 const CONFIG_DOC_ID = 'general';
+const CACHE_KEY = 'store_config_cache';
 
 export interface StoreConfig {
     // Legacy fields
@@ -89,36 +90,47 @@ export const DEFAULT_THEME: ThemeConfig = {
     }
 };
 
+/**
+ * Returns the cached configuration from localStorage immediately.
+ * Used for instant first-paint hydration.
+ */
+export const getCachedConfig = (): StoreConfig | null => {
+    try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+        return null;
+    }
+};
+
 export const getStoreConfig = async (): Promise<StoreConfig | null> => {
     try {
         const docRef = doc(db, 'config', CONFIG_DOC_ID);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             const data = docSnap.data() as StoreConfig;
-            if (!data.theme) {
-                data.theme = DEFAULT_THEME;
-            }
-            if (!data.uploadedFonts) {
-                data.uploadedFonts = [];
-            }
-            if (!data.staff) {
-                data.staff = [];
-            }
-            if (data.b2bDiscountPercent === undefined) {
-                data.b2bDiscountPercent = 5;
-            }
+            if (!data.theme) data.theme = DEFAULT_THEME;
+            if (!data.uploadedFonts) data.uploadedFonts = [];
+            if (!data.staff) data.staff = [];
+            if (data.b2bDiscountPercent === undefined) data.b2bDiscountPercent = 5;
+            
+            // Persist to cache
+            localStorage.setItem(CACHE_KEY, JSON.stringify(data));
             return data;
         }
-        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
+        return getCachedConfig() || { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
     } catch (error: any) {
-        console.warn("Firestore: Unable to fetch config. Using default settings.");
-        return { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
+        console.warn("Firestore: Unable to fetch config. Using cache fallback.");
+        return getCachedConfig();
     }
 };
 
 export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
     try {
         await setDoc(doc(db, 'config', CONFIG_DOC_ID), config, { merge: true });
+        // Update cache
+        const current = getCachedConfig() || {};
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ...current, ...config }));
         return true;
     } catch (error) {
         console.error("Error saving config:", error);

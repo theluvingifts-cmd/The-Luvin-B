@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import type { Page, FeedbackItem, CollectionTemplate } from '../types';
 import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
-import { StoreConfig } from '../services/configService';
+import { StoreConfig, getCachedConfig } from '../services/configService';
 import { formatCurrency } from '../utils/pricing';
 import { getTotalOrderCount } from '../services/orderService';
 
@@ -12,28 +12,6 @@ interface HomePageProps {
     feedbacks?: FeedbackItem[];
     templates?: CollectionTemplate[];
 }
-
-const Icons = {
-    Personalized: () => (
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-luvin-pink">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-        </svg>
-    ),
-    Quality: () => (
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-luvin-pink">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-        </svg>
-    ),
-    Gift: () => (
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-luvin-pink">
-            <rect x="3" y="8" width="18" height="4" rx="1"/>
-            <path d="M12 8v13"/>
-            <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/>
-            <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>
-        </svg>
-    )
-};
 
 const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ className, ...props }) => {
     const [loaded, setLoaded] = useState(false);
@@ -48,15 +26,23 @@ const FadeInImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ clas
     );
 };
 
-export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedbacks, templates }) => {
-  const heroImage = config?.heroImageUrl || 'https://res.cloudinary.com/dbdqd93km/image/upload/v1764516860/uwa2bkcqdog9yctdmett.png'; 
-  const inspireImage = config?.inspireImageUrl || 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop';
-  
-  const heroTitle = config?.heroTitle || 'Gói ghém yêu thương';
-  const heroSubtitle = config?.heroSubtitle || 'trong từng mảnh ghép';
-  
-  const storyTitle = config?.homeStoryTitle || 'Hơn cả một món quà, <br/>đó là kỷ niệm.';
-  const storyContent = config?.homeStoryContent || 'Chúng tôi tin rằng, món quà ý nghĩa nhất không nằm ở giá trị vật chất, mà ở câu chuyện nó mang theo.\nTại The Luvin, mỗi khung tranh là một cuốn nhật ký mở, nơi bạn kể lại hành trình yêu thương của mình qua những mảnh ghép nhỏ bé nhưng đầy màu sắc.\n\nDù là ngày kỷ niệm, sinh nhật hay một lời xin lỗi ngọt ngào, hãy để chúng tôi giúp bạn gói ghém cảm xúc ấy một cách trọn vẹn nhất.';
+/**
+ * Skeleton Components for Text
+ */
+const TextSkeleton: React.FC<{ className: string }> = ({ className }) => (
+    <div className={`bg-gray-200 animate-pulse rounded-lg ${className}`}></div>
+);
+
+export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConfig, feedbacks, templates }) => {
+  // 1. Initialize from Cache immediately for instant render
+  const [localConfig, setLocalConfig] = useState<StoreConfig | null>(() => getCachedConfig());
+
+  // 2. Sync with Prop when server data arrives
+  useEffect(() => {
+    if (propConfig && Object.keys(propConfig).length > 0) {
+        setLocalConfig(propConfig);
+    }
+  }, [propConfig]);
 
   const displayTemplates = (templates && templates.length > 0) ? templates.slice(0, 4) : COLLECTION_TEMPLATES.slice(0, 4);
   const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
@@ -126,14 +112,23 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex flex-col lg:flex-row bg-[#fffbf0]">
         <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 lg:py-0 z-10 order-2 lg:order-1">
-            <div className="animate-fade-in space-y-6">
+            <div className="animate-fade-in space-y-6 text-left">
                 <div className="flex items-center gap-3">
                     <span className="h-px w-12 bg-luvin-pink"></span>
                     <span className="text-xs font-bold tracking-[0.2em] text-gray-500 uppercase">The Luvin Gifts</span>
                 </div>
                 <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl leading-[1.1] text-gray-900">
-                    {heroTitle} <br/>
-                    <span className="text-luvin-pink italic font-light">{heroSubtitle}</span>
+                    {localConfig?.heroTitle ? (
+                        localConfig.heroTitle
+                    ) : (
+                        <TextSkeleton className="h-16 w-3/4 mb-4" />
+                    )} 
+                    <br/>
+                    {localConfig?.heroSubtitle ? (
+                        <span className="text-luvin-pink italic font-light">{localConfig.heroSubtitle}</span>
+                    ) : (
+                        <TextSkeleton className="h-10 w-1/2" />
+                    )}
                 </h1>
                 <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-md">
                     Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn, tinh tế và đầy cảm xúc.
@@ -146,7 +141,11 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
         </div>
         <div className="w-full lg:w-1/2 h-[50vh] lg:h-auto relative order-1 lg:order-2">
             <div className="absolute inset-0 bg-gray-100 lg:rounded-bl-[100px] overflow-hidden">
-                <FadeInImage src={heroImage} alt="Hero" className="w-full h-full" loading="eager" />
+                {localConfig?.heroImageUrl ? (
+                    <FadeInImage src={localConfig.heroImageUrl} alt="Hero" className="w-full h-full" loading="eager" />
+                ) : (
+                    <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+                )}
                 <div className="absolute inset-0 bg-black/10 mix-blend-multiply pointer-events-none"></div>
             </div>
         </div>
@@ -157,12 +156,34 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config, feedback
           <div className="container mx-auto px-6">
               <div className="flex flex-col md:flex-row items-center gap-16">
                   <div className="w-full md:w-1/2 relative">
-                      <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl relative z-10"><FadeInImage src={inspireImage} alt="Story" className="w-full h-full" /></div>
+                      <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl relative z-10">
+                        {localConfig?.inspireImageUrl ? (
+                            <FadeInImage src={localConfig.inspireImageUrl} alt="Story" className="w-full h-full" />
+                        ) : (
+                            <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+                        )}
+                      </div>
                   </div>
                   <div className="w-full md:w-1/2 text-center md:text-left">
                       <span className="text-luvin-pink font-bold tracking-widest text-xs uppercase mb-2 block">Our Story</span>
-                      <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6" dangerouslySetInnerHTML={{ __html: storyTitle }}></h2>
-                      <div className="text-gray-600 mb-6 leading-loose whitespace-pre-line">{storyContent}</div>
+                      <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                          {localConfig?.homeStoryTitle ? (
+                              <span dangerouslySetInnerHTML={{ __html: localConfig.homeStoryTitle }}></span>
+                          ) : (
+                              <TextSkeleton className="h-12 w-full max-w-sm mx-auto md:mx-0" />
+                          )}
+                      </h2>
+                      <div className="text-gray-600 mb-6 leading-loose whitespace-pre-line text-left">
+                          {localConfig?.homeStoryContent ? (
+                              localConfig.homeStoryContent
+                          ) : (
+                              <div className="space-y-2">
+                                  <TextSkeleton className="h-4 w-full" />
+                                  <TextSkeleton className="h-4 w-full" />
+                                  <TextSkeleton className="h-4 w-5/6" />
+                              </div>
+                          )}
+                      </div>
                       <button onClick={() => navigateTo('about')} className="text-gray-900 font-bold border-b-2 border-gray-900 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-colors">Đọc thêm về chúng tôi</button>
                   </div>
               </div>
