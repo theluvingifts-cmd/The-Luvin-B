@@ -7,6 +7,7 @@ import { uploadToCloudinary } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { FeedbackForm } from './forms/FeedbackForm';
 import * as firebaseApp from 'firebase/app';
+// Fix: Use standard modular imports for Firebase v9+
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';

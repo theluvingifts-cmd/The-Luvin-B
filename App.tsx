@@ -73,9 +73,12 @@ const updateMetaTags = (config: StoreConfig) => {
     document.getElementById('meta-description')?.setAttribute('content', desc);
     document.getElementById('og-description')?.setAttribute('content', desc);
     document.getElementById('twitter-description')?.setAttribute('content', desc);
+    
+    // Default branding assets alignment
     const shareImage = config.seoImageUrl || config.logoUrl || "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
     document.getElementById('og-image')?.setAttribute('content', shareImage);
     document.getElementById('twitter-image')?.setAttribute('content', shareImage);
+    
     if (config.faviconUrl) {
         const faviconLink = document.getElementById('favicon-link') as HTMLLinkElement;
         if (faviconLink) faviconLink.href = config.faviconUrl;

@@ -8,6 +8,7 @@ import { getAllFeedbacks } from '../services/feedbackService';
 import { getAllFrames } from '../services/frameService';
 import { getStoreConfig, StoreConfig } from '../services/configService';
 import { auth } from '../config/firebase';
+// Fix: Use modular imports for Firebase v9+
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, StaffRole } from '../types';
 
@@ -18,8 +19,10 @@ import { AdminProducts } from '../components/admin/AdminProducts';
 import { AdminConfig } from '../components/admin/AdminConfig';
 import { AdminVouchers } from '../components/admin/AdminVouchers';
 import { AdminCustomers } from '../components/admin/AdminCustomers';
+import { AdminDesign } from '../components/admin/AdminDesign';
+import { Logo } from '../components/shared/Logo';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -85,7 +88,7 @@ const AdminPage: React.FC = () => {
     const canManageConfig = role === 'admin';
 
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'design')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -111,8 +114,12 @@ const AdminPage: React.FC = () => {
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
                     <div className="h-14 sm:h-16 flex justify-between items-center">
                         <div className="flex items-center gap-4 lg:gap-8">
-                            <div className="text-lg sm:text-xl font-bold tracking-tight whitespace-nowrap flex items-center gap-2">
-                                <span>The Luvin</span>
+                            <div className="flex items-center gap-2">
+                                <Logo 
+                                    url={storeConfig.logoUrl} 
+                                    className="h-8" 
+                                    textClassName="text-lg"
+                                />
                                 <span className="font-normal text-gray-400 text-xs sm:text-sm bg-gray-100 px-2 py-0.5 rounded-full">Quản lý</span>
                             </div>
                             <nav className="hidden md:flex gap-1 overflow-x-auto no-scrollbar">
@@ -123,6 +130,7 @@ const AdminPage: React.FC = () => {
                                     <>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
+                                        <button onClick={() => setActiveTab('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
                                         <button onClick={() => setActiveTab('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
                                     </>
                                 )}
@@ -153,6 +161,7 @@ const AdminPage: React.FC = () => {
                             <>
                                 <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
                                 <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
+                                <button onClick={() => setActiveTab('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Studio Design</button>
                                 <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
                             </>
                         )}
@@ -167,6 +176,7 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}
+                {activeTab === 'design' && canManageConfig && <AdminDesign />}
             </main>
         </div>
     );

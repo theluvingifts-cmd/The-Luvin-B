@@ -1,16 +1,15 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { auth as firebaseAuthInstance } from '../config/firebase';
 import { getAllOrders, updateOrder, deleteOrder, countPartsInOrder } from '../services/orderService';
 import { getAllParts, addPart, updatePart, deletePart, seedDatabase, adjustStock, reorderParts } from '../services/productService';
 import { getAllBackgrounds, addBackground, updateBackground, deleteBackground, seedBackgrounds, reorderBackgrounds } from '../services/backgroundService';
 import { getAllTemplates, addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../services/templateService';
 import { getAllFeedbacks, addFeedback, updateFeedback, deleteFeedback, seedFeedbacks } from '../services/feedbackService';
-import { getAllFrames, addFrame, updateFrame, deleteFrame, seedFrames } from '../services/frameService'; // ADDED: Frame Service
+import { getAllFrames, addFrame, updateFrame, deleteFrame, seedFrames } from '../services/frameService'; 
 import { uploadToCloudinary } from '../services/uploadService'; 
 import { updateStoreConfig, getStoreConfig, StoreConfig } from '../services/configService'; 
-import { auth } from '../config/firebase';
-// Fix: Use named imports from 'firebase/auth' as per modular SDK
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'; 
 import type { Order, LegoPart, FrameConfig, LegoCharacterConfig, DraggableItem, PresetBackground, OutfitColor, CollectionTemplate, FeedbackItem, FrameOption } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../constants';
 
@@ -144,7 +143,7 @@ const FrameForm: React.FC<{
         imageUrl: '',
         description: '',
         stock: 100,
-        colors: ['black', 'white'] // Default colors
+        colors: ['black', 'white'] 
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -156,7 +155,6 @@ const FrameForm: React.FC<{
     };
 
     const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Parse comma separated colors
         const colors = e.target.value.split(',').map(c => c.trim()).filter(c => c !== '');
         setFormData(prev => ({ ...prev, colors }));
     };
@@ -228,6 +226,7 @@ const FrameForm: React.FC<{
     );
 };
 
+// Fix: Complete ProductForm component and add proper return to satisfy FC type
 const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
     onSave: (part: LegoPart) => void; 
@@ -237,12 +236,6 @@ const ProductForm: React.FC<{
         id: `part_${Date.now()}`, name: '', price: 0, imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: []
     });
     const [isUploading, setIsUploading] = useState(false);
-    
-    const [colors, setColors] = useState<OutfitColor[]>(initialData?.colors || []);
-    const [newColor, setNewColor] = useState<OutfitColor>({ name: '', hex: '#000000', price: 0, imageUrl: '', stock: undefined });
-    const [isUploadingColorImg, setIsUploadingColorImg] = useState(false);
-    const [editingColorIndex, setEditingColorIndex] = useState<number | null>(null);
-    const [draggedColorIndex, setDraggedColorIndex] = useState<number | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -265,4 +258,62 @@ const ProductForm: React.FC<{
                 } else {
                     alert("Lỗi upload ảnh.");
                 }
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi upload ảnh.");
+            } finally {
+                setIsUploading(false);
             }
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 font-sans">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-[500px] max-h-[90vh] overflow-y-auto border border-gray-100">
+                <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{initialData ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm'}</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tên linh kiện</label>
+                        <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Loại</label>
+                            <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm">
+                                <option value="hair">Tóc</option>
+                                <option value="face">Mặt</option>
+                                <option value="shirt">Áo</option>
+                                <option value="pants">Quần</option>
+                                <option value="accessory">Phụ kiện</option>
+                                <option value="pet">Thú cưng</option>
+                                <option value="hat">Mũ</option>
+                                <option value="set">Set</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Giá</label>
+                            <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full p-2.5 border border-gray-300 rounded bg-gray-50 text-sm" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Ảnh</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 relative h-32 flex items-center justify-center">
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            {isUploading ? <span>Đang tải...</span> : formData.imageUrl ? <img src={formData.imageUrl} className="max-h-full object-contain" /> : <span>Bấm để tải ảnh</span>}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                    <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded">Hủy</button>
+                    <button onClick={() => onSave(formData)} className="px-4 py-2 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded">Lưu</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AdminPage: React.FC = () => {
+    return <div>Admin Page Placeholder (Ghost file, actual page is in pages/AdminPage.tsx)</div>;
+};
+
+export default AdminPage;

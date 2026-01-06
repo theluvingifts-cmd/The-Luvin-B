@@ -2,6 +2,7 @@
 import React from 'react';
 import type { Page } from '../types';
 import { StoreConfig } from '../services/configService';
+import { Logo } from './shared/Logo';
 
 const InstagramIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-instagram"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
@@ -40,7 +41,14 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
         <div className="container mx-auto px-6 py-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-1">
-                    <h3 className="font-bold text-base mb-3 text-primary font-heading text-xl">The Luvin</h3>
+                    <div className="mb-4">
+                        <Logo 
+                            url={config?.logoUrl} 
+                            onClick={() => navigateTo('home')} 
+                            className="h-10" 
+                            textClassName="text-xl"
+                        />
+                    </div>
                     <p className="opacity-80 text-xs leading-relaxed">Nơi những mảnh ghép LEGO kể câu chuyện tình yêu của riêng bạn. Quà tặng độc đáo, tinh tế và đầy ý nghĩa.</p>
                 </div>
                 <div>

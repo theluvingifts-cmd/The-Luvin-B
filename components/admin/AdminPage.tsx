@@ -8,6 +8,7 @@ import { getAllFeedbacks } from '../../services/feedbackService';
 import { getAllFrames } from '../../services/frameService';
 import { getStoreConfig, StoreConfig } from '../../services/configService';
 import { auth } from '../../config/firebase';
+// Fix: Use modular imports for Firebase v9+
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, StaffRole } from '../../types';
 
@@ -82,7 +83,7 @@ const AdminPage: React.FC = () => {
             }
         }
 
-        return 'warehouse'; // Default fallback for now if authenticated but not in list (should be stricter in prod)
+        return 'warehouse'; // Default fallback for staff not explicitly mentioned
     }, [currentUser, storeConfig]);
 
     const canViewDashboard = role === 'admin';
@@ -98,7 +99,7 @@ const AdminPage: React.FC = () => {
 
     if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>;
     
-    // If logged in but no role assigned -> Access Denied (Optional stricter check)
+    // If logged in but no role assigned -> Access Denied
     if (currentUser && !role) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
