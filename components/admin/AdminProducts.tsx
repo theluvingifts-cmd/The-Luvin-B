@@ -10,7 +10,6 @@ import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { TemplateForm } from './forms/TemplateForm';
 import { formatCurrency, getEffectivePrice } from '../../utils/pricing';
-import { exportCatalogToCSV } from '../../utils/csvExport';
 
 interface AdminProductsProps {
     products: LegoPart[];
@@ -138,10 +137,6 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         setQuickStockEditId(null);
     };
 
-    const handleExport = () => {
-        exportCatalogToCSV(products, frames, backgrounds);
-    };
-
     const handleDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; };
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
 
@@ -197,21 +192,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                 </div>
             ) : (
                 <>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                        <div className="flex gap-2 sm:gap-4 border-b border-gray-200 pb-2 sm:pb-0 sm:border-b-0 overflow-x-auto no-scrollbar w-full sm:w-auto">
-                            <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Linh kiện</button>
-                            <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Khung</button>
-                            <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền</button>
-                            <button onClick={() => setActiveProductSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'templates' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Mẫu thiết kế</button>
-                        </div>
-                        
-                        <button 
-                            onClick={handleExport}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-green-700 transition-all shadow-md active:scale-95"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            Xuất Excel Catalog
-                        </button>
+                    <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-4 overflow-x-auto no-scrollbar">
+                        <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Linh kiện</button>
+                        <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Khung</button>
+                        <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền</button>
+                        <button onClick={() => setActiveProductSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Mẫu thiết kế</button>
                     </div>
 
                     {activeProductSubTab === 'parts' && (
