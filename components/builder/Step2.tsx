@@ -66,9 +66,15 @@ export const Step2BackgroundAndDecorations: React.FC<{
 }> = ({ config, setConfig, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [isProcessingImage, setIsProcessingImage] = useState<string | null>(null);
+  const userBgInputRef = useRef<HTMLInputElement>(null);
 
-  const categories = useMemo(() => ['Tất cả', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
-  const filteredBackgrounds = useMemo(() => selectedCategory === 'Tất cả' ? backgrounds : backgrounds.filter(bg => bg.category === selectedCategory), [selectedCategory, backgrounds]);
+  const categories = useMemo(() => ['Tất cả', 'Tự tải', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
+  
+  const filteredBackgrounds = useMemo(() => {
+      if (selectedCategory === 'Tất cả') return backgrounds;
+      if (selectedCategory === 'Tự tải') return [];
+      return backgrounds.filter(bg => bg.category === selectedCategory);
+  }, [selectedCategory, backgrounds]);
   
   const currentBg = backgrounds.find(bg => bg.url === config.background.value);
 
@@ -85,6 +91,26 @@ export const Step2BackgroundAndDecorations: React.FC<{
 
   const handleUpdateFormData = (fieldId: string, value: string) => {
     setConfig({ ...config, customFormData: { ...(config.customFormData || {}), [fieldId]: value } });
+  };
+
+  const handleUserBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsProcessingImage('user-bg');
+      try {
+        const resizedBase64 = await resizeImage(file, 1500, 1500);
+        setConfig({
+          ...config,
+          background: { type: 'upload', value: resizedBase64 }
+        });
+        showToast("Đã áp dụng ảnh nền của bạn!", "success");
+      } catch (error) {
+        showToast("Lỗi xử lý ảnh nền.", "error");
+      } finally {
+        setIsProcessingImage(null);
+        if (userBgInputRef.current) userBgInputRef.current.value = '';
+      }
+    }
   };
 
   const handleImageUpload = async (fieldId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,7 +165,26 @@ export const Step2BackgroundAndDecorations: React.FC<{
                 <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-bold transition-all ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`}>{category}</button>
             ))}
         </div>
+
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+          {/* Nút upload luôn xuất hiện ở đầu hoặc khi chọn tab Tự tải */}
+          {(selectedCategory === 'Tất cả' || selectedCategory === 'Tự tải') && (
+            <button
+                onClick={() => userBgInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-1 flex flex-col items-center justify-center transition-all aspect-[4/5] bg-gray-50 hover:bg-gray-100 ${config.background.type === 'upload' ? 'border-luvin-pink ring-1 ring-luvin-pink' : 'border-gray-300'}`}
+            >
+                <input type="file" ref={userBgInputRef} className="hidden" accept="image/*" onChange={handleUserBackgroundUpload} />
+                {isProcessingImage === 'user-bg' ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-luvin-pink"></div>
+                ) : (
+                  <>
+                    <span className="text-xl mb-1">☁️</span>
+                    <span className="text-[8px] font-black uppercase text-gray-500">Tự tải ảnh</span>
+                  </>
+                )}
+            </button>
+          )}
+
           {filteredBackgrounds.map((bg, idx) => (
             <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} priority={idx < 10} />
           ))}
