@@ -24,10 +24,10 @@ declare var html2canvas: any;
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
-  const steps = ['Chọn khung', 'Trang trí', 'Nhân vật', 'Hoàn tất'];
+  const steps = ['Chọn khung', 'Nội dung', 'Nhân vật', 'Hoàn tất'];
 
   return (
-    <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-4 px-2 scroll-mt-24">
+    <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
       <div className="flex justify-between md:justify-start md:gap-4 items-center relative md:w-max">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 transform -translate-y-1/2 hidden sm:block"></div>
         
@@ -106,30 +106,30 @@ const FontSelector: React.FC<{
     }, []);
 
     const groups = [
-        { label: 'Phông chữ cơ bản', fonts: DEFAULT_FONTS },
-        { label: 'Phông chữ tải lên', fonts: uploadedFonts.map(f => f.name) }
+        { label: 'Cơ bản', fonts: DEFAULT_FONTS },
+        { label: 'Tải lên', fonts: uploadedFonts.map(f => f.name) }
     ];
 
     return (
         <div className="relative text-left" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
-                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
+                className="w-full p-2 border border-gray-300 rounded-xl text-xs bg-white text-left flex justify-between items-center hover:border-gray-400 transition-colors"
             >
-                <span className="truncate">{value}</span>
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <span className="truncate font-medium">{value}</span>
+                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
                     {groups.map((group) => (
                         group.fonts.length > 0 && (
                             <div key={group.label}>
-                                <div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
+                                <div className="px-3 py-1 text-[9px] font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
                                 {group.fonts.map(font => (
                                     <div 
                                         key={font}
-                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'}`}
+                                        className={`px-3 py-2 text-xs cursor-pointer hover:bg-pink-50 transition-colors ${value === font ? 'bg-pink-50 text-luvin-pink font-bold' : 'text-gray-700'}`}
                                         onMouseEnter={() => onPreview(font)}
                                         onClick={() => { onChange(font); setIsOpen(false); }}
                                     >
@@ -834,10 +834,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
                         </button>
                         <button onClick={handleReset} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all shadow-sm" title="Làm mới thiết kế">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                         <button onClick={handleShare} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm" title="Chia sẻ thiết kế">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     </div>
                 </div>

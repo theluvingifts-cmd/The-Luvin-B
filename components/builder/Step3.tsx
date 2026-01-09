@@ -132,7 +132,7 @@ export const Step3Characters: React.FC<{
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
     
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
-    const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('hot_trend');
+    const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('default');
     const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
     const [accessorySearch, setAccessorySearch] = useState<string>('');
 
@@ -393,7 +393,7 @@ export const Step3Characters: React.FC<{
         legoParts.accessory.forEach(p => {
             if (p.category) cats.add(p.category);
         });
-        return ['Tất cả', ...Array.from(cats)];
+        return ['Tất cả', ...Array.from(cats).sort()];
     }, [legoParts.accessory]);
 
     const filteredAccessories = useMemo(() => {
@@ -408,21 +408,8 @@ export const Step3Characters: React.FC<{
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
 
-        if (accessorySortMode === 'hot_trend') {
-             return list.sort((a, b) => {
-                const indexA = hotPartIds.indexOf(a.id);
-                const indexB = hotPartIds.indexOf(b.id);
-                const aIsHot = indexA !== -1;
-                const bIsHot = indexB !== -1;
-                if (aIsHot && bIsHot) return indexA - indexB;
-                if (aIsHot) return -1;
-                if (bIsHot) return 1;
-                return 0;
-            });
-        }
-
-        return sortParts(list, accessorySortMode as any);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
+        return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch]);
 
     const availablePets = useMemo(() => {
         return getAvailableParts(legoParts.pet || []);
@@ -522,7 +509,7 @@ export const Step3Characters: React.FC<{
                                     onClick={() => handlePartSelect(part)}
                                     priceToDisplay={priceToDisplay}
                                     originalPrice={originalPriceToDisplay}
-                                    priority={index < 8} // Ưu tiên load 8 món đầu tiên cực nhanh
+                                    priority={index < 8} 
                                     disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
                                 />
                             );
@@ -535,18 +522,36 @@ export const Step3Characters: React.FC<{
                 </div>
             )}
             
-            <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex flex-col gap-3 mb-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">THÊM PHỤ KIỆN</h4>
-                        <div className="relative w-full sm:w-64">
-                            <input 
-                                type="text"
-                                placeholder="Tìm kiếm phụ kiện..."
-                                value={accessorySearch}
-                                onChange={(e) => setAccessorySearch(e.target.value)}
-                                className="w-full pl-8 pr-4 py-1.5 text-xs border border-gray-300 rounded-full focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none bg-gray-50 transition-all"
-                            />
+            <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                <div className="flex flex-col gap-4 mb-4">
+                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">THÊM PHỤ KIỆN</h4>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar w-full py-1">
+                            {uniqueAccessoryCategories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setAccessoryCategory(cat)}
+                                    className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                                        accessoryCategory === cat 
+                                            ? 'bg-[#1a202c] text-white border-[#1a202c] shadow-md' 
+                                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex-shrink-0 w-full sm:w-auto">
+                            <select 
+                                value={accessorySortMode} 
+                                onChange={(e: any) => setAccessorySortMode(e.target.value)}
+                                className="w-full sm:w-auto p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white focus:ring-1 focus:ring-gray-900 outline-none appearance-none pr-8 relative"
+                                style={{backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.2em' }}
+                            >
+                                <option value="default">Mặc định</option>
+                                <option value="price_asc">Giá: Thấp đến Cao</option>
+                                <option value="price_desc">Giá: Cao đến Thấp</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -560,13 +565,16 @@ export const Step3Characters: React.FC<{
                             priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
                             originalPrice={part.price + (part.colors?.[0]?.price || 0)}
                             isHot={hotPartIds.includes(part.id)}
-                            priority={index < 4 || hotPartIds.includes(part.id)} // Ưu tiên các món "Hot" hoặc 4 món đầu
+                            priority={index < 4 || hotPartIds.includes(part.id)} 
                         />
-                    )) : null}
+                    )) : (
+                        <div className="col-span-4 text-center py-10 border-2 border-dashed border-gray-100 rounded-xl">
+                            <p className="text-xs text-gray-400 italic">Không tìm thấy phụ kiện nào.</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* PHẦN THÚ CƯNG (PETS) */}
-                {availablePets.length > 0 && (
+                {availablePets.length > 0 && accessoryCategory === 'Tất cả' && (
                     <div className="mt-8 border-t border-gray-100 pt-6">
                         <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm mb-4">THÊM THÚ CƯNG</h4>
                         <div className="grid grid-cols-4 gap-2">
