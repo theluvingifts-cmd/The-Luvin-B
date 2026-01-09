@@ -29,7 +29,7 @@ export const AboutPage: React.FC<{ config?: StoreConfig }> = ({ config }) => (
                             <img src={config?.heroImageUrl || PLACEHOLDER_IMG_1} className="w-full h-full object-cover" alt="The Luvin Story" />
                         </div>
                         <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-xl shadow-lg max-w-xs hidden md:block">
-                            <p className="font-heading text-xl font-bold text-primary">"Unique for every momment"</p>
+                            <p className="font-heading text-xl font-bold text-primary">"Unique for every moment"</p>
                             <p className="text-xs text-gray-500 mt-1">Slogan của chúng tôi</p>
                         </div>
                     </div>
