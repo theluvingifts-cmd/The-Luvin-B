@@ -514,6 +514,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return Object.values(LEGO_PARTS).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
   }, [propAllParts]);
 
+  const selectedDraggableType = useMemo(() => {
+    if (!selectedItemId || !selectedItemId.startsWith('item-')) return null;
+    const id = parseInt(selectedItemId.split('-')[1]);
+    const item = config.draggableItems.find(i => i.id === id);
+    return item?.type || null;
+  }, [selectedItemId, config.draggableItems]);
+
   const activeColors = useMemo(() => {
       if (!selectedItemId) return null;
       const [type, idStr] = selectedItemId.split('-');
@@ -755,9 +762,12 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                         </>
                     )}
-                    {['accessory', 'pet', 'hat'].includes(selectedItemId.split('-')[0]) && (
-                        <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors active:scale-90" title="Lật">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    {(selectedDraggableType === 'accessory' || selectedDraggableType === 'pet') && (
+                        <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90" title="Lật hình">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M7 9h10M14 6l3 3-3 3" />
+                                <path d="M17 15H7M10 12l-3 3 3 3" />
+                            </svg>
                         </button>
                     )}
                     <button onClick={() => onItemRemove(selectedItemId)} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
