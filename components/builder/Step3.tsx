@@ -106,8 +106,16 @@ const PartButton: React.FC<{
     );
 };
 
-const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc') => {
-    if (mode === 'default') return parts;
+const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc', hotIds: string[] = []) => {
+    if (mode === 'default') {
+        return [...parts].sort((a, b) => {
+            const aHot = hotIds.includes(a.id);
+            const bHot = hotIds.includes(b.id);
+            if (aHot && !bHot) return -1;
+            if (!aHot && bHot) return 1;
+            return 0;
+        });
+    }
     return [...parts].sort((a, b) => {
         const priceA = getEffectivePrice(a) || 0;
         const priceB = getEffectivePrice(b) || 0;
@@ -385,8 +393,8 @@ export const Step3Characters: React.FC<{
 
     const currentPartList = useMemo(() => {
         const list = getAvailableParts(legoParts[activePartType] || []);
-        return sortParts(list, sortMode);
-    }, [legoParts, activePartType, sortMode]);
+        return sortParts(list, sortMode, hotPartIds);
+    }, [legoParts, activePartType, sortMode, hotPartIds]);
 
     const uniqueAccessoryCategories = useMemo(() => {
         const cats = new Set<string>();
@@ -408,12 +416,13 @@ export const Step3Characters: React.FC<{
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
 
-        return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch]);
+        return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
 
     const availablePets = useMemo(() => {
-        return getAvailableParts(legoParts.pet || []);
-    }, [legoParts.pet]);
+        const list = getAvailableParts(legoParts.pet || []);
+        return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
+    }, [legoParts.pet, hotPartIds, accessorySortMode]);
 
     return (
         <div className="space-y-4 text-left">
