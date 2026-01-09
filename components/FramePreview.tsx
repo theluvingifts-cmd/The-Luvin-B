@@ -451,7 +451,8 @@ const Transformable = memo(({
             
             {isSelected && !isPositionLocked && (
                 <>
-                  {resizeMode === 'dimensions' && !style?.height && (
+                  {/* Fixed Property 'height' does not exist on type 'CSSProperties' by casting to any */}
+                  {resizeMode === 'dimensions' && !(style as any)?.height && (
                       <div 
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 

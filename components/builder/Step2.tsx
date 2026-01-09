@@ -66,6 +66,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
 }> = ({ config, setConfig, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [isProcessingImage, setIsProcessingImage] = useState<string | null>(null);
+  const [isManualBgLoading, setIsManualBgLoading] = useState(false);
+  const manualBgInputRef = useRef<HTMLInputElement>(null);
 
   const categories = useMemo(() => ['Tất cả', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
   const filteredBackgrounds = useMemo(() => selectedCategory === 'Tất cả' ? backgrounds : backgrounds.filter(bg => bg.category === selectedCategory), [selectedCategory, backgrounds]);
@@ -84,7 +86,28 @@ export const Step2BackgroundAndDecorations: React.FC<{
   }, [currentBg, config.formFields]);
 
   const handleUpdateFormData = (fieldId: string, value: string) => {
-    setConfig({ ...config, customFormData: { ...(config.customFormData || {}), [fieldId]: value } });
+    const newFormData = { ...(config.customFormData || {}), [fieldId]: value };
+    
+    let displayValue = value;
+    if ((fieldId.toLowerCase().includes('date') || fieldId === 'date') && value) {
+        const parts = value.split('-');
+        if (parts.length === 3) {
+            displayValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+    }
+
+    const updatedTexts = config.texts.map(t => {
+        if (t.linkedFieldId === fieldId) {
+            return { ...t, content: displayValue || '' };
+        }
+        return t;
+    });
+
+    setConfig({ 
+        ...config, 
+        customFormData: newFormData,
+        texts: updatedTexts
+    });
   };
 
   const handleImageUpload = async (fieldId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +123,28 @@ export const Step2BackgroundAndDecorations: React.FC<{
         } finally {
             setIsProcessingImage(null);
             e.target.value = '';
+        }
+    }
+  };
+
+  const handleManualBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setIsManualBgLoading(true);
+        try {
+            const resizedBase64 = await resizeImage(file, 1200, 1200);
+            setConfig({
+                ...config,
+                background: { type: 'upload', value: resizedBase64 },
+                customFormData: {} 
+            });
+            showToast("Đã tải ảnh nền của bạn!", "success");
+        } catch (error) {
+            console.error("Lỗi tải ảnh nền:", error);
+            showToast("Lỗi xử lý ảnh nền.", "error");
+        } finally {
+            setIsManualBgLoading(false);
+            if (manualBgInputRef.current) manualBgInputRef.current.value = '';
         }
     }
   };
@@ -130,25 +175,71 @@ export const Step2BackgroundAndDecorations: React.FC<{
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
+      {/* MỤC 1 LỚN: CHỌN NỀN */}
       <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm">
-        <h4 className="font-bold text-gray-800 mb-3 uppercase tracking-wider text-[11px] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-luvin-pink"></span> 1. Chọn mẫu nền
+        <h4 className="font-bold text-gray-800 mb-5 uppercase tracking-wider text-[11px] flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-luvin-pink"></span> 1. CHỌN MẪU NỀN
         </h4>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
-            {categories.map(category => (
-                <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-bold transition-all ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`}>{category}</button>
-            ))}
+        
+        {/* Tùy chọn A */}
+        <div className="mb-8">
+            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-tight mb-3 ml-1">A. CHỌN MẪU CÓ SẴN</h5>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
+                {categories.map(category => (
+                    <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-bold transition-all ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`}>{category}</button>
+                ))}
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+              {filteredBackgrounds.map((bg, idx) => (
+                <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} priority={idx < 10} />
+              ))}
+            </div>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
-          {filteredBackgrounds.map((bg, idx) => (
-            <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} priority={idx < 10} />
-          ))}
+
+        {/* Tùy chọn B */}
+        <div className="pt-5 border-t border-gray-50">
+            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-tight mb-3 ml-1">B. HOẶC TẢI ẢNH CỦA BẠN</h5>
+            <input 
+                type="file" 
+                ref={manualBgInputRef} 
+                onChange={handleManualBgUpload} 
+                accept="image/*" 
+                className="hidden" 
+            />
+            <button 
+                onClick={() => manualBgInputRef.current?.click()}
+                disabled={isManualBgLoading}
+                className={`w-full py-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    isManualBgLoading 
+                        ? 'bg-gray-100 text-gray-400 cursor-wait' 
+                        : config.background.type === 'upload'
+                            ? 'bg-pink-50 text-luvin-pink border-2 border-luvin-pink shadow-inner'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-[0.98]'
+                }`}
+            >
+                {isManualBgLoading ? (
+                    <>
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                        Đang xử lý...
+                    </>
+                ) : (
+                    <>
+                        <span className="font-bold">{config.background.type === 'upload' ? 'Đã tải ảnh nền ✓' : 'Tải ảnh nền'}</span>
+                        {config.background.type === 'upload' && (
+                            <div className="w-6 h-6 rounded-md overflow-hidden border border-luvin-pink/30">
+                                <img src={config.background.value} className="w-full h-full object-cover" alt="preview" />
+                            </div>
+                        )}
+                    </>
+                )}
+            </button>
         </div>
       </div>
 
+      {/* MỤC 2 LỚN: NHẬP THÔNG TIN */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm">
         <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. Nhập thông tin in ấn
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. NHẬP THÔNG TIN IN ẤN
         </h4>
         <div className="space-y-4">
             {activeFields.map(field => (

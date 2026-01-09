@@ -96,6 +96,8 @@ export interface TextConfig {
   borderStyle?: 'solid' | 'dashed' | 'dotted';
   borderColor?: string;
   borderWidth?: number;
+  // Added linkedFieldId to track synchronization between text elements and custom form inputs
+  linkedFieldId?: string;
 }
 
 export interface DraggableItem {
