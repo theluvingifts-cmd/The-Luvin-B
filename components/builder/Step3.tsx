@@ -420,9 +420,13 @@ export const Step3Characters: React.FC<{
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
 
     const availablePets = useMemo(() => {
-        const list = getAvailableParts(legoParts.pet || []);
+        let list = getAvailableParts(legoParts.pet || []);
+        if (accessorySearch.trim()) {
+            const query = accessorySearch.toLowerCase().trim();
+            list = list.filter(p => p.name.toLowerCase().includes(query));
+        }
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.pet, hotPartIds, accessorySortMode]);
+    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch]);
 
     return (
         <div className="space-y-4 text-left">
@@ -534,6 +538,29 @@ export const Step3Characters: React.FC<{
             <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
                 <div className="flex flex-col gap-4 mb-4">
                     <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">THÊM PHỤ KIỆN</h4>
+                    
+                    {/* Search bar for accessories */}
+                    <div className="relative group">
+                        <input 
+                            type="text" 
+                            placeholder="Tìm charm (hoa, túi, bóng bay...)" 
+                            value={accessorySearch}
+                            onChange={(e) => setAccessorySearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-luvin-pink focus:border-transparent transition-all"
+                        />
+                        <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-luvin-pink transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        {accessorySearch && (
+                            <button 
+                                onClick={() => setAccessorySearch('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        )}
+                    </div>
+
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar w-full py-1">
                             {uniqueAccessoryCategories.map(cat => (
@@ -578,7 +605,7 @@ export const Step3Characters: React.FC<{
                         />
                     )) : (
                         <div className="col-span-4 text-center py-10 border-2 border-dashed border-gray-100 rounded-xl">
-                            <p className="text-xs text-gray-400 italic">Không tìm thấy phụ kiện nào.</p>
+                            <p className="text-xs text-gray-400 italic">Không tìm thấy phụ kiện phù hợp.</p>
                         </div>
                     )}
                 </div>
