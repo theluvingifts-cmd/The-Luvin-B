@@ -1,17 +1,18 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField } from '../../types';
-import { updateOrder, deleteOrder, countPartsInOrder } from '../../services/orderService';
+import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
 import { calculatePrice, formatCurrency } from '../../utils/pricing';
 import { StatusDropdown } from './shared/StatusDropdown';
-import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
+import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
 
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
     { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800', icon: '🛡️' }, 
+    { label: 'Chưa thiết kế', color: 'bg-cyan-100 text-cyan-800', icon: '📐' },
     { label: 'Ưu tiên xuất đơn', color: 'bg-pink-100 text-pink-800', icon: '⚡' },
     { label: 'Đang đóng hàng', color: 'bg-indigo-100 text-indigo-800', icon: '🎁' },
     { label: 'Chờ chuyển hàng', color: 'bg-purple-100 text-purple-800', icon: '✓' }, 
@@ -66,6 +67,99 @@ const downloadImage = async (url: string, filename: string) => {
     }
 };
 
+interface QuickOrderModalProps {
+    onClose: () => void;
+    onSave: (order: any) => void;
+    frames: FrameOption[];
+}
+
+const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, frames }) => {
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [address, setAddress] = useState('');
+    const [selectedFrameId, setSelectedFrameId] = useState(frames[0]?.id || 'lg');
+    const [qty, setQty] = useState(1);
+    const [priceOverride, setPriceOverride] = useState<number | ''>('');
+    const [notes, setNotes] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleQuickSave = async () => {
+        if (!name || !phone) return alert("Vui lòng nhập tên và SĐT");
+        setIsSaving(true);
+        const frame = frames.find(f => f.id === selectedFrameId) || frames[0];
+        const finalUnitPrice = priceOverride !== '' ? priceOverride : frame.price;
+        const totalPrice = finalUnitPrice * qty;
+        
+        const orderId = `#TL${Date.now().toString().slice(-6)}`;
+        const orderData = {
+            id: orderId,
+            customer: { name, phone, address, email: '' },
+            delivery: { date: new Date().toISOString().split('T')[0], notes: `[ĐƠN TẠO NHANH] ${notes}` },
+            items: [
+                {
+                    ...INITIAL_FRAME_CONFIG,
+                    frameId: selectedFrameId,
+                    quantity: qty,
+                    characters: []
+                }
+            ],
+            addGiftBox: false,
+            shipping: { method: 'standard', fee: 0 },
+            payment: { method: 'full' },
+            totalPrice: totalPrice,
+            amountToPay: totalPrice,
+            status: 'Chưa thiết kế'
+        };
+
+        onSave(orderData);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up">
+                <div className="bg-gray-900 p-4 text-white flex justify-between items-center">
+                    <h3 className="font-bold">⚡ TẠO ĐƠN NHANH</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Khách hàng</label>
+                            <input placeholder="Họ và tên" className="w-full p-2.5 border rounded-lg text-sm" value={name} onChange={e => setName(e.target.value)} />
+                        </div>
+                        <div>
+                            <input placeholder="Số điện thoại" className="w-full p-2.5 border rounded-lg text-sm" value={phone} onChange={e => setPhone(e.target.value)} />
+                        </div>
+                        <div>
+                            <input placeholder="Địa chỉ (Tùy chọn)" className="w-full p-2.5 border rounded-lg text-sm" value={address} onChange={e => setAddress(e.target.value)} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Sản phẩm</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <select className="p-2.5 border rounded-lg text-sm" value={selectedFrameId} onChange={e => setSelectedFrameId(e.target.value)}>
+                                {frames.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            </select>
+                            <input type="number" placeholder="SL" className="p-2.5 border rounded-lg text-sm" value={qty} onChange={e => setQty(Number(e.target.value))} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Giá bán (Ghi đè nếu cần)</label>
+                        <input type="number" placeholder="Mặc định theo khung" className="w-full p-2.5 border rounded-lg text-sm font-bold text-blue-600" value={priceOverride} onChange={e => setPriceOverride(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <textarea placeholder="Ghi chú thêm..." className="w-full p-2.5 border rounded-lg text-sm" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
+                </div>
+                <div className="p-4 bg-gray-50 flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2.5 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Hủy</button>
+                    <button onClick={handleQuickSave} disabled={isSaving} className="flex-2 bg-blue-600 text-white py-2.5 px-8 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg disabled:opacity-50">
+                        {isSaving ? 'Đang tạo...' : 'Tạo đơn ngay'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 interface AdminOrdersProps {
     orders: Order[];
     setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
@@ -82,6 +176,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
+    const [showQuickOrderModal, setShowQuickOrderModal] = useState(false);
     
     const [amountPaidInput, setAmountPaidInput] = useState(0);
     const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
@@ -210,6 +305,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             if (showMsg) alert("Đã cập nhật!"); 
         } else {
             alert("Lỗi: Không thể cập nhật đơn hàng.");
+        }
+    };
+
+    const handleQuickOrderSave = async (orderData: any) => {
+        const res = await createOrder(orderData);
+        if (res.success && res.data) {
+            setOrders(prev => [res.data as Order, ...prev]);
+            setShowQuickOrderModal(false);
+            alert("Đã tạo đơn hàng thành công!");
+        } else {
+            alert("Lỗi khi tạo đơn: " + (res.error?.message || "Không rõ"));
         }
     };
 
@@ -456,6 +562,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             if (!prev) return null;
             let newOrder = { ...prev };
             const newItems = [...newOrder.items];
+            // Fix: Referencing 'newItems' instead of the yet-to-be-defined 'newCharacters'
             const newCharacters = [...newItems[itemIndex].characters];
             if (partId === "") {
                  newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
@@ -566,12 +673,29 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             {isLoading && (
                 <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]"><div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div><span className="font-bold text-sm">Đang xử lý...</span></div></div>
             )}
+
+            {showQuickOrderModal && (
+                <QuickOrderModal 
+                    onClose={() => setShowQuickOrderModal(false)} 
+                    onSave={handleQuickOrderSave} 
+                    frames={frames}
+                />
+            )}
             
             <div className={`lg:w-1/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-10 ${selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex gap-2 flex-col">
-                    <div className="flex gap-2 p-1 bg-gray-200 rounded-lg">
-                        <button onClick={() => setOrderTab('active')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})</button>
-                        <button onClick={() => setOrderTab('history')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Lịch sử ({orders.filter(o => ['Đã giao hàng', 'Huỷ đơn'].includes(o.status)).length})</button>
+                    <div className="flex gap-2">
+                        <div className="flex flex-1 gap-2 p-1 bg-gray-200 rounded-lg">
+                            <button onClick={() => setOrderTab('active')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Đang xử lý ({orders.filter(o => !['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status)).length})</button>
+                            <button onClick={() => setOrderTab('history')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${orderTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Lịch sử ({orders.filter(o => ['Đã giao hàng', 'Huỷ đơn'].includes(o.status)).length})</button>
+                        </div>
+                        <button 
+                            onClick={() => setShowQuickOrderModal(true)} 
+                            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 shadow-sm transition-all"
+                            title="Tạo đơn nhanh (Khách nhắn tin/gọi điện)"
+                        >
+                            <span className="text-sm font-bold">⚡ Tạo đơn</span>
+                        </button>
                     </div>
                     <div className="relative w-full mt-2">
                         <input 

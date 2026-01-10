@@ -120,22 +120,22 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
     const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
         const steps = [
-            { label: 'Chờ thanh toán', icon: '💳' },
-            { label: 'Đã xác nhận', icon: '📦' }, // Changed icon to box
-            { label: 'Đang xử lý', icon: '⚙️' },
-            { label: 'Đang giao', icon: '🚚' }, // Shortened label
-            { label: 'Hoàn thành', icon: '❤️' } // Shortened label
+            { label: 'Thanh toán', icon: '💳' },
+            { label: 'Thiết kế', icon: '📐' },
+            { label: 'Đóng gói', icon: '🎁' },
+            { label: 'Đang giao', icon: '🚚' },
+            { label: 'Hoàn thành', icon: '❤️' }
         ];
 
         const getStepIndex = (status: string) => {
             switch(status) {
                 case 'Chờ thanh toán': return 0;
                 case 'Đã xác nhận': return 1;
+                case 'Chưa thiết kế': return 1;
                 case 'Ưu tiên xuất đơn':
                 case 'Đang đóng hàng':
-                case 'Chờ chuyển hàng':
-                case 'Đang xử lý': 
                     return 2;
+                case 'Chờ chuyển hàng':
                 case 'Gửi hàng đi':
                 case 'Đang giao hàng': 
                     return 3;
@@ -345,7 +345,8 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                                         disabled={isUploading}
                                                         className="bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-black transition-colors flex items-center gap-2 shadow-md"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                                        {/* Fix: Removed duplicate stroke attribute */}
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                                                         {isUploading ? 'Đang tải...' : 'Gửi ảnh biên lai'}
                                                     </button>
                                                     <span className="text-xs text-gray-500 italic">Giúp đơn hàng được xử lý nhanh hơn</span>
