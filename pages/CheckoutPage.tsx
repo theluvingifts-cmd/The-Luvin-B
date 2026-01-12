@@ -154,7 +154,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
   
   const shippingFee = calculatedShippingFee;
-  const giftBoxFee = addGiftBox ? GIFT_BOX_PRICE : 0;
+  const giftBoxFee = (!storeConfig?.hideGiftBoxOption && addGiftBox) ? GIFT_BOX_PRICE : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -223,9 +223,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               if (history && history.length > 0) {
                   const lastOrder = history[0];
                   
-                  // FIX LỖI "KHÁCH QUEN ẢO":
-                  // Chỉ tính là khách quen nếu có ít nhất 1 đơn đã xác nhận hoặc đã hoàn thành.
-                  // Các đơn trạng thái "Chờ thanh toán", "Huỷ đơn", "Xoá đơn" sẽ bị loại bỏ khỏi logic ưu đãi.
                   const hasConfirmedOrder = history.some(order => 
                     !['Chờ thanh toán', 'Huỷ đơn', 'Xoá đơn'].includes(order.status)
                   );
@@ -234,7 +231,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                       setIsLoyalCustomer(true);
                   }
 
-                  // Vẫn hỗ trợ tự động điền thông tin để nâng cao trải nghiệm khách hàng
                   if (!name) setName(lastOrder.customer.name);
                   if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
                   if (!street && lastOrder.customer.address) {
@@ -291,7 +287,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           customer: { name, phone, email, address: fullAddress },
           delivery: { date: deliveryDate, notes: finalNotes },
           items: cartItems,
-          addGiftBox,
+          addGiftBox: !storeConfig?.hideGiftBoxOption && addGiftBox,
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },
           totalPrice,
@@ -516,17 +512,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg border">
-                 <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
-                    <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
-                    <div className="flex-grow">
-                        <span className="font-semibold text-gray-800">Thêm gói quà</span>
-                        <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
-                    </div>
-                    <span className="font-bold text-luvin-pink mr-4">+{formatCurrency(GIFT_BOX_PRICE)}</span>
-                    <input type="checkbox" checked={addGiftBox} onChange={e => setAddGiftBox(e.target.checked)} className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink"/>
-                </label>
-            </div>
+            {!storeConfig?.hideGiftBoxOption && (
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                    <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
+                        <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
+                        <div className="flex-grow">
+                            <span className="font-semibold text-gray-800">Thêm gói quà</span>
+                            <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
+                        </div>
+                        <span className="font-bold text-luvin-pink mr-4">+{formatCurrency(GIFT_BOX_PRICE)}</span>
+                        <input type="checkbox" checked={addGiftBox} onChange={e => setAddGiftBox(e.target.checked)} className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink"/>
+                    </label>
+                </div>
+            )}
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
@@ -590,7 +588,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>Tạm tính</span><span>{formatCurrency(subtotal)}</span></div>
-                {addGiftBox && <div className="flex justify-between"><span>Gói quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
+                {(!storeConfig?.hideGiftBoxOption && addGiftBox) && <div className="flex justify-between"><span>Gói quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
                 <div className="flex justify-between">
                     <span>Phí vận chuyển</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (

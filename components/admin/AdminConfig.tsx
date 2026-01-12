@@ -183,6 +183,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         }
     };
 
+    const handleToggleGiftBox = async () => {
+        const newValue = !storeConfig.hideGiftBoxOption;
+        setStoreConfig(prev => ({ ...prev, hideGiftBoxOption: newValue }));
+        await updateStoreConfig({ hideGiftBoxOption: newValue });
+    };
+
     const handleAddNewFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!newFontName.trim()) {
             alert("Vui lòng nhập tên font trước khi chọn file.");
@@ -371,8 +377,22 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
                                 </div>
                                 <ConfigImageUpload label="Banner Inspire" description="Ảnh nền phần Collection" currentUrl={storeConfig.inspireImageUrl} onUpload={(f) => handleConfigUpload(f, 'inspireImageUrl')} isUploading={uploadingField === 'inspireImageUrl'} />
-                                <div ref={(el) => { inputRefs.current['giftBoxImageUrl'] = el; }}>
-                                    <ConfigImageUpload label="Ảnh Gói Quà" description="Ảnh hiển thị khi khách chọn Thêm Gói Quà" currentUrl={storeConfig.giftBoxImageUrl} onUpload={(f) => handleConfigUpload(f, 'giftBoxImageUrl')} isUploading={uploadingField === 'giftBoxImageUrl'} />
+                                <div ref={(el) => { inputRefs.current['giftBoxImageUrl'] = el; }} className="p-4 border-2 border-dashed border-gray-200 rounded-xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="text-sm font-bold text-gray-700">Tùy chọn Hộp Quà</h4>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-black uppercase ${storeConfig.hideGiftBoxOption ? 'text-red-500' : 'text-green-600'}`}>
+                                                {storeConfig.hideGiftBoxOption ? 'Đã ẩn' : 'Đang hiện'}
+                                            </span>
+                                            <button 
+                                                onClick={handleToggleGiftBox}
+                                                className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.hideGiftBoxOption ? 'bg-gray-300' : 'bg-green-500'}`}
+                                            >
+                                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.hideGiftBoxOption ? '' : 'translate-x-6'}`}></div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <ConfigImageUpload label="Ảnh Gói Quà" description="Tải ảnh hiển thị khi khách chọn Thêm Gói Quà" currentUrl={storeConfig.giftBoxImageUrl} onUpload={(f) => handleConfigUpload(f, 'giftBoxImageUrl')} isUploading={uploadingField === 'giftBoxImageUrl'} />
                                 </div>
                             </div>
                         </div>
