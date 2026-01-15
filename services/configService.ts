@@ -1,25 +1,26 @@
 
 import { db } from '../config/firebase';
-// Standard firestore imports for modular SDK
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ThemeConfig, CustomFont, StaffMember } from '../types';
 
 const CONFIG_DOC_ID = 'general';
 const CACHE_KEY = 'store_config_cache';
 
+export interface ChatExample {
+    question: string;
+    answer: string;
+}
+
 export interface StoreConfig {
-    // Legacy fields
     logoUrl?: string;
     faviconUrl?: string;
     siteName?: string;
     giftBoxImageUrl?: string;
-    giftBoxOutOfStock?: boolean; // THAY THẾ hideGiftBoxOption
+    giftBoxOutOfStock?: boolean;
     
-    // Content Fields
     heroImageUrl?: string;
     inspireImageUrl?: string;
     
-    // Contact Info
     address?: string;
     hotline?: string;
     email?: string;
@@ -27,35 +28,33 @@ export interface StoreConfig {
     instagramUrl?: string;
     tiktokUrl?: string;
 
-    // Homepage Texts
     heroTitle?: string;
     heroSubtitle?: string;
     
-    // Homepage Story
     homeStoryTitle?: string;
     homeStoryContent?: string;
 
-    // NEW: Unified Theme Config
     theme?: ThemeConfig;
     uploadedFonts?: CustomFont[];
     
-    // NEW: Staff Management
     staff?: StaffMember[];
 
-    // Ads Config
     dailyAdsBudget?: number; 
     
-    // B2B Config
     b2bDiscountPercent?: number;
 
-    // NEW: Telegram Notification Config
     telegramBotToken?: string;
     telegramChatId?: string;
 
-    // SEO & Social
     seoTitle?: string;
     seoDescription?: string;
     seoImageUrl?: string;
+
+    // Chatbot Config
+    chatbotEnabled?: boolean;
+    chatbotInstruction?: string;
+    chatbotWelcomeMessage?: string;
+    chatbotExamples?: ChatExample[];
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -91,10 +90,6 @@ export const DEFAULT_THEME: ThemeConfig = {
     }
 };
 
-/**
- * Returns the cached configuration from localStorage immediately.
- * Used for instant first-paint hydration.
- */
 export const getCachedConfig = (): StoreConfig | null => {
     try {
         const cached = localStorage.getItem(CACHE_KEY);
@@ -113,9 +108,9 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (!data.theme) data.theme = DEFAULT_THEME;
             if (!data.uploadedFonts) data.uploadedFonts = [];
             if (!data.staff) data.staff = [];
+            if (!data.chatbotExamples) data.chatbotExamples = [];
             if (data.b2bDiscountPercent === undefined) data.b2bDiscountPercent = 5;
             
-            // Persist to cache
             localStorage.setItem(CACHE_KEY, JSON.stringify(data));
             return data;
         }
@@ -129,7 +124,6 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
 export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
     try {
         await setDoc(doc(db, 'config', CONFIG_DOC_ID), config, { merge: true });
-        // Update cache
         const current = getCachedConfig() || {};
         localStorage.setItem(CACHE_KEY, JSON.stringify({ ...current, ...config }));
         return true;
