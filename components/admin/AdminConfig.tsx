@@ -184,9 +184,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     };
 
     const handleToggleGiftBox = async () => {
-        const newValue = !storeConfig.hideGiftBoxOption;
-        setStoreConfig(prev => ({ ...prev, hideGiftBoxOption: newValue }));
-        await updateStoreConfig({ hideGiftBoxOption: newValue });
+        const newValue = !storeConfig.giftBoxOutOfStock;
+        setStoreConfig(prev => ({ ...prev, giftBoxOutOfStock: newValue }));
+        await updateStoreConfig({ giftBoxOutOfStock: newValue });
     };
 
     const handleAddNewFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -381,14 +381,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div className="flex justify-between items-center mb-4">
                                         <h4 className="text-sm font-bold text-gray-700">Tùy chọn Hộp Quà</h4>
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-black uppercase ${storeConfig.hideGiftBoxOption ? 'text-red-500' : 'text-green-600'}`}>
-                                                {storeConfig.hideGiftBoxOption ? 'Đã ẩn' : 'Đang hiện'}
+                                            <span className={`text-[10px] font-black uppercase ${storeConfig.giftBoxOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
+                                                {storeConfig.giftBoxOutOfStock ? 'Hết hàng' : 'Còn hàng'}
                                             </span>
                                             <button 
                                                 onClick={handleToggleGiftBox}
-                                                className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.hideGiftBoxOption ? 'bg-gray-300' : 'bg-green-500'}`}
+                                                className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.giftBoxOutOfStock ? 'bg-gray-300' : 'bg-green-500'}`}
                                             >
-                                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.hideGiftBoxOption ? '' : 'translate-x-6'}`}></div>
+                                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.giftBoxOutOfStock ? '' : 'translate-x-6'}`}></div>
                                             </button>
                                         </div>
                                     </div>

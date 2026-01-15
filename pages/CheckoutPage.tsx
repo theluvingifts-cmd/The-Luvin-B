@@ -154,7 +154,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
   
   const shippingFee = calculatedShippingFee;
-  const giftBoxFee = (!storeConfig?.hideGiftBoxOption && addGiftBox) ? GIFT_BOX_PRICE : 0;
+  // Gói quà chỉ tính tiền nếu còn hàng và khách chọn
+  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -287,7 +288,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           customer: { name, phone, email, address: fullAddress },
           delivery: { date: deliveryDate, notes: finalNotes },
           items: cartItems,
-          addGiftBox: !storeConfig?.hideGiftBoxOption && addGiftBox,
+          addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },
           totalPrice,
@@ -312,6 +313,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   if (cartItems.length === 0) {
       return <div className="text-center py-20">Giỏ hàng của bạn đang trống.</div>
   }
+
+  const isGiftBoxOutOfStock = storeConfig?.giftBoxOutOfStock;
 
   return (
     <div className="bg-white">
@@ -512,19 +515,36 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
             </div>
 
-            {!storeConfig?.hideGiftBoxOption && (
-                <div className="bg-gray-50 p-4 rounded-lg border">
-                    <label className="flex items-center p-3 rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50 border">
-                        <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
-                        <div className="flex-grow">
+            <div className={`bg-gray-50 p-4 rounded-lg border transition-all ${isGiftBoxOutOfStock ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                <label className={`flex items-center p-3 rounded-lg bg-white border transition-all ${isGiftBoxOutOfStock ? 'cursor-not-allowed border-gray-200' : 'cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50'}`}>
+                    <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
+                    <div className="flex-grow">
+                        <div className="flex items-center gap-2">
                             <span className="font-semibold text-gray-800">Thêm gói quà</span>
-                            <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
+                            {isGiftBoxOutOfStock && (
+                                <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">Tạm hết</span>
+                            )}
                         </div>
-                        <span className="font-bold text-luvin-pink mr-4">+{formatCurrency(GIFT_BOX_PRICE)}</span>
-                        <input type="checkbox" checked={addGiftBox} onChange={e => setAddGiftBox(e.target.checked)} className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink"/>
-                    </label>
-                </div>
-            )}
+                        <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <span className="font-bold text-luvin-pink">+{formatCurrency(GIFT_BOX_PRICE)}</span>
+                        {!isGiftBoxOutOfStock && (
+                            <input 
+                                type="checkbox" 
+                                checked={addGiftBox} 
+                                onChange={e => setAddGiftBox(e.target.checked)} 
+                                className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink mt-1"
+                            />
+                        )}
+                    </div>
+                </label>
+                {isGiftBoxOutOfStock && (
+                    <p className="text-[10px] text-gray-400 mt-2 italic px-1">
+                        * Dịch vụ đóng quà cao cấp hiện đang tạm hết vật tư, shop sẽ sớm cập nhật lại.
+                    </p>
+                )}
+            </div>
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
@@ -588,7 +608,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>Tạm tính</span><span>{formatCurrency(subtotal)}</span></div>
-                {(!storeConfig?.hideGiftBoxOption && addGiftBox) && <div className="flex justify-between"><span>Gói quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
+                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && <div className="flex justify-between"><span>Gói quà</span><span>{formatCurrency(giftBoxFee)}</span></div>}
                 <div className="flex justify-between">
                     <span>Phí vận chuyển</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (

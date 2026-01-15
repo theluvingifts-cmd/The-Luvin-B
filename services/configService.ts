@@ -13,7 +13,7 @@ export interface StoreConfig {
     faviconUrl?: string;
     siteName?: string;
     giftBoxImageUrl?: string;
-    hideGiftBoxOption?: boolean; // THÊM TRƯỜNG NÀY
+    giftBoxOutOfStock?: boolean; // THAY THẾ hideGiftBoxOption
     
     // Content Fields
     heroImageUrl?: string;
