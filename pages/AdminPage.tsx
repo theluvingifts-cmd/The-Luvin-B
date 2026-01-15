@@ -8,6 +8,7 @@ import { getAllFeedbacks } from '../services/feedbackService';
 import { getAllFrames } from '../services/frameService';
 import { getStoreConfig, StoreConfig } from '../services/configService';
 import { auth } from '../config/firebase';
+// Fix: Use modular imports for Firebase v9+
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, StaffRole } from '../types';
 
@@ -19,10 +20,9 @@ import { AdminConfig } from '../components/admin/AdminConfig';
 import { AdminVouchers } from '../components/admin/AdminVouchers';
 import { AdminCustomers } from '../components/admin/AdminCustomers';
 import { AdminDesign } from '../components/admin/AdminDesign';
-import { AdminChatbot } from '../components/admin/AdminChatbot';
 import { Logo } from '../components/shared/Logo';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'chatbot';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
 
 const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -88,7 +88,7 @@ const AdminPage: React.FC = () => {
     const canManageConfig = role === 'admin';
 
     useEffect(() => {
-        if (role === 'warehouse' && (activeTab !== 'orders')) {
+        if (role === 'warehouse' && (activeTab === 'dashboard' || activeTab === 'products' || activeTab === 'config' || activeTab === 'marketing' || activeTab === 'customers' || activeTab === 'design')) {
             setActiveTab('orders');
         }
     }, [role, activeTab]);
@@ -128,7 +128,6 @@ const AdminPage: React.FC = () => {
                                 {canManageProducts && <button onClick={() => setActiveTab('products')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Sản phẩm</button>}
                                 {canManageConfig && (
                                     <>
-                                        <button onClick={() => setActiveTab('chatbot')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chatbot' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>AI Chatbot</button>
                                         <button onClick={() => setActiveTab('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => setActiveTab('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
                                         <button onClick={() => setActiveTab('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
@@ -160,10 +159,9 @@ const AdminPage: React.FC = () => {
                         {canManageProducts && <button onClick={() => setActiveTab('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Sản phẩm</button>}
                         {canManageConfig && (
                             <>
-                                <button onClick={() => setActiveTab('chatbot')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'chatbot' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>AI</button>
                                 <button onClick={() => setActiveTab('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Khách hàng</button>
                                 <button onClick={() => setActiveTab('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Marketing</button>
-                                <button onClick={() => setActiveTab('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Design</button>
+                                <button onClick={() => setActiveTab('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Studio Design</button>
                                 <button onClick={() => setActiveTab('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>Cấu hình</button>
                             </>
                         )}
@@ -175,7 +173,6 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'dashboard' && canViewDashboard && <AdminDashboard orders={orders} products={products} frames={frames} />}
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
                 {activeTab === 'products' && canManageProducts && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} />}
-                {activeTab === 'chatbot' && canManageConfig && <AdminChatbot storeConfig={storeConfig} />}
                 {activeTab === 'config' && canManageConfig && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && canManageConfig && <AdminVouchers />}
                 {activeTab === 'customers' && canManageConfig && <AdminCustomers orders={orders} />}

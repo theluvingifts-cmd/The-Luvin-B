@@ -35,7 +35,6 @@ import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
 import { categorizeParts } from './utils/helpers';
-import { ChatWidget } from './components/ChatWidget';
 
 declare var confetti: any;
 
@@ -90,6 +89,7 @@ const updateMetaTags = (config: StoreConfig) => {
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   
+  // Initialize config from localStorage to fix state loss on refresh
   const [config, setConfig] = useState<FrameConfig>(() => {
     try {
         const saved = localStorage.getItem(CACHE_KEY_DESIGN);
@@ -99,6 +99,7 @@ const App: React.FC = () => {
     }
   });
 
+  // Sync config to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(CACHE_KEY_DESIGN, JSON.stringify(config));
   }, [config]);
@@ -385,7 +386,6 @@ const App: React.FC = () => {
             {currentPage === 'business' && <BusinessPage config={storeConfig} legoParts={legoParts} />}
         </main>
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
-        {currentPage !== 'admin' && <ChatWidget config={storeConfig} />}
         <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} />
         {zoomedImageUrl && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
