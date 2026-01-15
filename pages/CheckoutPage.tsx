@@ -7,6 +7,7 @@ import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
 import { getOrdersByPhone, getOrderById } from '../services/orderService'; 
 import { getStoreConfig, StoreConfig } from '../services/configService';
+import { trackFunnelStep } from '../services/analyticsService';
 
 // Danh sách tỉnh thành phổ biến làm fallback nếu API lỗi
 const POPULAR_PROVINCES = [
@@ -73,6 +74,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   useEffect(() => {
     getStoreConfig().then(cfg => setStoreConfig(cfg));
+    if (!initialOrder) trackFunnelStep('checkout_start');
   }, []);
 
   useEffect(() => {
@@ -296,6 +298,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
           discountAmount: totalDiscount
         });
+
+        if (!initialOrder) trackFunnelStep('order_complete');
 
         if (appliedVoucher) {
             await incrementVoucherUsage(appliedVoucher.code);

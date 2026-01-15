@@ -4,7 +4,7 @@ import { Order, LegoPart, FrameOption } from '../../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { formatCurrency } from '../../utils/pricing';
 import { getAdsCosts, saveAdsCost } from '../../services/configService';
-import { getCartStats } from '../../services/analyticsService'; // Import new service
+import { getFunnelStats } from '../../services/analyticsService';
 
 interface AdminDashboardProps {
     orders: Order[];
@@ -24,7 +24,6 @@ const getEndOfDay = (date: Date) => {
     return newDate;
 };
 
-// Valid statuses for Revenue Calculation
 const VALID_REVENUE_STATUSES = [
     'Đã xác nhận', 
     'Ưu tiên xuất đơn', 
@@ -33,6 +32,65 @@ const VALID_REVENUE_STATUSES = [
     'Gửi hàng đi', 
     'Đã giao hàng'
 ];
+
+const ConversionFunnel = ({ stats }: { stats: any }) => {
+    const steps = [
+        { key: 'builder_start', label: 'Bắt đầu thiết kế', icon: '🎨' },
+        { key: 'step2_info', label: 'Nhập thông tin', icon: '📝' },
+        { key: 'step3_parts', label: 'Phối nhân vật', icon: '🧍' },
+        { key: 'step4_summary', label: 'Xem tổng kết', icon: '📋' },
+        { key: 'add_to_cart', label: 'Thêm giỏ hàng', icon: '🛒' },
+        { key: 'checkout_start', label: 'Vào thanh toán', icon: '💳' },
+        { key: 'order_complete', label: 'Đặt hàng thành công', icon: '🎉' },
+    ];
+
+    const maxVal = stats?.builder_start_count || 1;
+
+    return (
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-full">
+            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+                <span>📊</span> Phễu chuyển đổi (Tích lũy)
+            </h4>
+            <div className="space-y-4">
+                {steps.map((step, idx) => {
+                    const val = stats?.[`${step.key}_count`] || 0;
+                    const percent = Math.round((val / maxVal) * 100);
+                    const prevVal = idx > 0 ? stats?.[`${steps[idx-1].key}_count`] || 0 : maxVal;
+                    const dropRate = idx > 0 && prevVal > 0 ? Math.round(((prevVal - val) / prevVal) * 100) : 0;
+
+                    return (
+                        <div key={step.key} className="group">
+                            <div className="flex justify-between items-end mb-1">
+                                <span className="text-xs font-bold text-gray-600 flex items-center gap-2">
+                                    <span className="w-5 h-5 flex items-center justify-center bg-gray-100 rounded text-[10px]">{step.icon}</span>
+                                    {step.label}
+                                </span>
+                                <div className="text-right">
+                                    <span className="text-xs font-black text-gray-900">{val}</span>
+                                    <span className="text-[10px] text-gray-400 ml-1">({percent}%)</span>
+                                </div>
+                            </div>
+                            <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden flex relative">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-1000"
+                                    style={{ width: `${percent}%` }}
+                                ></div>
+                                {idx > 0 && dropRate > 10 && (
+                                    <div className="absolute right-0 top-0 h-full bg-red-100/50 flex items-center px-1">
+                                        <span className="text-[8px] font-black text-red-600">-{dropRate}%</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+            <p className="mt-6 text-[10px] text-gray-400 italic">
+                * Dữ liệu được ghi lại kể từ khi hệ thống tracking hoạt động. Giúp bạn xác định bước nào khách hàng bỏ cuộc nhiều nhất.
+            </p>
+        </div>
+    );
+};
 
 const FullItemsCard = ({ title, data }: { title: string, data: Record<string, number> }) => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col h-full hover:shadow-md transition-shadow">
@@ -64,9 +122,7 @@ const FullItemsCard = ({ title, data }: { title: string, data: Record<string, nu
 );
 
 const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number; ads: number }[] }> = ({ data }) => {
-    // Find max value to scale chart
     const maxValue = Math.max(...data.map(d => Math.max(d.revenue, d.profit, d.ads)), 100000);
-    // Tính toán độ rộng tối thiểu để đảm bảo các cột không bị dính vào nhau khi xem 30 ngày
     const minWidth = data.length * 50; 
 
     return (
@@ -89,7 +145,6 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
                     <div className="border-t border-gray-400 w-full border-dashed"></div>
                 </div>
 
-                {/* Scrollable Container */}
                 <div className="overflow-x-auto h-full pb-2 custom-scrollbar">
                     <div className="h-full flex items-end justify-between gap-2 px-2" style={{ minWidth: `${minWidth}px` }}>
                         {data.map((d, index) => {
@@ -99,26 +154,21 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
 
                             return (
                                 <div key={index} className="flex flex-col items-center flex-1 h-full justify-end group relative z-10 min-w-[20px]">
-                                    {/* Bars Container */}
                                     <div className="w-full flex items-end justify-center gap-[2px] h-[85%] border-b border-gray-200 pb-1">
-                                        {/* Revenue Bar */}
                                         <div 
                                             className="w-1.5 sm:w-2.5 bg-blue-400 hover:bg-blue-500 rounded-t-sm transition-all duration-300 relative group-hover:scale-y-105 origin-bottom"
                                             style={{ height: `${Math.max(revenueHeight, 1)}%` }}
                                         ></div>
-                                        {/* Profit Bar */}
                                         <div 
                                             className="w-1.5 sm:w-2.5 bg-green-400 hover:bg-green-500 rounded-t-sm transition-all duration-300 relative group-hover:scale-y-105 origin-bottom"
                                             style={{ height: `${Math.max(profitHeight, 1)}%` }}
                                         ></div>
-                                        {/* Ads Bar */}
                                         <div 
                                             className="w-1.5 sm:w-2.5 bg-red-400 hover:bg-red-500 rounded-t-sm transition-all duration-300 relative group-hover:scale-y-105 origin-bottom"
                                             style={{ height: `${Math.max(adsHeight, 1)}%` }}
                                         ></div>
                                     </div>
                                     
-                                    {/* Tooltip */}
                                     <div className="absolute bottom-[90%] left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[10px] p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none flex flex-col gap-1">
                                         <span className="font-bold border-b border-gray-600 pb-1 mb-1 block">{d.date}</span>
                                         <span className="text-blue-200">DT: {formatCurrency(d.revenue, 'admin')}</span>
@@ -145,18 +195,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     
-    // Daily Ads Costs State
     const [dailyAdsCosts, setDailyAdsCosts] = useState<Record<string, number>>({});
-    
-    // Inline Ads Management State
     const [adsDateInput, setAdsDateInput] = useState(new Date().toISOString().split('T')[0]);
     const [adsCostInput, setAdsCostInput] = useState<number>(0);
     const [isSavingAds, setIsSavingAds] = useState(false);
     
-    // NEW: Add to Cart Stats
-    const [addToCartCount, setAddToCartCount] = useState<number>(0);
+    const [funnelStats, setFunnelStats] = useState<any>(null);
 
-    // Calculate start and end dates based on filter
     const { startDate, endDate, dateLabel } = useMemo(() => {
         let start: Date, end: Date;
         let label = '';
@@ -191,25 +236,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         return { startDate: start, endDate: end, dateLabel: label };
     }, [filterType, period, month, year, customStartDate, customEndDate]);
 
-    // Fetch Ads Costs when date range changes
     useEffect(() => {
-        const fetchCosts = async () => {
+        const fetchData = async () => {
             if (startDate && endDate) {
-                const costs = await getAdsCosts(startDate, endDate);
+                const [costs, funnel] = await Promise.all([
+                    getAdsCosts(startDate, endDate),
+                    getFunnelStats()
+                ]);
                 setDailyAdsCosts(costs);
+                setFunnelStats(funnel);
             }
         };
-        fetchCosts();
+        fetchData();
     }, [startDate, endDate]);
-
-    // Fetch Cart Stats
-    useEffect(() => {
-        const fetchStats = async () => {
-            const count = await getCartStats();
-            setAddToCartCount(count);
-        };
-        fetchStats();
-    }, []);
 
     const handleSaveAdsInline = async () => {
         if (!adsDateInput) return;
@@ -230,7 +269,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
-    // Low Stock Alert (Threshold < 10)
     const lowStockItems = useMemo(() => {
         const threshold = 10;
         const lowStockParts = products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= threshold).map(p => ({ name: p.name, stock: p.stock, type: 'Linh kiện' }));
@@ -238,16 +276,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         return [...lowStockParts, ...lowStockFrames];
     }, [products, frames]);
 
-    // Calculate profit for a single order
     const calculateOrderProfit = (order: Order): number => {
         let totalCost = 0;
-        
-        // Frame cost
         order.items.forEach(item => {
             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
             if (frame) totalCost += (frame.costPrice || 0);
-
-            // Parts cost
             item.characters.forEach(char => {
                 if (char.hair) totalCost += (allKnownParts[char.hair.id]?.costPrice || 0);
                 if (char.face) totalCost += (allKnownParts[char.face.id]?.costPrice || 0);
@@ -255,20 +288,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 if (char.pants) totalCost += (allKnownParts[char.pants.id]?.costPrice || 0);
                 if (char.hat) totalCost += (allKnownParts[char.hat.id]?.costPrice || 0);
             });
-
-            // Draggable Items cost
             item.draggableItems.forEach(di => {
                 if (di.type !== 'charm') {
                     totalCost += (allKnownParts[di.partId]?.costPrice || 0);
                 }
             });
         });
-
-        // Box cost (Approximate)
         if (order.addGiftBox) totalCost += 15000; 
-
-        // Profit = Revenue (User paid) - Cost - Shipping - Discounts
-        // Note: totalPrice already includes subtraction of discounts
         return order.totalPrice - order.shipping.fee - totalCost; 
     };
 
@@ -280,21 +306,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         prevEnd.setTime(prevEnd.getTime() - duration);
 
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
-            const time = o.createdAt || Number(o.id.slice(3)) || 0;
+            const time = o.createdAt || 0;
             return time >= s.getTime() && time <= e.getTime();
         });
 
         const allCurrentOrders = getOrdersInPeriod(startDate, endDate);
         const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
 
-        // Filter valid orders for revenue/profit
         const validOrders = allCurrentOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
         const validPrevOrders = prevOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
 
         const revenue = validOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const grossProfit = validOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
         
-        // Sum ads costs for days in range
         let totalAdsCost = 0;
         const tempDate = new Date(startDate);
         while (tempDate <= endDate) {
@@ -308,11 +332,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const prevRevenue = validPrevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
 
-        const orderCount = allCurrentOrders.length; // Count ALL orders placed, not just valid ones
+        const orderCount = allCurrentOrders.length;
         const prevOrderCount = prevOrders.length;
         const orderGrowth = prevOrderCount === 0 ? (orderCount > 0 ? 100 : 0) : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
 
-        // Inventory & Packers Stats (Use all orders to reflect activity)
         const inventory = { 
             frames: {} as Record<string, number>, 
             hair: {} as Record<string, number>,
@@ -324,19 +347,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             pet: {} as Record<string, number>,
             totalCharms: 0,
         };
-        const packerStats: Record<string, number> = {};
 
         allCurrentOrders.forEach(order => {
-            if (order.packedBy) packerStats[order.packedBy] = (packerStats[order.packedBy] || 0) + 1;
             order.items.forEach(item => {
                 const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
                 const frameName = frame ? `Khung ${frame.name}` : `Khung ${item.frameId}`; 
                 inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
-                
                 item.draggableItems.forEach(di => {
-                    if (di.type === 'charm') {
-                        inventory.totalCharms++;
-                    } else {
+                    if (di.type !== 'charm') {
                         const part = allKnownParts[di.partId];
                         if (part) {
                              if (di.type === 'accessory') {
@@ -351,7 +369,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                         }
                     }
                 });
-
                 item.characters.forEach(char => {
                     if (char.hair) {
                         const key = char.selectedHairColor ? `${char.hair.name} (${char.selectedHairColor.name})` : char.hair.name;
@@ -371,47 +388,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             });
         });
 
-        const packers = Object.entries(packerStats).map(([email, count]) => ({ email, count })).sort((a, b) => b.count - a.count);
-
-        // Chart Data (Daily)
         const chartData = [];
-        // Loop from start to end
         const loopDate = new Date(startDate);
         while (loopDate <= endDate) {
-            const dateStr = loopDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            const dateStr = loopDate.toISOString().split('T')[0];
             const displayDate = `${loopDate.getDate()}/${loopDate.getMonth() + 1}`;
             const dStart = getStartOfDay(loopDate);
             const dEnd = getEndOfDay(loopDate);
-            
             const dailyOrders = orders.filter(o => {
                 const time = o.createdAt || 0;
                 return time >= dStart.getTime() && time <= dEnd.getTime();
             });
-
-            // Only count revenue/profit for valid statuses
             const dailyValidOrders = dailyOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
-
             const dailyRevenue = dailyValidOrders.reduce((sum, o) => sum + o.totalPrice, 0);
             const dailyGrossProfit = dailyValidOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
             const dailyAds = dailyAdsCosts[dateStr] || 0;
-            const dailyNetProfit = dailyGrossProfit - dailyAds;
-            
-            chartData.push({
-                date: displayDate,
-                revenue: dailyRevenue,
-                profit: dailyNetProfit,
-                ads: dailyAds
-            });
-
+            chartData.push({ date: displayDate, revenue: dailyRevenue, profit: dailyGrossProfit - dailyAds, ads: dailyAds });
             loopDate.setDate(loopDate.getDate() + 1);
         }
 
-        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, packers, chartData, totalAdsCost };
+        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, chartData, totalAdsCost };
     }, [orders, startDate, endDate, allKnownParts, frames, dailyAdsCosts]); 
 
     return (
         <div className="space-y-6 animate-fade-in pb-12">
-            {/* 1. Control Bar - Stacked on Mobile */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4 sticky top-14 sm:top-16 z-20">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gray-100 rounded-lg">
@@ -424,7 +424,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
                 
                 <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-center w-full sm:w-auto">
-                    
                     <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
                         <button onClick={() => setFilterType('period')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Ngày</button>
                         <button onClick={() => setFilterType('month')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
@@ -438,23 +437,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                             <option value="30days">30 ngày qua</option>
                         </select>
                     )} 
-                    {filterType === 'month' && (
-                        <div className="flex gap-1 w-full sm:w-auto">
-                            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="flex-1 sm:flex-none p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>T{i + 1}</option>))}</select>
-                            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="flex-1 sm:flex-none p-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none"><option value={2024}>2024</option><option value={2025}>2025</option></select>
-                        </div>
-                    )}
-                    {filterType === 'custom' && (
-                        <div className="flex flex-col sm:flex-row gap-2 bg-white border border-gray-200 rounded-lg p-2 w-full sm:w-auto">
-                            <input type="date" className="text-xs font-medium border rounded p-1 w-full sm:w-auto" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
-                            <span className="text-gray-300 hidden sm:inline">|</span>
-                            <input type="date" className="text-xs font-medium border rounded p-1 w-full sm:w-auto" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* ALERT LOW STOCK */}
             {lowStockItems.length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm animate-pulse">
                     <div className="p-2 bg-red-100 rounded-full text-red-600">
@@ -473,7 +458,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
             )}
 
-            {/* 2. Key Metrics Cards - Grid 2 cols on mobile */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="bg-gradient-to-br from-blue-50 to-white p-4 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
                     <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Doanh thu</p>
@@ -499,78 +483,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     </div>
                 </div>
                  
-                 {/* NEW CARD FOR ADD TO CART TRACKING */}
                  <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] sm:text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">Lượt thêm giỏ hàng</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">Giá trị trung bình đơn</p>
                     <div className="flex items-center justify-between">
-                        <span className="text-sm sm:text-xl font-bold text-gray-900">{addToCartCount}</span>
-                        <span className="text-[9px] sm:text-xs font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">Tổng</span>
+                        <span className="text-sm sm:text-xl font-bold text-gray-900">
+                            {analytics.orderCount > 0 ? formatCurrency(analytics.revenue / analytics.orderCount, 'admin') : '0đ'}
+                        </span>
+                        <span className="text-[9px] sm:text-xs font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">AOV</span>
                     </div>
                 </div>
             </div>
 
-            {/* 3. Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Chart & Ads */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="h-64 sm:h-80">
                         <BarChart data={analytics.chartData} />
                     </div>
                     
-                    {/* Compact Ads Management Widget */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <ConversionFunnel stats={funnelStats} />
+                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col items-center justify-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
                             </div>
-                            <div>
-                                <h4 className="font-bold text-sm text-gray-800">Chi phí Ads</h4>
-                                <p className="text-[10px] text-gray-500">Nhập chi phí marketing</p>
+                            <div className="text-center">
+                                <h4 className="font-bold text-sm text-gray-800">Cập nhật chi phí Ads</h4>
+                                <p className="text-[10px] text-gray-500 mb-4">Nhập tay chi phí theo ngày</p>
+                                <div className="flex flex-col gap-2">
+                                    <input 
+                                        type="date" 
+                                        className="bg-gray-50 border border-gray-300 rounded text-xs p-2 focus:outline-none focus:border-gray-500"
+                                        value={adsDateInput}
+                                        onChange={(e) => {
+                                            setAdsDateInput(e.target.value);
+                                            if (dailyAdsCosts[e.target.value]) setAdsCostInput(dailyAdsCosts[e.target.value]);
+                                            else setAdsCostInput(0);
+                                        }}
+                                    />
+                                    <input 
+                                        type="number" 
+                                        placeholder="VNĐ"
+                                        className="bg-gray-50 border border-gray-300 rounded text-xs p-2 font-bold text-gray-800 focus:outline-none focus:border-gray-500"
+                                        value={adsCostInput}
+                                        onChange={(e) => setAdsCostInput(Number(e.target.value))}
+                                    />
+                                    <button 
+                                        onClick={handleSaveAdsInline}
+                                        disabled={isSavingAds}
+                                        className="bg-gray-900 text-white p-2 rounded hover:bg-black disabled:opacity-50 transition-colors font-bold text-xs"
+                                    >
+                                        LƯU CHI PHÍ
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 w-full sm:w-auto">
-                            <input 
-                                type="date" 
-                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-full sm:w-24 focus:outline-none focus:border-gray-500"
-                                value={adsDateInput}
-                                onChange={(e) => {
-                                    setAdsDateInput(e.target.value);
-                                    if (dailyAdsCosts[e.target.value]) setAdsCostInput(dailyAdsCosts[e.target.value]);
-                                    else setAdsCostInput(0);
-                                }}
-                            />
-                            <input 
-                                type="number" 
-                                placeholder="VNĐ"
-                                className="bg-white border border-gray-300 rounded text-xs p-1.5 w-full sm:w-24 font-bold text-gray-800 focus:outline-none focus:border-gray-500"
-                                value={adsCostInput}
-                                onChange={(e) => setAdsCostInput(Number(e.target.value))}
-                            />
-                            <button 
-                                onClick={handleSaveAdsInline}
-                                disabled={isSavingAds}
-                                className="bg-gray-900 text-white p-1.5 rounded hover:bg-black disabled:opacity-50 transition-colors flex-shrink-0"
-                                title="Lưu"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            </button>
-                        </div>
+                         </div>
                     </div>
                 </div>
 
-                {/* Right Column: Full Inventory Lists */}
                 <div className="space-y-4 h-full flex flex-col">
-                    <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Thống kê chi tiết</h3>
+                    <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Bán chạy nhất</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1" style={{maxHeight: 'calc(100vh - 200px)'}}>
-                        <FullItemsCard title="Khung Bán Chạy" data={analytics.inventory.frames} />
+                        <FullItemsCard title="Khung" data={analytics.inventory.frames} />
                         <FullItemsCard title="Phụ Kiện" data={analytics.inventory.accessory} />
                         <FullItemsCard title="Thú Cưng" data={analytics.inventory.pet} />
                         <FullItemsCard title="Tóc" data={analytics.inventory.hair} />
-                        <FullItemsCard title="Khuôn Mặt" data={analytics.inventory.face} />
                         <FullItemsCard title="Áo" data={analytics.inventory.shirt} />
-                        <FullItemsCard title="Quần" data={analytics.inventory.pants} />
-                        <FullItemsCard title="Mũ" data={analytics.inventory.hat} />
                     </div>
                 </div>
             </div>

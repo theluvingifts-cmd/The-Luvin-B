@@ -1,45 +1,59 @@
 
 import { db } from '../config/firebase';
-// Standard firestore modular SDK imports
 import { doc, updateDoc, increment, setDoc, getDoc } from 'firebase/firestore';
 
 const ANALYTICS_COLLECTION = 'analytics';
-const CART_STATS_DOC = 'cart_stats';
+const FUNNEL_DOC = 'funnel_stats';
 
-// Hàm gọi khi người dùng bấm thêm vào giỏ
-export const trackAddToCart = async () => {
-    const ref = doc(db, ANALYTICS_COLLECTION, CART_STATS_DOC);
+export type FunnelStep = 
+    | 'builder_start' 
+    | 'step2_info' 
+    | 'step3_parts' 
+    | 'step4_summary' 
+    | 'add_to_cart' 
+    | 'checkout_start' 
+    | 'order_complete';
+
+// Hàm theo dõi từng bước trong phễu
+export const trackFunnelStep = async (step: FunnelStep) => {
+    const ref = doc(db, ANALYTICS_COLLECTION, FUNNEL_DOC);
+    const fieldName = `${step}_count`;
+    
     try {
-        // Tăng biến đếm lên 1
         await updateDoc(ref, { 
-            totalAddCount: increment(1),
+            [fieldName]: increment(1),
             lastUpdated: new Date().toISOString()
         });
     } catch (error: any) {
-        // Nếu document chưa tồn tại (lần đầu tiên), tạo mới
         if (error.code === 'not-found') {
             await setDoc(ref, { 
-                totalAddCount: 1,
+                [`${step}_count`]: 1,
                 lastUpdated: new Date().toISOString()
             });
-        } else {
-            console.error("Lỗi tracking:", error);
         }
     }
 };
 
-// Hàm lấy số liệu cho Admin
-export const getCartStats = async (): Promise<number> => {
+// Hàm cũ giữ nguyên cho tương thích
+export const trackAddToCart = () => trackFunnelStep('add_to_cart');
+
+// Lấy toàn bộ dữ liệu phễu cho Admin
+export const getFunnelStats = async () => {
     try {
-        const ref = doc(db, ANALYTICS_COLLECTION, CART_STATS_DOC);
+        const ref = doc(db, ANALYTICS_COLLECTION, FUNNEL_DOC);
         const snap = await getDoc(ref);
         if (snap.exists()) {
-            const data = snap.data() as { totalAddCount?: number };
-            return data.totalAddCount || 0;
+            return snap.data();
         }
-        return 0;
+        return null;
     } catch (error) {
-        console.error("Lỗi lấy thống kê giỏ hàng:", error);
-        return 0;
+        console.error("Lỗi lấy thống kê phễu:", error);
+        return null;
     }
+};
+
+// Hàm lấy số lượt thêm giỏ (để dashboard cũ không lỗi)
+export const getCartStats = async (): Promise<number> => {
+    const stats = await getFunnelStats();
+    return stats?.add_to_cart_count || 0;
 };

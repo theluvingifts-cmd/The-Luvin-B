@@ -10,7 +10,7 @@ import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
-import { trackAddToCart } from '../services/analyticsService'; 
+import { trackFunnelStep } from '../services/analyticsService'; 
 import { dataURLToBlob, preloadImage } from '../utils/helpers';
 
 // Sub-components
@@ -290,6 +290,35 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const topCharmUploadRef = useRef<HTMLInputElement>(null);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
+  // FUNNEL TRACKING
+  useEffect(() => {
+    if (isEditingOrder) return;
+    switch(step) {
+        case 1: trackFunnelStep('builder_start'); break;
+        case 2: trackFunnelStep('step2_info'); break;
+        case 3: trackFunnelStep('step3_parts'); break;
+        case 4: trackFunnelStep('step4_summary'); break;
+    }
+  }, [step, isEditingOrder]);
+
+  // RECOVERY CHECK (ABANDONED CART LOGIC)
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('active_design_draft');
+    if (savedDraft && !isEditingOrder && step === 1) {
+        try {
+            const parsed = JSON.parse(savedDraft);
+            // Nếu có dữ liệu nhân vật hoặc nền khác mặc định
+            if (parsed.characters.length > 0 || parsed.background.value !== INITIAL_FRAME_CONFIG.background.value) {
+                const recover = confirm("The Luvin tìm thấy một thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?");
+                if (recover) {
+                    setConfig(parsed);
+                    setStep(3); // Đưa thẳng tới bước phối đồ
+                }
+            }
+        } catch(e) {}
+    }
+  }, []);
 
   useEffect(() => {
     backgrounds.slice(0, 5).forEach(bg => preloadImage(bg.previewUrl || bg.url));
@@ -707,7 +736,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleAddToCartWrapper = async (andCheckout: boolean) => {
-    trackAddToCart(); 
+    trackFunnelStep('add_to_cart'); 
     setIsSaving(true);
     try {
         const base64Image = await captureFrameAsImage();
