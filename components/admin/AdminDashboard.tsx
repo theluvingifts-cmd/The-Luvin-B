@@ -4,7 +4,7 @@ import { Order, LegoPart, FrameOption } from '../../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { formatCurrency } from '../../utils/pricing';
 import { getAdsCosts, saveAdsCost } from '../../services/configService';
-import { getFunnelStatsRange } from '../../services/analyticsService';
+import { getFunnelStats } from '../../services/analyticsService';
 
 interface AdminDashboardProps {
     orders: Order[];
@@ -33,7 +33,7 @@ const VALID_REVENUE_STATUSES = [
     'Đã giao hàng'
 ];
 
-const ConversionFunnel = ({ stats, isLoading }: { stats: any, isLoading: boolean }) => {
+const ConversionFunnel = ({ stats }: { stats: any }) => {
     const steps = [
         { key: 'builder_start', label: 'Bắt đầu thiết kế', icon: '🎨' },
         { key: 'step2_info', label: 'Nhập thông tin', icon: '📝' },
@@ -44,23 +44,17 @@ const ConversionFunnel = ({ stats, isLoading }: { stats: any, isLoading: boolean
         { key: 'order_complete', label: 'Đặt hàng thành công', icon: '🎉' },
     ];
 
-    const maxVal = stats?.builder_start_count || 0;
+    const maxVal = stats?.builder_start_count || 1;
 
     return (
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-full relative">
-            {isLoading && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                </div>
-            )}
-            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wider mb-6 flex justify-between items-center">
-                <span>📊 Phễu chuyển đổi</span>
-                <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Theo bộ lọc ngày</span>
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-full">
+            <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+                <span>📊</span> Phễu chuyển đổi (Tích lũy)
             </h4>
             <div className="space-y-4">
                 {steps.map((step, idx) => {
                     const val = stats?.[`${step.key}_count`] || 0;
-                    const percent = maxVal > 0 ? Math.round((val / maxVal) * 100) : 0;
+                    const percent = Math.round((val / maxVal) * 100);
                     const prevVal = idx > 0 ? stats?.[`${steps[idx-1].key}_count`] || 0 : maxVal;
                     const dropRate = idx > 0 && prevVal > 0 ? Math.round(((prevVal - val) / prevVal) * 100) : 0;
 
@@ -78,10 +72,10 @@ const ConversionFunnel = ({ stats, isLoading }: { stats: any, isLoading: boolean
                             </div>
                             <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden flex relative">
                                 <div 
-                                    className="h-full bg-blue-600 transition-all duration-1000"
+                                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-1000"
                                     style={{ width: `${percent}%` }}
                                 ></div>
-                                {idx > 0 && dropRate > 5 && (
+                                {idx > 0 && dropRate > 10 && (
                                     <div className="absolute right-0 top-0 h-full bg-red-100/50 flex items-center px-1">
                                         <span className="text-[8px] font-black text-red-600">-{dropRate}%</span>
                                     </div>
@@ -92,7 +86,7 @@ const ConversionFunnel = ({ stats, isLoading }: { stats: any, isLoading: boolean
                 })}
             </div>
             <p className="mt-6 text-[10px] text-gray-400 italic">
-                * Dữ liệu khớp chính xác với khoảng thời gian bạn chọn phía trên.
+                * Dữ liệu được ghi lại kể từ khi hệ thống tracking hoạt động. Giúp bạn xác định bước nào khách hàng bỏ cuộc nhiều nhất.
             </p>
         </div>
     );
@@ -144,7 +138,11 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
             
             <div className="flex-grow relative overflow-hidden">
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10 z-0">
-                    {[1,2,3,4,5].map(i => <div key={i} className="border-t border-gray-400 w-full border-dashed"></div>)}
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
+                    <div className="border-t border-gray-400 w-full border-dashed"></div>
                 </div>
 
                 <div className="overflow-x-auto h-full pb-2 custom-scrollbar">
@@ -170,7 +168,15 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
                                             style={{ height: `${Math.max(adsHeight, 1)}%` }}
                                         ></div>
                                     </div>
-                                    <span className="text-[9px] text-gray-500 mt-2 font-medium truncate w-full text-center">{d.date}</span>
+                                    
+                                    <div className="absolute bottom-[90%] left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[10px] p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none flex flex-col gap-1">
+                                        <span className="font-bold border-b border-gray-600 pb-1 mb-1 block">{d.date}</span>
+                                        <span className="text-blue-200">DT: {formatCurrency(d.revenue, 'admin')}</span>
+                                        <span className="text-green-200">LN: {formatCurrency(d.profit, 'admin')}</span>
+                                        <span className="text-red-200">Ads: {formatCurrency(d.ads, 'admin')}</span>
+                                    </div>
+
+                                    <span className="text-[9px] text-gray-500 mt-2 font-medium truncate w-full text-center rotate-0">{d.date}</span>
                                 </div>
                             );
                         })}
@@ -195,7 +201,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     const [isSavingAds, setIsSavingAds] = useState(false);
     
     const [funnelStats, setFunnelStats] = useState<any>(null);
-    const [isFunnelLoading, setIsFunnelLoading] = useState(false);
 
     const { startDate, endDate, dateLabel } = useMemo(() => {
         let start: Date, end: Date;
@@ -234,14 +239,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     useEffect(() => {
         const fetchData = async () => {
             if (startDate && endDate) {
-                setIsFunnelLoading(true);
                 const [costs, funnel] = await Promise.all([
                     getAdsCosts(startDate, endDate),
-                    getFunnelStatsRange(startDate, endDate)
+                    getFunnelStats()
                 ]);
                 setDailyAdsCosts(costs);
                 setFunnelStats(funnel);
-                setIsFunnelLoading(false);
             }
         };
         fetchData();
@@ -266,6 +269,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
+    const lowStockItems = useMemo(() => {
+        const threshold = 10;
+        const lowStockParts = products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= threshold).map(p => ({ name: p.name, stock: p.stock, type: 'Linh kiện' }));
+        const lowStockFrames = frames.filter(f => f.stock !== undefined && f.stock !== null && f.stock <= threshold).map(f => ({ name: f.name, stock: f.stock, type: 'Khung' }));
+        return [...lowStockParts, ...lowStockFrames];
+    }, [products, frames]);
+
     const calculateOrderProfit = (order: Order): number => {
         let totalCost = 0;
         order.items.forEach(item => {
@@ -289,13 +299,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
     };
 
     const analytics = useMemo(() => {
+        const prevStart = new Date(startDate);
+        const prevEnd = new Date(endDate);
+        const duration = endDate.getTime() - startDate.getTime();
+        prevStart.setTime(prevStart.getTime() - duration);
+        prevEnd.setTime(prevEnd.getTime() - duration);
+
         const getOrdersInPeriod = (s: Date, e: Date) => orders.filter(o => {
             const time = o.createdAt || 0;
             return time >= s.getTime() && time <= e.getTime();
         });
 
         const allCurrentOrders = getOrdersInPeriod(startDate, endDate);
+        const prevOrders = getOrdersInPeriod(prevStart, prevEnd);
+
         const validOrders = allCurrentOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
+        const validPrevOrders = prevOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
 
         const revenue = validOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const grossProfit = validOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
@@ -309,14 +328,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         }
 
         const netProfit = grossProfit - totalAdsCost;
+
+        const prevRevenue = validPrevOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+        const revenueGrowth = prevRevenue === 0 ? (revenue > 0 ? 100 : 0) : ((revenue - prevRevenue) / prevRevenue) * 100;
+
         const orderCount = allCurrentOrders.length;
+        const prevOrderCount = prevOrders.length;
+        const orderGrowth = prevOrderCount === 0 ? (orderCount > 0 ? 100 : 0) : ((orderCount - prevOrderCount) / prevOrderCount) * 100;
 
         const inventory = { 
             frames: {} as Record<string, number>, 
+            hair: {} as Record<string, number>,
+            face: {} as Record<string, number>,
+            shirt: {} as Record<string, number>,
+            pants: {} as Record<string, number>,
+            hat: {} as Record<string, number>,
             accessory: {} as Record<string, number>,
             pet: {} as Record<string, number>,
-            hair: {} as Record<string, number>,
-            shirt: {} as Record<string, number>,
+            totalCharms: 0,
         };
 
         allCurrentOrders.forEach(order => {
@@ -328,15 +357,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     if (di.type !== 'charm') {
                         const part = allKnownParts[di.partId];
                         if (part) {
-                             const key = di.selectedColor ? `${part.name} (${di.selectedColor.name})` : part.name;
-                             if (di.type === 'accessory') inventory.accessory[key] = (inventory.accessory[key] || 0) + 1;
-                             if (di.type === 'pet') inventory.pet[key] = (inventory.pet[key] || 0) + 1;
+                             if (di.type === 'accessory') {
+                                 const key = di.selectedColor ? `${part.name} (${di.selectedColor.name})` : part.name;
+                                 inventory.accessory[key] = (inventory.accessory[key] || 0) + 1;
+                             }
+                             if (di.type === 'pet') {
+                                 const key = di.selectedColor ? `${part.name} (${di.selectedColor.name})` : part.name;
+                                 inventory.pet[key] = (inventory.pet[key] || 0) + 1;
+                             }
+                             inventory.totalCharms++;
                         }
                     }
                 });
                 item.characters.forEach(char => {
-                    if (char.hair) inventory.hair[char.hair.name] = (inventory.hair[char.hair.name] || 0) + 1;
-                    if (char.shirt) inventory.shirt[char.shirt.name] = (inventory.shirt[char.shirt.name] || 0) + 1;
+                    if (char.hair) {
+                        const key = char.selectedHairColor ? `${char.hair.name} (${char.selectedHairColor.name})` : char.hair.name;
+                        inventory.hair[key] = (inventory.hair[key] || 0) + 1;
+                    }
+                    if (char.face) inventory.face[char.face.name] = (inventory.face[char.face.name] || 0) + 1;
+                    if (char.shirt) {
+                        const key = char.selectedShirtColor ? `${char.shirt.name} (${char.selectedShirtColor.name})` : char.shirt.name;
+                        inventory.shirt[key] = (inventory.shirt[key] || 0) + 1;
+                    }
+                    if (char.pants) {
+                        const key = char.selectedPantsColor ? `${char.pants.name} (${char.selectedPantsColor.name})` : char.pants.name;
+                        inventory.pants[key] = (inventory.pants[key] || 0) + 1;
+                    }
+                    if (char.hat) inventory.hat[char.hat.name] = (inventory.hat[char.hat.name] || 0) + 1;
                 });
             });
         });
@@ -348,10 +395,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             const displayDate = `${loopDate.getDate()}/${loopDate.getMonth() + 1}`;
             const dStart = getStartOfDay(loopDate);
             const dEnd = getEndOfDay(loopDate);
-            const dailyValidOrders = orders.filter(o => {
+            const dailyOrders = orders.filter(o => {
                 const time = o.createdAt || 0;
-                return time >= dStart.getTime() && time <= dEnd.getTime() && VALID_REVENUE_STATUSES.includes(o.status);
+                return time >= dStart.getTime() && time <= dEnd.getTime();
             });
+            const dailyValidOrders = dailyOrders.filter(o => VALID_REVENUE_STATUSES.includes(o.status));
             const dailyRevenue = dailyValidOrders.reduce((sum, o) => sum + o.totalPrice, 0);
             const dailyGrossProfit = dailyValidOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
             const dailyAds = dailyAdsCosts[dateStr] || 0;
@@ -359,138 +407,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             loopDate.setDate(loopDate.getDate() + 1);
         }
 
-        return { revenue, profit: netProfit, orderCount, inventory, chartData, totalAdsCost };
+        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, chartData, totalAdsCost };
     }, [orders, startDate, endDate, allKnownParts, frames, dailyAdsCosts]); 
 
     return (
         <div className="space-y-6 animate-fade-in pb-12">
-            {/* Header Filter Bar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm gap-4 sticky top-14 sm:top-16 z-20">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <div className="p-2 bg-gray-100 rounded-lg">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
                     <div>
-                        <h2 className="text-sm font-bold text-gray-900">Bộ lọc thời gian</h2>
+                        <h2 className="text-sm font-bold text-gray-900">Thời gian</h2>
                         <p className="text-xs text-gray-500 font-medium">{dateLabel}</p>
                     </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-center w-full sm:w-auto">
-                    <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto">
-                        <button onClick={() => setFilterType('period')} className={`flex-1 px-4 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Ngày</button>
-                        <button onClick={() => setFilterType('month')} className={`flex-1 px-4 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Tháng</button>
-                        <button onClick={() => setFilterType('custom')} className={`flex-1 px-4 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Tùy chọn</button>
+                    <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
+                        <button onClick={() => setFilterType('period')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'period' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Ngày</button>
+                        <button onClick={() => setFilterType('month')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tháng</button>
+                        <button onClick={() => setFilterType('custom')} className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${filterType === 'custom' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Tùy chỉnh</button>
                     </div>
-                    
                     {filterType === 'period' && (
-                        <select value={period} onChange={(e: any) => setPeriod(e.target.value)} className="w-full sm:w-auto p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-bold outline-none">
+                        <select value={period} onChange={(e: any) => setPeriod(e.target.value)} className="w-full sm:w-auto p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-medium focus:ring-1 focus:ring-gray-900 outline-none">
                             <option value="today">Hôm nay</option>
                             <option value="yesterday">Hôm qua</option>
                             <option value="7days">7 ngày qua</option>
                             <option value="30days">30 ngày qua</option>
                         </select>
-                    )}
-
-                    {filterType === 'custom' && (
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="p-1.5 border rounded text-[10px] w-full" />
-                            <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="p-1.5 border rounded text-[10px] w-full" />
-                        </div>
-                    )}
+                    )} 
                 </div>
             </div>
 
-            {/* Summary Cards */}
+            {lowStockItems.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm animate-pulse">
+                    <div className="p-2 bg-red-100 rounded-full text-red-600">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <div className="flex-grow">
+                        <h4 className="font-bold text-red-800 text-sm mb-1">Cảnh báo tồn kho thấp ({lowStockItems.length})</h4>
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                            {lowStockItems.map((item, idx) => (
+                                <span key={idx} className="inline-flex items-center gap-1 bg-white border border-red-200 px-2 py-1 rounded text-xs text-red-600 font-medium whitespace-nowrap">
+                                    {item.name}: <b>{item.stock}</b>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-wider mb-1">Doanh thu</p>
-                    <p className="text-xl sm:text-2xl font-black text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</p>
+                <div className="bg-gradient-to-br from-blue-50 to-white p-4 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+                    <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Doanh thu</p>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{formatCurrency(analytics.revenue, 'admin')}</span>
+                        <span className={`text-[10px] sm:text-xs font-bold ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.revenueGrowth).toFixed(0)}%</span>
+                    </div>
                 </div>
                 
-                <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] font-black text-green-500 uppercase tracking-wider mb-1">Lợi nhuận ròng</p>
-                    <p className="text-xl sm:text-2xl font-black text-gray-900">{formatCurrency(analytics.profit, 'admin')}</p>
+                <div className="bg-gradient-to-br from-green-50 to-white p-4 sm:p-5 rounded-xl border border-green-100 shadow-sm relative overflow-hidden">
+                    <p className="text-[10px] sm:text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Lợi nhuận ròng</p>
+                    <div className="flex flex-col">
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{formatCurrency(analytics.profit, 'admin')}</span>
+                        <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium">Đã trừ Ads: {formatCurrency(analytics.totalAdsCost, 'admin')}</span>
+                    </div>
                 </div>
 
                 <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Đơn hàng</p>
-                    <p className="text-xl sm:text-2xl font-black text-gray-900">{analytics.orderCount}</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Đơn hàng</p>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{analytics.orderCount}</span>
+                        <span className={`text-[10px] sm:text-xs font-bold ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.orderGrowth).toFixed(0)}%</span>
+                    </div>
                 </div>
                  
                  <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] font-black text-purple-500 uppercase tracking-wider mb-1">AOV (Trung bình đơn)</p>
-                    <p className="text-lg sm:text-xl font-black text-gray-900">{analytics.orderCount > 0 ? formatCurrency(analytics.revenue / analytics.orderCount, 'admin') : '0đ'}</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">Giá trị trung bình đơn</p>
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm sm:text-xl font-bold text-gray-900">
+                            {analytics.orderCount > 0 ? formatCurrency(analytics.revenue / analytics.orderCount, 'admin') : '0đ'}
+                        </span>
+                        <span className="text-[9px] sm:text-xs font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">AOV</span>
+                    </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Charts Area */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="h-80">
+                    <div className="h-64 sm:h-80">
                         <BarChart data={analytics.chartData} />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <ConversionFunnel stats={funnelStats} isLoading={isFunnelLoading} />
-
-                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col justify-between">
-                            <div>
-                                <h4 className="font-bold text-sm text-gray-800 mb-1 flex items-center gap-2">
-                                    <span>💰</span> Chi phí Marketing
-                                </h4>
-                                <p className="text-[10px] text-gray-500 mb-4">Cập nhật chi phí Ads bằng tay theo ngày</p>
-                                
-                                <div className="space-y-3">
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase">Ngày</label>
-                                        <input 
-                                            type="date" 
-                                            className="bg-gray-50 border border-gray-200 rounded-lg text-xs p-2.5 font-bold"
-                                            value={adsDateInput}
-                                            onChange={(e) => {
-                                                setAdsDateInput(e.target.value);
-                                                if (dailyAdsCosts[e.target.value]) setAdsCostInput(dailyAdsCosts[e.target.value]);
-                                                else setAdsCostInput(0);
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase">Số tiền (VNĐ)</label>
-                                        <input 
-                                            type="number" 
-                                            className="bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 font-black text-blue-600"
-                                            value={adsCostInput}
-                                            onChange={(e) => setAdsCostInput(Number(e.target.value))}
-                                        />
-                                    </div>
+                         <ConversionFunnel stats={funnelStats} />
+                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col items-center justify-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                            </div>
+                            <div className="text-center">
+                                <h4 className="font-bold text-sm text-gray-800">Cập nhật chi phí Ads</h4>
+                                <p className="text-[10px] text-gray-500 mb-4">Nhập tay chi phí theo ngày</p>
+                                <div className="flex flex-col gap-2">
+                                    <input 
+                                        type="date" 
+                                        className="bg-gray-50 border border-gray-300 rounded text-xs p-2 focus:outline-none focus:border-gray-500"
+                                        value={adsDateInput}
+                                        onChange={(e) => {
+                                            setAdsDateInput(e.target.value);
+                                            if (dailyAdsCosts[e.target.value]) setAdsCostInput(dailyAdsCosts[e.target.value]);
+                                            else setAdsCostInput(0);
+                                        }}
+                                    />
+                                    <input 
+                                        type="number" 
+                                        placeholder="VNĐ"
+                                        className="bg-gray-50 border border-gray-300 rounded text-xs p-2 font-bold text-gray-800 focus:outline-none focus:border-gray-500"
+                                        value={adsCostInput}
+                                        onChange={(e) => setAdsCostInput(Number(e.target.value))}
+                                    />
                                     <button 
                                         onClick={handleSaveAdsInline}
                                         disabled={isSavingAds}
-                                        className="w-full bg-gray-900 text-white p-3 rounded-xl hover:bg-black disabled:opacity-50 transition-all font-black text-xs shadow-lg active:scale-95"
+                                        className="bg-gray-900 text-white p-2 rounded hover:bg-black disabled:opacity-50 transition-colors font-bold text-xs"
                                     >
-                                        {isSavingAds ? "ĐANG LƯU..." : "LƯU CHI PHÍ NGÀY NÀY"}
+                                        LƯU CHI PHÍ
                                     </button>
                                 </div>
-                            </div>
-                            
-                            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-                                <span className="text-xs font-bold text-gray-400 uppercase">Tổng chi phí trong kỳ:</span>
-                                <span className="text-lg font-black text-red-600">{formatCurrency(analytics.totalAdsCost, 'admin')}</span>
                             </div>
                          </div>
                     </div>
                 </div>
 
-                {/* Best Sellers Area */}
-                <div className="space-y-4">
-                    <h3 className="font-bold text-gray-800 text-sm border-b pb-2 uppercase tracking-tighter">Sản phẩm bán chạy nhất</h3>
-                    <div className="grid grid-cols-1 gap-4 overflow-y-auto pr-1 max-h-[calc(100vh-250px)] custom-scrollbar">
-                        <FullItemsCard title="Loại Khung" data={analytics.inventory.frames} />
+                <div className="space-y-4 h-full flex flex-col">
+                    <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Bán chạy nhất</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1" style={{maxHeight: 'calc(100vh - 200px)'}}>
+                        <FullItemsCard title="Khung" data={analytics.inventory.frames} />
                         <FullItemsCard title="Phụ Kiện" data={analytics.inventory.accessory} />
                         <FullItemsCard title="Thú Cưng" data={analytics.inventory.pet} />
-                        <FullItemsCard title="Kiểu Tóc" data={analytics.inventory.hair} />
-                        <FullItemsCard title="Áo Lego" data={analytics.inventory.shirt} />
+                        <FullItemsCard title="Tóc" data={analytics.inventory.hair} />
+                        <FullItemsCard title="Áo" data={analytics.inventory.shirt} />
                     </div>
                 </div>
             </div>
