@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { getAllOrders } from '../services/orderService';
+import { db, auth } from '../config/firebase';
+// Use modular imports for Firestore real-time updates
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { getAllParts } from '../services/productService';
 import { getAllBackgrounds } from '../services/backgroundService';
 import { getAllTemplates } from '../services/templateService';
 import { getAllFeedbacks } from '../services/feedbackService';
 import { getAllFrames } from '../services/frameService';
 import { getStoreConfig, StoreConfig } from '../services/configService';
-import { auth } from '../config/firebase';
-// Fix: Use modular imports for Firebase v9+
-import { signOut, onAuthStateChanged } from 'firebase/auth';
 import type { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, StaffRole } from '../types';
 
 import { AdminLogin } from '../components/admin/AdminLogin';
@@ -42,25 +42,36 @@ const AdminPage: React.FC = () => {
             const config = await getStoreConfig();
             if (config) setStoreConfig(config);
             
-            const unsubscribe = onAuthStateChanged(auth, (user) => {
+            const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
                 setIsAuthChecking(false);
                 if (user) {
                     setCurrentUser(user);
-                    fetchData();
+                    fetchInitialData();
+                    // Setup real-time listener for orders
+                    const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+                    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+                        const ordersData: Order[] = [];
+                        snapshot.forEach((doc) => {
+                            ordersData.push(doc.data() as Order);
+                        });
+                        setOrders(ordersData);
+                    });
+                    return () => unsubscribeOrders();
                 } else {
                     setCurrentUser(null);
                 }
             });
-            return unsubscribe;
+            return unsubscribeAuth;
         };
         init();
     }, []);
 
-    const fetchData = async () => {
-        const [o, p, b, t, fb, fr] = await Promise.all([
-            getAllOrders(), getAllParts(), getAllBackgrounds(), getAllTemplates(), getAllFeedbacks(), getAllFrames()
+    const fetchInitialData = async () => {
+        // Fetching other data normally as they don't change as frequently as orders
+        const [p, b, t, fb, fr] = await Promise.all([
+            getAllParts(), getAllBackgrounds(), getAllTemplates(), getAllFeedbacks(), getAllFrames()
         ]);
-        setOrders(o); setProducts(p); setBackgrounds(b); setTemplates(t); setFeedbackItems(fb); setFrames(fr);
+        setProducts(p); setBackgrounds(b); setTemplates(t); setFeedbackItems(fb); setFrames(fr);
     };
 
     const handleLogout = async () => { await signOut(auth); };

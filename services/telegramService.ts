@@ -52,7 +52,7 @@ export const sendOrderTelegram = async (order: Order, config: StoreConfig) => {
 <b>🔥 ĐƠN HÀNG MỚI: ${order.id}</b>
 --------------------------------
 <b>💵 Tổng tiền:</b> ${formatMoney(order.totalPrice)}
-<b>💰 Đã thanh toán:</b> ${formatMoney(order.amountPaid || 0)}
+<b>🗓️ Ngày nhận:</b> ${new Date(order.delivery.date).toLocaleDateString('vi-VN')}
 <b>👤 Khách hàng:</b> ${order.customer.name}
 <b>📞 SĐT:</b> <a href="tel:${order.customer.phone}">${order.customer.phone}</a>
 <b>📍 Địa chỉ:</b> ${order.customer.address}
