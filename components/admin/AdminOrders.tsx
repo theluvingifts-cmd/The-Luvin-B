@@ -184,7 +184,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [orderTab, setOrderTab] = useState<OrderTab>('active');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [orderSearch, setOrderSearch] = useState('');
-    const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('newest');
+    // UPDATE: Default sort to 'urgent'
+    const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('urgent');
     
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -722,7 +723,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 </div>
                 <div className="overflow-y-auto flex-grow divide-y divide-gray-100">
                     {paginatedOrders.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">Không có đơn hàng nào.</div> : paginatedOrders.map(order => (
-                        <div key={order.id} onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedOrder?.id === order.id ? 'bg-gray-50' : ''}`}>
+                        <div 
+                            key={order.id} 
+                            onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} 
+                            className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-l-4 ${selectedOrder?.id === order.id ? 'bg-gray-50' : 'bg-white'} ${order.addGiftBox ? 'border-pink-300' : 'border-transparent'}`}
+                        >
                             <div className="flex justify-between items-start mb-1">
                                 <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id} {order.paymentProofUrl && order.status === 'Chờ thanh toán' && <span className="ml-2 text-green-600 font-bold text-xs">📸</span>}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
