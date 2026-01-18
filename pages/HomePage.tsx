@@ -55,7 +55,8 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
   useEffect(() => {
       const fetchCount = async () => {
           const count = await getTotalOrderCount();
-          setTotalOrders(count);
+          // Multiply real count by 10 to create FOMO effect as requested
+          setTotalOrders(count * 10);
       };
       fetchCount();
   }, []);
@@ -195,7 +196,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
           <div className="container mx-auto px-6">
               <div className="text-center mb-16">
                   <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">Bộ sưu tập nổi bật</h2>
-                  <p className="text-gray-500">Đã có hơn {totalOrders || 'nhiều'} lượt đặt hàng trên toàn hệ thống</p>
+                  <p className="text-gray-500">Đã có hơn {totalOrders || '1.500'} lượt đặt hàng trên toàn hệ thống</p>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
