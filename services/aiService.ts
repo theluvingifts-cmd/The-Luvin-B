@@ -13,27 +13,34 @@ export interface VerificationResult {
 
 /**
  * Sử dụng Gemini 3 Flash để quét ảnh biên lai và xác thực thanh toán
+ * Logic mới: Ưu tiên số tiền, nếu nội dung bị thiếu vẫn có thể xác nhận nếu số tiền khớp 100%.
  */
 export const verifyPaymentProof = async (base64Image: string, expectedAmount: number, orderId: string): Promise<VerificationResult> => {
     try {
-        // Chuẩn bị dữ liệu hình ảnh (loại bỏ header base64 nếu có)
         const imageData = base64Image.split(',')[1] || base64Image;
         
         const prompt = `
             Analyze this bank transfer receipt image. 
-            Extract:
-            1. Total amount transferred (number only).
-            2. Transaction description/content (string).
+            Required Information:
+            1. Total amount transferred (look for large numbers near 'VND' or 'Số tiền').
+            2. Transaction description/content (look for '${orderId}' or similar text).
             
-            Compare with expected values:
+            Strict Matching Rules:
             - Target Amount: ${expectedAmount}
             - Target Order ID: ${orderId}
             
-            Return a JSON object with:
-            - "amount_found": number,
-            - "content_found": string,
-            - "is_match": boolean (true if amount equals expectedAmount AND content contains orderId),
-            - "reason": string (brief explanation in Vietnamese)
+            Decision Logic:
+            - If Amount found equals Target Amount AND Content contains Target Order ID -> set is_match = true.
+            - If Amount found equals Target Amount BUT Content is NOT VISIBLE (some bank apps hide it) -> set is_match = true (Flex confirmation).
+            - If Amount does not match -> set is_match = false.
+            
+            Return a JSON object:
+            {
+                "amount_found": number,
+                "content_found": "string or empty",
+                "is_match": boolean,
+                "reason": "Giải thích ngắn gọn bằng tiếng Việt"
+            }
         `;
 
         const response = await ai.models.generateContent({
@@ -72,7 +79,7 @@ export const verifyPaymentProof = async (base64Image: string, expectedAmount: nu
             isMatch: result.is_match,
             detectedAmount: result.amount_found,
             detectedContent: result.content_found,
-            confidence: 1, // Gemini 3 Flash is very reliable for this
+            confidence: 1,
             reason: result.reason
         };
     } catch (error) {
@@ -82,7 +89,7 @@ export const verifyPaymentProof = async (base64Image: string, expectedAmount: nu
             detectedAmount: 0,
             detectedContent: '',
             confidence: 0,
-            reason: "Lỗi kết nối AI xác thực."
+            reason: "Không thể quét được thông tin từ ảnh này."
         };
     }
 };
