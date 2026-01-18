@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Order, Page } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { uploadToCloudinary } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
-import { dataURLToBlob } from '../utils/helpers';
+import { verifyPaymentProof } from '../services/aiService';
 
 declare var confetti: any;
 
@@ -28,16 +29,10 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                 const duration = 3 * 1000;
                 const animationEnd = Date.now() + duration;
                 const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
                 const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-
                 const interval: any = setInterval(function() {
                     const timeLeft = animationEnd - Date.now();
-
-                    if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                    }
-
+                    if (timeLeft <= 0) return clearInterval(interval);
                     const particleCount = 50 * (timeLeft / duration);
                     confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
                     confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
@@ -48,42 +43,52 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
     
     if (!order) return null;
 
-    const amountRemaining = order.totalPrice - order.amountToPay;
-    
     const getVietQR = (order: Order) => {
         const BANK_ID = '970407'; 
         const ACCOUNT_NO = '65838666666';
         const TEMPLATE = 'compact2';
         const DESCRIPTION = encodeURIComponent(order.id.replace('#', ''));
-        const amount = order.amountToPay;
-        
-        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${amount}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
+        return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?amount=${order.amountToPay}&addInfo=${DESCRIPTION}&accountName=TheLuvin`;
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setIsUploading(true);
+            
             try {
+                // 1. Tải ảnh lên
                 const url = await uploadToCloudinary(file);
-                if (url) {
-                    const success = await updateOrder(order.id, { 
-                        paymentProofUrl: url,
-                        paymentProofUploadedAt: new Date().toISOString()
-                    });
+                if (!url) throw new Error("Lỗi kết nối máy chủ.");
+                
+                setProofUrl(url);
+                await updateOrder(order.id, { 
+                    paymentProofUrl: url,
+                    paymentProofUploadedAt: new Date().toISOString()
+                });
+
+                // 2. Chuyển ảnh sang Base64 để đối soát ngầm
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64 = reader.result as string;
                     
-                    if (success) {
-                        setProofUrl(url);
-                        alert("Đã gửi ảnh xác nhận thành công! Chúng tôi sẽ kiểm tra sớm.");
-                    } else {
-                        alert("Lỗi cập nhật đơn hàng. Vui lòng thử lại.");
+                    // Đối soát thanh toán ngầm
+                    const result = await verifyPaymentProof(base64, order.amountToPay, order.id);
+                    
+                    if (result.isMatch) {
+                        // Tự động cập nhật nếu khớp
+                        await updateOrder(order.id, { 
+                            status: 'Đã xác nhận',
+                            amountPaid: result.detectedAmount,
+                            amountToPay: Math.max(0, order.totalPrice - result.detectedAmount)
+                        });
+                        // Không thông báo "AI quét", đơn hàng sẽ tự đổi trạng thái trong database
                     }
-                } else {
-                    alert("Lỗi tải ảnh lên.");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Đã có lỗi xảy ra.");
+                };
+                reader.readAsDataURL(file);
+
+            } catch (error: any) {
+                alert(error.message || "Đã có lỗi xảy ra.");
             } finally {
                 setIsUploading(false);
             }
@@ -97,102 +102,57 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                     <div className="text-center">
                         <div className="mb-4 text-5xl">🎉</div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                            {actionType === 'update' ? 'Cập nhật đơn hàng thành công!' : 'Đơn hàng của bạn đã được ghi nhận!'}
+                            {actionType === 'update' ? 'Cập nhật đơn hàng thành công!' : 'Đơn hàng đã được ghi nhận!'}
                         </h1>
-                        <p className="mt-2 text-sm text-gray-600">
-                            {actionType === 'update' 
-                                ? 'Thông tin đơn hàng đã được thay đổi. Chúng tôi sẽ cập nhật lại quy trình xử lý.'
-                                : 'Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.'}
-                        </p>
-                        <p className="mt-4 text-base text-gray-700">Mã đơn hàng của bạn là: <span className="font-bold text-lg text-luvin-pink">{order.id}</span></p>
+                        <p className="mt-4 text-base text-gray-700">Mã đơn hàng: <span className="font-bold text-lg text-luvin-pink">{order.id}</span></p>
                     </div>
                     
                     <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
                         <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
-                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto border rounded-lg" />
-                        <div className="mt-4 bg-white p-3 rounded-lg border inline-block w-full max-w-xs">
-                           <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
-                           <p className="font-bold text-gray-800 tracking-wider text-lg">{order.id}</p>
-                        </div>
-
+                        <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto border rounded-lg shadow-sm" />
+                        
                         <div className="mt-6 pt-6 border-t border-gray-200">
                             <h3 className="text-sm font-bold text-gray-700 mb-2">Đã chuyển khoản?</h3>
+                            
                             {proofUrl ? (
                                 <div className="flex flex-col items-center">
-                                    <div className="w-full max-w-xs bg-green-50 border border-green-200 rounded-lg p-3 mb-2 flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-xs">✓</div>
-                                        <span className="text-sm text-green-700 font-medium">Đã gửi ảnh xác nhận</span>
+                                    <div className="relative group w-32 h-40 mb-3 border rounded-lg overflow-hidden bg-white shadow-sm">
+                                        <img src={proofUrl} alt="Payment Proof" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => onZoomImage(proofUrl)} className="text-white text-xs font-bold underline">Xem ảnh</button>
+                                        </div>
                                     </div>
-                                    <img src={proofUrl} alt="Payment Proof" className="w-32 h-auto object-contain border rounded mb-2" />
-                                    <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 hover:underline">Gửi lại ảnh khác?</button>
+                                    <p className="text-[10px] text-green-600 font-bold mb-3 flex items-center gap-1">
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                                        Đã nhận biên lai. Hệ thống đang xác nhận.
+                                    </p>
+                                    <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 hover:underline font-bold">Gửi lại ảnh khác?</button>
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-3">Tải ảnh biên lai để đơn hàng được xác nhận nhanh hơn.</p>
+                                    <p className="text-xs text-gray-500 mb-3">Tải ảnh biên lai để đơn hàng được <b>xác nhận tự động</b>.</p>
                                     <button 
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={isUploading}
-                                        className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                        className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center gap-2 mx-auto disabled:opacity-50 shadow-lg active:scale-95"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                         </svg>
-                                        {isUploading ? 'Đang tải lên...' : 'Tải ảnh biên lai'}
+                                        {isUploading ? 'Đang xử lý...' : 'Tải ảnh biên lai ngay'}
                                     </button>
                                 </div>
                             )}
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept="image/*" 
-                                onChange={handleFileUpload} 
-                            />
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                         </div>
                     </div>
 
                     <div className="mt-8 border-t pt-6">
-                         <h2 className="font-bold text-lg mb-4">Tóm tắt đơn hàng</h2>
-                         <div className="space-y-4">
-                            <div className="bg-gray-50 rounded-lg border p-4 flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-16 h-16 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => order.items[0].previewImageUrl && onZoomImage(order.items[0].previewImageUrl)}>
-                                    <img src={order.items[0].previewImageUrl} className="w-full h-full object-contain" alt="preview" />
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <ZoomIcon className="w-8 h-8 text-white drop-shadow-md" />
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold">Khung tùy chỉnh x {order.items.length}</p>
-                                  </div>
-                                </div>
-                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
-                            </div>
-
-                            <div className="text-sm space-y-2">
-                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</span></div>
-                                <div className="flex justify-between">
-                                    <span>Phí vận chuyển:</span>
-                                    {order.shipping.fee === 0 && order.shipping.method === 'standard' ? (
-                                        <span className="font-bold text-green-600">Miễn phí</span>
-                                    ) : (
-                                        <span className="font-medium">{formatCurrency(order.shipping.fee)}</span>
-                                    )}
-                                </div>
-                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà:</span><span className="font-medium">{formatCurrency(30000)}</span></div>}
-                                <div className="border-t my-2"></div>
-                                <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
-                                <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
-                                <div className="flex justify-between text-xs text-gray-500"><span>Còn lại (thanh toán khi nhận hàng):</span><span>{formatCurrency(amountRemaining)}</span></div>
-                            </div>
-                            
-                            <div className="border-t pt-4 text-sm space-y-1">
-                                <p><span className="font-semibold">Giao đến:</span> {order.customer.name}</p>
-                                <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}</p>
-                                <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
-                                <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
-                            </div>
+                         <div className="text-sm space-y-2">
+                            <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
+                            <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
                          </div>
+                         <button onClick={() => navigateTo('home')} className="w-full mt-6 py-3 border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-50 transition-colors">Về trang chủ</button>
                     </div>
                 </div>
             </div>
