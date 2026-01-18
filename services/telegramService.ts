@@ -52,16 +52,16 @@ export const sendOrderTelegram = async (order: Order, config: StoreConfig) => {
 <b>🔥 ĐƠN HÀNG MỚI: ${order.id}</b>
 --------------------------------
 <b>💵 Tổng tiền:</b> ${formatMoney(order.totalPrice)}
-<b>🗓️ Ngày nhận dự kiến:</b> ${order.delivery.date ? new Date(order.delivery.date).toLocaleDateString('vi-VN') : 'Liên hệ'}
+<b>🗓️ Ngày nhận:</b> ${new Date(order.delivery.date).toLocaleDateString('vi-VN')}
 <b>👤 Khách hàng:</b> ${order.customer.name}
 <b>📞 SĐT:</b> <a href="tel:${order.customer.phone}">${order.customer.phone}</a>
 <b>📍 Địa chỉ:</b> ${order.customer.address}
-<b>📝 Ghi chú:</b> ${order.delivery.notes || 'Không'}
+<b>📝 Note:</b> ${order.delivery.notes || 'Không'}
 
 <b>🛒 Chi tiết sản phẩm:</b>
 ${itemsList}
 
-<i>Hệ thống tự động đồng bộ. Vui lòng kiểm tra Admin để xử lý.</i>
+<i>Vui lòng kiểm tra Admin Dashboard để xử lý.</i>
     `.trim();
 
     const result = await sendTelegramMessage(config.telegramBotToken, config.telegramChatId, message);
