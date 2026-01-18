@@ -1,3 +1,4 @@
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';
@@ -7,6 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
+    // Chúng ta vẫn loadEnv để dùng cho các script phía server nếu cần, 
+    // nhưng không còn chuyển nó vào 'define' cho frontend nữa.
     const env = loadEnv(mode, '.', '');
     return {
       server: {
@@ -14,10 +17,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      // Đã loại bỏ khối define để bảo mật API Key
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
