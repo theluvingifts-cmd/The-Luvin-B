@@ -111,7 +111,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
   return (
     <div className="font-body text-gray-800 overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex flex-col lg:flex-row bg-[#fffbf0]">
+      <section className="relative min-h-[85vh] flex flex-col lg:flex-row bg-[#fffbf0]">
         <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 lg:py-0 z-10 order-2 lg:order-1">
             <div className="animate-fade-in space-y-6 text-left">
                 <div className="flex items-center gap-3">
@@ -150,6 +150,26 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                 <div className="absolute inset-0 bg-black/10 mix-blend-multiply pointer-events-none"></div>
             </div>
         </div>
+      </section>
+
+      {/* Trust Bar Section - CẬP NHẬT: Thông tin xử lý đơn hàng chính xác */}
+      <section className="bg-white py-12 border-b border-gray-50">
+          <div className="container mx-auto px-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4">
+                  {[
+                      { icon: '⚡', title: 'Xử lý trong 24h', desc: 'Chuẩn bị hàng & gửi đơn nhanh chóng' },
+                      { icon: '🎨', title: 'Thiết kế riêng', desc: 'Designer hỗ trợ căn chỉnh 1-1' },
+                      { icon: '🎁', title: 'Quà tặng tinh tế', desc: 'Hộp quà & thiệp viết tay cao cấp' },
+                      { icon: '🛡️', title: 'Bảo hành 1-1', desc: 'Lỗi 1 đổi 1, bảo hành keo trọn đời' }
+                  ].map((feature, i) => (
+                      <div key={i} className="flex flex-col items-center text-center p-4 group hover:bg-gray-50 rounded-2xl transition-colors duration-300">
+                          <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">{feature.icon}</span>
+                          <h4 className="font-bold text-gray-900 text-sm mb-1 uppercase tracking-tighter">{feature.title}</h4>
+                          <p className="text-[10px] text-gray-400 font-bold leading-tight max-w-[120px] mx-auto uppercase">{feature.desc}</p>
+                      </div>
+                  ))}
+              </div>
+          </div>
       </section>
 
       {/* Brand Story */}
