@@ -8,6 +8,8 @@ import { addBackground, updateBackground, getAllBackgrounds } from '../../servic
 import { getAllAssets, addAsset, deleteAsset } from '../../services/assetService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
+// Fix: Added missing helper import
+import { dataURLToBlob } from '../../utils/helpers';
 
 declare var html2canvas: any;
 
@@ -31,6 +33,7 @@ const TOOLS = [
 ];
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
+const QUICK_COLORS = ['#333333', '#ffffff', '#efa3b5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const FontSelector: React.FC<{ 
     value: string; 
@@ -63,7 +66,7 @@ const FontSelector: React.FC<{
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
             >
                 <span className="truncate">{value}</span>
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -94,14 +97,15 @@ export const AdminDesign: React.FC = () => {
     const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
     const [existingBackgrounds, setExistingBackgrounds] = useState<PresetBackground[]>([]);
-    const [savedAssets, setSavedAssets] = useState<SavedAsset[]>([]);
     const [history, setHistory] = useState<FrameConfig[]>([INITIAL_FRAME_CONFIG]);
     const [historyIndex, setHistoryIndex] = useState(0);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [clipboard, setClipboard] = useState<any>(null);
     const [zoom, setZoom] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
     const [editingBgId, setEditingBgId] = useState<string | null>(null);
     const [showGrid, setShowGrid] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
     
     // Metadata states
     const [bgName, setBgName] = useState('');
@@ -110,8 +114,8 @@ export const AdminDesign: React.FC = () => {
     
     const [existingPreviewUrl, setExistingPreviewUrl] = useState<string>('');
     const [showSaveModal, setShowSaveModal] = useState(false);
-    const [generatedThumbnailBlob, setGeneratedThumbnailBlob] = useState<Blob | null>(null);
     const [generatedThumbnailUrl, setGeneratedThumbnailUrl] = useState<string>('');
+    const [generatedThumbnailBlob, setGeneratedThumbnailBlob] = useState<Blob | null>(null);
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -129,7 +133,7 @@ export const AdminDesign: React.FC = () => {
             if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
                 const newHistory = history.slice(0, historyIndex + 1);
                 newHistory.push(newConfig);
-                if (newHistory.length > 30) newHistory.shift();
+                if (newHistory.length > 40) newHistory.shift();
                 setHistory(newHistory);
                 setHistoryIndex(newHistory.length - 1);
             }
@@ -142,16 +146,27 @@ export const AdminDesign: React.FC = () => {
 
     useEffect(() => {
         const fetchInitialData = async () => {
-            const [framesData, configData, bgData, assetsData] = await Promise.all([
-                getAllFrames(), getStoreConfig(), getAllBackgrounds(), getAllAssets()
+            const [framesData, configData, bgData] = await Promise.all([
+                getAllFrames(), getStoreConfig(), getAllBackgrounds()
             ]);
             if (framesData.length > 0) setFrames(framesData);
             if (configData?.uploadedFonts) setUploadedFonts(configData.uploadedFonts);
             if (bgData) setExistingBackgrounds(bgData);
-            if (assetsData) setSavedAssets(assetsData);
         };
         fetchInitialData();
     }, []);
+
+    const updateSelected = useCallback((updates: any) => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        setConfigWithHistory(prev => {
+            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
+            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            return prev;
+        });
+    }, [selectedItemId, setConfigWithHistory]);
 
     const handleItemRemove = useCallback((id: string) => {
         const [type, idStr] = id.split('-');
@@ -165,17 +180,145 @@ export const AdminDesign: React.FC = () => {
         });
     }, [setConfigWithHistory]);
 
-    const handleFrameChange = (frameId: string) => {
-        setConfigWithHistory(prev => ({ ...prev, frameId }));
-        const frame = frames.find(f => f.id === frameId);
-        if (frame) {
-            const type = Math.abs(frame.frameWidthCm - frame.frameHeightCm) > 1 ? 'rectangle' : 'square';
-            setBgType(type);
-        }
-    };
+    const duplicateSelected = useCallback(() => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        const newId = Date.now();
+        
+        setConfigWithHistory(prev => {
+            if (type === 'text') {
+                const source = prev.texts.find(t => t.id === id);
+                if (!source) return prev;
+                return { ...prev, texts: [...prev.texts, { ...source, id: newId, x: source.x + 4, y: source.y + 4 }] };
+            }
+            if (type === 'shape') {
+                const source = prev.shapes?.find(s => s.id === id);
+                if (!source) return prev;
+                return { ...prev, shapes: [...(prev.shapes || []), { ...source, id: newId, x: source.x + 4, y: source.y + 4 }] };
+            }
+            if (type === 'item') {
+                const source = prev.draggableItems.find(i => i.id === id);
+                if (!source) return prev;
+                return { ...prev, draggableItems: [...prev.draggableItems, { ...source, id: newId, x: source.x + 4, y: source.y + 4 }] };
+            }
+            return prev;
+        });
+        setSelectedItemId(`${type}-${newId}`);
+    }, [selectedItemId, setConfigWithHistory]);
 
-    const handleBackgroundChange = (type: 'color' | 'image', value: string) => {
-        setConfigWithHistory(prev => ({ ...prev, background: { type, value } }));
+    const moveLayer = useCallback((id: string, direction: 'front' | 'back' | 'up' | 'down') => {
+        const [type, idStr] = id.split('-');
+        const numericId = parseInt(idStr);
+        setConfigWithHistory(prev => {
+            const next = { ...prev };
+            let arr: any[] = [];
+            let key: 'texts' | 'shapes' | 'draggableItems' = 'texts';
+            
+            if (type === 'text') { arr = [...next.texts]; key = 'texts'; }
+            else if (type === 'shape') { arr = [...(next.shapes || [])]; key = 'shapes'; }
+            else if (type === 'item') { arr = [...next.draggableItems]; key = 'draggableItems'; }
+            
+            const idx = arr.findIndex(item => item.id === numericId);
+            if (idx === -1) return prev;
+            
+            const [item] = arr.splice(idx, 1);
+            if (direction === 'front') arr.push(item);
+            else if (direction === 'back') arr.unshift(item);
+            else if (direction === 'up') arr.splice(Math.min(arr.length, idx + 1), 0, item);
+            else if (direction === 'down') arr.splice(Math.max(0, idx - 1), 0, item);
+            
+            (next as any)[key] = arr;
+            return next;
+        });
+    }, [setConfigWithHistory]);
+
+    // HỆ THỐNG PHÍM TẮT CHUYÊN NGHIỆP
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Không bắt phím khi đang gõ vào input/textarea
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            // XÓA: Delete/Backspace
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedItemId) { e.preventDefault(); handleItemRemove(selectedItemId); }
+            }
+
+            // COPY/PASTE
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                if (selectedItemId) {
+                    const [type, idStr] = selectedItemId.split('-');
+                    const id = parseInt(idStr);
+                    const source = type === 'text' ? config.texts.find(t => t.id === id) : type === 'shape' ? config.shapes?.find(s => s.id === id) : config.draggableItems.find(i => i.id === id);
+                    if (source) setClipboard({ type, data: source });
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                if (clipboard) {
+                    const newId = Date.now();
+                    const newData = { ...clipboard.data, id: newId, x: clipboard.data.x + 5, y: clipboard.data.y + 5 };
+                    setConfigWithHistory(prev => {
+                        if (clipboard.type === 'text') return { ...prev, texts: [...prev.texts, newData] };
+                        if (clipboard.type === 'shape') return { ...prev, shapes: [...(prev.shapes || []), newData] };
+                        if (clipboard.type === 'item') return { ...prev, draggableItems: [...prev.draggableItems, newData] };
+                        return prev;
+                    });
+                    setSelectedItemId(`${clipboard.type}-${newId}`);
+                }
+            }
+
+            // UNDO/REDO
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) handleRedo(); else handleUndo();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); handleRedo(); }
+
+            // DI CHUYỂN BẰNG PHÍM MŨI TÊN
+            if (selectedItemId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                const step = e.shiftKey ? 2 : 0.5; // Shift di chuyển 2% (~10px), bình thường 0.5% (~2px)
+                const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+                const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+                
+                const [type, idStr] = selectedItemId.split('-');
+                const id = parseInt(idStr);
+                setConfigWithHistory(prev => {
+                    const updateItem = (item: any) => item.id === id ? { ...item, x: item.x + dx, y: item.y + dy } : item;
+                    if (type === 'text') return { ...prev, texts: prev.texts.map(updateItem) };
+                    if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(updateItem) };
+                    if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(updateItem) };
+                    return prev;
+                });
+            }
+
+            // LAYER ORDER: Ctrl + [ / ]
+            if ((e.ctrlKey || e.metaKey) && e.key === '[') {
+                if (selectedItemId) { e.preventDefault(); moveLayer(selectedItemId, 'down'); }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === ']') {
+                if (selectedItemId) { e.preventDefault(); moveLayer(selectedItemId, 'up'); }
+            }
+
+            // DESELECT: Escape
+            if (e.key === 'Escape') { setSelectedItemId(null); }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedItemId, config, clipboard, handleItemRemove, handleUndo, handleRedo, setConfigWithHistory, moveLayer]);
+
+    const handleAlign = (type: 'center' | 'horizontal' | 'vertical' | 'left' | 'right' | 'top' | 'bottom') => {
+        if (!selectedItemId) return;
+        let upd = {};
+        if (type === 'center') upd = { x: 50, y: 50 };
+        else if (type === 'horizontal') upd = { x: 50 };
+        else if (type === 'vertical') upd = { y: 50 };
+        else if (type === 'left') upd = { x: 10 };
+        else if (type === 'right') upd = { x: 90 };
+        else if (type === 'top') upd = { y: 10 };
+        else if (type === 'bottom') upd = { y: 90 };
+        updateSelected(upd);
     };
 
     const handleLoadTemplate = (bg: PresetBackground) => {
@@ -215,66 +358,28 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
-    const handleUploadBackground = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUploadAsset = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setIsSaving(true);
             try {
                 const url = await uploadToCloudinary(e.target.files[0]);
                 if (url) {
                     if (activeTool === 'background') {
-                        handleBackgroundChange('image', url);
+                        setConfigWithHistory(prev => ({ ...prev, background: { type: 'image', value: url } }));
                         await addAsset(url, 'background');
                     } else {
-                        const newItem: DraggableItem = {
-                            id: Date.now(),
-                            partId: url,
-                            type: 'charm',
-                            x: 50, y: 50, rotation: 0, scale: 0.5, opacity: 1
-                        };
-                        setConfigWithHistory(prev => ({
-                            ...prev,
-                            draggableItems: [...prev.draggableItems, newItem]
-                        }));
+                        const newItem: DraggableItem = { id: Date.now(), partId: url, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
+                        setConfigWithHistory(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
                         await addAsset(url, 'sticker');
                     }
-                    const assets = await getAllAssets();
-                    setSavedAssets(assets);
                 }
-            } catch (error) {
-                console.error("Upload failed", error);
-            } finally {
-                setIsSaving(false);
-            }
+            } catch (error) { console.error(error); } finally { setIsSaving(false); }
         }
-    };
-
-    const handleItemTransform = (id: string, nTransform: Transform) => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-        setConfigWithHistory(prev => {
-            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === numericId ? { ...t, ...nTransform } : t) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === numericId ? { ...i, ...nTransform } : i) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === numericId ? { ...s, ...nTransform } : s) };
-            return prev;
-        });
-    };
-
-    const handleAddField = () => {
-        const newField: FormField = { id: `f_${Date.now()}`, label: 'Trường mới', type: 'text', required: false, placeholder: '' };
-        setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), newField] }));
-    };
-
-    const handleUpdateField = (id: string, updates: Partial<FormField>) => {
-        setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(f => f.id === id ? { ...f, ...updates } : f) }));
-    };
-
-    const handleRemoveField = (id: string) => {
-        setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).filter(f => f.id !== id) }));
     };
 
     const addText = () => {
         const newId = Date.now();
-        const newText: TextConfig = { id: newId, content: 'Văn bản mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 30, opacity: 1 };
+        const newText: TextConfig = { id: newId, content: 'Văn bản mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 30 };
         setConfigWithHistory(prev => ({ ...prev, texts: [...prev.texts, newText] }));
         setSelectedItemId(`text-${newId}`);
     };
@@ -283,183 +388,10 @@ export const AdminDesign: React.FC = () => {
         const newId = Date.now();
         const newShape: ShapeConfig = {
             id: newId, type, x: 50, y: 50, width: 20, height: 20, rotation: 0,
-            fillColor: '#efa3b5', strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: type === 'circle' ? 100 : 0, opacity: 1
+            fillColor: '#efa3b5', strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: type === 'circle' ? 100 : 0
         };
         setConfigWithHistory(prev => ({ ...prev, shapes: [...(prev.shapes || []), newShape] }));
         setSelectedItemId(`shape-${newId}`);
-    };
-
-    const duplicateSelected = useCallback(() => {
-        if (!selectedItemId) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const id = parseInt(idStr);
-        const newId = Date.now();
-        
-        setConfigWithHistory(prev => {
-            if (type === 'text') {
-                const source = prev.texts.find(t => t.id === id);
-                if (!source) return prev;
-                return { ...prev, texts: [...prev.texts, { ...source, id: newId, x: source.x + 5, y: source.y + 5 }] };
-            }
-            if (type === 'shape') {
-                const source = prev.shapes?.find(s => s.id === id);
-                if (!source) return prev;
-                return { ...prev, shapes: [...(prev.shapes || []), { ...source, id: newId, x: source.x + 5, y: source.y + 5 }] };
-            }
-            if (type === 'item') {
-                const source = prev.draggableItems.find(i => i.id === id);
-                if (!source) return prev;
-                return { ...prev, draggableItems: [...prev.draggableItems, { ...source, id: newId, x: source.x + 5, y: source.y + 5 }] };
-            }
-            return prev;
-        });
-        setSelectedItemId(`${type}-${newId}`);
-    }, [selectedItemId, setConfigWithHistory]);
-
-    // HỆ THỐNG PHÍM TẮT (HOTKEYS)
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (selectedItemId) { e.preventDefault(); handleItemRemove(selectedItemId); }
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-                if (selectedItemId) { e.preventDefault(); duplicateSelected(); }
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault(); handleUndo();
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-                e.preventDefault(); handleRedo();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedItemId, handleItemRemove, duplicateSelected, handleUndo, handleRedo]);
-
-    const moveLayer = (id: string, direction: 'front' | 'back' | 'up' | 'down') => {
-        const [type, idStr] = id.split('-');
-        const numericId = parseInt(idStr);
-
-        setConfigWithHistory(prev => {
-            const next = { ...prev };
-            if (type === 'text') {
-                const idx = next.texts.findIndex(t => t.id === numericId);
-                if (idx === -1) return prev;
-                const arr = [...next.texts];
-                const [item] = arr.splice(idx, 1);
-                if (direction === 'front') arr.push(item);
-                else if (direction === 'back') arr.unshift(item);
-                next.texts = arr;
-            } else if (type === 'shape') {
-                const idx = (next.shapes || []).findIndex(s => s.id === numericId);
-                if (idx === -1) return prev;
-                const arr = [...(next.shapes || [])];
-                const [item] = arr.splice(idx, 1);
-                if (direction === 'front') arr.push(item);
-                else if (direction === 'back') arr.unshift(item);
-                next.shapes = arr;
-            } else if (type === 'item') {
-                const idx = next.draggableItems.findIndex(i => i.id === numericId);
-                if (idx === -1) return prev;
-                const arr = [...next.draggableItems];
-                const [item] = arr.splice(idx, 1);
-                if (direction === 'front') arr.push(item);
-                else if (direction === 'back') arr.unshift(item);
-                next.draggableItems = arr;
-            }
-            return next;
-        });
-    };
-
-    const updateSelected = (updates: any) => {
-        if (!selectedItemId) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const id = parseInt(idStr);
-        setConfigWithHistory(prev => {
-            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
-            return prev;
-        });
-    };
-
-    const handlePrepareSave = async () => {
-        setIsSaving(true);
-        const originalSelected = selectedItemId;
-        const originalZoom = zoom;
-        
-        setSelectedItemId(null); 
-        setZoom(1); // QUAN TRỌNG: Reset zoom về 1 để html2canvas chụp đúng tỉ lệ khung hình thật
-        
-        try {
-            // Đợi một khoảng thời gian ngắn để React render lại ở mức zoom 1.0
-            await new Promise(resolve => setTimeout(resolve, 800)); 
-            await document.fonts.ready;
-            
-            if (previewRef.current && typeof html2canvas !== 'undefined') {
-                const canvas = await html2canvas(previewRef.current, { 
-                    useCORS: true, 
-                    scale: 2, // Tăng chất lượng ảnh lên 2x
-                    backgroundColor: '#ffffff',
-                    logging: false
-                });
-                const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-                if (blob) { 
-                    setGeneratedThumbnailBlob(blob); 
-                    if(generatedThumbnailUrl) URL.revokeObjectURL(generatedThumbnailUrl);
-                    setGeneratedThumbnailUrl(URL.createObjectURL(blob)); 
-                }
-            }
-            setShowSaveModal(true);
-        } catch (e) { 
-            setShowSaveModal(true); 
-        } finally { 
-            setIsSaving(false); 
-            setSelectedItemId(originalSelected);
-            setZoom(originalZoom); // Trả lại mức zoom làm việc cho Admin
-        }
-    };
-
-    const handleConfirmSave = async () => {
-        if (!bgName) return alert("Vui lòng nhập tên Mẫu nền");
-        setIsSaving(true);
-        try {
-            let previewUrl = existingPreviewUrl || '';
-            if (generatedThumbnailBlob) {
-                const fileToUpload = new File([generatedThumbnailBlob], "thumbnail.png", { type: "image/png" });
-                const uploaded = await uploadToCloudinary(fileToUpload);
-                if (uploaded) previewUrl = uploaded;
-                else throw new Error("Lỗi upload thumbnail.");
-            }
-            if (!previewUrl) throw new Error("Chưa có ảnh thumbnail.");
-
-            const newBackground: PresetBackground = {
-                id: editingBgId || `bg_${Date.now()}`,
-                name: bgName,
-                url: config.background.value,
-                previewUrl: previewUrl, 
-                category: bgCategory,
-                type: bgType,
-                orientation: config.isRotated ? 'landscape' : 'portrait', 
-                formFields: config.formFields || [],
-                overlayConfig: { 
-                    texts: config.texts, 
-                    draggableItems: config.draggableItems, 
-                    shapes: config.shapes || [],
-                    frameId: config.frameId 
-                } as any
-            };
-
-            let success = editingBgId ? await updateBackground(editingBgId, newBackground) : await addBackground(newBackground);
-            if (success) {
-                const bgs = await getAllBackgrounds();
-                setExistingBackgrounds(bgs);
-                setShowSaveModal(false);
-                alert("Đã lưu mẫu thiết kế thành công!");
-            }
-        } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
     };
 
     const selectedObject = useMemo(() => {
@@ -472,83 +404,170 @@ export const AdminDesign: React.FC = () => {
         return null;
     }, [selectedItemId, config]);
 
+    // Fix: Added missing background change handler
+    const handleBackgroundChange = useCallback((type: 'color' | 'image', value: string) => {
+        setConfigWithHistory(prev => ({ ...prev, background: { type, value } }));
+    }, [setConfigWithHistory]);
+
+    // Fix: Added missing frame change handler
+    const handleFrameChange = useCallback((frameId: string) => {
+        setConfigWithHistory(prev => ({ ...prev, frameId }));
+    }, [setConfigWithHistory]);
+
+    // Fix: Added missing prepare save handler
+    const handlePrepareSave = async () => {
+        setIsSaving(true);
+        try {
+            const container = previewRef.current;
+            if (container && typeof html2canvas !== 'undefined') {
+                const canvas = await html2canvas(container, {
+                    backgroundColor: null,
+                    useCORS: true,
+                    scale: 1,
+                    logging: false
+                });
+                const dataUrl = canvas.toDataURL('image/png');
+                const blob = dataURLToBlob(dataUrl);
+                setGeneratedThumbnailUrl(dataUrl);
+                setGeneratedThumbnailBlob(blob);
+                setShowSaveModal(true);
+            }
+        } catch (error) {
+            console.error("Error generating thumbnail:", error);
+            alert("Lỗi tạo ảnh thumbnail.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Fix: Added missing confirm save handler
+    const handleConfirmSave = async () => {
+        if (!bgName.trim()) return alert("Vui lòng nhập tên mẫu!");
+        setIsSaving(true);
+        try {
+            let thumbnailUrl = existingPreviewUrl;
+            if (generatedThumbnailBlob) {
+                const file = new File([generatedThumbnailBlob], "thumb.png", { type: "image/png" });
+                const uploadedUrl = await uploadToCloudinary(file);
+                if (uploadedUrl) thumbnailUrl = uploadedUrl;
+            }
+
+            const backgroundData: PresetBackground = {
+                id: editingBgId || `bg_${Date.now()}`,
+                name: bgName,
+                category: bgCategory,
+                type: bgType,
+                url: config.background.value,
+                previewUrl: thumbnailUrl,
+                orientation: config.isRotated ? 'landscape' : 'portrait',
+                overlayConfig: {
+                    texts: config.texts,
+                    draggableItems: config.draggableItems,
+                    shapes: config.shapes,
+                    // @ts-ignore - custom field for editor to remember frame
+                    frameId: config.frameId 
+                },
+                formFields: config.formFields || []
+            };
+
+            let success = false;
+            if (editingBgId) {
+                success = await updateBackground(editingBgId, backgroundData);
+            } else {
+                success = await addBackground(backgroundData);
+            }
+
+            if (success) {
+                alert("Đã lưu mẫu thiết kế thành công!");
+                setShowSaveModal(false);
+                const bgData = await getAllBackgrounds();
+                setExistingBackgrounds(bgData);
+            } else {
+                alert("Lỗi khi lưu vào database.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Đã có lỗi xảy ra.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
+            
             {/* TOOLBAR LEFT */}
             <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20">
                 {TOOLS.map(tool => (
-                    <button key={tool.id} onClick={() => { setActiveTool(tool.id); if(tool.id !== 'layers') setSelectedItemId(null); }} className={`w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all ${activeTool === tool.id ? 'bg-white text-gray-900' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
+                    <button key={tool.id} onClick={() => { setActiveTool(tool.id); setSelectedItemId(null); }} className={`w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all ${activeTool === tool.id ? 'bg-white text-gray-900 shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
                         <span className="text-xl mb-1">{tool.icon}</span>
                         <span className="text-[10px] font-bold uppercase">{tool.label}</span>
                     </button>
                 ))}
+                <div className="mt-auto mb-2">
+                    <button onClick={() => setShowShortcuts(true)} className="w-10 h-10 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center text-lg">?</button>
+                </div>
             </div>
 
-            {/* PANEL CONTENT / PROPERTY INSPECTOR */}
+            {/* PROPERTY PANEL */}
             <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h3 className="font-black text-gray-800 uppercase tracking-tight text-xs">
                         {selectedObject ? 'Thuộc tính đối tượng' : (TOOLS.find(t => t.id === activeTool)?.label)}
                     </h3>
-                    {selectedObject && (
-                        <button onClick={() => setSelectedItemId(null)} className="text-[10px] bg-gray-200 px-2 py-1 rounded font-bold hover:bg-gray-300">Đóng</button>
-                    )}
+                    {selectedObject && <button onClick={() => setSelectedItemId(null)} className="text-[10px] bg-gray-200 px-2 py-1 rounded font-bold hover:bg-gray-300">Đóng</button>}
                 </div>
                 
                 <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
                     {selectedObject ? (
                         <div className="space-y-6 animate-fade-in">
                             <div className="flex gap-2">
-                                <button onClick={duplicateSelected} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-100 hover:bg-blue-100">👯 Nhân bản (Ctrl+D)</button>
-                                <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa (Del)</button>
+                                <button onClick={duplicateSelected} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-100 hover:bg-blue-100">👯 Nhân bản</button>
+                                <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa</button>
                             </div>
 
-                            {/* TÍNH NĂNG KHÓA (LOCK) */}
-                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center">
-                                <span className="text-[10px] font-bold text-gray-500 uppercase">🔒 Khóa vị trí</span>
-                                <button 
-                                    onClick={() => updateSelected({ lockedPosition: !selectedObject.lockedPosition })}
-                                    className={`w-10 h-5 rounded-full p-1 transition-colors ${selectedObject.lockedPosition ? 'bg-red-500' : 'bg-gray-300'}`}
-                                >
-                                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${selectedObject.lockedPosition ? 'translate-x-5' : ''}`}></div>
-                                </button>
-                            </div>
-
-                            {/* COMMON: OPACITY */}
+                            {/* ALIGNMENT TOOLS */}
                             <div className="space-y-2">
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Độ trong suốt (Opacity)</label>
-                                <div className="flex items-center gap-3">
-                                    <input type="range" min="0" max="1" step="0.01" value={selectedObject.opacity ?? 1} onChange={e => updateSelected({ opacity: parseFloat(e.target.value) })} className="flex-grow accent-blue-600" />
-                                    <span className="text-xs font-mono w-8 text-right">{Math.round((selectedObject.opacity ?? 1) * 100)}%</span>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Căn nhanh</label>
+                                <div className="grid grid-cols-4 gap-1">
+                                    <button onClick={() => handleAlign('left')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn trái">⇤</button>
+                                    <button onClick={() => handleAlign('horizontal')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn giữa ngang">↔</button>
+                                    <button onClick={() => handleAlign('right')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn phải">⇥</button>
+                                    <button onClick={() => handleAlign('center')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn chính giữa">⊹</button>
+                                    <button onClick={() => handleAlign('top')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn trên">⤒</button>
+                                    <button onClick={() => handleAlign('vertical')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn giữa dọc">↕</button>
+                                    <button onClick={() => handleAlign('bottom')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn dưới">⤓</button>
+                                    <button onClick={() => updateSelected({ isFlipped: !selectedObject.isFlipped })} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Lật ngang">⇄</button>
                                 </div>
                             </div>
 
-                            {/* TYPE SPECIFIC CONTROLS */}
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase">🔒 Khóa vị trí</span>
+                                <button onClick={() => updateSelected({ lockedPosition: !selectedObject.lockedPosition })} className={`w-10 h-5 rounded-full p-1 transition-colors ${selectedObject.lockedPosition ? 'bg-red-500' : 'bg-gray-300'}`}><div className={`w-3 h-3 bg-white rounded-full transition-transform ${selectedObject.lockedPosition ? 'translate-x-5' : ''}`}></div></button>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Độ trong suốt</label>
+                                <div className="flex items-center gap-3"><input type="range" min="0" max="1" step="0.01" value={selectedObject.opacity ?? 1} onChange={e => updateSelected({ opacity: parseFloat(e.target.value) })} className="flex-grow accent-blue-600" /><span className="text-xs font-mono w-8 text-right">{Math.round((selectedObject.opacity ?? 1) * 100)}%</span></div>
+                            </div>
+
                             {selectedItemId?.startsWith('text-') && (
                                 <div className="space-y-4 pt-2">
                                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-                                        <label className="block text-[10px] font-black text-blue-700 uppercase tracking-tight">🔗 LIÊN KẾT DỮ LIỆU</label>
+                                        <label className="block text-[10px] font-black text-blue-700 uppercase tracking-tight">🔗 LIÊN KẾT FORM</label>
                                         <select className="w-full p-2 border rounded-lg text-xs font-bold bg-white" value={(selectedObject as TextConfig).linkedFieldId || ''} onChange={e => updateSelected({ linkedFieldId: e.target.value })}>
                                             <option value="">-- Không liên kết --</option>
-                                            {(config.formFields || []).map(f => (<option key={f.id} value={f.id}>{f.label} ({f.type})</option>))}
+                                            {(config.formFields || []).map(f => (<option key={f.id} value={f.id}>{f.label}</option>))}
                                         </select>
-                                        <p className="text-[9px] text-blue-400 italic">Khi khách gõ vào ô Form này, chữ trên ảnh sẽ tự thay đổi.</p>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nội dung mặc định</label>
-                                        <textarea className="w-full p-2 border rounded-lg text-sm" rows={2} value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Font chữ</label>
-                                        <FontSelector value={(selectedObject as TextConfig).font} onChange={f => updateSelected({ font: f })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} />
-                                    </div>
+                                    <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nội dung</label><textarea className="w-full p-2 border rounded-lg text-sm" rows={2} value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} /></div>
+                                    <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Font chữ</label><FontSelector value={(selectedObject as TextConfig).font} onChange={f => updateSelected({ font: f })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} /></div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cỡ chữ</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as TextConfig).size} onChange={e => updateSelected({ size: Number(e.target.value) })} /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu sắc</label><input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={(selectedObject as TextConfig).color} onChange={e => updateSelected({ color: e.target.value })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu sắc</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as TextConfig).color} onChange={e => updateSelected({ color: e.target.value })} /></div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => updateSelected({ fontWeight: (selectedObject as TextConfig).fontWeight === 'bold' ? 'normal' : 'bold' })} className={`flex-1 py-2 rounded border text-xs font-bold ${(selectedObject as TextConfig).fontWeight === 'bold' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>B</button>
-                                        <button onClick={() => updateSelected({ background: !(selectedObject as TextConfig).background })} className={`flex-1 py-2 rounded border text-xs font-bold ${(selectedObject as TextConfig).background ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>BG</button>
+                                    <div className="flex flex-wrap gap-1">
+                                        {QUICK_COLORS.map(c => <button key={c} onClick={() => updateSelected({ color: c })} className="w-6 h-6 rounded-full border border-gray-200" style={{backgroundColor: c}}></button>)}
                                     </div>
                                 </div>
                             )}
@@ -556,8 +575,8 @@ export const AdminDesign: React.FC = () => {
                             {selectedItemId?.startsWith('shape-') && (
                                 <div className="space-y-4 pt-2">
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu nền</label><input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={(selectedObject as ShapeConfig).fillColor} onChange={e => updateSelected({ fillColor: e.target.value })} /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu viền</label><input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={(selectedObject as ShapeConfig).strokeColor} onChange={e => updateSelected({ strokeColor: e.target.value })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nền</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as ShapeConfig).fillColor} onChange={e => updateSelected({ fillColor: e.target.value })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Viền</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as ShapeConfig).strokeColor} onChange={e => updateSelected({ strokeColor: e.target.value })} /></div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Độ dày viền</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as ShapeConfig).strokeWidth} onChange={e => updateSelected({ strokeWidth: Number(e.target.value) })} /></div>
@@ -569,8 +588,10 @@ export const AdminDesign: React.FC = () => {
                             <div className="pt-4 border-t border-gray-100 space-y-2">
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase">Thứ tự lớp</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <button onClick={() => moveLayer(selectedItemId!, 'front')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔝 Lên đầu</button>
-                                    <button onClick={() => moveLayer(selectedItemId!, 'back')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔙 Xuống đáy</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'front')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔝 Trên cùng</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'back')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔙 Dưới cùng</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'up')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">⤒ Lên 1 lớp</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'down')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">⤓ Xuống 1 lớp</button>
                                 </div>
                             </div>
                         </div>
@@ -582,70 +603,33 @@ export const AdminDesign: React.FC = () => {
                                     <div className="space-y-2">
                                         {existingBackgrounds.map(bg => (
                                             <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
-                                                <div className="w-10 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border border-gray-100"><img src={bg.previewUrl || bg.url} className="w-full h-full object-cover" alt={bg.name} /></div>
+                                                <div className="w-10 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0"><img src={bg.previewUrl || bg.url} className="w-full h-full object-cover" alt={bg.name} /></div>
                                                 <div className="flex-grow min-w-0"><p className="text-xs font-bold text-gray-800 truncate">{bg.name}</p><p className="text-[10px] text-gray-400">{bg.category} • {bg.type}</p></div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
-
-                            {activeTool === 'text' && (
-                                <div className="space-y-4">
-                                    <button onClick={addText} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow-md hover:bg-black transition-all active:scale-95">+ Thêm nội dung chữ</button>
-                                    <p className="text-[10px] text-gray-400 text-center italic leading-tight">Mẹo: Bạn có thể up file thiết kế hoa văn (PNG trong suốt) lên, sau đó đè Chữ này lên trên để khách sửa.</p>
-                                </div>
-                            )}
-
+                            {activeTool === 'text' && <button onClick={addText} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow-md hover:bg-black transition-all">+ Thêm văn bản</button>}
                             {activeTool === 'background' && (
                                 <div className="space-y-4">
-                                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors flex flex-col items-center gap-2"><span className="text-2xl">📸</span><span className="text-[10px] font-bold uppercase">Upload File từ AI (PNG)</span></button>
-                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleUploadBackground} />
-                                    <p className="text-[9px] text-gray-400 text-center italic">Hãy Export file AI của bạn ra định dạng <b>PNG-24 trong suốt</b> để đạt chất lượng tốt nhất.</p>
-                                </div>
-                            )}
-
-                            {activeTool === 'form' && (
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center bg-blue-50 p-2 rounded-lg border border-blue-100"><span className="text-[10px] font-bold text-blue-600 uppercase">Cấu hình Form cho khách</span><button onClick={handleAddField} className="text-[10px] font-bold text-blue-700 hover:underline">+ Thêm ô nhập</button></div>
-                                    <div className="space-y-3">
-                                        {(config.formFields || []).map((field) => (
-                                            <div key={field.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group">
-                                                <button onClick={() => handleRemoveField(field.id)} className="absolute top-1 right-1 text-red-500 font-bold text-lg opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                                                <input className="w-full p-1.5 border rounded text-xs font-bold" value={field.label} onChange={e => handleUpdateField(field.id, { label: e.target.value })} placeholder="VD: Tên của bạn..." />
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <select className="w-full p-1.5 border rounded text-[10px] font-bold" value={field.type} onChange={e => handleUpdateField(field.id, { type: e.target.value as any })}>
-                                                        <option value="text">Chữ ngắn</option><option value="textarea">Chữ dài</option><option value="date">Ngày</option><option value="image">Ảnh khách up</option>
-                                                    </select>
-                                                    <label className="flex items-center gap-1.5 cursor-pointer pb-1"><input type="checkbox" checked={field.required} onChange={e => handleUpdateField(field.id, { required: e.target.checked })} className="w-3 h-3 accent-blue-600" /><span className="text-[10px] font-bold text-gray-600">Bắt buộc</span></label>
-                                                </div>
-                                            </div>
-                                        ))}
+                                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 flex flex-col items-center gap-2"><span className="text-2xl">📸</span><span className="text-[10px] font-bold uppercase">Tải ảnh nền mới</span></button>
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadAsset} />
+                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t">
+                                        {QUICK_COLORS.map(c => <button key={c} onClick={() => handleBackgroundChange('color', c)} className="h-10 rounded-lg border shadow-sm" style={{backgroundColor: c}}></button>)}
                                     </div>
                                 </div>
                             )}
-
-                            {activeTool === 'layers' && (
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Quản lý lớp</p>
-                                    {[...(config.shapes || []), ...config.draggableItems, ...config.texts].reverse().map(item => {
-                                        const idStr = (item as any).id.toString();
-                                        const type = (item as any).content ? 'text' : (item as any).partId ? 'item' : 'shape';
-                                        const key = `${type}-${idStr}`;
-                                        return (
-                                            <div key={key} onClick={() => setSelectedItemId(key)} className={`p-2 rounded border flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-all ${selectedItemId === key ? 'border-blue-500 bg-blue-50' : 'border-gray-100'}`}>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs">{type === 'text' ? '📝' : type === 'shape' ? '🟥' : '🖼️'}</span>
-                                                    <span className="text-[10px] font-medium truncate w-32">{(item as any).content || (item as any).partId?.split('/').pop() || 'Đối tượng'}</span>
-                                                    {(item as any).lockedPosition && <span className="text-[8px]">🔒</span>}
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <button onClick={(e) => { e.stopPropagation(); moveLayer(key, 'up'); }} className="p-1 hover:bg-gray-200 rounded text-[8px]">⬆️</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); moveLayer(key, 'down'); }} className="p-1 hover:bg-gray-200 rounded text-[8px]">⬇️</button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                            {activeTool === 'shape' && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => addShape('rect')} className="aspect-square bg-gray-100 border border-gray-200 rounded flex flex-col items-center justify-center gap-2 hover:bg-gray-200"><span>⬜</span><span className="text-[10px] font-bold uppercase">Hình vuông</span></button>
+                                    <button onClick={() => addShape('circle')} className="aspect-square bg-gray-100 border border-gray-200 rounded flex flex-col items-center justify-center gap-2 hover:bg-gray-200"><span>⚪</span><span className="text-[10px] font-bold uppercase">Hình tròn</span></button>
+                                </div>
+                            )}
+                            {activeTool === 'upload' && (
+                                <div className="space-y-4">
+                                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 flex flex-col items-center gap-2"><span className="text-2xl">🖼️</span><span className="text-[10px] font-bold uppercase">Tải Sticker PNG</span></button>
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleUploadAsset} />
                                 </div>
                             )}
                         </>
@@ -653,78 +637,69 @@ export const AdminDesign: React.FC = () => {
                 </div>
             </div>
 
-            {/* CANVAS MAIN AREA */}
-            <div 
-                className="flex-grow flex flex-col relative bg-[#f1f3f5] cursor-default"
-                onClick={() => setSelectedItemId(null)}
-            >
-                <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10" onClick={e => e.stopPropagation()}>
+            {/* CANVAS MAIN */}
+            <div className="flex-grow flex flex-col relative bg-[#f1f3f5] cursor-default" onMouseDown={() => setSelectedItemId(null)}>
+                <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10" onMouseDown={e => e.stopPropagation()}>
                     <div className="flex items-center gap-4">
-                        <select value={config.frameId} onChange={(e) => handleFrameChange(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-1.5 font-bold outline-none">
-                            {frames.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
-                        </select>
-                        <div className="h-6 w-px bg-gray-200"></div>
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="w-4 h-4 accent-gray-800" />
-                            <span className="text-xs font-bold text-gray-500 group-hover:text-gray-800 transition-colors">Lưới (Grid)</span>
-                        </label>
+                        <select value={config.frameId} onChange={(e) => handleFrameChange(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-1.5 font-bold outline-none">{frames.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}</select>
+                        <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="w-4 h-4 accent-gray-800" /><span className="text-xs font-bold text-gray-500">Lưới</span></label>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex border rounded-lg bg-white p-1">
-                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Hoàn tác (Ctrl+Z)">⤺</button>
-                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Làm lại (Ctrl+Y)">⤻</button>
+                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded" title="Hoàn tác (Ctrl+Z)">⤺</button>
+                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded" title="Làm lại (Ctrl+Y)">⤻</button>
                         </div>
-                        <button onClick={handlePrepareSave} className="px-5 py-2 text-xs font-black text-white bg-blue-600 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all transform active:scale-95">{editingBgId ? 'CẬP NHẬT MẪU' : 'LƯU MẪU MỚI'}</button>
+                        <button onClick={handlePrepareSave} className="px-5 py-2 text-xs font-black text-white bg-blue-600 rounded-xl shadow-lg hover:bg-blue-700 transition-all">{editingBgId ? 'CẬP NHẬT MẪU' : 'LƯU MẪU MỚI'}</button>
                     </div>
                 </div>
 
                 <div className="flex-grow overflow-auto flex items-center justify-center p-12 relative">
-                    {/* GRID OVERLAY */}
-                    {showGrid && (
-                        <div className="absolute inset-0 pointer-events-none opacity-20" 
-                             style={{backgroundImage: 'linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px)', backgroundSize: '20px 20px'}}>
-                        </div>
-                    )}
-                    
-                    <div 
-                        style={{ transform: `scale(${zoom})` }} 
-                        className="bg-white shadow-2xl transition-transform duration-300"
-                        onClick={e => e.stopPropagation()}
-                    >
+                    {showGrid && <div className="absolute inset-0 pointer-events-none opacity-20" style={{backgroundImage: 'linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>}
+                    <div style={{ transform: `scale(${zoom})` }} className="bg-white shadow-2xl transition-transform duration-300" onMouseDown={e => e.stopPropagation()}>
                         <FramePreview 
-                            ref={previewRef}
-                            config={config}
-                            containerWidth={500}
-                            onItemTransform={handleItemTransform}
-                            onItemRemove={handleItemRemove}
-                            onTextUpdate={(id, updates) => updateSelected(updates)}
-                            isInteractive={true}
-                            selectedItemId={selectedItemId}
-                            setSelectedItemId={setSelectedItemId}
-                            setIsEditingText={() => {}} 
-                            allParts={{}} 
-                            allowTextScaling={true}
-                            previewFont={previewFont}
-                            onAlign={(type) => {
-                                if (!selectedItemId) return;
-                                let upd = {};
-                                if(type === 'center') upd = { x: 50, y: 50 };
-                                else if(type === 'horizontal') upd = { x: 50 };
-                                else if(type === 'vertical') upd = { y: 50 };
-                                updateSelected(upd);
-                            }}
+                            ref={previewRef} config={config} containerWidth={500} onItemTransform={(id, t) => {
+                                const [type, idStr] = id.split('-');
+                                const numId = parseInt(idStr);
+                                setConfigWithHistory(prev => {
+                                    const update = (item: any) => item.id === numId ? { ...item, ...t } : item;
+                                    if (type === 'text') return { ...prev, texts: prev.texts.map(update) };
+                                    if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(update) };
+                                    if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(update) };
+                                    return prev;
+                                });
+                            }} 
+                            onItemRemove={handleItemRemove} onTextUpdate={(id, u) => updateSelected(u)} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={{}} allowTextScaling={true} previewFont={previewFont} onAlign={handleAlign}
                         />
                     </div>
 
-                    {/* ZOOM CONTROL FLOAT */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/90 backdrop-blur border rounded-full px-4 py-2 shadow-xl z-20" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="text-gray-500 font-black hover:text-gray-900 transition-colors">➖</button>
-                        <span className="text-xs font-black w-12 text-center text-gray-800">{Math.round(zoom * 100)}%</span>
-                        <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 font-black hover:text-gray-900 transition-colors">➕</button>
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/90 backdrop-blur border rounded-full px-4 py-2 shadow-xl z-20" onMouseDown={e => e.stopPropagation()}>
+                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="text-gray-500 font-black">➖</button>
+                        <span className="text-xs font-black w-12 text-center">{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 font-black">➕</button>
                         <button onClick={() => setZoom(1)} className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:bg-gray-200 ml-2">RESET</button>
                     </div>
                 </div>
             </div>
+
+            {/* SHORTCUT HELP MODAL */}
+            {showShortcuts && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowShortcuts(false)}>
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-black mb-6 border-b pb-2">⌨️ Phím tắt Studio</h3>
+                        <div className="space-y-3 text-sm">
+                            <div className="flex justify-between"><span>Di chuyển:</span><span className="font-bold text-blue-600">Mũi tên (↑ ↓ ← →)</span></div>
+                            <div className="flex justify-between"><span>Di chuyển nhanh (10px):</span><span className="font-bold text-blue-600">Shift + Mũi tên</span></div>
+                            <div className="flex justify-between"><span>Sao chép:</span><span className="font-bold text-blue-600">Ctrl + C</span></div>
+                            <div className="flex justify-between"><span>Dán:</span><span className="font-bold text-blue-600">Ctrl + V</span></div>
+                            <div className="flex justify-between"><span>Xóa đối tượng:</span><span className="font-bold text-red-600">Del / Backspace</span></div>
+                            <div className="flex justify-between"><span>Lớp lên / xuống:</span><span className="font-bold text-blue-600">Ctrl + [ / ]</span></div>
+                            <div className="flex justify-between"><span>Hoàn tác:</span><span className="font-bold text-blue-600">Ctrl + Z</span></div>
+                            <div className="flex justify-between"><span>Bỏ chọn:</span><span className="font-bold text-blue-600">Esc</span></div>
+                        </div>
+                        <button onClick={() => setShowShortcuts(false)} className="w-full mt-8 py-3 bg-gray-900 text-white font-bold rounded-xl">Đã hiểu!</button>
+                    </div>
+                </div>
+            )}
 
             {/* SAVE MODAL */}
             {showSaveModal && (
@@ -735,13 +710,8 @@ export const AdminDesign: React.FC = () => {
                             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4">
                                 <h4 className="text-xs font-bold text-blue-700 uppercase mb-2">📸 Kiểm tra Thumbnail</h4>
                                 <div className="aspect-square w-32 mx-auto border rounded-lg bg-white overflow-hidden shadow-sm">
-                                    {generatedThumbnailUrl ? (
-                                        <img src={generatedThumbnailUrl} className="w-full h-full object-contain" alt="thumbnail preview" />
-                                    ) : (
-                                        <div className="w-full h-full animate-pulse bg-gray-100"></div>
-                                    )}
+                                    {generatedThumbnailUrl ? <img src={generatedThumbnailUrl} className="w-full h-full object-contain" alt="thumbnail" /> : <div className="w-full h-full animate-pulse bg-gray-100"></div>}
                                 </div>
-                                <p className="text-[9px] text-blue-400 text-center mt-2 italic">Ảnh này sẽ hiển thị ở ngoài trang chủ/bộ sưu tập.</p>
                             </div>
                             <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Tên mẫu thiết kế</label><input className="w-full p-3 border border-gray-200 rounded-2xl bg-gray-50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="Ví dụ: Tốt nghiệp ABC..." /></div>
                             <div className="grid grid-cols-2 gap-4">
