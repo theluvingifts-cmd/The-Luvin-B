@@ -137,8 +137,8 @@ export const AdminDesign: React.FC = () => {
         });
     }, [history, historyIndex]);
 
-    const handleUndo = () => { if (historyIndex > 0) { const newIndex = historyIndex - 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } };
-    const handleRedo = () => { if (historyIndex < history.length - 1) { const newIndex = historyIndex + 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } };
+    const handleUndo = useCallback(() => { if (historyIndex > 0) { const newIndex = historyIndex - 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } }, [history, historyIndex]);
+    const handleRedo = useCallback(() => { if (historyIndex < history.length - 1) { const newIndex = historyIndex + 1; setHistoryIndex(newIndex); setConfig(history[newIndex]); } }, [history, historyIndex]);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -153,7 +153,7 @@ export const AdminDesign: React.FC = () => {
         fetchInitialData();
     }, []);
 
-    const handleItemRemove = (id: string) => {
+    const handleItemRemove = useCallback((id: string) => {
         const [type, idStr] = id.split('-');
         const numericId = parseInt(idStr);
         setSelectedItemId(null);
@@ -163,7 +163,7 @@ export const AdminDesign: React.FC = () => {
             if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== numericId) };
             return prev;
         });
-    };
+    }, [setConfigWithHistory]);
 
     const handleFrameChange = (frameId: string) => {
         setConfigWithHistory(prev => ({ ...prev, frameId }));
@@ -289,7 +289,7 @@ export const AdminDesign: React.FC = () => {
         setSelectedItemId(`shape-${newId}`);
     };
 
-    const duplicateSelected = () => {
+    const duplicateSelected = useCallback(() => {
         if (!selectedItemId) return;
         const [type, idStr] = selectedItemId.split('-');
         const id = parseInt(idStr);
@@ -314,7 +314,29 @@ export const AdminDesign: React.FC = () => {
             return prev;
         });
         setSelectedItemId(`${type}-${newId}`);
-    };
+    }, [selectedItemId, setConfigWithHistory]);
+
+    // HỆ THỐNG PHÍM TẮT (HOTKEYS)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedItemId) { e.preventDefault(); handleItemRemove(selectedItemId); }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                if (selectedItemId) { e.preventDefault(); duplicateSelected(); }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault(); handleUndo();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault(); handleRedo();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedItemId, handleItemRemove, duplicateSelected, handleUndo, handleRedo]);
 
     const moveLayer = (id: string, direction: 'front' | 'back' | 'up' | 'down') => {
         const [type, idStr] = id.split('-');
@@ -366,12 +388,20 @@ export const AdminDesign: React.FC = () => {
     const handlePrepareSave = async () => {
         setIsSaving(true);
         const originalSelected = selectedItemId;
+        const originalZoom = zoom;
         setSelectedItemId(null); 
+        setZoom(1); // RESET ZOOM ĐỂ CHỤP ẢNH CHUẨN 1:1
+        
         try {
-            await new Promise(resolve => setTimeout(resolve, 800)); 
+            await new Promise(resolve => setTimeout(resolve, 800)); // Đợi render lại ở zoom 1
             await document.fonts.ready;
             if (previewRef.current && typeof html2canvas !== 'undefined') {
-                const canvas = await html2canvas(previewRef.current, { useCORS: true, scale: 2, backgroundColor: '#ffffff' });
+                const canvas = await html2canvas(previewRef.current, { 
+                    useCORS: true, 
+                    scale: 2, 
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
                 const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
                 if (blob) { 
                     setGeneratedThumbnailBlob(blob); 
@@ -380,7 +410,13 @@ export const AdminDesign: React.FC = () => {
                 }
             }
             setShowSaveModal(true);
-        } catch (e) { setShowSaveModal(true); } finally { setIsSaving(false); setSelectedItemId(originalSelected); }
+        } catch (e) { 
+            setShowSaveModal(true); 
+        } finally { 
+            setIsSaving(false); 
+            setSelectedItemId(originalSelected);
+            setZoom(originalZoom); // TRẢ LẠI ZOOM CŨ CHO ADMIN
+        }
     };
 
     const handleConfirmSave = async () => {
@@ -460,8 +496,8 @@ export const AdminDesign: React.FC = () => {
                     {selectedObject ? (
                         <div className="space-y-6 animate-fade-in">
                             <div className="flex gap-2">
-                                <button onClick={duplicateSelected} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-100 hover:bg-blue-100">👯 Nhân bản</button>
-                                <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa</button>
+                                <button onClick={duplicateSelected} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-100 hover:bg-blue-100">👯 Nhân bản (Ctrl+D)</button>
+                                <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa (Del)</button>
                             </div>
 
                             {/* COMMON: OPACITY */}
@@ -648,8 +684,8 @@ export const AdminDesign: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex border rounded-lg bg-white p-1">
-                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Hoàn tác">⤺</button>
-                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Làm lại">⤻</button>
+                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Hoàn tác (Ctrl+Z)">⤺</button>
+                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Làm lại (Ctrl+Y)">⤻</button>
                         </div>
                         <button onClick={handlePrepareSave} className="px-5 py-2 text-xs font-black text-white bg-blue-600 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all transform active:scale-95">{editingBgId ? 'CẬP NHẬT MẪU' : 'LƯU MẪU MỚI'}</button>
                     </div>
