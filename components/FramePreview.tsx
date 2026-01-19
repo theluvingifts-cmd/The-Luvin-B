@@ -36,7 +36,6 @@ interface FramePreviewProps {
   onAlign?: (type: 'center' | 'horizontal' | 'vertical') => void;
 }
 
-// 1. Optimized SafeImage Component with Smooth Transition
 const SafeImage = memo(({ src, style, className, alt, priority, disableTransition, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean; disableTransition?: boolean }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -86,7 +85,6 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
     );
 });
 
-// 2. Memoized LegoCharacter
 const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterConfig; pxPerCm: number }) => {
   const { hair, face, shirt, pants } = character;
   const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
@@ -107,7 +105,9 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
     width: px(CHARACTER_WIDTH_CM),
     height: px(CHARACTER_HEIGHT_CM),
     transformOrigin: 'center',
-  }), [pxPerCm]);
+    opacity: character.opacity ?? 1,
+    display: character.isHidden ? 'none' : 'block'
+  }), [pxPerCm, character.opacity, character.isHidden]);
 
   const partStyle = useMemo(() => ({
     position: 'absolute' as const,
@@ -210,6 +210,8 @@ const EditableText = memo(({
         fontWeight: text.fontWeight || 'normal',
         userSelect: isContentLocked ? 'none' as const : 'auto' as const,
         border: text.border ? `${text.borderWidth || 2}px ${text.borderStyle || 'solid'} ${text.borderColor || text.color}` : 'none',
+        opacity: text.opacity ?? 1,
+        display: text.isHidden ? 'none' : 'block',
         ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
     }), [activeFont, fontSize, text, isContentLocked]);
 
@@ -451,7 +453,6 @@ const Transformable = memo(({
             
             {isSelected && !isPositionLocked && (
                 <>
-                  {/* Fixed Property 'height' does not exist on type 'CSSProperties' by casting to any */}
                   {resizeMode === 'dimensions' && !(style as any)?.height && (
                       <div 
                         onMouseDown={handleResizeWidthStart} 
@@ -643,7 +644,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         style={{ 
                             width: `${(shape.width) * backgroundWidth / 100}px`,
-                            height: `${(shape.height) * backgroundHeight / 100}px`
+                            height: `${(shape.height) * backgroundHeight / 100}px`,
+                            opacity: shape.opacity ?? 1,
+                            display: shape.isHidden ? 'none' : 'block'
                         }}
                     >
                         <div style={{
@@ -683,7 +686,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     let maskStyle: React.CSSProperties = {};
                     if (item.maskShape === 'circle') maskStyle = { borderRadius: '50%' };
                     else if (item.maskShape === 'rounded') maskStyle = { borderRadius: '15%' };
-                    else if (item.maskShape === 'heart') maskStyle = { clipPath: 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' };
+                    else if (item.maskShape === 'heart') maskStyle = { clipPath: 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' };
                     else if (item.maskShape === 'star') maskStyle = { clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' };
 
                     return (
@@ -695,7 +698,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             zIndex={item.type === 'hat' ? 12 : 10}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
-                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm }}>
+                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block' }}>
                                 <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                         </Transformable>

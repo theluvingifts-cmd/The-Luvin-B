@@ -3,16 +3,13 @@
 
 export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business';
 
-// Added StaffRole type
 export type StaffRole = 'admin' | 'warehouse';
 
-// Added BulkPriceTier type
 export interface BulkPriceTier {
     quantity: number;
     price: number;
 }
 
-// Added CustomerStats type for Admin CRM
 export interface CustomerStats {
     phone: string;
     name: string;
@@ -62,7 +59,7 @@ export interface LegoPart {
   widthCm: number;
   heightCm: number;
   colors?: OutfitColor[];
-  bulkPricing?: BulkPriceTier[]; // Use BulkPriceTier
+  bulkPricing?: BulkPriceTier[]; 
   stock?: number;
   order?: number;
   category?: string;
@@ -77,6 +74,8 @@ export interface ShapeConfig {
   strokeColor: string; fillColor?: string; strokeWidth: number;
   strokeType: 'solid' | 'dashed' | 'dotted'; borderRadius: number;
   lockedPosition?: boolean;
+  opacity?: number;
+  isHidden?: boolean;
 }
 
 export interface TextConfig {
@@ -96,8 +95,9 @@ export interface TextConfig {
   borderStyle?: 'solid' | 'dashed' | 'dotted';
   borderColor?: string;
   borderWidth?: number;
-  // Added linkedFieldId to track synchronization between text elements and custom form inputs
   linkedFieldId?: string;
+  opacity?: number;
+  isHidden?: boolean;
 }
 
 export interface DraggableItem {
@@ -111,6 +111,8 @@ export interface DraggableItem {
     lockedContent?: boolean;
     maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
     linkedCharId?: number;
+    opacity?: number;
+    isHidden?: boolean;
 }
 
 export interface BackgroundConfig {
@@ -118,7 +120,6 @@ export interface BackgroundConfig {
   value: string;
 }
 
-// CẤU CẤU HÌNH FORM TÙY CHỈNH
 export interface FormField {
     id: string;
     label: string;
@@ -139,8 +140,8 @@ export interface FrameConfig {
   previewImageUrl?: string;
   quantity?: number;
   templateId?: string;
-  customFormData?: Record<string, string>; // Dữ liệu khách nhập { "field_id": "giá_trị" }
-  formFields?: FormField[]; // Cấu hình form đi kèm thiết kế này
+  customFormData?: Record<string, string>; 
+  formFields?: FormField[]; 
 }
 
 export interface LegoCharacterConfig {
@@ -155,6 +156,8 @@ export interface LegoCharacterConfig {
   selectedHairColor?: OutfitColor;
   customPrintPrice?: number;
   x: number; y: number; rotation: number; scale: number; 
+  opacity?: number;
+  isHidden?: boolean;
 }
 
 export interface Order {
@@ -196,7 +199,7 @@ export interface PresetBackground {
         draggableItems: DraggableItem[];
         shapes?: ShapeConfig[];
     };
-    formFields?: FormField[]; // Cấu hình form riêng cho mẫu nền này
+    formFields?: FormField[]; 
 }
 
 export interface CollectionTemplate {
@@ -217,7 +220,7 @@ export interface FeedbackItem {
 
 export interface StaffMember {
     email: string;
-    role: StaffRole; // Use StaffRole
+    role: StaffRole; 
     addedAt?: string;
 }
 

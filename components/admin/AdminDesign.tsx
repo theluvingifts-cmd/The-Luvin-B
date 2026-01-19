@@ -101,6 +101,7 @@ export const AdminDesign: React.FC = () => {
     const [zoom, setZoom] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
     const [editingBgId, setEditingBgId] = useState<string | null>(null);
+    const [showGrid, setShowGrid] = useState(false);
     
     // Metadata states
     const [bgName, setBgName] = useState('');
@@ -116,7 +117,6 @@ export const AdminDesign: React.FC = () => {
     const previewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Tính toán danh sách danh mục hiện có để gợi ý chính xác
     const dynamicCategories = useMemo(() => {
         const cats = new Set(['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Khác']);
         existingBackgrounds.forEach(bg => { if(bg.category) cats.add(bg.category); });
@@ -168,7 +168,6 @@ export const AdminDesign: React.FC = () => {
     const handleFrameChange = (frameId: string) => {
         setConfigWithHistory(prev => ({ ...prev, frameId }));
         const frame = frames.find(f => f.id === frameId);
-        // TỰ ĐỘNG ĐỒNG BỘ LOẠI KHUNG VÀO METADATA
         if (frame) {
             const type = Math.abs(frame.frameWidthCm - frame.frameHeightCm) > 1 ? 'rectangle' : 'square';
             setBgType(type);
@@ -196,10 +195,7 @@ export const AdminDesign: React.FC = () => {
                 formFields: bg.formFields || [], 
                 characters: []
             };
-            
-            // Nếu mẫu có frameId cụ thể trong config thì ưu tiên dùng
             if ((bg.overlayConfig as any)?.frameId) newConfig.frameId = (bg.overlayConfig as any).frameId;
-            
             setConfigWithHistory(newConfig);
             setActiveTool('form');
         }
@@ -215,6 +211,7 @@ export const AdminDesign: React.FC = () => {
             setConfig(INITIAL_FRAME_CONFIG);
             setHistory([INITIAL_FRAME_CONFIG]);
             setHistoryIndex(0);
+            setSelectedItemId(null);
         }
     };
 
@@ -232,7 +229,7 @@ export const AdminDesign: React.FC = () => {
                             id: Date.now(),
                             partId: url,
                             type: 'charm',
-                            x: 50, y: 50, rotation: 0, scale: 0.5
+                            x: 50, y: 50, rotation: 0, scale: 0.5, opacity: 1
                         };
                         setConfigWithHistory(prev => ({
                             ...prev,
@@ -275,36 +272,96 @@ export const AdminDesign: React.FC = () => {
         setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).filter(f => f.id !== id) }));
     };
 
-    const handleLoadDefaultFields = () => {
-        if (confirm("Thêm các trường mặc định (Tên, Ngày, Tin nhắn, Ảnh)?")) {
-            const defaults: FormField[] = [
-                { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
-                { id: 'date', label: 'Ngày kỷ niệm (nếu có)', type: 'date', required: false },
-                { id: 'message', label: 'Thông điệp của bạn', type: 'textarea', required: false, placeholder: 'Nhập lời nhắn gửi...' },
-                { id: 'photo', label: 'Đính kèm ảnh in thêm', type: 'image', required: false },
-            ];
-            setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), ...defaults] }));
-        }
-    };
-
     const addText = () => {
         const newId = Date.now();
-        const newText: TextConfig = { id: newId, content: 'Văn bản mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 30 };
+        const newText: TextConfig = { id: newId, content: 'Văn bản mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 30, opacity: 1 };
         setConfigWithHistory(prev => ({ ...prev, texts: [...prev.texts, newText] }));
         setSelectedItemId(`text-${newId}`);
     };
 
-    const updateSelectedText = (updates: Partial<TextConfig>) => {
-        if (!selectedItemId?.startsWith('text-')) return;
-        const id = parseInt(selectedItemId.split('-')[1]);
-        setConfigWithHistory(prev => ({ ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) }));
+    const addShape = (type: 'rect' | 'circle') => {
+        const newId = Date.now();
+        const newShape: ShapeConfig = {
+            id: newId, type, x: 50, y: 50, width: 20, height: 20, rotation: 0,
+            fillColor: '#efa3b5', strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: type === 'circle' ? 100 : 0, opacity: 1
+        };
+        setConfigWithHistory(prev => ({ ...prev, shapes: [...(prev.shapes || []), newShape] }));
+        setSelectedItemId(`shape-${newId}`);
     };
 
-    const selectedText = useMemo(() => {
-        if (!selectedItemId?.startsWith('text-')) return null;
-        const id = parseInt(selectedItemId.split('-')[1]);
-        return config.texts.find(t => t.id === id);
-    }, [selectedItemId, config.texts]);
+    const duplicateSelected = () => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        const newId = Date.now();
+        
+        setConfigWithHistory(prev => {
+            if (type === 'text') {
+                const source = prev.texts.find(t => t.id === id);
+                if (!source) return prev;
+                return { ...prev, texts: [...prev.texts, { ...source, id: newId, x: source.x + 5, y: source.y + 5 }] };
+            }
+            if (type === 'shape') {
+                const source = prev.shapes?.find(s => s.id === id);
+                if (!source) return prev;
+                return { ...prev, shapes: [...(prev.shapes || []), { ...source, id: newId, x: source.x + 5, y: source.y + 5 }] };
+            }
+            if (type === 'item') {
+                const source = prev.draggableItems.find(i => i.id === id);
+                if (!source) return prev;
+                return { ...prev, draggableItems: [...prev.draggableItems, { ...source, id: newId, x: source.x + 5, y: source.y + 5 }] };
+            }
+            return prev;
+        });
+        setSelectedItemId(`${type}-${newId}`);
+    };
+
+    const moveLayer = (id: string, direction: 'front' | 'back' | 'up' | 'down') => {
+        const [type, idStr] = id.split('-');
+        const numericId = parseInt(idStr);
+
+        setConfigWithHistory(prev => {
+            const next = { ...prev };
+            if (type === 'text') {
+                const idx = next.texts.findIndex(t => t.id === numericId);
+                if (idx === -1) return prev;
+                const arr = [...next.texts];
+                const [item] = arr.splice(idx, 1);
+                if (direction === 'front') arr.push(item);
+                else if (direction === 'back') arr.unshift(item);
+                next.texts = arr;
+            } else if (type === 'shape') {
+                const idx = (next.shapes || []).findIndex(s => s.id === numericId);
+                if (idx === -1) return prev;
+                const arr = [...(next.shapes || [])];
+                const [item] = arr.splice(idx, 1);
+                if (direction === 'front') arr.push(item);
+                else if (direction === 'back') arr.unshift(item);
+                next.shapes = arr;
+            } else if (type === 'item') {
+                const idx = next.draggableItems.findIndex(i => i.id === numericId);
+                if (idx === -1) return prev;
+                const arr = [...next.draggableItems];
+                const [item] = arr.splice(idx, 1);
+                if (direction === 'front') arr.push(item);
+                else if (direction === 'back') arr.unshift(item);
+                next.draggableItems = arr;
+            }
+            return next;
+        });
+    };
+
+    const updateSelected = (updates: any) => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        setConfigWithHistory(prev => {
+            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
+            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            return prev;
+        });
+    };
 
     const handlePrepareSave = async () => {
         setIsSaving(true);
@@ -352,7 +409,7 @@ export const AdminDesign: React.FC = () => {
                     texts: config.texts, 
                     draggableItems: config.draggableItems, 
                     shapes: config.shapes || [],
-                    frameId: config.frameId // Lưu cả frameId đang dùng vào config
+                    frameId: config.frameId 
                 } as any
             };
 
@@ -366,65 +423,123 @@ export const AdminDesign: React.FC = () => {
         } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
     };
 
+    const selectedObject = useMemo(() => {
+        if (!selectedItemId) return null;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        if (type === 'text') return config.texts.find(t => t.id === id) || null;
+        if (type === 'item') return config.draggableItems.find(i => i.id === id) || null;
+        if (type === 'shape') return config.shapes?.find(s => s.id === id) || null;
+        return null;
+    }, [selectedItemId, config]);
+
     return (
         <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
+            {/* TOOLBAR LEFT */}
             <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20">
                 {TOOLS.map(tool => (
-                    <button key={tool.id} onClick={() => setActiveTool(tool.id)} className={`w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all ${activeTool === tool.id ? 'bg-white text-gray-900' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
+                    <button key={tool.id} onClick={() => { setActiveTool(tool.id); if(tool.id !== 'layers') setSelectedItemId(null); }} className={`w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all ${activeTool === tool.id ? 'bg-white text-gray-900' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
                         <span className="text-xl mb-1">{tool.icon}</span>
                         <span className="text-[10px] font-bold uppercase">{tool.label}</span>
                     </button>
                 ))}
             </div>
 
+            {/* PANEL CONTENT / PROPERTY INSPECTOR */}
             <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-800 text-lg uppercase tracking-tight text-sm">
-                        {selectedText ? 'Thuộc tính chữ' : (TOOLS.find(t => t.id === activeTool)?.label)}
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 className="font-black text-gray-800 uppercase tracking-tight text-xs">
+                        {selectedObject ? 'Thuộc tính đối tượng' : (TOOLS.find(t => t.id === activeTool)?.label)}
                     </h3>
+                    {selectedObject && (
+                        <button onClick={() => setSelectedItemId(null)} className="text-[10px] bg-gray-200 px-2 py-1 rounded font-bold hover:bg-gray-300">Đóng</button>
+                    )}
                 </div>
+                
                 <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
-                    {selectedText ? (
-                        <div className="space-y-5 animate-fade-in">
-                            <button onClick={() => setSelectedItemId(null)} className="text-[10px] text-blue-600 font-bold hover:underline mb-2 flex items-center gap-1">← Quay lại danh sách tool</button>
-                            
-                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-                                <label className="block text-[10px] font-black text-blue-700 uppercase tracking-tight">🔗 LIÊN KẾT DỮ LIỆU</label>
-                                <select 
-                                    className="w-full p-2 border rounded-lg text-xs font-bold bg-white"
-                                    value={selectedText.linkedFieldId || ''}
-                                    onChange={e => updateSelectedText({ linkedFieldId: e.target.value })}
-                                >
-                                    <option value="">-- Không liên kết --</option>
-                                    {(config.formFields || []).map(f => (
-                                        <option key={f.id} value={f.id}>{f.label} ({f.type})</option>
-                                    ))}
-                                </select>
-                                <p className="text-[9px] text-blue-500 italic mt-1 leading-tight">Khi khách gõ vào ô nhập liệu này, chữ trên ảnh sẽ tự động thay đổi theo.</p>
+                    {selectedObject ? (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="flex gap-2">
+                                <button onClick={duplicateSelected} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-100 hover:bg-blue-100">👯 Nhân bản</button>
+                                <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa</button>
                             </div>
 
-                            <div className="space-y-4 pt-2">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nội dung mặc định</label>
-                                    <textarea className="w-full p-2 border rounded-lg text-sm" rows={2} value={selectedText.content} onChange={e => updateSelectedText({ content: e.target.value })} />
+                            {/* COMMON: OPACITY */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Độ trong suốt (Opacity)</label>
+                                <div className="flex items-center gap-3">
+                                    <input type="range" min="0" max="1" step="0.01" value={selectedObject.opacity ?? 1} onChange={e => updateSelected({ opacity: parseFloat(e.target.value) })} className="flex-grow accent-blue-600" />
+                                    <span className="text-xs font-mono w-8 text-right">{Math.round((selectedObject.opacity ?? 1) * 100)}%</span>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Font chữ</label>
-                                    <FontSelector value={selectedText.font} onChange={f => updateSelectedText({ font: f })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cỡ chữ</label>
-                                        <input type="number" className="w-full p-2 border rounded-lg text-sm" value={selectedText.size} onChange={e => updateSelectedText({ size: Number(e.target.value) })} />
+                            </div>
+
+                            {/* TYPE SPECIFIC CONTROLS */}
+                            {selectedItemId?.startsWith('text-') && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                                        <label className="block text-[10px] font-black text-blue-700 uppercase tracking-tight">🔗 LIÊN KẾT DỮ LIỆU</label>
+                                        <select className="w-full p-2 border rounded-lg text-xs font-bold bg-white" value={(selectedObject as TextConfig).linkedFieldId || ''} onChange={e => updateSelected({ linkedFieldId: e.target.value })}>
+                                            <option value="">-- Không liên kết --</option>
+                                            {(config.formFields || []).map(f => (<option key={f.id} value={f.id}>{f.label}</option>))}
+                                        </select>
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu sắc</label>
-                                        <input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={selectedText.color} onChange={e => updateSelectedText({ color: e.target.value })} />
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nội dung</label>
+                                        <textarea className="w-full p-2 border rounded-lg text-sm" rows={2} value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Font chữ</label>
+                                        <FontSelector value={(selectedObject as TextConfig).font} onChange={f => updateSelected({ font: f })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cỡ chữ</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as TextConfig).size} onChange={e => updateSelected({ size: Number(e.target.value) })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu sắc</label><input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={(selectedObject as TextConfig).color} onChange={e => updateSelected({ color: e.target.value })} /></div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => updateSelected({ fontWeight: (selectedObject as TextConfig).fontWeight === 'bold' ? 'normal' : 'bold' })} className={`flex-1 py-2 rounded border text-xs font-bold ${(selectedObject as TextConfig).fontWeight === 'bold' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>B</button>
+                                        <button onClick={() => updateSelected({ background: !(selectedObject as TextConfig).background })} className={`flex-1 py-2 rounded border text-xs font-bold ${(selectedObject as TextConfig).background ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>BG</button>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => updateSelectedText({ fontWeight: selectedText.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`flex-1 py-2 rounded border text-xs font-bold ${selectedText.fontWeight === 'bold' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>B</button>
-                                    <button onClick={() => updateSelectedText({ background: !selectedText.background })} className={`flex-1 py-2 rounded border text-xs font-bold ${selectedText.background ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>BG</button>
+                            )}
+
+                            {selectedItemId?.startsWith('shape-') && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu nền</label><input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={(selectedObject as ShapeConfig).fillColor} onChange={e => updateSelected({ fillColor: e.target.value })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu viền</label><input type="color" className="w-full h-9 border rounded-lg cursor-pointer" value={(selectedObject as ShapeConfig).strokeColor} onChange={e => updateSelected({ strokeColor: e.target.value })} /></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Độ dày viền</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as ShapeConfig).strokeWidth} onChange={e => updateSelected({ strokeWidth: Number(e.target.value) })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bo góc</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as ShapeConfig).borderRadius} onChange={e => updateSelected({ borderRadius: Number(e.target.value) })} /></div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kiểu viền</label>
+                                        <select className="w-full p-2 border rounded-lg text-xs" value={(selectedObject as ShapeConfig).strokeType} onChange={e => updateSelected({ strokeType: e.target.value as any })}>
+                                            <option value="solid">Liền</option><option value="dashed">Gạch</option><option value="dotted">Chấm</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm' && (
+                                <div className="space-y-4">
+                                    <button onClick={() => updateSelected({ isFlipped: !(selectedObject as DraggableItem).isFlipped })} className="w-full py-2 bg-gray-100 rounded-lg text-xs font-bold hover:bg-gray-200">↔️ Lật ngang</button>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Mặt nạ (Mask)</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['none', 'circle', 'rounded', 'heart', 'star'].map(mask => (
+                                                <button key={mask} onClick={() => updateSelected({ maskShape: mask })} className={`p-2 text-[10px] font-bold border rounded capitalize ${(selectedObject as DraggableItem).maskShape === mask ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600'}`}>{mask}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-4 border-t border-gray-100 space-y-2">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Thứ tự lớp</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => moveLayer(selectedItemId!, 'front')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔝 Lên đầu</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'back')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔙 Xuống đáy</button>
                                 </div>
                             </div>
                         </div>
@@ -432,75 +547,85 @@ export const AdminDesign: React.FC = () => {
                         <>
                             {activeTool === 'templates' && (
                                 <div className="space-y-4">
-                                    <button onClick={handleNewDesign} className="w-full border-2 border-dashed border-gray-300 py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50">+ Thiết kế mới</button>
+                                    <button onClick={handleNewDesign} className="w-full border-2 border-dashed border-gray-300 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all">+ Thiết kế mới</button>
                                     <div className="space-y-2">
                                         {existingBackgrounds.map(bg => (
                                             <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
-                                                <div className="w-10 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border">
-                                                    <img src={bg.previewUrl || bg.url} className="w-full h-full object-cover" alt={bg.name} />
-                                                </div>
-                                                <div className="flex-grow min-w-0">
-                                                    <p className="text-xs font-bold text-gray-800 truncate">{bg.name}</p>
-                                                    <p className="text-[10px] text-gray-400">{bg.category} • {bg.type}</p>
-                                                </div>
+                                                <div className="w-10 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0 border border-gray-100"><img src={bg.previewUrl || bg.url} className="w-full h-full object-cover" alt={bg.name} /></div>
+                                                <div className="flex-grow min-w-0"><p className="text-xs font-bold text-gray-800 truncate">{bg.name}</p><p className="text-[10px] text-gray-400">{bg.category} • {bg.type}</p></div>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTool === 'shape' && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={() => addShape('rect')} className="aspect-square border-2 border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-blue-500 hover:bg-blue-50 transition-all"><div className="w-8 h-8 bg-gray-800 rounded"></div><span className="text-[10px] font-bold uppercase">Hình vuông</span></button>
+                                        <button onClick={() => addShape('circle')} className="aspect-square border-2 border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-blue-500 hover:bg-blue-50 transition-all"><div className="w-8 h-8 bg-gray-800 rounded-full"></div><span className="text-[10px] font-bold uppercase">Hình tròn</span></button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTool === 'text' && (
+                                <div className="space-y-4">
+                                    <button onClick={addText} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow-md hover:bg-black transition-all active:scale-95">+ Thêm văn bản</button>
+                                    <p className="text-[10px] text-gray-400 text-center italic leading-tight">Mẹo: Chọn một thẻ chữ trên màn hình để liên kết với Form in ấn.</p>
+                                </div>
+                            )}
+
+                            {activeTool === 'background' && (
+                                <div className="space-y-4">
+                                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors flex flex-col items-center gap-2"><span className="text-2xl">📸</span><span className="text-[10px] font-bold uppercase">Upload Ảnh Nền</span></button>
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadBackground} />
+                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                        <button onClick={() => handleBackgroundChange('color', '#ffffff')} className="p-2 border rounded bg-white text-gray-900 text-[10px] font-bold">Nền trắng</button>
+                                        <button onClick={() => handleBackgroundChange('color', '#000000')} className="p-2 border rounded bg-black text-white text-[10px] font-bold">Nền đen</button>
                                     </div>
                                 </div>
                             )}
 
                             {activeTool === 'form' && (
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-center bg-blue-50 p-2 rounded-lg border border-blue-100">
-                                        <span className="text-[10px] font-bold text-blue-600 uppercase">Tùy chỉnh form khách nhập</span>
-                                        <div className="flex gap-2">
-                                            <button onClick={handleLoadDefaultFields} className="text-[10px] font-bold text-gray-500 hover:underline">Mặc định</button>
-                                            <button onClick={handleAddField} className="text-[10px] font-bold text-blue-700 hover:underline">+ Thêm ô</button>
-                                        </div>
-                                    </div>
+                                    <div className="flex justify-between items-center bg-blue-50 p-2 rounded-lg border border-blue-100"><span className="text-[10px] font-bold text-blue-600 uppercase">Form khách nhập</span><button onClick={handleAddField} className="text-[10px] font-bold text-blue-700 hover:underline">+ Thêm ô</button></div>
                                     <div className="space-y-3">
                                         {(config.formFields || []).map((field) => (
                                             <div key={field.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group">
                                                 <button onClick={() => handleRemoveField(field.id)} className="absolute top-1 right-1 text-red-500 font-bold text-lg opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                                                <div>
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Tên trường (Label)</label>
-                                                    <input className="w-full p-1.5 border rounded text-xs" value={field.label} onChange={e => handleUpdateField(field.id, { label: e.target.value })} placeholder="VD: Tên của bạn..." />
-                                                </div>
+                                                <input className="w-full p-1.5 border rounded text-xs" value={field.label} onChange={e => handleUpdateField(field.id, { label: e.target.value })} placeholder="Tên ô nhập..." />
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Loại</label>
-                                                        <select className="w-full p-1.5 border rounded text-[10px] font-bold" value={field.type} onChange={e => handleUpdateField(field.id, { type: e.target.value as any })}>
-                                                            <option value="text">Chữ ngắn</option>
-                                                            <option value="textarea">Chữ dài</option>
-                                                            <option value="date">Ngày</option>
-                                                            <option value="image">Ảnh</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex items-end pb-1">
-                                                        <label className="flex items-center gap-1.5 cursor-pointer">
-                                                            <input type="checkbox" checked={field.required} onChange={e => handleUpdateField(field.id, { required: e.target.checked })} className="w-3 h-3 accent-blue-600" />
-                                                            <span className="text-[10px] font-bold text-gray-600">Bắt buộc</span>
-                                                        </label>
-                                                    </div>
+                                                    <select className="w-full p-1.5 border rounded text-[10px] font-bold" value={field.type} onChange={e => handleUpdateField(field.id, { type: e.target.value as any })}>
+                                                        <option value="text">Chữ ngắn</option><option value="textarea">Chữ dài</option><option value="date">Ngày</option><option value="image">Ảnh</option>
+                                                    </select>
+                                                    <label className="flex items-center gap-1.5 cursor-pointer pb-1"><input type="checkbox" checked={field.required} onChange={e => handleUpdateField(field.id, { required: e.target.checked })} className="w-3 h-3 accent-blue-600" /><span className="text-[10px] font-bold text-gray-600">Bắt buộc</span></label>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
-                            
-                            {activeTool === 'text' && (
-                                <div className="space-y-4">
-                                    <button onClick={addText} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold shadow-md hover:bg-black transition-all active:scale-95">+ Thêm văn bản</button>
-                                    <p className="text-[10px] text-gray-400 text-center italic">Chọn một thẻ chữ trên màn hình để liên kết với Form.</p>
-                                </div>
-                            )}
 
-                            {activeTool === 'background' && (
-                                <div className="space-y-4">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Ảnh nền chính</label>
-                                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">Upload Ảnh</button>
-                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadBackground} />
+                            {activeTool === 'layers' && (
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Danh sách lớp</p>
+                                    {[...(config.shapes || []), ...config.draggableItems, ...config.texts].reverse().map(item => {
+                                        const idStr = (item as any).id.toString();
+                                        const type = (item as any).content ? 'text' : (item as any).partId ? 'item' : 'shape';
+                                        const key = `${type}-${idStr}`;
+                                        return (
+                                            <div key={key} onClick={() => setSelectedItemId(key)} className={`p-2 rounded border flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-all ${selectedItemId === key ? 'border-blue-500 bg-blue-50' : 'border-gray-100'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs">{type === 'text' ? '📝' : type === 'shape' ? '🟥' : '🖼️'}</span>
+                                                    <span className="text-[10px] font-medium truncate w-32">{(item as any).content || (item as any).partId?.split('/').pop() || 'Shape'}</span>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <button onClick={(e) => { e.stopPropagation(); moveLayer(key, 'up'); }} className="p-1 hover:bg-gray-200 rounded text-[8px]">⬆️</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); moveLayer(key, 'down'); }} className="p-1 hover:bg-gray-200 rounded text-[8px]">⬇️</button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </>
@@ -508,27 +633,44 @@ export const AdminDesign: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-grow flex flex-col relative">
+            {/* CANVAS MAIN AREA */}
+            <div className="flex-grow flex flex-col relative bg-[#f1f3f5]">
                 <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10">
-                    <select value={config.frameId} onChange={(e) => handleFrameChange(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 font-bold">
-                        {frames.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
-                    </select>
+                    <div className="flex items-center gap-4">
+                        <select value={config.frameId} onChange={(e) => handleFrameChange(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-1.5 font-bold outline-none">
+                            {frames.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
+                        </select>
+                        <div className="h-6 w-px bg-gray-200"></div>
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="w-4 h-4 accent-gray-800" />
+                            <span className="text-xs font-bold text-gray-500 group-hover:text-gray-800 transition-colors">Hiển thị Lưới (Grid)</span>
+                        </label>
+                    </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-2 border rounded bg-white disabled:opacity-30">⤺</button>
-                        <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-2 border rounded bg-white disabled:opacity-30">⤻</button>
-                        <button onClick={handlePrepareSave} className="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700">{editingBgId ? 'Cập Nhật' : 'Lưu Mẫu'}</button>
+                        <div className="flex border rounded-lg bg-white p-1">
+                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Hoàn tác">⤺</button>
+                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 hover:bg-gray-100 disabled:opacity-30 rounded transition-colors" title="Làm lại">⤻</button>
+                        </div>
+                        <button onClick={handlePrepareSave} className="px-5 py-2 text-xs font-black text-white bg-blue-600 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all transform active:scale-95">{editingBgId ? 'CẬP NHẬT MẪU' : 'LƯU MẪU MỚI'}</button>
                     </div>
                 </div>
 
-                <div className="flex-grow overflow-auto flex items-center justify-center p-8 bg-[url('https://res.cloudinary.com/dbdqd93km/image/upload/v1/transparent-bg.png')]">
-                    <div style={{ transform: `scale(${zoom})` }} className="bg-white shadow-2xl">
+                <div className="flex-grow overflow-auto flex items-center justify-center p-12 relative">
+                    {/* GRID OVERLAY */}
+                    {showGrid && (
+                        <div className="absolute inset-0 pointer-events-none opacity-20" 
+                             style={{backgroundImage: 'linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px)', backgroundSize: '20px 20px'}}>
+                        </div>
+                    )}
+                    
+                    <div style={{ transform: `scale(${zoom})` }} className="bg-white shadow-2xl transition-transform duration-300">
                         <FramePreview 
                             ref={previewRef}
                             config={config}
                             containerWidth={500}
                             onItemTransform={handleItemTransform}
                             onItemRemove={handleItemRemove}
-                            onTextUpdate={(id, updates) => updateSelectedText(updates)}
+                            onTextUpdate={(id, updates) => updateSelected(updates)}
                             isInteractive={true}
                             selectedItemId={selectedItemId}
                             setSelectedItemId={setSelectedItemId}
@@ -536,39 +678,42 @@ export const AdminDesign: React.FC = () => {
                             allParts={{}} 
                             allowTextScaling={true}
                             previewFont={previewFont}
+                            onAlign={(type) => {
+                                if (!selectedItemId) return;
+                                let upd = {};
+                                if(type === 'center') upd = { x: 50, y: 50 };
+                                else if(type === 'horizontal') upd = { x: 50 };
+                                else if(type === 'vertical') upd = { y: 50 };
+                                updateSelected(upd);
+                            }}
                         />
+                    </div>
+
+                    {/* ZOOM CONTROL FLOAT */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/90 backdrop-blur border rounded-full px-4 py-2 shadow-xl z-20">
+                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="text-gray-500 font-black hover:text-gray-900 transition-colors">➖</button>
+                        <span className="text-xs font-black w-12 text-center text-gray-800">{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 font-black hover:text-gray-900 transition-colors">➕</button>
+                        <button onClick={() => setZoom(1)} className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:bg-gray-200 ml-2">RESET</button>
                     </div>
                 </div>
             </div>
 
+            {/* SAVE MODAL */}
             {showSaveModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl w-[500px]">
-                        <h3 className="text-xl font-bold mb-4">{editingBgId ? 'Cập Nhật Mẫu' : 'Lưu Mẫu Mới'}</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tên mẫu nền</label>
-                                <input className="w-full p-2 border rounded-lg" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="VD: Tốt nghiệp 2..." />
-                            </div>
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-fade-in p-4">
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg">
+                        <h3 className="text-2xl font-black mb-6 text-gray-900 uppercase tracking-tighter">{editingBgId ? 'Cập Nhật Mẫu' : 'Lưu Mẫu Mới'}</h3>
+                        <div className="space-y-6">
+                            <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Tên mẫu thiết kế</label><input className="w-full p-3 border border-gray-200 rounded-2xl bg-gray-50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="Ví dụ: Tốt nghiệp ABC..." /></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Danh mục</label>
-                                    <select className="w-full p-2 border rounded-lg" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
-                                        {dynamicCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Khung</label>
-                                    <select className="w-full p-2 border rounded-lg" value={bgType} onChange={e => setBgType(e.target.value as any)}>
-                                        <option value="square">Vuông</option>
-                                        <option value="rectangle">Chữ nhật</option>
-                                    </select>
-                                </div>
+                                <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Danh mục</label><select className="w-full p-3 border border-gray-200 rounded-2xl bg-gray-50" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>{dynamicCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}</select></div>
+                                <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Loại khung</label><select className="w-full p-3 border border-gray-200 rounded-2xl bg-gray-50 font-bold" value={bgType} onChange={e => setBgType(e.target.value as any)}><option value="square">Vuông</option><option value="rectangle">Chữ nhật</option></select></div>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm font-bold text-gray-400">Hủy</button>
-                            <button onClick={handleConfirmSave} disabled={isSaving} className="px-6 py-2 text-sm bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700">{isSaving ? 'Đang lưu...' : 'Xác nhận lưu'}</button>
+                        <div className="flex justify-end gap-3 mt-10">
+                            <button onClick={() => setShowSaveModal(false)} className="px-6 py-3 text-sm font-bold text-gray-400 hover:text-gray-600">Hủy</button>
+                            <button onClick={handleConfirmSave} disabled={isSaving} className="px-10 py-3 text-sm bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all">{isSaving ? 'ĐANG LƯU...' : 'XÁC NHẬN LƯU'}</button>
                         </div>
                     </div>
                 </div>
