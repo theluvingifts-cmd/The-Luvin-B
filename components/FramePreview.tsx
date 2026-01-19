@@ -223,6 +223,7 @@ const EditableText = memo(({
                 onChange={(e) => setEditedContent(e.target.value)}
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
+                onMouseDown={(e) => e.stopPropagation()} // Chặn sự kiện chạm vào textarea để không bị bỏ chọn
                 style={{
                     ...textStyle,
                     width: '100%',
@@ -293,15 +294,16 @@ const Transformable = memo(({
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        // NGĂN CHẶN SỰ KIỆN LAN XUỐNG NỀN
+        e.stopPropagation();
+        
         if (!isDraggable || isPositionLocked) {
             if (isPositionLocked) {
-                e.stopPropagation();
                 onSelect(id);
             }
             return;
         }
-        e.preventDefault();
-        e.stopPropagation();
+        
         onSelect(id);
 
         const parentRect = parentRef.current?.getBoundingClientRect();
@@ -435,7 +437,8 @@ const Transformable = memo(({
         <div
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
-            onDoubleClick={(e) => { if(onDoubleClick) { e.stopPropagation(); onDoubleClick(); } }}
+            onClick={(e) => e.stopPropagation()} // CHẶN TIẾP CLICK ĐỂ KHÔNG BỊ BỎ CHỌN KHI THẢ CHUỘT
+            onDoubleClick={(e) => { e.stopPropagation(); if(onDoubleClick) onDoubleClick(); }}
             className="absolute transform-gpu"
             style={{
                 ...style,
@@ -480,7 +483,7 @@ const Transformable = memo(({
                         className="transform-handle absolute -bottom-3 -right-3 cursor-nwse-resize bg-luvin-pink w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
                         style={{ transform: `scale(${handleScale})` }}
                       >
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
                       </div>
                   )}
                 </>
@@ -589,6 +592,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
               backgroundColor: config.frameColor === 'black' ? '#1a1a1a' : '#ffffff',
               boxShadow: `0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)`
           }}
+          onMouseDown={(e) => {
+              // SỬ DỤNG MOUSE DOWN THAY VÌ CLICK ĐỂ TRÁNH TRỄ VÀ XUNG ĐỘT SỰ KIỆN
+              if (isInteractive) setSelectedItemId(null);
+          }}
         >
             <div
                 ref={previewContainerRef}
@@ -598,8 +605,12 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     height: backgroundHeight,
                     border: '1px solid #c0c0c0',
                 }}
-                onClick={(e) => {
-                    if (isInteractive && e.target === previewContainerRef.current) setSelectedItemId(null);
+                onMouseDown={(e) => {
+                    // CLICK VÀO NỀN CŨNG BỎ FOCUS NHƯNG CẦN CHẶN NỔI BỌT LÊN VIỀN KHUNG
+                    if (isInteractive) {
+                        e.stopPropagation();
+                        setSelectedItemId(null);
+                    }
                 }}
             >
                 {config.background.type === 'color' ? (
@@ -733,14 +744,18 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         </div>
 
         {isInteractive && selectedItemId && (
-            <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none">
+            <div 
+                className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none"
+                onMouseDown={(e) => e.stopPropagation()} // CHẶN MOUSE DOWN ĐỂ THANH CÔNG CỤ KHÔNG LÀM BỎ CHỌN
+                onClick={(e) => e.stopPropagation()}
+            >
                 {activeColors && activeColors.length > 0 && (
                     <div className="pointer-events-auto w-fit bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto animate-subtle-pulse">
                         <div className="flex gap-2 w-max px-2">
                             {activeColors.map((color: OutfitColor, idx: number) => (
                                 <button
                                     key={idx}
-                                    onClick={() => handleColorSelect(color)}
+                                    onMouseDown={(e) => { e.stopPropagation(); handleColorSelect(color); }}
                                     className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
                                     style={{ backgroundColor: color.hex }}
                                     title={`${color.name}`}
@@ -754,39 +769,39 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5 mx-auto">
                     {onAlign && (
                         <>
-                            <button onClick={() => onAlign('center')} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa">
+                            <button onMouseDown={(e) => { e.stopPropagation(); onAlign('center'); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="2" x2="12" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><rect x="8" y="8" width="8" height="8"></rect></svg>
                             </button>
-                            <button onClick={() => onAlign('horizontal')} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa ngang">
+                            <button onMouseDown={(e) => { e.stopPropagation(); onAlign('horizontal'); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa ngang">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"></line><rect x="6" y="8" width="12" height="8"></rect></svg>
                             </button>
-                            <button onClick={() => onAlign('vertical')} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa dọc">
+                            <button onMouseDown={(e) => { e.stopPropagation(); onAlign('vertical'); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa dọc">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="6" width="8" height="12"></rect></svg>
                             </button>
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                         </>
                     )}
                     {(selectedDraggableType === 'accessory' || selectedDraggableType === 'pet') && (
-                        <button onClick={() => onItemFlip && onItemFlip(selectedItemId)} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90" title="Lật hình">
+                        <button onMouseDown={(e) => { e.stopPropagation(); if(onItemFlip) onItemFlip(selectedItemId); }} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90" title="Lật hình">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M7 9h10M14 6l3 3-3 3" />
                                 <path d="M17 15H7M10 12l-3 3 3 3" />
                             </svg>
                         </button>
                     )}
-                    <button onClick={() => onItemRemove(selectedItemId)} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
+                    <button onMouseDown={(e) => { e.stopPropagation(); onItemRemove(selectedItemId); }} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                     {onAutoAdvance && (
                         <>
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                            <button onClick={onAutoAdvance} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors active:scale-90" title="Xong (Tiếp)">
+                            <button onMouseDown={(e) => { e.stopPropagation(); onAutoAdvance(); }} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors active:scale-90" title="Xong (Tiếp)">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </button>
                         </>
                     )}
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                    <button onClick={() => setSelectedItemId(null)} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Bỏ chọn">
+                    <button onMouseDown={(e) => { e.stopPropagation(); setSelectedItemId(null); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Bỏ chọn">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>

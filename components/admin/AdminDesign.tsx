@@ -654,8 +654,11 @@ export const AdminDesign: React.FC = () => {
             </div>
 
             {/* CANVAS MAIN AREA */}
-            <div className="flex-grow flex flex-col relative bg-[#f1f3f5]">
-                <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10">
+            <div 
+                className="flex-grow flex flex-col relative bg-[#f1f3f5] cursor-default"
+                onClick={() => setSelectedItemId(null)}
+            >
+                <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-4">
                         <select value={config.frameId} onChange={(e) => handleFrameChange(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-1.5 font-bold outline-none">
                             {frames.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
@@ -683,7 +686,11 @@ export const AdminDesign: React.FC = () => {
                         </div>
                     )}
                     
-                    <div style={{ transform: `scale(${zoom})` }} className="bg-white shadow-2xl transition-transform duration-300">
+                    <div 
+                        style={{ transform: `scale(${zoom})` }} 
+                        className="bg-white shadow-2xl transition-transform duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
                         <FramePreview 
                             ref={previewRef}
                             config={config}
@@ -710,7 +717,7 @@ export const AdminDesign: React.FC = () => {
                     </div>
 
                     {/* ZOOM CONTROL FLOAT */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/90 backdrop-blur border rounded-full px-4 py-2 shadow-xl z-20">
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/90 backdrop-blur border rounded-full px-4 py-2 shadow-xl z-20" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="text-gray-500 font-black hover:text-gray-900 transition-colors">➖</button>
                         <span className="text-xs font-black w-12 text-center text-gray-800">{Math.round(zoom * 100)}%</span>
                         <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 font-black hover:text-gray-900 transition-colors">➕</button>
@@ -721,8 +728,8 @@ export const AdminDesign: React.FC = () => {
 
             {/* SAVE MODAL */}
             {showSaveModal && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-fade-in p-4">
-                    <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg">
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-fade-in p-4" onClick={() => setShowSaveModal(false)}>
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
                         <h3 className="text-2xl font-black mb-6 text-gray-900 uppercase tracking-tighter">{editingBgId ? 'Cập Nhật Mẫu' : 'Lưu Mẫu Mới'}</h3>
                         <div className="space-y-6">
                             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4">

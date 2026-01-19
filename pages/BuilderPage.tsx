@@ -844,7 +844,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                             <button onClick={() => topCharmUploadRef.current?.click()} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title="Tải ảnh nhỏ nhanh">
                                 <span className="text-sm">🖼️</span><span className="text-[10px] font-bold hidden sm:inline">Ảnh</span>
                             </button>
-                            <input type="file" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" />
+                            <input type="file" id="top-charm-upload" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" />
                         </div>
                         <button 
                             onClick={handleUndo} 
@@ -870,10 +870,15 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         </button>
                     </div>
                 </div>
-                <div className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-2 mb-2 lg:mb-0 shadow-inner">
-                    <FramePreview 
-                        ref={frameCaptureRef} config={config} containerWidth={previewWidth - 32} onItemTransform={handleItemTransform} onItemRemove={handleItemRemoveCompletely} onTextUpdate={handleTextUpdate} onItemUpdate={handleItemUpdate} onCharacterUpdate={handleCharacterUpdate} onItemFlip={handleItemFlip} onCharacterDoubleClick={handleCharacterDoubleClick} onAutoAdvance={handleAutoAdvance} className="w-full h-full" selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={setIsEditingText} allParts={allParts} activePartType={activePartType} logoUrl={logoUrl} previewFont={previewFont} onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} 
-                    />
+                <div 
+                    className="bg-gray-100 rounded-lg flex items-center justify-center aspect-square p-2 mb-2 lg:mb-0 shadow-inner cursor-default"
+                    onClick={() => setSelectedItemId(null)}
+                >
+                    <div onClick={e => e.stopPropagation()} className="w-full h-full flex items-center justify-center">
+                        <FramePreview 
+                            ref={frameCaptureRef} config={config} containerWidth={previewWidth - 32} onItemTransform={handleItemTransform} onItemRemove={handleItemRemoveCompletely} onTextUpdate={handleTextUpdate} onItemUpdate={handleItemUpdate} onCharacterUpdate={handleCharacterUpdate} onItemFlip={handleItemFlip} onCharacterDoubleClick={handleCharacterDoubleClick} onAutoAdvance={handleAutoAdvance} className="w-full h-full" selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={setIsEditingText} allParts={allParts} activePartType={activePartType} logoUrl={logoUrl} previewFont={previewFont} onAlign={(type) => handleAlignItem(type === 'horizontal' ? 'center-x' : type === 'vertical' ? 'center-y' : 'center')} 
+                        />
+                    </div>
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex text-left">
                     <span className="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg></span>
