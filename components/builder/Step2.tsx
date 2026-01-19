@@ -88,14 +88,16 @@ export const Step2BackgroundAndDecorations: React.FC<{
   const handleUpdateFormData = (fieldId: string, value: string) => {
     const newFormData = { ...(config.customFormData || {}), [fieldId]: value };
     
+    // Xử lý định dạng ngày tháng để hiển thị trên ảnh preview
     let displayValue = value;
     if ((fieldId.toLowerCase().includes('date') || fieldId === 'date') && value) {
-        const parts = value.split('-');
+        const parts = value.split('-'); // YYYY-MM-DD
         if (parts.length === 3) {
             displayValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
     }
 
+    // TỰ ĐỘNG CẬP NHẬT CÁC THẺ CHỮ CÓ LIÊN KẾT
     const updatedTexts = config.texts.map(t => {
         if (t.linkedFieldId === fieldId) {
             return { ...t, content: displayValue || '' };
@@ -163,25 +165,38 @@ export const Step2BackgroundAndDecorations: React.FC<{
         if (squareFrame) newFrameId = squareFrame.id;
     }
 
+    // Tự động nạp overlayConfig và đồng bộ text mặc định
+    const overlayTexts = (bg.overlayConfig?.texts || []).map(t => {
+        if (t.linkedFieldId && config.customFormData?.[t.linkedFieldId]) {
+            let val = config.customFormData[t.linkedFieldId];
+            if (t.linkedFieldId.toLowerCase().includes('date') && val.includes('-')) {
+                const p = val.split('-');
+                val = `${p[2]}/${p[1]}/${p[0]}`;
+            }
+            return { ...t, content: val };
+        }
+        return t;
+    });
+
     setConfig({ 
         ...config, 
         frameId: newFrameId,
         background: { type: isColor ? 'color' : 'image', value: bg.url },
         isRotated: bg.orientation === 'landscape',
         formFields: bg.formFields || [],
-        customFormData: {} 
+        texts: overlayTexts,
+        draggableItems: bg.overlayConfig?.draggableItems || [],
+        shapes: bg.overlayConfig?.shapes || []
     });
   };
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      {/* MỤC 1 LỚN: CHỌN NỀN */}
       <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm">
         <h4 className="font-bold text-gray-800 mb-5 uppercase tracking-wider text-[11px] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-luvin-pink"></span> 1. CHỌN MẪU NỀN
         </h4>
         
-        {/* Tùy chọn A */}
         <div className="mb-8">
             <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-tight mb-3 ml-1">A. CHỌN MẪU CÓ SẴN</h5>
             <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
@@ -196,7 +211,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
             </div>
         </div>
 
-        {/* Tùy chọn B */}
         <div className="pt-5 border-t border-gray-50">
             <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-tight mb-3 ml-1">B. HOẶC TẢI ẢNH CỦA BẠN</h5>
             <input 
@@ -236,7 +250,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
         </div>
       </div>
 
-      {/* MỤC 2 LỚN: NHẬP THÔNG TIN */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm">
         <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. NHẬP THÔNG TIN IN ẤN
@@ -285,9 +298,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
                 </div>
             ))}
         </div>
-        <p className="text-[9px] text-gray-400 mt-5 italic leading-tight">
-            * Designer sẽ trực tiếp căn chỉnh bố cục & font chữ đẹp nhất cho bạn sau khi nhận đơn.
-        </p>
       </div>
     </div>
   );
