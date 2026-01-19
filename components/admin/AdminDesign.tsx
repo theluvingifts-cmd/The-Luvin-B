@@ -31,7 +31,6 @@ const TOOLS = [
 ];
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
-const BG_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Khác'];
 
 const FontSelector: React.FC<{ 
     value: string; 
@@ -64,7 +63,7 @@ const FontSelector: React.FC<{
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
             >
                 <span className="truncate">{value}</span>
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -102,9 +101,12 @@ export const AdminDesign: React.FC = () => {
     const [zoom, setZoom] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
     const [editingBgId, setEditingBgId] = useState<string | null>(null);
+    
+    // Metadata states
     const [bgName, setBgName] = useState('');
     const [bgCategory, setBgCategory] = useState('Tình yêu');
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
+    
     const [existingPreviewUrl, setExistingPreviewUrl] = useState<string>('');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [generatedThumbnailBlob, setGeneratedThumbnailBlob] = useState<Blob | null>(null);
@@ -113,6 +115,13 @@ export const AdminDesign: React.FC = () => {
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     const previewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Tính toán danh sách danh mục hiện có để gợi ý chính xác
+    const dynamicCategories = useMemo(() => {
+        const cats = new Set(['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Khác']);
+        existingBackgrounds.forEach(bg => { if(bg.category) cats.add(bg.category); });
+        return Array.from(cats).sort();
+    }, [existingBackgrounds]);
 
     const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
         setConfig(prev => {
@@ -159,7 +168,11 @@ export const AdminDesign: React.FC = () => {
     const handleFrameChange = (frameId: string) => {
         setConfigWithHistory(prev => ({ ...prev, frameId }));
         const frame = frames.find(f => f.id === frameId);
-        if (frame) setBgType(Math.abs(frame.frameWidthCm - frame.frameHeightCm) > 1 ? 'rectangle' : 'square');
+        // TỰ ĐỘNG ĐỒNG BỘ LOẠI KHUNG VÀO METADATA
+        if (frame) {
+            const type = Math.abs(frame.frameWidthCm - frame.frameHeightCm) > 1 ? 'rectangle' : 'square';
+            setBgType(type);
+        }
     };
 
     const handleBackgroundChange = (type: 'color' | 'image', value: string) => {
@@ -173,7 +186,8 @@ export const AdminDesign: React.FC = () => {
             setBgCategory(bg.category);
             setBgType(bg.type);
             setExistingPreviewUrl(bg.previewUrl || ''); 
-            setConfigWithHistory({
+            
+            const newConfig: FrameConfig = {
                 frameId: bg.type === 'rectangle' ? 'md' : 'lg',
                 background: { type: bg.url.startsWith('#') ? 'color' : 'image', value: bg.url },
                 texts: bg.overlayConfig?.texts || [],
@@ -181,8 +195,26 @@ export const AdminDesign: React.FC = () => {
                 shapes: bg.overlayConfig?.shapes || [],
                 formFields: bg.formFields || [], 
                 characters: []
-            });
+            };
+            
+            // Nếu mẫu có frameId cụ thể trong config thì ưu tiên dùng
+            if ((bg.overlayConfig as any)?.frameId) newConfig.frameId = (bg.overlayConfig as any).frameId;
+            
+            setConfigWithHistory(newConfig);
             setActiveTool('form');
+        }
+    };
+
+    const handleNewDesign = () => {
+        if (confirm("Xóa thiết kế hiện tại để tạo mẫu mới?")) {
+            setEditingBgId(null);
+            setBgName('');
+            setBgCategory('Tình yêu');
+            setBgType('square');
+            setExistingPreviewUrl('');
+            setConfig(INITIAL_FRAME_CONFIG);
+            setHistory([INITIAL_FRAME_CONFIG]);
+            setHistoryIndex(0);
         }
     };
 
@@ -284,7 +316,11 @@ export const AdminDesign: React.FC = () => {
             if (previewRef.current && typeof html2canvas !== 'undefined') {
                 const canvas = await html2canvas(previewRef.current, { useCORS: true, scale: 2, backgroundColor: '#ffffff' });
                 const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-                if (blob) { setGeneratedThumbnailBlob(blob); setGeneratedThumbnailUrl(URL.createObjectURL(blob)); }
+                if (blob) { 
+                    setGeneratedThumbnailBlob(blob); 
+                    if(generatedThumbnailUrl) URL.revokeObjectURL(generatedThumbnailUrl);
+                    setGeneratedThumbnailUrl(URL.createObjectURL(blob)); 
+                }
             }
             setShowSaveModal(true);
         } catch (e) { setShowSaveModal(true); } finally { setIsSaving(false); setSelectedItemId(originalSelected); }
@@ -312,12 +348,18 @@ export const AdminDesign: React.FC = () => {
                 type: bgType,
                 orientation: config.isRotated ? 'landscape' : 'portrait', 
                 formFields: config.formFields || [],
-                overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes || [] }
+                overlayConfig: { 
+                    texts: config.texts, 
+                    draggableItems: config.draggableItems, 
+                    shapes: config.shapes || [],
+                    frameId: config.frameId // Lưu cả frameId đang dùng vào config
+                } as any
             };
 
             let success = editingBgId ? await updateBackground(editingBgId, newBackground) : await addBackground(newBackground);
             if (success) {
-                setExistingBackgrounds(prev => editingBgId ? prev.map(b => b.id === editingBgId ? newBackground : b) : [...prev, newBackground]);
+                const bgs = await getAllBackgrounds();
+                setExistingBackgrounds(bgs);
                 setShowSaveModal(false);
                 alert("Đã lưu mẫu thành công!");
             }
@@ -390,7 +432,7 @@ export const AdminDesign: React.FC = () => {
                         <>
                             {activeTool === 'templates' && (
                                 <div className="space-y-4">
-                                    <button onClick={() => { setEditingBgId(null); setConfig(INITIAL_FRAME_CONFIG); }} className="w-full border-2 border-dashed border-gray-300 py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50">+ Thiết kế mới</button>
+                                    <button onClick={handleNewDesign} className="w-full border-2 border-dashed border-gray-300 py-3 rounded-lg font-bold text-gray-500 hover:bg-gray-50">+ Thiết kế mới</button>
                                     <div className="space-y-2">
                                         {existingBackgrounds.map(bg => (
                                             <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className={`flex items-center gap-3 p-2 rounded cursor-pointer border hover:shadow-sm transition-all ${editingBgId === bg.id ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
@@ -511,11 +553,16 @@ export const AdminDesign: React.FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Danh mục</label>
-                                    <select className="w-full p-2 border rounded-lg" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>{BG_CATEGORIES.map(cat => (<option key={cat} value={cat}>{cat}</option>))}</select>
+                                    <select className="w-full p-2 border rounded-lg" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
+                                        {dynamicCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Khung</label>
-                                    <select className="w-full p-2 border rounded-lg" value={bgType} onChange={e => setBgType(e.target.value as any)}><option value="square">Vuông</option><option value="rectangle">Chữ nhật</option></select>
+                                    <select className="w-full p-2 border rounded-lg" value={bgType} onChange={e => setBgType(e.target.value as any)}>
+                                        <option value="square">Vuông</option>
+                                        <option value="rectangle">Chữ nhật</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
