@@ -205,7 +205,6 @@ const EditableText = memo(({
         textAlign: text.textAlign || 'center',
         padding: '0.2em',
         wordBreak: 'break-word' as const,
-        textShadow: '0 0 5px white, 0 0 5px white',
         lineHeight: 1.4,
         fontWeight: text.fontWeight || 'normal',
         userSelect: isContentLocked ? 'none' as const : 'auto' as const,
@@ -223,7 +222,7 @@ const EditableText = memo(({
                 onChange={(e) => setEditedContent(e.target.value)}
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
-                onMouseDown={(e) => e.stopPropagation()} // Chặn sự kiện chạm vào textarea để không bị bỏ chọn
+                onMouseDown={(e) => e.stopPropagation()} 
                 style={{
                     ...textStyle,
                     width: '100%',
@@ -294,7 +293,6 @@ const Transformable = memo(({
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        // NGĂN CHẶN SỰ KIỆN LAN XUỐNG NỀN
         e.stopPropagation();
         
         if (!isDraggable || isPositionLocked) {
@@ -437,7 +435,7 @@ const Transformable = memo(({
         <div
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
-            onClick={(e) => e.stopPropagation()} // CHẶN TIẾP CLICK ĐỂ KHÔNG BỊ BỎ CHỌN KHI THẢ CHUỘT
+            onClick={(e) => e.stopPropagation()} 
             onDoubleClick={(e) => { e.stopPropagation(); if(onDoubleClick) onDoubleClick(); }}
             className="absolute transform-gpu"
             style={{
@@ -448,7 +446,7 @@ const Transformable = memo(({
                 touchAction: 'none',
                 cursor: isDraggable && !isPositionLocked ? (isSelected ? 'move' : 'pointer') : (isPositionLocked ? 'not-allowed' : 'default'),
                 outline: isSelected ? (isPositionLocked ? '2px solid #ef4444' : '2px dashed #efa3b5') : 'none',
-                outlineOffset: '5px',
+                outlineOffset: '4px',
                 zIndex: zIndex
             }}
         >
@@ -460,7 +458,7 @@ const Transformable = memo(({
                       <div 
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 
-                        className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-4 h-8 rounded-md border-2 border-white shadow-sm" 
+                        className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-3 h-6 rounded-md border-2 border-white shadow-sm" 
                         style={{ transform: `translateY(-50%) scale(${handleScale})` }}
                       ></div>
                   )}
@@ -469,10 +467,10 @@ const Transformable = memo(({
                       <div 
                         onMouseDown={handleRotateStart} 
                         onTouchStart={handleRotateStart} 
-                        className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-sm" 
+                        className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm" 
                         style={{ transform: `translateX(-50%) scale(${handleScale})` }}
                       >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                       </div>
                   )}
 
@@ -480,10 +478,10 @@ const Transformable = memo(({
                       <div 
                         onMouseDown={handleResizeStart} 
                         onTouchStart={handleResizeStart} 
-                        className="transform-handle absolute -bottom-3 -right-3 cursor-nwse-resize bg-luvin-pink w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
+                        className="transform-handle absolute -bottom-2 -right-2 cursor-nwse-resize bg-luvin-pink w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
                         style={{ transform: `scale(${handleScale})` }}
                       >
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
                       </div>
                   )}
                 </>
@@ -593,7 +591,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
               boxShadow: `0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)`
           }}
           onMouseDown={(e) => {
-              // SỬ DỤNG MOUSE DOWN THAY VÌ CLICK ĐỂ TRÁNH TRỄ VÀ XUNG ĐỘT SỰ KIỆN
               if (isInteractive) setSelectedItemId(null);
           }}
         >
@@ -606,7 +603,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     border: '1px solid #c0c0c0',
                 }}
                 onMouseDown={(e) => {
-                    // CLICK VÀO NỀN CŨNG BỎ FOCUS NHƯNG CẦN CHẶN NỔI BỌT LÊN VIỀN KHUNG
                     if (isInteractive) {
                         e.stopPropagation();
                         setSelectedItemId(null);
@@ -663,7 +659,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         <div style={{
                             width: '100%',
                             height: '100%',
-                            borderStyle: shape.strokeType,
+                            borderStyle: shape.strokeType || 'solid',
                             borderWidth: `${shape.strokeWidth}px`,
                             borderColor: shape.strokeColor,
                             backgroundColor: shape.fillColor || 'transparent',
@@ -746,7 +742,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
         {isInteractive && selectedItemId && (
             <div 
                 className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none"
-                onMouseDown={(e) => e.stopPropagation()} // CHẶN MOUSE DOWN ĐỂ THANH CÔNG CỤ KHÔNG LÀM BỎ CHỌN
+                onMouseDown={(e) => e.stopPropagation()} 
                 onClick={(e) => e.stopPropagation()}
             >
                 {activeColors && activeColors.length > 0 && (

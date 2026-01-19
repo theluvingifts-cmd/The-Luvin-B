@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -8,7 +7,6 @@ import { addBackground, updateBackground, getAllBackgrounds } from '../../servic
 import { getAllAssets, addAsset, deleteAsset } from '../../services/assetService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
-// Fix: Added missing helper import
 import { dataURLToBlob } from '../../utils/helpers';
 
 declare var html2canvas: any;
@@ -233,11 +231,29 @@ export const AdminDesign: React.FC = () => {
         });
     }, [setConfigWithHistory]);
 
-    // HỆ THỐNG PHÍM TẮT CHUYÊN NGHIỆP
+    // HỆ THỐNG PHÍM TẮT & NUDGE (DI CHUYỂN TINH VI)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Không bắt phím khi đang gõ vào input/textarea
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            // DI CHUYỂN BẰNG PHÍM MŨI TÊN
+            if (selectedItemId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                const step = e.shiftKey ? 2 : 0.5; // Shift di chuyển 2% (~10px), bình thường 0.5% (~2px)
+                const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+                const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+                
+                const [type, idStr] = selectedItemId.split('-');
+                const id = parseInt(idStr);
+                setConfigWithHistory(prev => {
+                    const updateItem = (item: any) => item.id === id ? { ...item, x: Math.max(0, Math.min(100, item.x + dx)), y: Math.max(0, Math.min(100, item.y + dy)) } : item;
+                    if (type === 'text') return { ...prev, texts: prev.texts.map(updateItem) };
+                    if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(updateItem) };
+                    if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(updateItem) };
+                    return prev;
+                });
+                return;
+            }
 
             // XÓA: Delete/Backspace
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -256,7 +272,7 @@ export const AdminDesign: React.FC = () => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
                 if (clipboard) {
                     const newId = Date.now();
-                    const newData = { ...clipboard.data, id: newId, x: clipboard.data.x + 5, y: clipboard.data.y + 5 };
+                    const newData = { ...clipboard.data, id: newId, x: Math.min(95, clipboard.data.x + 5), y: Math.min(95, clipboard.data.y + 5) };
                     setConfigWithHistory(prev => {
                         if (clipboard.type === 'text') return { ...prev, texts: [...prev.texts, newData] };
                         if (clipboard.type === 'shape') return { ...prev, shapes: [...(prev.shapes || []), newData] };
@@ -273,24 +289,6 @@ export const AdminDesign: React.FC = () => {
                 if (e.shiftKey) handleRedo(); else handleUndo();
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); handleRedo(); }
-
-            // DI CHUYỂN BẰNG PHÍM MŨI TÊN
-            if (selectedItemId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                e.preventDefault();
-                const step = e.shiftKey ? 2 : 0.5; // Shift di chuyển 2% (~10px), bình thường 0.5% (~2px)
-                const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
-                const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
-                
-                const [type, idStr] = selectedItemId.split('-');
-                const id = parseInt(idStr);
-                setConfigWithHistory(prev => {
-                    const updateItem = (item: any) => item.id === id ? { ...item, x: item.x + dx, y: item.y + dy } : item;
-                    if (type === 'text') return { ...prev, texts: prev.texts.map(updateItem) };
-                    if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(updateItem) };
-                    if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(updateItem) };
-                    return prev;
-                });
-            }
 
             // LAYER ORDER: Ctrl + [ / ]
             if ((e.ctrlKey || e.metaKey) && e.key === '[') {
@@ -319,6 +317,86 @@ export const AdminDesign: React.FC = () => {
         else if (type === 'top') upd = { y: 10 };
         else if (type === 'bottom') upd = { y: 90 };
         updateSelected(upd);
+    };
+
+    const handleBackgroundChange = useCallback((type: 'color' | 'image', value: string) => {
+        setConfigWithHistory(prev => ({ ...prev, background: { type, value } }));
+    }, [setConfigWithHistory]);
+
+    const handleFrameChange = useCallback((frameId: string) => {
+        setConfigWithHistory(prev => ({ ...prev, frameId }));
+    }, [setConfigWithHistory]);
+
+    const handlePrepareSave = async () => {
+        setIsSaving(true);
+        try {
+            const container = previewRef.current;
+            if (container && typeof html2canvas !== 'undefined') {
+                const canvas = await html2canvas(container, {
+                    backgroundColor: null,
+                    useCORS: true,
+                    scale: 1,
+                    logging: false
+                });
+                const dataUrl = canvas.toDataURL('image/png');
+                const blob = dataURLToBlob(dataUrl);
+                setGeneratedThumbnailUrl(dataUrl);
+                setGeneratedThumbnailBlob(blob);
+                setShowSaveModal(true);
+            }
+        } catch (error) {
+            console.error("Error generating thumbnail:", error);
+            alert("Lỗi tạo ảnh thumbnail.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleConfirmSave = async () => {
+        if (!bgName.trim()) return alert("Vui lòng nhập tên mẫu!");
+        setIsSaving(true);
+        try {
+            let thumbnailUrl = existingPreviewUrl;
+            if (generatedThumbnailBlob) {
+                const file = new File([generatedThumbnailBlob], "thumb.png", { type: "image/png" });
+                const uploadedUrl = await uploadToCloudinary(file);
+                if (uploadedUrl) thumbnailUrl = uploadedUrl;
+            }
+
+            const backgroundData: PresetBackground = {
+                id: editingBgId || `bg_${Date.now()}`,
+                name: bgName,
+                category: bgCategory,
+                type: bgType,
+                url: config.background.value,
+                previewUrl: thumbnailUrl,
+                orientation: config.isRotated ? 'landscape' : 'portrait',
+                overlayConfig: {
+                    texts: config.texts,
+                    draggableItems: config.draggableItems,
+                    shapes: config.shapes,
+                    // @ts-ignore
+                    frameId: config.frameId 
+                },
+                formFields: config.formFields || []
+            };
+
+            let success = false;
+            if (editingBgId) success = await updateBackground(editingBgId, backgroundData);
+            else success = await addBackground(backgroundData);
+
+            if (success) {
+                alert("Đã lưu mẫu thiết kế thành công!");
+                setShowSaveModal(false);
+                const bgData = await getAllBackgrounds();
+                setExistingBackgrounds(bgData);
+            } else alert("Lỗi khi lưu vào database.");
+        } catch (error) {
+            console.error(error);
+            alert("Đã có lỗi xảy ra.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleLoadTemplate = (bg: PresetBackground) => {
@@ -388,7 +466,7 @@ export const AdminDesign: React.FC = () => {
         const newId = Date.now();
         const newShape: ShapeConfig = {
             id: newId, type, x: 50, y: 50, width: 20, height: 20, rotation: 0,
-            fillColor: '#efa3b5', strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: type === 'circle' ? 100 : 0
+            fillColor: '#efa3b5', strokeColor: '#000000', strokeWidth: 1, strokeType: 'solid', borderRadius: type === 'circle' ? 100 : 0
         };
         setConfigWithHistory(prev => ({ ...prev, shapes: [...(prev.shapes || []), newShape] }));
         setSelectedItemId(`shape-${newId}`);
@@ -403,95 +481,6 @@ export const AdminDesign: React.FC = () => {
         if (type === 'shape') return config.shapes?.find(s => s.id === id) || null;
         return null;
     }, [selectedItemId, config]);
-
-    // Fix: Added missing background change handler
-    const handleBackgroundChange = useCallback((type: 'color' | 'image', value: string) => {
-        setConfigWithHistory(prev => ({ ...prev, background: { type, value } }));
-    }, [setConfigWithHistory]);
-
-    // Fix: Added missing frame change handler
-    const handleFrameChange = useCallback((frameId: string) => {
-        setConfigWithHistory(prev => ({ ...prev, frameId }));
-    }, [setConfigWithHistory]);
-
-    // Fix: Added missing prepare save handler
-    const handlePrepareSave = async () => {
-        setIsSaving(true);
-        try {
-            const container = previewRef.current;
-            if (container && typeof html2canvas !== 'undefined') {
-                const canvas = await html2canvas(container, {
-                    backgroundColor: null,
-                    useCORS: true,
-                    scale: 1,
-                    logging: false
-                });
-                const dataUrl = canvas.toDataURL('image/png');
-                const blob = dataURLToBlob(dataUrl);
-                setGeneratedThumbnailUrl(dataUrl);
-                setGeneratedThumbnailBlob(blob);
-                setShowSaveModal(true);
-            }
-        } catch (error) {
-            console.error("Error generating thumbnail:", error);
-            alert("Lỗi tạo ảnh thumbnail.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    // Fix: Added missing confirm save handler
-    const handleConfirmSave = async () => {
-        if (!bgName.trim()) return alert("Vui lòng nhập tên mẫu!");
-        setIsSaving(true);
-        try {
-            let thumbnailUrl = existingPreviewUrl;
-            if (generatedThumbnailBlob) {
-                const file = new File([generatedThumbnailBlob], "thumb.png", { type: "image/png" });
-                const uploadedUrl = await uploadToCloudinary(file);
-                if (uploadedUrl) thumbnailUrl = uploadedUrl;
-            }
-
-            const backgroundData: PresetBackground = {
-                id: editingBgId || `bg_${Date.now()}`,
-                name: bgName,
-                category: bgCategory,
-                type: bgType,
-                url: config.background.value,
-                previewUrl: thumbnailUrl,
-                orientation: config.isRotated ? 'landscape' : 'portrait',
-                overlayConfig: {
-                    texts: config.texts,
-                    draggableItems: config.draggableItems,
-                    shapes: config.shapes,
-                    // @ts-ignore - custom field for editor to remember frame
-                    frameId: config.frameId 
-                },
-                formFields: config.formFields || []
-            };
-
-            let success = false;
-            if (editingBgId) {
-                success = await updateBackground(editingBgId, backgroundData);
-            } else {
-                success = await addBackground(backgroundData);
-            }
-
-            if (success) {
-                alert("Đã lưu mẫu thiết kế thành công!");
-                setShowSaveModal(false);
-                const bgData = await getAllBackgrounds();
-                setExistingBackgrounds(bgData);
-            } else {
-                alert("Lỗi khi lưu vào database.");
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Đã có lỗi xảy ra.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     return (
         <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
@@ -528,7 +517,7 @@ export const AdminDesign: React.FC = () => {
 
                             {/* ALIGNMENT TOOLS */}
                             <div className="space-y-2">
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Căn nhanh</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase">Căn chỉnh nhanh</label>
                                 <div className="grid grid-cols-4 gap-1">
                                     <button onClick={() => handleAlign('left')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn trái">⇤</button>
                                     <button onClick={() => handleAlign('horizontal')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn giữa ngang">↔</button>
@@ -537,7 +526,18 @@ export const AdminDesign: React.FC = () => {
                                     <button onClick={() => handleAlign('top')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn trên">⤒</button>
                                     <button onClick={() => handleAlign('vertical')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn giữa dọc">↕</button>
                                     <button onClick={() => handleAlign('bottom')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn dưới">⤓</button>
-                                    <button onClick={() => updateSelected({ isFlipped: !selectedObject.isFlipped })} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Lật ngang">⇄</button>
+                                    {/* Fix: Check if selectedItemId is an item (DraggableItem) before accessing isFlipped */}
+                                    <button 
+                                        onClick={() => {
+                                            if (selectedItemId?.startsWith('item-')) {
+                                                updateSelected({ isFlipped: !(selectedObject as DraggableItem).isFlipped });
+                                            }
+                                        }} 
+                                        className="p-2 bg-gray-50 border rounded hover:bg-gray-100" 
+                                        title="Lật ngang"
+                                    >
+                                        ⇄
+                                    </button>
                                 </div>
                             </div>
 
@@ -575,12 +575,24 @@ export const AdminDesign: React.FC = () => {
                             {selectedItemId?.startsWith('shape-') && (
                                 <div className="space-y-4 pt-2">
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nền</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as ShapeConfig).fillColor} onChange={e => updateSelected({ fillColor: e.target.value })} /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Viền</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as ShapeConfig).strokeColor} onChange={e => updateSelected({ strokeColor: e.target.value })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu nền</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as ShapeConfig).fillColor} onChange={e => updateSelected({ fillColor: e.target.value })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu viền</label><input type="color" className="w-full h-9 border rounded-lg" value={(selectedObject as ShapeConfig).strokeColor} onChange={e => updateSelected({ strokeColor: e.target.value })} /></div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Độ dày viền</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as ShapeConfig).strokeWidth} onChange={e => updateSelected({ strokeWidth: Number(e.target.value) })} /></div>
+                                        <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Độ dày viền</label><input type="number" step="0.1" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as ShapeConfig).strokeWidth} onChange={e => updateSelected({ strokeWidth: Number(e.target.value) })} /></div>
                                         <div><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bo góc</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as ShapeConfig).borderRadius} onChange={e => updateSelected({ borderRadius: Number(e.target.value) })} /></div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kiểu viền (Stroke Style)</label>
+                                        <select 
+                                            className="w-full p-2 border rounded-lg text-xs font-bold bg-white" 
+                                            value={(selectedObject as ShapeConfig).strokeType || 'solid'} 
+                                            onChange={e => updateSelected({ strokeType: e.target.value })}
+                                        >
+                                            <option value="solid">———— Liền mạch (Solid)</option>
+                                            <option value="dashed">---- Nét đứt (Dashed)</option>
+                                            <option value="dotted">.... Chấm bi (Dotted)</option>
+                                        </select>
                                     </div>
                                 </div>
                             )}
@@ -588,10 +600,10 @@ export const AdminDesign: React.FC = () => {
                             <div className="pt-4 border-t border-gray-100 space-y-2">
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase">Thứ tự lớp</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <button onClick={() => moveLayer(selectedItemId!, 'front')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔝 Trên cùng</button>
-                                    <button onClick={() => moveLayer(selectedItemId!, 'back')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">🔙 Dưới cùng</button>
-                                    <button onClick={() => moveLayer(selectedItemId!, 'up')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">⤒ Lên 1 lớp</button>
-                                    <button onClick={() => moveLayer(selectedItemId!, 'down')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100">⤓ Xuống 1 lớp</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'front')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100 flex items-center justify-center gap-2">🔝 Trên cùng</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'back')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100 flex items-center justify-center gap-2">🔙 Dưới cùng</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'up')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100 flex items-center justify-center gap-2">⤒ Lên 1 lớp</button>
+                                    <button onClick={() => moveLayer(selectedItemId!, 'down')} className="p-2 bg-gray-50 border rounded text-[10px] font-bold hover:bg-gray-100 flex items-center justify-center gap-2">⤓ Xuống 1 lớp</button>
                                 </div>
                             </div>
                         </div>
@@ -642,7 +654,7 @@ export const AdminDesign: React.FC = () => {
                 <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10" onMouseDown={e => e.stopPropagation()}>
                     <div className="flex items-center gap-4">
                         <select value={config.frameId} onChange={(e) => handleFrameChange(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-1.5 font-bold outline-none">{frames.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}</select>
-                        <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="w-4 h-4 accent-gray-800" /><span className="text-xs font-bold text-gray-500">Lưới</span></label>
+                        <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="w-4 h-4 accent-gray-800" /><span className="text-xs font-bold text-gray-500">Lưới (Grid)</span></label>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex border rounded-lg bg-white p-1">
