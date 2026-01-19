@@ -2,8 +2,8 @@
 import { Order } from '../types';
 import { StoreConfig } from './configService';
 
-// Helper to send message via API
-const sendTelegramMessage = async (token: string, chatId: string, text: string) => {
+// Helper to send message/photo via API
+const sendTelegramMessage = async (token: string, chatId: string, text: string, photoUrl?: string) => {
     try {
         const response = await fetch('/api/send-telegram', {
             method: 'POST',
@@ -13,7 +13,8 @@ const sendTelegramMessage = async (token: string, chatId: string, text: string) 
             body: JSON.stringify({
                 token,
                 chatId,
-                text
+                text,
+                photoUrl // Gửi kèm URL ảnh nếu có
             })
         });
 
@@ -36,12 +37,16 @@ export const sendOrderTelegram = async (order: Order, config: StoreConfig) => {
         return;
     }
 
+    // Lấy ảnh thiết kế đầu tiên trong đơn hàng (nếu có)
+    const firstItemWithImage = order.items.find(item => item.previewImageUrl);
+    const photoUrl = firstItemWithImage?.previewImageUrl;
+
     // Format items list
     const itemsList = order.items.map((item, i) => {
         const frameName = item.frameId.toUpperCase();
         const chars = item.characters.length;
         const note = item.background.type === 'upload' ? ' (Nền tự tải)' : '';
-        return `- <b>Khung ${frameName}</b>: ${chars} NV${note}`;
+        return `${i + 1}. <b>Khung ${frameName}</b>: ${chars} NV${note}`;
     }).join('\n');
 
     // Format money
@@ -64,11 +69,11 @@ ${itemsList}
 <i>Vui lòng kiểm tra Admin Dashboard để xử lý.</i>
     `.trim();
 
-    const result = await sendTelegramMessage(config.telegramBotToken, config.telegramChatId, message);
+    const result = await sendTelegramMessage(config.telegramBotToken, config.telegramChatId, message, photoUrl);
     if (!result.success) {
         console.error("Failed to send Telegram notification:", result.error);
     } else {
-        console.log("Telegram notification sent!");
+        console.log("Telegram notification sent with image!");
     }
 };
 
