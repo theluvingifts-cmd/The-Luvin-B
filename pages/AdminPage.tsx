@@ -16,8 +16,8 @@ import { AdminDashboard } from '../components/admin/AdminDashboard';
 import { AdminOrders } from '../components/admin/AdminOrders';
 import { AdminProducts } from '../components/admin/AdminProducts';
 import { AdminConfig } from '../components/admin/AdminConfig';
-import { AdminVouchers } from '../components/admin/AdminVouchers';
-import { AdminCustomers } from '../components/admin/AdminCustomers';
+import { AdminVouchers } from '../components/admin/AdminVouchers'; 
+import { AdminCustomers } from '../components/admin/AdminCustomers'; 
 import { AdminDesign } from '../components/admin/AdminDesign';
 import { Logo } from '../components/shared/Logo';
 
@@ -27,6 +27,7 @@ const AdminPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isAuthChecking, setIsAuthChecking] = useState(true);
     const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
+    const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [products, setProducts] = useState<LegoPart[]>([]);
@@ -36,7 +37,13 @@ const AdminPage: React.FC = () => {
     const [frames, setFrames] = useState<FrameOption[]>([]);
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
 
-    // Sync activeTab with URL Hash
+    // Hàm chuyển tab tập trung
+    const handleTabChange = (tab: MainTab) => {
+        setActiveTab(tab);
+        window.location.hash = `#/admin/${tab}`;
+    };
+
+    // Sync activeTab với URL Hash khi load trang hoặc nhấn Back
     const parseAdminHash = () => {
         const hash = window.location.hash.replace(/^#\/?/, '');
         const parts = hash.split('/');
@@ -51,21 +58,21 @@ const AdminPage: React.FC = () => {
         return () => window.removeEventListener('hashchange', parseAdminHash);
     }, []);
 
-    const handleTabChange = (tab: MainTab) => {
-        setActiveTab(tab);
-        window.location.hash = `#/admin/${tab}`;
-    };
-
     useEffect(() => {
         const init = async () => {
             const config = await getStoreConfig();
-            if (config) setStoreConfig(config);
+            if (config) {
+                setStoreConfig(config);
+                setIsConfigLoaded(true);
+            }
             
             const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
                 setIsAuthChecking(false);
                 if (user) {
                     setCurrentUser(user);
                     fetchInitialData();
+                    
+                    // Listen to orders real-time
                     const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
                     const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
                         const ordersData: Order[] = [];
@@ -93,19 +100,32 @@ const AdminPage: React.FC = () => {
 
     const handleLogout = async () => { await signOut(auth); };
 
+    // DETERMINATION ROLE CẢI TIẾN: Tránh redirect nhầm khi chưa load xong config
     const role: StaffRole | null = useMemo(() => {
         if (!currentUser || !currentUser.email) return null;
-        if (currentUser.email === 'jinbduong@gmail.com' || currentUser.email.includes('admin')) return 'admin';
-        if (storeConfig.staff) {
+        
+        // 1. Super Admin Hardcode
+        if (currentUser.email === 'jinbduong@gmail.com' || currentUser.email.includes('admin')) {
+            return 'admin';
+        }
+
+        // 2. Check Staff List từ database
+        if (storeConfig.staff && storeConfig.staff.length > 0) {
             const staffMember = storeConfig.staff.find(s => s.email === currentUser.email);
             if (staffMember) return staffMember.role;
         }
-        return 'warehouse';
-    }, [currentUser, storeConfig]);
 
+        // Nếu đã load xong config mà vẫn không thấy trong list -> Mặc định là warehouse
+        return isConfigLoaded ? 'warehouse' : null;
+    }, [currentUser, storeConfig, isConfigLoaded]);
+
+    // Redirect duy nhất cho nhân viên kho (chỉ được xem Đơn hàng)
     useEffect(() => {
-        if (role === 'warehouse' && ['dashboard', 'products', 'config', 'marketing', 'customers', 'design'].includes(activeTab)) {
-            handleTabChange('orders');
+        if (role === 'warehouse') {
+            const restrictedTabs = ['dashboard', 'products', 'config', 'marketing', 'customers', 'design'];
+            if (restrictedTabs.includes(activeTab)) {
+                handleTabChange('orders');
+            }
         }
     }, [role, activeTab]);
 
@@ -118,7 +138,7 @@ const AdminPage: React.FC = () => {
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
                     <div className="h-14 sm:h-16 flex justify-between items-center">
                         <div className="flex items-center gap-4 lg:gap-8">
-                            <Logo url={storeConfig.logoUrl} className="h-8" textClassName="text-lg" />
+                            <Logo url={storeConfig.logoUrl} className="h-8" textClassName="text-lg" onClick={() => handleTabChange('dashboard')} />
                             <nav className="hidden md:flex gap-1">
                                  {role === 'admin' && <button onClick={() => handleTabChange('dashboard')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Dashboard</button>}
                                 <button onClick={() => handleTabChange('orders')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Đơn hàng</button>
@@ -138,6 +158,35 @@ const AdminPage: React.FC = () => {
                             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-2 hover:bg-gray-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg></button>
                         </div>
                     </div>
+                </div>
+
+                {/* Mobile Navigation - Cố định lỗi sự kiện onClick */}
+                <div className="md:hidden border-t border-gray-100 overflow-x-auto no-scrollbar bg-white">
+                    <nav className="flex px-4 gap-4 min-w-max">
+                         {role === 'admin' && (
+                            <button 
+                                onClick={() => handleTabChange('dashboard')} 
+                                className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
+                            >
+                                Dashboard
+                            </button>
+                         )}
+                        <button 
+                            onClick={() => handleTabChange('orders')} 
+                            className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'orders' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}
+                        >
+                            Đơn hàng
+                        </button>
+                        {role === 'admin' && (
+                            <>
+                                <button onClick={() => handleTabChange('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Sản phẩm</button>
+                                <button onClick={() => handleTabChange('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Khách hàng</button>
+                                <button onClick={() => handleTabChange('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Marketing</button>
+                                <button onClick={() => handleTabChange('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Design</button>
+                                <button onClick={() => handleTabChange('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Cấu hình</button>
+                            </>
+                        )}
+                    </nav>
                 </div>
             </header>
 
