@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
@@ -128,7 +129,7 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
   );
 });
 
-// FIX: Logic lấy font family chuẩn hóa cho cả font mặc định và font tải lên
+// FIX: Logic lấy font family chuẩn hóa đồng bộ với App.tsx
 const getFontFamily = (fontName: string) => {
     if (!fontName) return 'sans-serif';
     
@@ -148,7 +149,7 @@ const getFontFamily = (fontName: string) => {
         case 'Pacifico': return '"Pacifico", cursive';
     }
 
-    // Đối với Font tải lên: Làm sạch tên tương tự như logic tiêm CSS ở App.tsx
+    // Đối với Font tải lên: Làm sạch tên khớp 100% với CSS tiêm vào header
     const cleanName = fontName.replace(/[^a-zA-Z0-9\s-]/g, '');
     return `'${cleanName}', sans-serif`;
 };
