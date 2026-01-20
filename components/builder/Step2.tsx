@@ -77,27 +77,20 @@ export const Step2BackgroundAndDecorations: React.FC<{
   const activeFields = useMemo((): FormField[] => {
     if (config.formFields && config.formFields.length > 0) return config.formFields;
     if (currentBg?.formFields && currentBg.formFields.length > 0) return currentBg.formFields;
-    return [
-        { id: 'names', label: 'Tên / Lời tựa ngắn', type: 'text', required: true, placeholder: 'VD: Tú & Lan' },
-        { id: 'date', label: 'Ngày kỷ niệm (nếu có)', type: 'date', required: false },
-        { id: 'message', label: 'Thông điệp của bạn', type: 'textarea', required: false, placeholder: 'Nhập lời nhắn gửi...' },
-        { id: 'photo', label: 'Đính kèm ảnh in thêm', type: 'image', required: false },
-    ];
+    return [];
   }, [currentBg, config.formFields]);
 
   const handleUpdateFormData = (fieldId: string, value: string) => {
     const newFormData = { ...(config.customFormData || {}), [fieldId]: value };
     
-    // Xử lý định dạng ngày tháng để hiển thị trên ảnh preview
     let displayValue = value;
     if ((fieldId.toLowerCase().includes('date') || fieldId === 'date') && value) {
-        const parts = value.split('-'); // YYYY-MM-DD
+        const parts = value.split('-'); 
         if (parts.length === 3) {
             displayValue = `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
     }
 
-    // TỰ ĐỘNG CẬP NHẬT CÁC THẺ CHỮ CÓ LIÊN KẾT
     const updatedTexts = config.texts.map(t => {
         if (t.linkedFieldId === fieldId) {
             return { ...t, content: displayValue || '' };
@@ -138,7 +131,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
             setConfig({
                 ...config,
                 background: { type: 'upload', value: resizedBase64 },
-                customFormData: {} 
+                customFormData: {},
+                formFields: []
             });
             showToast("Đã tải ảnh nền của bạn!", "success");
         } catch (error) {
@@ -165,7 +159,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
         if (squareFrame) newFrameId = squareFrame.id;
     }
 
-    // Tự động nạp overlayConfig và đồng bộ text mặc định
     const overlayTexts = (bg.overlayConfig?.texts || []).map(t => {
         if (t.linkedFieldId && config.customFormData?.[t.linkedFieldId]) {
             let val = config.customFormData[t.linkedFieldId];
@@ -255,7 +248,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. NHẬP THÔNG TIN IN ẤN
         </h4>
         <div className="space-y-4">
-            {activeFields.map(field => (
+            {activeFields.length > 0 ? activeFields.map(field => (
                 <div key={field.id} className="space-y-1.5">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-tight ml-1 flex justify-between">
                         {field.label} {field.required && <span className="text-red-500">*</span>}
@@ -296,7 +289,11 @@ export const Step2BackgroundAndDecorations: React.FC<{
                         </div>
                     )}
                 </div>
-            ))}
+            )) : (
+                <div className="py-10 text-center border-2 border-dashed border-gray-100 rounded-2xl">
+                    <p className="text-xs text-gray-400 italic">Mẫu nền này không yêu cầu nhập thông tin thêm.</p>
+                </div>
+            )}
         </div>
       </div>
     </div>
