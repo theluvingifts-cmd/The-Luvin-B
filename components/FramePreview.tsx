@@ -19,6 +19,7 @@ interface FramePreviewProps {
   onItemRemove: (id: string) => void;
   onTextUpdate: (id: number, updates: Partial<TextConfig>) => void;
   onItemUpdate?: (id: string, updates: Partial<DraggableItem>) => void;
+  onCharacterUpdate?: (id: number, updates: Partial<LegoCharacterConfig>) => void;
   onItemFlip?: (id: string) => void;
   onCharacterDoubleClick?: (id: number) => void;
   onAutoAdvance?: () => void;
@@ -128,15 +129,12 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
   );
 });
 
-// FIX: Chuẩn hóa logic lấy font family
 const getFontFamily = (fontName: string) => {
-    if (!fontName) return 'sans-serif';
-    
-    // Xử lý các font mặc định từ Google Fonts
     switch (fontName) {
+        case 'Anniversary': return '"Dancing Script", cursive';
+        case 'Serif': return '"Noto Serif", serif';
         case 'Playfair Display': return '"Playfair Display", serif';
         case 'Montserrat': return '"Montserrat", sans-serif';
-        case 'Poppins': return '"Poppins", sans-serif';
         case 'Roboto': return '"Roboto", sans-serif';
         case 'Open Sans': return '"Open Sans", sans-serif';
         case 'Merriweather': return '"Merriweather", serif';
@@ -144,12 +142,8 @@ const getFontFamily = (fontName: string) => {
         case 'Lora': return '"Lora", serif';
         case 'Nunito': return '"Nunito", sans-serif';
         case 'Pacifico': return '"Pacifico", cursive';
+        default: return `'${fontName}', sans-serif`;
     }
-
-    // Đối với Font tải lên: Tên được lưu trong DB có thể chứa ký tự lạ. 
-    // Chúng ta phải "làm sạch" tên để khớp chính xác với font-family đã khai báo trong CSS tiêm vào header.
-    const cleanName = fontName.replace(/[^a-zA-Z0-9\s-]/g, '');
-    return `'${cleanName}', sans-serif`;
 };
 
 const EditableText = memo(({
