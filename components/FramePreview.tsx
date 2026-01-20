@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
@@ -129,12 +128,17 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
   );
 });
 
+// FIX: Logic lấy font family chuẩn hóa cho cả font mặc định và font tải lên
 const getFontFamily = (fontName: string) => {
+    if (!fontName) return 'sans-serif';
+    
+    // Xử lý các trường hợp đặc biệt và phông chữ Google Fonts phổ biến
     switch (fontName) {
         case 'Anniversary': return '"Dancing Script", cursive';
         case 'Serif': return '"Noto Serif", serif';
         case 'Playfair Display': return '"Playfair Display", serif';
         case 'Montserrat': return '"Montserrat", sans-serif';
+        case 'Poppins': return '"Poppins", sans-serif';
         case 'Roboto': return '"Roboto", sans-serif';
         case 'Open Sans': return '"Open Sans", sans-serif';
         case 'Merriweather': return '"Merriweather", serif';
@@ -142,8 +146,11 @@ const getFontFamily = (fontName: string) => {
         case 'Lora': return '"Lora", serif';
         case 'Nunito': return '"Nunito", sans-serif';
         case 'Pacifico': return '"Pacifico", cursive';
-        default: return `'${fontName}', sans-serif`;
     }
+
+    // Đối với Font tải lên: Làm sạch tên tương tự như logic tiêm CSS ở App.tsx
+    const cleanName = fontName.replace(/[^a-zA-Z0-9\s-]/g, '');
+    return `'${cleanName}', sans-serif`;
 };
 
 const EditableText = memo(({
