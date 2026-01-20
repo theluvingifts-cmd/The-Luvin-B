@@ -47,14 +47,14 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
   return (
     <>
       <header 
-        className="backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200/50 transition-colors duration-300"
+        className="backdrop-blur-sm sticky top-0 z-40 shadow-sm border-b border-gray-200/50 transition-all duration-300"
         style={headerStyle}
       >
-        <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <nav className="container mx-auto px-5 py-2.5 flex justify-between items-center">
           <Logo 
             url={logoUrl} 
             onClick={() => handleNav('home')} 
-            className="h-12"
+            className="h-9 sm:h-10"
           />
           
           <div className="hidden md:flex items-center space-x-6 font-body">
@@ -76,22 +76,36 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
                 className={`relative hover:text-primary transition-colors ${isCartShaking ? 'animate-cart-shake' : ''}`}
                 style={{ color: 'inherit' }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
-              {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center transition-transform duration-200 transform scale-100 shadow-sm font-bold">{cartCount}</span>}
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+              {cartCount > 0 && <span className="absolute -top-2 -right-2.5 bg-primary text-white text-[10px] rounded-full h-4.5 w-4.5 min-w-[18px] flex items-center justify-center transition-transform duration-200 transform scale-100 shadow-sm font-bold border border-white">
+                {cartCount}
+              </span>}
             </button>
           </div>
-          <div className="md:hidden flex items-center gap-4">
+          <div className="md:hidden flex items-center gap-3">
             <button 
                 id="cart-icon-mobile" 
                 onClick={onCartClick} 
-                className={`relative ${isCartShaking ? 'animate-cart-shake' : ''}`}
+                className={`relative p-1 ${isCartShaking ? 'animate-cart-shake' : ''}`}
                 style={{ color: 'inherit' }}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
-                {cartCount > 0 && <span className="absolute -top-1 -right-2 bg-primary text-white text-xs rounded-full h-4 w-4 flex items-center justify-center shadow-sm font-bold">{cartCount}</span>}
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                {cartCount > 0 && <span className="absolute -top-0.5 -right-1 bg-primary text-white text-[9px] rounded-full h-4 w-4 flex items-center justify-center shadow-sm font-bold border border-white">
+                  {cartCount}
+                </span>}
             </button>
-            <button onClick={() => setIsMenuOpen(true)} className="focus:outline-none" style={{ color: 'inherit' }}>
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            <button onClick={() => setIsMenuOpen(true)} className="focus:outline-none p-1" style={{ color: 'inherit' }}>
+              <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
             </button>
           </div>
         </nav>

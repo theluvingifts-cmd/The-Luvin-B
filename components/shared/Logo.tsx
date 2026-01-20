@@ -16,8 +16,8 @@ interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({ 
   url, 
   onClick, 
-  className = "h-12", 
-  textClassName = "text-2xl" 
+  className = "h-10", 
+  textClassName = "text-xl" 
 }) => {
   const brandContent = url ? (
     <img 
