@@ -155,6 +155,7 @@ export const AdminDesign: React.FC = () => {
     const [showGrid, setShowGrid] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
     
+    // Metadata states
     const [bgName, setBgName] = useState('');
     const [bgCategory, setBgCategory] = useState('Tình yêu');
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
@@ -280,13 +281,15 @@ export const AdminDesign: React.FC = () => {
         });
     }, [setConfigWithHistory]);
 
+    // HỆ THỐNG PHÍM TẮT & NUDGE (DI CHUYỂN TINH VI)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
+            // DI CHUYỂN BẰNG PHÍM MŨI TÊN
             if (selectedItemId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
-                const step = e.shiftKey ? 2 : 0.5;
+                const step = e.shiftKey ? 2 : 0.5; // Shift di chuyển 2% (~10px), bình thường 0.5% (~2px)
                 const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
                 const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
                 
@@ -302,10 +305,12 @@ export const AdminDesign: React.FC = () => {
                 return;
             }
 
+            // XÓA: Delete/Backspace
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (selectedItemId) { e.preventDefault(); handleItemRemove(selectedItemId); }
             }
 
+            // COPY/PASTE
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 if (selectedItemId) {
                     const [type, idStr] = selectedItemId.split('-');
@@ -328,12 +333,14 @@ export const AdminDesign: React.FC = () => {
                 }
             }
 
+            // UNDO/REDO
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) handleRedo(); else handleUndo();
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); handleRedo(); }
 
+            // LAYER ORDER: Ctrl + [ / ]
             if ((e.ctrlKey || e.metaKey) && e.key === '[') {
                 if (selectedItemId) { e.preventDefault(); moveLayer(selectedItemId, 'down'); }
             }
@@ -341,6 +348,7 @@ export const AdminDesign: React.FC = () => {
                 if (selectedItemId) { e.preventDefault(); moveLayer(selectedItemId, 'up'); }
             }
 
+            // DESELECT: Escape
             if (e.key === 'Escape') { setSelectedItemId(null); }
         };
 
@@ -524,6 +532,7 @@ export const AdminDesign: React.FC = () => {
         return null;
     }, [selectedItemId, config]);
 
+    // --- QUẢN LÝ FORM TRONG TAB FORM ---
     const handleAddField = () => {
         const newField: FormField = { id: `field_${Date.now()}`, label: 'Trường mới', type: 'text', required: false };
         setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), newField] }));
@@ -538,6 +547,7 @@ export const AdminDesign: React.FC = () => {
     return (
         <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
             
+            {/* TOOLBAR LEFT */}
             <div className="w-20 bg-gray-900 flex flex-col items-center py-4 gap-4 z-20">
                 {TOOLS.map(tool => (
                     <button key={tool.id} onClick={() => { setActiveTool(tool.id); setSelectedItemId(null); }} className={`w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all ${activeTool === tool.id ? 'bg-white text-gray-900 shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
@@ -550,6 +560,7 @@ export const AdminDesign: React.FC = () => {
                 </div>
             </div>
 
+            {/* PROPERTY PANEL */}
             <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h3 className="font-black text-gray-800 uppercase tracking-tight text-xs">
@@ -566,6 +577,7 @@ export const AdminDesign: React.FC = () => {
                                 <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa</button>
                             </div>
 
+                            {/* ALT TEXT FIELD */}
                             <div className="space-y-2">
                                 <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest">Alt Text / Mô tả đối tượng</label>
                                 <textarea 
@@ -578,6 +590,7 @@ export const AdminDesign: React.FC = () => {
                                 />
                             </div>
 
+                            {/* ALIGNMENT TOOLS */}
                             <div className="space-y-2">
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase">Căn chỉnh nhanh</label>
                                 <div className="grid grid-cols-4 gap-1">
@@ -761,6 +774,7 @@ export const AdminDesign: React.FC = () => {
                 </div>
             </div>
 
+            {/* CANVAS MAIN */}
             <div className="flex-grow flex flex-col relative bg-[#f1f3f5] cursor-default" onMouseDown={() => setSelectedItemId(null)}>
                 <div className="h-14 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10" onMouseDown={e => e.stopPropagation()}>
                     <div className="flex items-center gap-4">
@@ -804,6 +818,7 @@ export const AdminDesign: React.FC = () => {
                 </div>
             </div>
 
+            {/* SHORTCUT HELP MODAL */}
             {showShortcuts && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowShortcuts(false)}>
                     <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -823,6 +838,7 @@ export const AdminDesign: React.FC = () => {
                 </div>
             )}
 
+            {/* SAVE MODAL */}
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-fade-in p-4" onClick={() => setShowSaveModal(false)}>
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>

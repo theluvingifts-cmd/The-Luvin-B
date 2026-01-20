@@ -81,8 +81,10 @@ export const Step2BackgroundAndDecorations: React.FC<{
   }, [currentBg, config.formFields]);
 
   const handleUpdateFormData = (fieldId: string, value: string) => {
+    // 1. Cập nhật dữ liệu vào customFormData
     const newFormData = { ...(config.customFormData || {}), [fieldId]: value };
     
+    // 2. Định dạng lại chuỗi hiển thị (VD: Ngày tháng)
     let displayValue = value;
     if ((fieldId.toLowerCase().includes('date') || fieldId === 'date') && value) {
         const parts = value.split('-'); 
@@ -91,6 +93,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         }
     }
 
+    // 3. Tìm các TextConfig đang LIÊN KẾT với fieldId này để cập nhật content
     const updatedTexts = config.texts.map(t => {
         if (t.linkedFieldId === fieldId) {
             return { ...t, content: displayValue || '' };
@@ -159,6 +162,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         if (squareFrame) newFrameId = squareFrame.id;
     }
 
+    // Khi đổi Background, cần đồng bộ lại nội dung các text đã liên kết
     const overlayTexts = (bg.overlayConfig?.texts || []).map(t => {
         if (t.linkedFieldId && config.customFormData?.[t.linkedFieldId]) {
             let val = config.customFormData[t.linkedFieldId];
