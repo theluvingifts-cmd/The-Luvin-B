@@ -1,8 +1,5 @@
-
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-// Added LegoPart to types import
 import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart } from '../../types';
-// Added LEGO_PARTS to constants import
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG, LEGO_PARTS } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
@@ -11,7 +8,6 @@ import { getAllAssets, addAsset, deleteAsset } from '../../services/assetService
 import { uploadToCloudinary } from '../../services/uploadService';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 import { dataURLToBlob } from '../../utils/helpers';
-// Added getAllParts to service imports
 import { getAllParts } from '../../services/productService';
 
 declare var html2canvas: any;
@@ -26,7 +22,8 @@ const TOOLS = [
     { id: 'layers', icon: '📚', label: 'Lớp' },
 ];
 
-const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
+// Mở rộng danh sách font mặc định phổ biến
+const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Poppins', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 const QUICK_COLORS = ['#333333', '#ffffff', '#efa3b5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const FontSelector: React.FC<{ 
@@ -104,7 +101,6 @@ export const AdminDesign: React.FC = () => {
     const [activeTool, setActiveTool] = useState('templates');
     const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
-    // Added products state for allKnownParts derivation
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [existingBackgrounds, setExistingBackgrounds] = useState<PresetBackground[]>([]);
     const [history, setHistory] = useState<FrameConfig[]>([INITIAL_FRAME_CONFIG]);
@@ -120,9 +116,37 @@ export const AdminDesign: React.FC = () => {
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     const previewRef = useRef<HTMLDivElement>(null);
 
+    // FIX: Nạp font ngay khi component mount và khi danh sách uploadedFonts thay đổi
+    useEffect(() => {
+        if (uploadedFonts.length > 0) {
+            const styleId = 'admin-design-custom-fonts';
+            let style = document.getElementById(styleId) as HTMLStyleElement;
+            if (!style) {
+                style = document.createElement('style');
+                style.id = styleId;
+                document.head.appendChild(style);
+            }
+            
+            let css = '';
+            uploadedFonts.forEach(font => {
+                // Đảm bảo tên font sạch để CSS không lỗi
+                const safeName = font.name.replace(/[^a-zA-Z0-9\s-]/g, '');
+                css += `
+                    @font-face {
+                        font-family: '${safeName}';
+                        src: url('${font.url}');
+                        font-weight: normal;
+                        font-style: normal;
+                        font-display: swap;
+                    }
+                `;
+            });
+            style.innerHTML = css;
+        }
+    }, [uploadedFonts]);
+
     useEffect(() => {
         const fetchInitialData = async () => {
-            // Updated to fetch productsData alongside other initial data
             const [framesData, configData, bgData, productsData] = await Promise.all([
                 getAllFrames(), getStoreConfig(), getAllBackgrounds(), getAllParts()
             ]);
@@ -134,7 +158,6 @@ export const AdminDesign: React.FC = () => {
         fetchInitialData();
     }, []);
 
-    // Added allKnownParts useMemo to fix 'Cannot find name' error
     const allKnownParts = useMemo(() => {
         const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
         const defaultParts = Object.values(LEGO_PARTS).flat().reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
