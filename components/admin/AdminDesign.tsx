@@ -1,6 +1,9 @@
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField } from '../../types';
-import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
+// Added LegoPart to types import
+import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart } from '../../types';
+// Added LEGO_PARTS to constants import
+import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG, LEGO_PARTS } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
 import { addBackground, updateBackground, getAllBackgrounds } from '../../services/backgroundService'; 
@@ -8,6 +11,8 @@ import { getAllAssets, addAsset, deleteAsset } from '../../services/assetService
 import { uploadToCloudinary } from '../../services/uploadService';
 import { getStoreConfig, updateStoreConfig } from '../../services/configService';
 import { dataURLToBlob } from '../../utils/helpers';
+// Added getAllParts to service imports
+import { getAllParts } from '../../services/productService';
 
 declare var html2canvas: any;
 
@@ -21,8 +26,8 @@ const TOOLS = [
     { id: 'layers', icon: '📚', label: 'Lớp' },
 ];
 
-const QUICK_COLORS = ['#333333', '#ffffff', '#efa3b5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
+const QUICK_COLORS = ['#333333', '#ffffff', '#efa3b5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const FontSelector: React.FC<{ 
     value: string; 
@@ -58,21 +63,37 @@ const FontSelector: React.FC<{
 
     return (
         <div className="relative text-left" ref={dropdownRef}>
-            <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white flex justify-between items-center shadow-sm">
+            <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white flex justify-between items-center shadow-sm hover:border-blue-400 transition-all">
                 <span className="truncate font-medium" style={{ fontFamily: value }}>{value}</span>
-                <span className="text-[10px]">▼</span>
+                <span className="text-[10px] opacity-40">▼</span>
             </button>
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-xl z-[100] max-h-60 overflow-y-auto">
-                    <input className="w-full p-2 text-xs border-b outline-none" placeholder="Tìm font..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onClick={e => e.stopPropagation()} />
-                    {filteredGroups.map(group => (
-                        <div key={group.label}>
-                            <div className="px-2 py-1 text-[9px] font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
-                            {group.fonts.map(font => (
-                                <div key={font} className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer" style={{ fontFamily: font }} onClick={() => { onChange(font); setIsOpen(false); }}>{font}</div>
-                            ))}
-                        </div>
-                    ))}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-2xl z-[110] max-h-64 overflow-hidden flex flex-col animate-fade-in">
+                    <input 
+                        className="w-full p-2.5 text-xs border-b outline-none sticky top-0 bg-white z-10" 
+                        placeholder="Tìm phông chữ..." 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        onClick={e => e.stopPropagation()} 
+                    />
+                    <div className="overflow-y-auto custom-scrollbar">
+                        {filteredGroups.map(group => (
+                            <div key={group.label}>
+                                <div className="px-2 py-1.5 text-[9px] font-black text-gray-400 uppercase bg-gray-50 tracking-widest">{group.label}</div>
+                                {group.fonts.map(font => (
+                                    <div 
+                                        key={font} 
+                                        className={`px-3 py-2.5 text-sm hover:bg-blue-50 cursor-pointer transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : ''}`} 
+                                        style={{ fontFamily: font }} 
+                                        onClick={() => { onChange(font); setIsOpen(false); }}
+                                        onMouseEnter={() => onPreview(font)}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
@@ -83,6 +104,8 @@ export const AdminDesign: React.FC = () => {
     const [activeTool, setActiveTool] = useState('templates');
     const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
+    // Added products state for allKnownParts derivation
+    const [products, setProducts] = useState<LegoPart[]>([]);
     const [existingBackgrounds, setExistingBackgrounds] = useState<PresetBackground[]>([]);
     const [history, setHistory] = useState<FrameConfig[]>([INITIAL_FRAME_CONFIG]);
     const [historyIndex, setHistoryIndex] = useState(0);
@@ -94,19 +117,29 @@ export const AdminDesign: React.FC = () => {
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
+    const [previewFont, setPreviewFont] = useState<string | null>(null);
     const previewRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchInitialData = async () => {
-            const [framesData, configData, bgData] = await Promise.all([
-                getAllFrames(), getStoreConfig(), getAllBackgrounds()
+            // Updated to fetch productsData alongside other initial data
+            const [framesData, configData, bgData, productsData] = await Promise.all([
+                getAllFrames(), getStoreConfig(), getAllBackgrounds(), getAllParts()
             ]);
             if (framesData.length > 0) setFrames(framesData);
             if (configData?.uploadedFonts) setUploadedFonts(configData.uploadedFonts);
             if (bgData) setExistingBackgrounds(bgData);
+            if (productsData) setProducts(productsData);
         };
         fetchInitialData();
     }, []);
+
+    // Added allKnownParts useMemo to fix 'Cannot find name' error
+    const allKnownParts = useMemo(() => {
+        const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
+        const defaultParts = Object.values(LEGO_PARTS).flat().reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
+        return { ...defaultParts, ...dbParts }; 
+    }, [products]);
 
     const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
         setConfig(prev => {
@@ -148,26 +181,18 @@ export const AdminDesign: React.FC = () => {
         });
     };
 
-    // Fix: Implemented handleItemTransform to handle dragging and resizing of elements in AdminDesign
     const handleItemTransform = useCallback((id: string, nTransform: any) => {
         const [type, ...rest] = id.split('-');
         const rawId = rest.join('-');
         const itemId = parseInt(rawId);
-        
         setConfigWithHistory((prev: FrameConfig) => {
-            if (type === 'text') {
-                return { ...prev, texts: prev.texts.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
-            }
-            if (type === 'character') return { ...prev, characters: prev.characters.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
+            if (type === 'text') return { ...prev, texts: prev.texts.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
-            if (type === 'shape') {
-                return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
-            }
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             return prev;
         });
     }, [setConfigWithHistory]);
 
-    // Fix: Implemented handleItemRemove to allow deleting objects in AdminDesign
     const handleItemRemove = useCallback((id: string) => {
         const [type, ...rest] = id.split('-');
         const rawId = rest.join('-');
@@ -179,14 +204,6 @@ export const AdminDesign: React.FC = () => {
             if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== itemId) };
             return prev;
         });
-    }, [setConfigWithHistory]);
-
-    // Fix: Implemented handleTextUpdate to handle text content and formatting changes in AdminDesign
-    const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-        setConfigWithHistory((prev: FrameConfig) => ({
-            ...prev,
-            texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
-        }));
     }, [setConfigWithHistory]);
 
     const selectedObject = useMemo(() => {
@@ -214,150 +231,243 @@ export const AdminDesign: React.FC = () => {
             {/* PROPERTY PANEL */}
             <div className="w-80 bg-white border-r flex flex-col z-10">
                 <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h3 className="font-black text-xs uppercase tracking-widest">{selectedObject ? 'Thuộc tính' : TOOLS.find(t => t.id === activeTool)?.label}</h3>
-                    {selectedObject && <button onClick={() => setSelectedItemId(null)} className="text-[10px] bg-gray-200 px-2 py-1 rounded font-bold">X</button>}
+                    <h3 className="font-black text-[10px] uppercase tracking-widest text-gray-500">
+                        {selectedObject ? 'Thuộc tính đối tượng' : TOOLS.find(t => t.id === activeTool)?.label}
+                    </h3>
+                    {selectedObject && <button onClick={() => setSelectedItemId(null)} className="text-[10px] bg-gray-200 px-2 py-1 rounded font-bold hover:bg-gray-300">Đóng X</button>}
                 </div>
 
                 <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
                     {selectedObject ? (
-                        <div className="space-y-6">
-                            {/* ALT TEXT - AI FEATURE */}
+                        <div className="space-y-6 animate-fade-in">
+                            {/* ALT TEXT - AI & SEO */}
                             <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                                <label className="block text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Alt Text / Mô tả (AI)</label>
+                                <label className="block text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Alt Text / Mô tả AI</label>
                                 <textarea 
-                                    className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" 
+                                    className="w-full p-2 border border-blue-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
                                     rows={2} 
                                     // @ts-ignore
                                     value={selectedObject.altText || ''} 
                                     onChange={e => updateSelected({ altText: e.target.value })}
-                                    placeholder="Mô tả nội dung cho AI nhận diện..."
+                                    placeholder="Mô tả cho AI nhận diện hoặc SEO..."
                                 />
                             </div>
 
                             {/* TEXT SPECIFIC CONTROLS */}
                             {selectedItemId?.startsWith('text-') && (
-                                <div className="space-y-4">
-                                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                                        <label className="block text-[10px] font-black text-orange-700 uppercase tracking-tight mb-2">🔗 KẾT NỐI DỮ LIỆU BƯỚC 2</label>
+                                <div className="space-y-5">
+                                    <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl shadow-sm">
+                                        <label className="block text-[10px] font-black text-orange-700 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                            <span>🔗</span> KẾT NỐI FORM BƯỚC 2
+                                        </label>
                                         <select 
-                                            className="w-full p-2 border rounded-lg text-xs font-bold bg-white" 
+                                            className="w-full p-2.5 border border-orange-200 rounded-xl text-xs font-bold bg-white outline-none focus:ring-2 focus:ring-orange-400" 
                                             value={(selectedObject as TextConfig).linkedFieldId || ''} 
                                             onChange={e => updateSelected({ linkedFieldId: e.target.value })}
                                         >
                                             <option value="">-- Không kết nối --</option>
                                             {(config.formFields || []).map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
                                         </select>
-                                        <p className="text-[9px] text-orange-600 mt-2 italic">* Khi khách nhập ô này ở Bước 2, nội dung chữ sẽ tự nhảy theo.</p>
+                                        <p className="text-[9px] text-orange-600 mt-2 leading-relaxed font-medium italic">
+                                            * Chữ trên tranh sẽ tự động thay đổi theo nội dung khách điền vào ô này ở Bước 2.
+                                        </p>
                                     </div>
 
                                     <div>
-                                        <div className="flex justify-between items-center mb-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase">Font chữ</label>
-                                            <button onClick={() => updateSelected({ font: 'Montserrat' })} className="text-[9px] font-black text-blue-600 hover:underline uppercase">Reset Font</button>
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phông chữ</label>
+                                            <button 
+                                                onClick={() => updateSelected({ font: 'Montserrat' })} 
+                                                className="text-[9px] font-black text-blue-600 hover:text-blue-800 uppercase bg-blue-50 px-2 py-0.5 rounded-full"
+                                            >
+                                                Reset Phông
+                                            </button>
                                         </div>
-                                        <FontSelector value={(selectedObject as TextConfig).font} onChange={f => updateSelected({ font: f })} onPreview={() => {}} uploadedFonts={uploadedFonts} />
+                                        <FontSelector 
+                                            value={(selectedObject as TextConfig).font} 
+                                            onChange={f => updateSelected({ font: f })} 
+                                            onPreview={setPreviewFont} 
+                                            uploadedFonts={uploadedFonts} 
+                                        />
                                     </div>
 
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Nội dung mặc định</label>
-                                        <textarea className="w-full p-2 border rounded-lg text-sm" rows={2} value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} />
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Nội dung mẫu</label>
+                                        <textarea 
+                                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                                            rows={2} 
+                                            value={(selectedObject as TextConfig).content} 
+                                            onChange={e => updateSelected({ content: e.target.value })} 
+                                        />
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <input type="number" className="p-2 border rounded text-sm" value={(selectedObject as TextConfig).size} onChange={e => updateSelected({ size: Number(e.target.value) })} />
-                                        <input type="color" className="w-full h-10 border rounded" value={(selectedObject as TextConfig).color} onChange={e => updateSelected({ color: e.target.value })} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Cỡ chữ</label>
+                                            <input type="number" className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold" value={(selectedObject as TextConfig).size} onChange={e => updateSelected({ size: Number(e.target.value) })} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Màu sắc</label>
+                                            <input type="color" className="w-full h-9 border border-gray-200 rounded-lg cursor-pointer" value={(selectedObject as TextConfig).color} onChange={e => updateSelected({ color: e.target.value })} />
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-
-                            <button onClick={() => setConfigWithHistory(prev => {
-                                const [type, idStr] = selectedItemId!.split('-');
-                                const id = parseInt(idStr);
-                                if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== id) };
-                                if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== id) };
-                                if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== id) };
-                                return prev;
-                            })} className="w-full py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs">Xóa đối tượng</button>
-                        </div>
-                    ) : (
-                        <>
-                            {activeTool === 'form' && (
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="text-[10px] font-black text-gray-400 uppercase">Danh sách ô nhập liệu</h4>
-                                        <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), { id: `f_${Date.now()}`, label: 'Trường mới', type: 'text', required: false }] }))} className="bg-blue-600 text-white w-6 h-6 rounded-full">+</button>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {(config.formFields || []).map((f, i) => (
-                                            <div key={f.id} className="p-3 bg-gray-50 border rounded-xl relative group">
-                                                <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).filter(field => field.id !== f.id) }))} className="absolute top-1 right-1 text-red-500 opacity-0 group-hover:opacity-100">×</button>
-                                                <input className="w-full p-1.5 border rounded text-xs mb-2" value={f.label} onChange={e => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, label: e.target.value } : field) }))} />
-                                                <select className="w-full p-1 text-[10px] border rounded" value={f.type} onChange={e => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, type: e.target.value as any } : field) }))}>
-                                                    <option value="text">Chữ ngắn</option>
-                                                    <option value="textarea">Chữ dài</option>
-                                                    <option value="date">Ngày tháng</option>
-                                                    <option value="image">Ảnh</option>
-                                                </select>
-                                            </div>
+                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                        {QUICK_COLORS.map(c => (
+                                            <button key={c} onClick={() => updateSelected({ color: c })} className={`w-6 h-6 rounded-full border border-gray-100 shadow-sm ${(selectedObject as TextConfig).color === c ? 'ring-2 ring-blue-500 scale-110' : ''}`} style={{backgroundColor: c}} />
                                         ))}
                                     </div>
                                 </div>
                             )}
+
+                            <div className="pt-4 border-t border-gray-100">
+                                <button onClick={() => handleItemRemove(selectedItemId!)} className="w-full py-2.5 bg-red-50 text-red-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-100 transition-colors">
+                                    🗑️ Xóa đối tượng
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {activeTool === 'form' && (
+                                <div className="space-y-5">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cấu hình ô nhập liệu</h4>
+                                            <p className="text-[9px] text-gray-400 italic">Khách sẽ điền thông tin này ở Bước 2</p>
+                                        </div>
+                                        <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), { id: `f_${Date.now()}`, label: 'Trường mới', type: 'text', required: false }] }))} className="bg-blue-600 text-white w-7 h-7 rounded-full font-bold shadow-lg shadow-blue-200 hover:scale-110 transition-transform">+</button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {(config.formFields || []).map((f, i) => (
+                                            <div key={f.id} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl relative group animate-fade-in">
+                                                <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).filter(field => field.id !== f.id) }))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md">×</button>
+                                                <label className="text-[9px] font-black text-gray-400 uppercase mb-1 block ml-1">Nhãn hiển thị (Label)</label>
+                                                <input className="w-full p-2 border border-gray-200 rounded-lg text-xs font-bold mb-2 focus:ring-1 focus:ring-blue-500 outline-none" value={f.label} onChange={e => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, label: e.target.value } : field) }))} />
+                                                <div className="flex gap-2">
+                                                    <select className="flex-1 p-1.5 text-[10px] font-bold border border-gray-200 rounded-lg bg-white" value={f.type} onChange={e => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, type: e.target.value as any } : field) }))}>
+                                                        <option value="text">Chữ ngắn</option>
+                                                        <option value="textarea">Chữ dài</option>
+                                                        <option value="date">Ngày tháng</option>
+                                                        <option value="image">Hình ảnh</option>
+                                                    </select>
+                                                    <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, required: !field.required } : field) }))} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition-colors ${f.required ? 'bg-red-500 text-white' : 'bg-white text-gray-400 border border-gray-200'}`}>REQ</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {(!config.formFields || config.formFields.length === 0) && (
+                                            <div className="py-12 text-center border-2 border-dashed border-gray-100 rounded-3xl">
+                                                <p className="text-xs text-gray-300 font-bold italic">Chưa có ô nhập liệu nào.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             {activeTool === 'templates' && (
-                                <div className="space-y-2">
+                                <div className="grid grid-cols-1 gap-2">
                                     {existingBackgrounds.map(bg => (
-                                        <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className="flex items-center gap-2 p-2 border rounded hover:bg-blue-50 cursor-pointer">
-                                            <img src={bg.previewUrl || bg.url} className="w-10 h-10 object-cover rounded" />
-                                            <span className="text-xs font-bold truncate">{bg.name}</span>
+                                        <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className={`flex items-center gap-3 p-2 border rounded-xl hover:shadow-md transition-all cursor-pointer ${editingBgId === bg.id ? 'border-blue-500 bg-blue-50' : 'bg-white'}`}>
+                                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0"><img src={bg.previewUrl || bg.url} className="w-full h-full object-cover" /></div>
+                                            <div className="min-w-0 flex-grow"><p className="text-xs font-black text-gray-800 truncate">{bg.name}</p><p className="text-[9px] text-gray-400 font-bold uppercase">{bg.category}</p></div>
                                         </div>
                                     ))}
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
 
             {/* CANVAS MAIN */}
-            <div className="flex-grow flex flex-col bg-[#f0f0f0] overflow-hidden">
-                <div className="h-14 bg-white border-b flex items-center justify-between px-6">
-                    <div className="flex gap-4">
-                        <select className="border p-1 text-sm rounded font-bold" value={config.frameId} onChange={e => setConfigWithHistory(prev => ({ ...prev, frameId: e.target.value }))}>
-                            {frames.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                        </select>
+            <div className="flex-grow flex flex-col bg-[#f5f6f7] overflow-hidden" onMouseDown={() => setSelectedItemId(null)}>
+                <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-30 shadow-sm" onMouseDown={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Kích thước khung</span>
+                            <select className="border-0 p-0 text-sm rounded font-black text-gray-900 bg-transparent focus:ring-0 outline-none cursor-pointer" value={config.frameId} onChange={e => setConfigWithHistory(prev => ({ ...prev, frameId: e.target.value }))}>
+                                {frames.map(f => <option key={f.id} value={f.id}>{f.name} (Tồn: {f.stock})</option>)}
+                            </select>
+                        </div>
+                        <div className="h-8 w-px bg-gray-100"></div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Zoom</span>
+                            <input type="range" min="0.2" max="2" step="0.1" value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-24 accent-gray-900" />
+                            <span className="text-xs font-black text-gray-900 w-10">{Math.round(zoom * 100)}%</span>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => setShowSaveModal(true)} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-xs font-black">CẬP NHẬT MẪU</button>
+                    <div className="flex gap-3">
+                        <button onClick={() => setShowSaveModal(true)} className="px-8 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
+                            {editingBgId ? 'Cập nhật mẫu' : 'Lưu mẫu mới'}
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex-grow relative flex items-center justify-center p-8">
-                    <div style={{ transform: `scale(${zoom})` }} className="bg-white shadow-2xl transition-transform duration-300">
+                <div className="flex-grow relative flex items-center justify-center p-8 overflow-auto custom-scrollbar">
+                    <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }} className="bg-white shadow-2xl transition-transform duration-300 ring-1 ring-gray-200">
                         <FramePreview 
-                            ref={previewRef} config={config} containerWidth={500} onItemTransform={handleItemTransform} 
-                            onItemRemove={handleItemRemove} onTextUpdate={handleTextUpdate} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={{}} 
+                            ref={previewRef} 
+                            config={config} 
+                            containerWidth={500} 
+                            onItemTransform={handleItemTransform} 
+                            onItemRemove={handleItemRemove} 
+                            onTextUpdate={() => {}} 
+                            isInteractive={true} 
+                            selectedItemId={selectedItemId} 
+                            setSelectedItemId={setSelectedItemId} 
+                            setIsEditingText={() => {}} 
+                            allParts={allKnownParts} 
+                            previewFont={previewFont}
                         />
                     </div>
                 </div>
             </div>
 
             {showSaveModal && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white p-8 rounded-3xl w-full max-w-md">
-                        <h3 className="text-xl font-bold mb-6">Lưu mẫu thiết kế</h3>
-                        <input className="w-full p-3 border rounded-xl mb-4" placeholder="Tên mẫu..." value={bgName} onChange={e => setBgName(e.target.value)} />
-                        <div className="flex justify-end gap-3">
-                            <button onClick={() => setShowSaveModal(false)} className="px-4 py-2 font-bold text-gray-500">Hủy</button>
-                            <button onClick={async () => {
-                                const backgroundData: PresetBackground = {
-                                    id: editingBgId || `bg_${Date.now()}`,
-                                    name: bgName, category: bgCategory, type: bgType, url: config.background.value,
-                                    overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
-                                    formFields: config.formFields || []
-                                };
-                                const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
-                                if (success) { alert("Thành công!"); setShowSaveModal(false); }
-                            }} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold">Xác nhận Lưu</button>
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowSaveModal(false)}>
+                    <div className="bg-white p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-2xl font-black mb-6 text-gray-900 uppercase tracking-tighter">Xác nhận Lưu Mẫu</h3>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Tên mẫu thiết kế</label>
+                                <input className="w-full p-3.5 border border-gray-200 rounded-2xl bg-gray-50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all" placeholder="VD: Kỷ niệm ngày cưới 2 nhân vật..." value={bgName} onChange={e => setBgName(e.target.value)} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Danh mục</label>
+                                    <select className="w-full p-3 border border-gray-200 rounded-2xl bg-gray-50 font-bold" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
+                                        <option value="Tình yêu">Tình yêu</option>
+                                        <option value="Sinh nhật">Sinh nhật</option>
+                                        <option value="Kỷ niệm">Kỷ niệm</option>
+                                        <option value="Gia đình">Gia đình</option>
+                                        <option value="Tết">Tết</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Loại khung</label>
+                                    <select className="w-full p-3 border border-gray-200 rounded-2xl bg-gray-50 font-bold" value={bgType} onChange={e => setBgType(e.target.value as any)}>
+                                        <option value="square">Vuông</option>
+                                        <option value="rectangle">Chữ nhật</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-10">
+                            <button onClick={() => setShowSaveModal(false)} className="px-6 py-3 font-black text-gray-400 hover:text-gray-600 uppercase text-xs tracking-widest">Hủy</button>
+                            <button 
+                                onClick={async () => {
+                                    if (!bgName) return alert("Vui lòng nhập tên!");
+                                    const backgroundData: PresetBackground = {
+                                        id: editingBgId || `bg_${Date.now()}`,
+                                        name: bgName, category: bgCategory, type: bgType, url: config.background.value,
+                                        overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
+                                        formFields: config.formFields || []
+                                    };
+                                    const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
+                                    if (success) { alert("Lưu mẫu thành công!"); setShowSaveModal(false); }
+                                }} 
+                                className="px-10 py-3 bg-gray-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-gray-200 hover:bg-black transition-all"
+                            >
+                                Xác nhận Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
