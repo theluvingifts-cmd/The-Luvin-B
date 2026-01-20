@@ -533,6 +533,18 @@ export const AdminDesign: React.FC = () => {
         return null;
     }, [selectedItemId, config]);
 
+    // --- QUẢN LÝ FORM TRONG TAB FORM ---
+    const handleAddField = () => {
+        const newField: FormField = { id: `field_${Date.now()}`, label: 'Trường mới', type: 'text', required: false };
+        setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), newField] }));
+    };
+    const updateField = (id: string, upd: Partial<FormField>) => {
+        setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(f => f.id === id ? { ...f, ...upd } : f) }));
+    };
+    const removeField = (id: string) => {
+        setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).filter(f => f.id !== id) }));
+    };
+
     return (
         <div className="flex h-[calc(100vh-140px)] bg-gray-100 rounded-xl border border-gray-300 overflow-hidden shadow-lg animate-fade-in relative">
             
@@ -564,6 +576,19 @@ export const AdminDesign: React.FC = () => {
                             <div className="flex gap-2">
                                 <button onClick={duplicateSelected} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-100 hover:bg-blue-100">👯 Nhân bản</button>
                                 <button onClick={() => handleItemRemove(selectedItemId!)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100">🗑️ Xóa</button>
+                            </div>
+
+                            {/* ALT TEXT FIELD - NHƯ AI YÊU CẦU */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest">Alt Text / Mô tả đối tượng</label>
+                                <textarea 
+                                    className="w-full p-2 border border-blue-100 rounded-lg text-xs bg-blue-50 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all" 
+                                    rows={2} 
+                                    // @ts-ignore
+                                    value={selectedObject.altText || ''} 
+                                    onChange={e => updateSelected({ altText: e.target.value })}
+                                    placeholder="Ghi chú mô tả cho AI hoặc SEO..."
+                                />
                             </div>
 
                             {/* ALIGNMENT TOOLS */}
@@ -692,6 +717,57 @@ export const AdminDesign: React.FC = () => {
                                 <div className="space-y-4">
                                     <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 flex flex-col items-center gap-2"><span className="text-2xl">🖼️</span><span className="text-[10px] font-bold uppercase">Tải Sticker PNG</span></button>
                                     <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleUploadAsset} />
+                                </div>
+                            )}
+                            {activeTool === 'form' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-black text-[10px] text-gray-400 uppercase tracking-widest">Cấu hình Form mẫu</h4>
+                                        <button onClick={handleAddField} className="bg-blue-600 text-white w-6 h-6 rounded-full font-bold shadow-sm">+</button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {(config.formFields || []).map((field, idx) => (
+                                            <div key={field.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group">
+                                                <button onClick={() => removeField(field.id)} className="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity font-bold">✕</button>
+                                                <div className="flex gap-2 items-center">
+                                                    <span className="text-[10px] font-black text-gray-300">{idx + 1}</span>
+                                                    <input className="flex-grow p-1.5 border rounded text-xs" value={field.label} onChange={e => updateField(field.id, { label: e.target.value })} placeholder="Label..." />
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <select className="flex-1 p-1.5 border rounded text-[10px] font-bold bg-white" value={field.type} onChange={e => updateField(field.id, { type: e.target.value as any })}>
+                                                        <option value="text">Chữ ngắn</option>
+                                                        <option value="textarea">Chữ dài</option>
+                                                        <option value="date">Ngày tháng</option>
+                                                        <option value="image">Hình ảnh</option>
+                                                    </select>
+                                                    <button onClick={() => updateField(field.id, { required: !field.required })} className={`px-2 rounded text-[9px] font-black border transition-all ${field.required ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-400 border-gray-200'}`}>REQ</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {(!config.formFields || config.formFields.length === 0) && (
+                                            <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-[10px] italic font-bold">Chưa có trường dữ liệu nào. Bấm (+) để thêm.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {activeTool === 'layers' && (
+                                <div className="space-y-1">
+                                    <h4 className="font-black text-[10px] text-gray-400 uppercase tracking-widest mb-3">Danh sách đối tượng</h4>
+                                    {[...config.texts, ...(config.draggableItems || []), ...(config.shapes || [])].reverse().map((layer: any) => (
+                                        <div 
+                                            key={layer.id} 
+                                            onClick={() => setSelectedItemId(`${layer.content !== undefined ? 'text' : layer.type !== undefined ? (['rect', 'circle'].includes(layer.type) ? 'shape' : 'item') : 'item'}-${layer.id}`)}
+                                            className={`p-2 rounded-lg text-xs flex items-center justify-between cursor-pointer border transition-all ${selectedItemId?.includes(layer.id.toString()) ? 'bg-blue-50 border-blue-300 font-bold' : 'hover:bg-gray-50 border-transparent'}`}
+                                        >
+                                            <div className="flex items-center gap-2 truncate">
+                                                <span className="opacity-40">{layer.content !== undefined ? 'T' : layer.type === 'charm' ? '🖼️' : '📦'}</span>
+                                                <span className="truncate">{layer.content || layer.altText || (layer.type === 'charm' ? 'Sticker' : 'Object')}</span>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <button onClick={(e) => { e.stopPropagation(); updateSelected({ isHidden: !layer.isHidden }); }} className={`p-1 rounded ${layer.isHidden ? 'text-gray-300' : 'text-gray-600'}`}>{layer.isHidden ? '👁️‍🗨️' : '👁️'}</button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </>
