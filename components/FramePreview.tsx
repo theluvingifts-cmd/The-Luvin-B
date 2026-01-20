@@ -129,11 +129,8 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
   );
 });
 
-// FIX: Logic lấy font family chuẩn hóa đồng bộ với App.tsx
 const getFontFamily = (fontName: string) => {
     if (!fontName) return 'sans-serif';
-    
-    // Xử lý các trường hợp đặc biệt và phông chữ Google Fonts phổ biến
     switch (fontName) {
         case 'Anniversary': return '"Dancing Script", cursive';
         case 'Serif': return '"Noto Serif", serif';
@@ -148,8 +145,6 @@ const getFontFamily = (fontName: string) => {
         case 'Nunito': return '"Nunito", sans-serif';
         case 'Pacifico': return '"Pacifico", cursive';
     }
-
-    // Đối với Font tải lên: Làm sạch tên khớp 100% với CSS tiêm vào header
     const cleanName = fontName.replace(/[^a-zA-Z0-9\s-]/g, '');
     return `'${cleanName}', sans-serif`;
 };
@@ -211,16 +206,16 @@ const EditableText = memo(({
         color: text.color,
         whiteSpace: 'pre-wrap' as const,
         textAlign: text.textAlign || 'center',
-        padding: '0.2em',
+        padding: text.textAlign === 'left' ? '0.4em 0.8em' : '0.4em', // Thêm khoảng đệm khi căn lề trái
         wordBreak: 'break-word' as const,
         lineHeight: 1.4,
         fontWeight: text.fontWeight || 'normal',
-        userSelect: isContentLocked ? 'none' as const : 'auto' as const,
+        userSelect: (isContentLocked || !isEditing) ? 'none' as const : 'auto' as const,
         border: text.border ? `${text.borderWidth || 2}px ${text.borderStyle || 'solid'} ${text.borderColor || text.color}` : 'none',
         opacity: text.opacity ?? 1,
         display: text.isHidden ? 'none' : 'block',
         ...(text.background && { backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', borderRadius: '5px' })
-    }), [activeFont, fontSize, text, isContentLocked]);
+    }), [activeFont, fontSize, text, isContentLocked, isEditing]);
 
     if (isEditing) {
         return (
@@ -301,15 +296,8 @@ const Transformable = memo(({
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if (isPositionLocked) return; // Không cho phép kéo nếu bị khóa
         e.stopPropagation();
-        
-        if (!isDraggable || isPositionLocked) {
-            if (isPositionLocked) {
-                onSelect(id);
-            }
-            return;
-        }
-        
         onSelect(id);
 
         const parentRect = parentRef.current?.getBoundingClientRect();
@@ -339,6 +327,7 @@ const Transformable = memo(({
     };
 
     const handleRotateStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if (isPositionLocked) return;
         e.preventDefault();
         e.stopPropagation();
         const parentRect = parentRef.current?.getBoundingClientRect();
@@ -369,6 +358,7 @@ const Transformable = memo(({
     };
 
     const handleResizeStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if (isPositionLocked) return;
         e.preventDefault();
         e.stopPropagation();
         if (!containerSize) return;
@@ -411,6 +401,7 @@ const Transformable = memo(({
     };
 
     const handleResizeWidthStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if (isPositionLocked) return;
         e.preventDefault();
         e.stopPropagation();
         if (!containerSize) return;
@@ -443,7 +434,7 @@ const Transformable = memo(({
         <div
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => { e.stopPropagation(); onSelect(id); }} 
             onDoubleClick={(e) => { e.stopPropagation(); if(onDoubleClick) onDoubleClick(); }}
             className="absolute transform-gpu"
             style={{
@@ -452,7 +443,7 @@ const Transformable = memo(({
                 top: `${initialTransform.y}%`,
                 transform: `translate(-50%, -50%) rotate(${rotation}deg) ${(resizeMode === 'scale' || allowTextScaling) ? `scale(${initialTransform.scale})` : ''} scaleX(${isFlipped ? -1 : 1})`,
                 touchAction: 'none',
-                cursor: isDraggable && !isPositionLocked ? (isSelected ? 'move' : 'pointer') : (isPositionLocked ? 'not-allowed' : 'default'),
+                cursor: isPositionLocked ? 'default' : (isSelected ? 'move' : 'pointer'),
                 outline: isSelected ? (isPositionLocked ? '2px solid #ef4444' : '2px dashed #efa3b5') : 'none',
                 outlineOffset: '4px',
                 zIndex: zIndex
@@ -682,6 +673,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} onTransform={onItemTransform} 
                         parentRef={previewContainerRef} isSelected={selectedItemId === `character-${char.id}`} onSelect={setSelectedItemId}
                         isResizable={false} isRotatable={false} isDraggable={isInteractive} zIndex={5}
+                        isPositionLocked={char.lockedPosition}
                         onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
                     >
                        <div style={{width: '100%', height: '100%'}}><LegoCharacter character={char} pxPerCm={pxPerCm} /></div>

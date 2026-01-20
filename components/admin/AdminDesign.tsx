@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart } from '../../types';
+import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart, LegoCharacterConfig } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG, LEGO_PARTS } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
@@ -24,7 +24,6 @@ const TOOLS = [
 ];
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Poppins', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
-const QUICK_COLORS = ['#333333', '#ffffff', '#efa3b5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const FontSelector: React.FC<{ 
     value: string; 
@@ -116,7 +115,6 @@ export const AdminDesign: React.FC = () => {
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     const previewRef = useRef<HTMLDivElement>(null);
 
-    // Lấy danh mục động từ database
     const categories = useMemo(() => {
         const uniqueCats = Array.from(new Set(existingBackgrounds.map(bg => bg.category)));
         if (!uniqueCats.includes('Tình yêu')) uniqueCats.unshift('Tình yêu');
@@ -182,6 +180,7 @@ export const AdminDesign: React.FC = () => {
             if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
             if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            if (type === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
             return prev;
         });
     };
@@ -210,6 +209,7 @@ export const AdminDesign: React.FC = () => {
             if (type === 'text') return { ...prev, texts: prev.texts.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
+            if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             return prev;
         });
     }, [setConfigWithHistory]);
@@ -223,6 +223,7 @@ export const AdminDesign: React.FC = () => {
             if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== itemId) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== itemId) };
             if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== itemId) };
+            if (type === 'character') return { ...prev, characters: prev.characters.filter(c => c.id !== itemId) };
             return prev;
         });
     }, [setConfigWithHistory]);
@@ -234,6 +235,7 @@ export const AdminDesign: React.FC = () => {
         if (type === 'text') return config.texts.find(t => t.id === id);
         if (type === 'item') return config.draggableItems.find(i => i.id === id);
         if (type === 'shape') return config.shapes?.find(s => s.id === id);
+        if (type === 'character') return config.characters.find(c => c.id === id);
         return null;
     }, [selectedItemId, config]);
 
@@ -259,12 +261,28 @@ export const AdminDesign: React.FC = () => {
                 <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
                     {selectedObject ? (
                         <div className="space-y-6 animate-fade-in">
-                            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                                <label className="block text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Alt Text / Mô tả AI</label>
-                                <textarea className="w-full p-2 border border-blue-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none" rows={2} value={(selectedObject as any).altText || ''} onChange={e => updateSelected({ altText: e.target.value })} placeholder="Mô tả cho AI nhận diện hoặc SEO..." />
+                            {/* Khóa Vị Trí - Dùng cho mọi đối tượng */}
+                            <div className="p-3 bg-gray-50 border rounded-xl flex items-center justify-between">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">🔒 Khóa vị trí</label>
+                                <button 
+                                    onClick={() => updateSelected({ lockedPosition: !(selectedObject as any).lockedPosition })}
+                                    className={`w-10 h-5 rounded-full p-1 transition-all ${(selectedObject as any).lockedPosition ? 'bg-red-500' : 'bg-gray-300'}`}
+                                >
+                                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${(selectedObject as any).lockedPosition ? 'translate-x-5' : ''}`}></div>
+                                </button>
                             </div>
+
                             {selectedItemId?.startsWith('text-') && (
                                 <div className="space-y-5">
+                                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center justify-between">
+                                        <label className="text-[10px] font-black text-red-700 uppercase tracking-widest">🚫 Khóa sửa chữ</label>
+                                        <button 
+                                            onClick={() => updateSelected({ lockedContent: !(selectedObject as any).lockedContent })}
+                                            className={`w-10 h-5 rounded-full p-1 transition-all ${(selectedObject as any).lockedContent ? 'bg-red-600' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`w-3 h-3 bg-white rounded-full transition-transform ${(selectedObject as any).lockedContent ? 'translate-x-5' : ''}`}></div>
+                                        </button>
+                                    </div>
                                     <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl shadow-sm">
                                         <label className="block text-[10px] font-black text-orange-700 uppercase tracking-widest mb-2 flex items-center gap-1"><span>🔗</span> KẾT NỐI FORM BƯỚC 2</label>
                                         <select className="w-full p-2.5 border border-orange-200 rounded-xl text-xs font-bold bg-white outline-none focus:ring-2 focus:ring-orange-400" value={(selectedObject as TextConfig).linkedFieldId || ''} onChange={e => updateSelected({ linkedFieldId: e.target.value })}>
@@ -276,13 +294,26 @@ export const AdminDesign: React.FC = () => {
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Phông chữ</label>
                                         <FontSelector value={(selectedObject as TextConfig).font} onChange={f => updateSelected({ font: f })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} />
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Nội dung mẫu</label>
-                                        <textarea className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" rows={2} value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} />
-                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Cỡ chữ</label><input type="number" className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold" value={(selectedObject as TextConfig).size} onChange={e => updateSelected({ size: Number(e.target.value) })} /></div>
                                         <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Màu sắc</label><input type="color" className="w-full h-9 border border-gray-200 rounded-lg cursor-pointer" value={(selectedObject as TextConfig).color} onChange={e => updateSelected({ color: e.target.value })} /></div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Độ rộng khối (% khung)</label>
+                                            <span className="text-[10px] font-bold text-blue-600">{(selectedObject as TextConfig).width || 30}%</span>
+                                        </div>
+                                        <input type="range" min="10" max="100" className="w-full accent-blue-600" value={(selectedObject as TextConfig).width || 30} onChange={e => updateSelected({ width: Number(e.target.value) })} />
+                                        <p className="text-[9px] text-gray-400 italic mt-1">* Chữ sẽ tự động xuống dòng khi đạt giới hạn này.</p>
+                                    </div>
+                                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                                        {(['left', 'center', 'right'] as const).map(align => (
+                                            <button key={align} onClick={() => updateSelected({ textAlign: align })} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${(selectedObject as TextConfig).textAlign === align ? 'bg-white shadow text-blue-600' : 'text-gray-400'}`}>{align}</button>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Nội dung mẫu</label>
+                                        <textarea className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" rows={2} value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} />
                                     </div>
                                 </div>
                             )}
@@ -290,25 +321,12 @@ export const AdminDesign: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {activeTool === 'form' && (
-                                <div className="space-y-5">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cấu hình ô nhập liệu</h4>
-                                        <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: [...(prev.formFields || []), { id: `f_${Date.now()}`, label: 'Trường mới', type: 'text', required: false }] }))} className="bg-blue-600 text-white w-7 h-7 rounded-full font-bold shadow-lg shadow-blue-200 hover:scale-110 transition-transform">+</button>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {(config.formFields || []).map((f, i) => (
-                                            <div key={f.id} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl relative group animate-fade-in">
-                                                <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).filter(field => field.id !== f.id) }))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md">×</button>
-                                                <input className="w-full p-2 border border-gray-200 rounded-lg text-xs font-bold mb-2 focus:ring-1 focus:ring-blue-500 outline-none" value={f.label} onChange={e => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, label: e.target.value } : field) }))} />
-                                                <div className="flex gap-2">
-                                                    <select className="flex-1 p-1.5 text-[10px] font-bold border border-gray-200 rounded-lg bg-white" value={f.type} onChange={e => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, type: e.target.value as any } : field) }))}><option value="text">Chữ ngắn</option><option value="textarea">Chữ dài</option><option value="date">Ngày tháng</option><option value="image">Hình ảnh</option></select>
-                                                    <button onClick={() => setConfigWithHistory(prev => ({ ...prev, formFields: (prev.formFields || []).map(field => field.id === f.id ? { ...field, required: !field.required } : field) }))} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${f.required ? 'bg-red-500 text-white' : 'bg-white text-gray-400 border border-gray-200'}`}>REQ</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                            {activeTool === 'text' && (
+                                <button onClick={() => {
+                                    const id = Date.now();
+                                    setConfigWithHistory(prev => ({ ...prev, texts: [...prev.texts, { id, content: 'Chữ mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 40 }] }));
+                                    setSelectedItemId(`text-${id}`);
+                                }} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-xs font-black text-gray-400 hover:bg-gray-50 transition-all uppercase">+ Thêm văn bản</button>
                             )}
                             {activeTool === 'templates' && (
                                 <div className="grid grid-cols-1 gap-2">
@@ -342,7 +360,7 @@ export const AdminDesign: React.FC = () => {
 
                 <div className="flex-grow relative flex items-center justify-center p-8 overflow-auto custom-scrollbar">
                     <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }} className="bg-white shadow-2xl transition-transform duration-300 ring-1 ring-gray-200">
-                        <FramePreview ref={previewRef} config={config} containerWidth={500} onItemTransform={handleItemTransform} onItemRemove={handleItemRemove} onTextUpdate={() => {}} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={allKnownParts} previewFont={previewFont} />
+                        <FramePreview ref={previewRef} config={config} containerWidth={500} onItemTransform={handleItemTransform} onItemRemove={handleItemRemove} onTextUpdate={() => {}} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={allKnownParts} previewFont={previewFont} allowTextScaling />
                     </div>
                 </div>
             </div>
