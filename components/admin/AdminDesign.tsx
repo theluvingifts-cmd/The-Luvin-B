@@ -77,26 +77,37 @@ const FontSelector: React.FC<{
         })).filter(group => group.fonts.length > 0);
     }, [searchTerm, groups]);
 
+    const toggleDropdown = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOpen(!isOpen);
+    };
+
     return (
-        <div className="relative" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
+        <div className="relative text-left" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
             <button 
-                onClick={() => setIsOpen(!isOpen)} 
-                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center"
+                type="button"
+                onClick={toggleDropdown} 
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex justify-between items-center shadow-sm hover:border-blue-400 transition-colors"
             >
-                <span className="truncate">{value}</span>
+                <span className="truncate font-medium">{value}</span>
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-72 overflow-hidden flex flex-col">
-                    <div className="p-2 border-b bg-gray-50 sticky top-0 z-10">
+                <div 
+                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-2xl z-[100] max-h-72 overflow-hidden flex flex-col animate-fade-in"
+                    onMouseDown={(e) => e.stopPropagation()}
+                >
+                    <div className="p-2 border-b bg-gray-50 sticky top-0 z-10" onClick={(e) => e.stopPropagation()}>
                         <div className="relative">
                             <input 
                                 ref={searchInputRef}
                                 type="text" 
                                 placeholder="Tìm font..." 
-                                className="w-full p-1.5 pl-7 text-xs border border-gray-200 rounded-md outline-none focus:border-blue-500"
+                                className="w-full p-1.5 pl-7 text-xs border border-gray-200 rounded-md outline-none focus:border-blue-500 bg-white"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                onMouseDown={(e) => e.stopPropagation()}
                             />
                             <svg className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
@@ -105,11 +116,11 @@ const FontSelector: React.FC<{
                     <div className="flex-grow overflow-y-auto custom-scrollbar">
                         {filteredGroups.length > 0 ? filteredGroups.map((group) => (
                             <div key={group.label}>
-                                <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
+                                <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase bg-gray-50 select-none">{group.label}</div>
                                 {group.fonts.map(font => (
                                     <div 
                                         key={font}
-                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
+                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 transition-colors ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
                                         onMouseEnter={() => onPreview(font)}
                                         onClick={() => { onChange(font); setIsOpen(false); }}
                                         style={{ fontFamily: font }}
@@ -119,7 +130,7 @@ const FontSelector: React.FC<{
                                 ))}
                             </div>
                         )) : (
-                            <div className="px-3 py-4 text-center text-xs text-gray-400 italic">
+                            <div className="px-3 py-4 text-center text-xs text-gray-400 italic select-none">
                                 Không tìm thấy font nào
                             </div>
                         )}
