@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -40,7 +41,9 @@ const FontSelector: React.FC<{
     uploadedFonts: CustomFont[];
 }> = ({ value, onChange, onPreview, uploadedFonts }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -52,10 +55,27 @@ const FontSelector: React.FC<{
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const groups = [
+    useEffect(() => {
+        if (isOpen && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+        if (!isOpen) setSearchTerm('');
+    }, [isOpen]);
+
+    const groups = useMemo(() => [
         { label: 'Cơ bản', fonts: DEFAULT_FONTS },
         { label: 'Tải lên', fonts: uploadedFonts.map(f => f.name) }
-    ];
+    ], [uploadedFonts]);
+
+    const filteredGroups = useMemo(() => {
+        const query = searchTerm.toLowerCase().trim();
+        if (!query) return groups;
+        
+        return groups.map(group => ({
+            ...group,
+            fonts: group.fonts.filter(font => font.toLowerCase().includes(query))
+        })).filter(group => group.fonts.length > 0);
+    }, [searchTerm, groups]);
 
     return (
         <div className="relative" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
@@ -67,23 +87,43 @@ const FontSelector: React.FC<{
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                    {groups.map((group) => group.fonts.length > 0 && (
-                        <div key={group.label}>
-                            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
-                            {group.fonts.map(font => (
-                                <div 
-                                    key={font}
-                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
-                                    onMouseEnter={() => onPreview(font)}
-                                    onClick={() => { onChange(font); setIsOpen(false); }}
-                                    style={{ fontFamily: font }}
-                                >
-                                    {font}
-                                </div>
-                            ))}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-72 overflow-hidden flex flex-col">
+                    <div className="p-2 border-b bg-gray-50 sticky top-0 z-10">
+                        <div className="relative">
+                            <input 
+                                ref={searchInputRef}
+                                type="text" 
+                                placeholder="Tìm font..." 
+                                className="w-full p-1.5 pl-7 text-xs border border-gray-200 rounded-md outline-none focus:border-blue-500"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            <svg className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
-                    ))}
+                    </div>
+                    
+                    <div className="flex-grow overflow-y-auto custom-scrollbar">
+                        {filteredGroups.length > 0 ? filteredGroups.map((group) => (
+                            <div key={group.label}>
+                                <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
+                                {group.fonts.map(font => (
+                                    <div 
+                                        key={font}
+                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${value === font ? 'bg-blue-50 text-blue-600 font-bold' : ''}`}
+                                        onMouseEnter={() => onPreview(font)}
+                                        onClick={() => { onChange(font); setIsOpen(false); }}
+                                        style={{ fontFamily: font }}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </div>
+                        )) : (
+                            <div className="px-3 py-4 text-center text-xs text-gray-400 italic">
+                                Không tìm thấy font nào
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -526,7 +566,6 @@ export const AdminDesign: React.FC = () => {
                                     <button onClick={() => handleAlign('top')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn trên">⤒</button>
                                     <button onClick={() => handleAlign('vertical')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn giữa dọc">↕</button>
                                     <button onClick={() => handleAlign('bottom')} className="p-2 bg-gray-50 border rounded hover:bg-gray-100" title="Căn dưới">⤓</button>
-                                    {/* Fix: Check if selectedItemId is an item (DraggableItem) before accessing isFlipped */}
                                     <button 
                                         onClick={() => {
                                             if (selectedItemId?.startsWith('item-')) {

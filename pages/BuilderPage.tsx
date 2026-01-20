@@ -93,7 +93,9 @@ const FontSelector: React.FC<{
     uploadedFonts: CustomFont[];
 }> = ({ value, onChange, onPreview, uploadedFonts }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -105,10 +107,27 @@ const FontSelector: React.FC<{
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const groups = [
+    useEffect(() => {
+        if (isOpen && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+        if (!isOpen) setSearchTerm('');
+    }, [isOpen]);
+
+    const groups = useMemo(() => [
         { label: 'Cơ bản', fonts: DEFAULT_FONTS },
         { label: 'Tải lên', fonts: uploadedFonts.map(f => f.name) }
-    ];
+    ], [uploadedFonts]);
+
+    const filteredGroups = useMemo(() => {
+        const query = searchTerm.toLowerCase().trim();
+        if (!query) return groups;
+        
+        return groups.map(group => ({
+            ...group,
+            fonts: group.fonts.filter(font => font.toLowerCase().includes(query))
+        })).filter(group => group.fonts.length > 0);
+    }, [searchTerm, groups]);
 
     return (
         <div className="relative text-left" ref={dropdownRef} onMouseLeave={() => onPreview(null)}>
@@ -121,9 +140,23 @@ const FontSelector: React.FC<{
             </button>
             
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
-                    {groups.map((group) => (
-                        group.fonts.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-hidden flex flex-col">
+                    <div className="p-2 border-b bg-gray-50 sticky top-0 z-10">
+                        <div className="relative">
+                            <input 
+                                ref={searchInputRef}
+                                type="text" 
+                                placeholder="Tìm font..." 
+                                className="w-full p-1.5 pl-7 text-[10px] border border-gray-200 rounded-lg outline-none focus:border-luvin-pink transition-colors"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            <svg className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-grow overflow-y-auto custom-scrollbar">
+                        {filteredGroups.length > 0 ? filteredGroups.map((group) => (
                             <div key={group.label}>
                                 <div className="px-3 py-1 text-[9px] font-bold text-gray-400 uppercase bg-gray-50">{group.label}</div>
                                 {group.fonts.map(font => (
@@ -137,8 +170,12 @@ const FontSelector: React.FC<{
                                     </div>
                                 ))}
                             </div>
-                        )
-                    ))}
+                        )) : (
+                            <div className="px-3 py-4 text-center text-[10px] text-gray-400 italic">
+                                Không tìm thấy font nào
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
