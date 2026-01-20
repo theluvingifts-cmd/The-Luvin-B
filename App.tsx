@@ -40,8 +40,11 @@ declare var confetti: any;
 
 const CACHE_KEY_DESIGN = 'active_design_draft';
 
+// FIX: Cập nhật hàm nạp font chuẩn xác, khớp với AdminDesign
 const loadUploadedFonts = (fonts: CustomFont[]) => {
-    const styleId = 'uploaded-custom-fonts';
+    if (!fonts || fonts.length === 0) return;
+    
+    const styleId = 'uploaded-custom-fonts-global';
     let style = document.getElementById(styleId) as HTMLStyleElement;
     if (!style) {
         style = document.createElement('style');
@@ -51,7 +54,8 @@ const loadUploadedFonts = (fonts: CustomFont[]) => {
     
     let css = '';
     fonts.forEach(font => {
-        const safeName = font.name.replace(/[^a-zA-Z0-9\s]/g, '');
+        // Loại bỏ các ký tự đặc biệt trong tên font để tránh lỗi CSS selector
+        const safeName = font.name.replace(/[^a-zA-Z0-9\s-]/g, '');
         css += `
             @font-face {
                 font-family: '${safeName}';
@@ -89,7 +93,6 @@ const updateMetaTags = (config: StoreConfig) => {
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   
-  // Initialize config from localStorage to fix state loss on refresh
   const [config, setConfig] = useState<FrameConfig>(() => {
     try {
         const saved = localStorage.getItem(CACHE_KEY_DESIGN);
@@ -99,7 +102,6 @@ const App: React.FC = () => {
     }
   });
 
-  // Sync config to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(CACHE_KEY_DESIGN, JSON.stringify(config));
   }, [config]);
@@ -174,6 +176,7 @@ const App: React.FC = () => {
           }
       }
       
+      // Nạp font ngay khi apply theme
       loadUploadedFonts(uploadedFonts);
   };
 
@@ -204,6 +207,10 @@ const App: React.FC = () => {
             if (fetchedConfig) {
                 setStoreConfig(fetchedConfig);
                 updateMetaTags(fetchedConfig);
+                // FIX: Đảm bảo font được nạp ngay khi có config từ DB
+                if (fetchedConfig.uploadedFonts) {
+                    loadUploadedFonts(fetchedConfig.uploadedFonts);
+                }
             }
           } catch (error) {
               console.error("Initial fetch error:", error);
@@ -218,6 +225,10 @@ const App: React.FC = () => {
                   localStorage.setItem('store_config', JSON.stringify(updatedConfig));
               } catch(e) {}
               updateMetaTags(updatedConfig);
+              // Nạp font khi config thay đổi real-time
+              if (updatedConfig.uploadedFonts) {
+                  loadUploadedFonts(updatedConfig.uploadedFonts);
+              }
           }
       });
       return () => unsubscribe();
