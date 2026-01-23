@@ -34,7 +34,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [isProcessingImage, setIsProcessingImage] = useState<string | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const manualBgInputRef = useRef<HTMLInputElement>(null);
 
   const categories = useMemo(() => ['Tất cả', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
@@ -48,18 +48,15 @@ export const Step2BackgroundAndDecorations: React.FC<{
     return [];
   }, [currentBg, config.formFields]);
 
-  // CHỖ NÀY KẾT NỐI DỮ LIỆU NHƯ BẠN YÊU CẦU:
   const handleUpdateFormData = (fieldId: string, value: string) => {
     const newFormData = { ...(config.customFormData || {}), [fieldId]: value };
     
-    // Logic định dạng ngày tháng nếu là field date
     let displayValue = value;
     if (value && value.includes('-') && value.length === 10) {
         const p = value.split('-');
         displayValue = `${p[2]}/${p[1]}/${p[0]}`;
     }
 
-    // TÌM VÀ CẬP NHẬT CÁC ĐOẠN CHỮ ĐANG KẾT NỐI VỚI Ô NÀY
     const updatedTexts = config.texts.map(t => {
         if (t.linkedFieldId === fieldId) {
             return { ...t, content: displayValue || ' ' };
@@ -81,7 +78,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
         newFrameId = 'md';
     }
 
-    // Khi đổi Background, nạp các Chữ mẫu và ĐỒNG BỘ LUÔN dữ liệu đang có trong Form
     const overlayTexts = (bg.overlayConfig?.texts || []).map(t => {
         if (t.linkedFieldId && config.customFormData?.[t.linkedFieldId]) {
             let val = config.customFormData[t.linkedFieldId];
@@ -106,8 +102,32 @@ export const Step2BackgroundAndDecorations: React.FC<{
     });
   };
 
+  const handleManualBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setIsProcessingImage(true);
+        try {
+            const resized = await resizeImage(file, 1200, 1200);
+            setConfig({
+                ...config,
+                background: { type: 'upload', value: resized },
+                // Khi khách tự up ảnh, xóa các text overlay của mẫu cũ để tránh đè chữ lung tung
+                texts: config.texts.filter(t => t.linkedFieldId), // Chỉ giữ lại các text liên kết với form
+                draggableItems: [],
+                shapes: []
+            });
+            showToast("Đã tải ảnh nền của bạn!", "success");
+        } catch (error) {
+            showToast("Lỗi xử lý ảnh", "error");
+        } finally {
+            setIsProcessingImage(false);
+        }
+    }
+  };
+
   return (
     <div className="space-y-6 text-left animate-fade-in">
+      {/* SECTION 1: PRESET BACKGROUNDS */}
       <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm">
         <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px]">1. CHỌN MẪU NỀN</h4>
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
@@ -120,8 +140,33 @@ export const Step2BackgroundAndDecorations: React.FC<{
             <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} />
           ))}
         </div>
+        
+        {/* MANUAL UPLOAD AREA - KHÔI PHỤC THEO YÊU CẦU CỦA BỐ */}
+        <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
+            <input type="file" ref={manualBgInputRef} className="hidden" accept="image/*" onChange={handleManualBgUpload} />
+            <button 
+                onClick={() => manualBgInputRef.current?.click()}
+                disabled={isProcessingImage}
+                className={`w-full py-3 rounded-xl border-2 border-dashed transition-all flex items-center justify-center gap-2 ${config.background.type === 'upload' ? 'border-luvin-pink bg-pink-50 text-luvin-pink' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
+            >
+                {isProcessingImage ? (
+                    <span className="text-xs font-bold animate-pulse">Đang xử lý ảnh...</span>
+                ) : (
+                    <>
+                        <span className="text-xl">☁️</span>
+                        <span className="text-[11px] font-black uppercase tracking-tight">
+                            {config.background.type === 'upload' ? 'Thay ảnh nền khác' : 'Tải ảnh nền của riêng bạn'}
+                        </span>
+                    </>
+                )}
+            </button>
+            {config.background.type === 'upload' && (
+                <p className="text-[9px] text-center text-gray-400 mt-2 italic">* Bạn đang sử dụng ảnh nền tự tải lên</p>
+            )}
+        </div>
       </div>
 
+      {/* SECTION 2: PRINT INFO FORM */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm">
         <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. NHẬP THÔNG TIN IN ẤN
