@@ -2,7 +2,6 @@
 import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
-import { resizeImage } from '../utils/helpers';
 
 type Transform = {
   x: number;
@@ -30,7 +29,7 @@ interface FramePreviewProps {
   setSelectedItemId: (id: string | null) => void;
   setIsEditingText: (isEditing: boolean) => void;
   allParts?: Record<string, LegoPart>;
-  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set' | 'mini-frame';
+  activePartType?: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set';
   logoUrl?: string;
   previewFont?: string | null; 
   allowTextScaling?: boolean;
@@ -59,6 +58,7 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
                 onError={() => setHasError(true)} 
                 className={className}
                 loading={priority ? "eager" : "lazy"}
+                {...(priority ? { fetchpriority: "high" } : {})}
                 {...props}
             />
         );
@@ -79,6 +79,7 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
                 ${isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-[2px]'}
             `}
             loading={priority ? "eager" : "lazy"}
+            {...(priority ? { fetchpriority: "high" } : {})}
             {...props}
         />
     );
@@ -205,7 +206,7 @@ const EditableText = memo(({
         color: text.color,
         whiteSpace: 'pre-wrap' as const,
         textAlign: text.textAlign || 'center',
-        padding: text.textAlign === 'left' ? '0.4em 0.8em' : '0.4em', 
+        padding: text.textAlign === 'left' ? '0.4em 0.8em' : '0.4em', // Thêm khoảng đệm khi căn lề trái
         wordBreak: 'break-word' as const,
         lineHeight: 1.4,
         fontWeight: text.fontWeight || 'normal',
@@ -295,7 +296,7 @@ const Transformable = memo(({
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if (isPositionLocked) return; 
+        if (isPositionLocked) return; // Không cho phép kéo nếu bị khóa
         e.stopPropagation();
         onSelect(id);
 
@@ -479,7 +480,7 @@ const Transformable = memo(({
                         className="transform-handle absolute -bottom-2 -right-2 cursor-nwse-resize bg-luvin-pink w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
                         style={{ transform: `scale(${handleScale})` }}
                       >
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
                       </div>
                   )}
                 </>
@@ -491,7 +492,6 @@ const Transformable = memo(({
 const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont, allowTextScaling, onAlign }, ref) => {
   const frameOption = useMemo(() => FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0], [config.frameId]);
   const previewContainerRef = useRef<HTMLDivElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
   const uniqueId = React.useId();
   const patternId = `watermark-pattern-${uniqueId.replace(/:/g, "")}`;
 
@@ -523,6 +523,32 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
     return item?.type || null;
   }, [selectedItemId, config.draggableItems]);
 
+  const activeColors = useMemo(() => {
+      if (!selectedItemId) return null;
+      const [type, idStr] = selectedItemId.split('-');
+      const id = parseInt(idStr);
+      if (type === 'item') {
+          const item = config.draggableItems.find(i => i.id === id);
+          return item ? allParts[item.partId]?.colors : null;
+      }
+      if (type === 'character' && activePartType) {
+          const char = config.characters.find(c => c.id === id);
+          if (!char) return null;
+          if (activePartType === 'shirt' || activePartType === 'set') { 
+              if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
+              const name = char.shirt?.name.toLowerCase() || '';
+              if (char.shirt && (char.shirt.id === 'shirt1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultShirtColors;
+          }
+          if (activePartType === 'pants') {
+              if (char.pants?.colors && char.pants.colors.length > 0) return char.pants.colors;
+               const name = char.pants?.name.toLowerCase() || '';
+              if (char.pants && (char.pants.id === 'pants1' || name.includes('trơn') || name.includes('plain') || name.includes('basic'))) return defaultPantsColors;
+          }
+          if (activePartType === 'hair') return char.hair?.colors;
+      }
+      return null;
+  }, [selectedItemId, config, activePartType, allParts]);
+
   const handleColorSelect = useCallback((color: OutfitColor) => {
       if (!selectedItemId) return;
       const [type, idStr] = selectedItemId.split('-');
@@ -535,18 +561,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
           else if (activePartType === 'hair') onCharacterUpdate(id, { selectedHairColor: color });
       }
   }, [selectedItemId, onItemUpdate, onCharacterUpdate, activePartType]);
-
-  const handlePhotoFrameUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && selectedItemId && onItemUpdate) {
-        const file = e.target.files[0];
-        try {
-            const resized = await resizeImage(file, 600, 600);
-            onItemUpdate(selectedItemId, { userPhotoUrl: resized });
-        } catch (error) {
-            console.error("Error resizing photo frame image", error);
-        }
-    }
-  };
 
   const getActiveColorHex = useMemo(() => {
       if (!selectedItemId) return null;
@@ -565,31 +579,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       return null;
   }, [selectedItemId, config, activePartType]);
 
-  const activeColors = useMemo(() => {
-    if (!selectedItemId) return null;
-    const [type, idStr] = selectedItemId.split('-');
-    const id = parseInt(idStr);
-    if (type === 'item') {
-        const item = config.draggableItems.find(i => i.id === id);
-        return item ? allParts[item.partId]?.colors : null;
-    }
-    if (type === 'character' && activePartType) {
-        const char = config.characters.find(c => c.id === id);
-        if (!char) return null;
-        if (activePartType === 'shirt' || activePartType === 'set') { 
-            if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
-        }
-        if (activePartType === 'pants') {
-            if (char.pants?.colors && char.pants.colors.length > 0) return char.pants.colors;
-        }
-        if (activePartType === 'hair') return char.hair?.colors;
-    }
-    return null;
-}, [selectedItemId, config, activePartType, allParts]);
-
   return (
     <div ref={ref} className={`flex items-center justify-center relative ${className}`} style={{ width: frameWidth, height: frameHeight }}>
-        <input type="file" ref={photoInputRef} className="hidden" accept="image/*" onChange={handlePhotoFrameUpload} />
         <div 
           className="relative transition-colors duration-300 flex items-center justify-center"
           style={{ 
@@ -691,18 +682,16 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 
                 {config.draggableItems.map(item => {
                     const isCharm = item.type === 'charm';
-                    const isPhotoFrame = item.type === 'photo-frame';
                     const part = !isCharm ? allParts[item.partId] : null;
                     const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
-                    const widthCm = isCharm ? 2 : (part?.widthCm || 3); 
-                    const heightCm = isCharm ? 2 : (part?.heightCm || 3);
+                    const widthCm = isCharm ? 2 : (part?.widthCm || 1);
+                    const heightCm = isCharm ? 2 : (part?.heightCm || 1);
                     
-                    if (!imageUrl && !isPhotoFrame) return null;
+                    if (!imageUrl) return null;
 
                     let maskStyle: React.CSSProperties = {};
                     if (item.maskShape === 'circle') maskStyle = { borderRadius: '50%' };
-                    else if (item.maskShape === 'oval') maskStyle = { borderRadius: '50% / 60%' };
                     else if (item.maskShape === 'rounded') maskStyle = { borderRadius: '15%' };
                     else if (item.maskShape === 'heart') maskStyle = { clipPath: 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' };
                     else if (item.maskShape === 'star') maskStyle = { clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' };
@@ -711,35 +700,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         <Transformable 
                             key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} onTransform={onItemTransform}
                             isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
-                            isResizable={isInteractive} isRotatable={isInteractive} isDraggable={isInteractive}
+                            isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
                             isPositionLocked={item.lockedPosition}
                             zIndex={item.type === 'hat' ? 12 : 10}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
-                            <div style={{ position: 'relative', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block' }}>
-                                {isPhotoFrame ? (
-                                    <>
-                                        {/* Lớp Ảnh Người Dùng (Nằm trong tâm khung) */}
-                                        <div style={{ ...maskStyle, position: 'absolute', inset: '12%', overflow: 'hidden', zIndex: 1, backgroundColor: '#f0f0f0' }}>
-                                            {item.userPhotoUrl ? (
-                                                <SafeImage src={item.userPhotoUrl} className="w-full h-full object-cover" alt="User" />
-                                            ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-[8px] text-gray-300 font-bold">
-                                                    <span>📸</span>
-                                                    <span>ẢNH</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {/* Lớp Viền Khung (PNG trong suốt tâm) */}
-                                        <div style={{ position: 'relative', width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
-                                            <SafeImage src={imageUrl} className="w-full h-full object-contain" alt="Frame" />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div style={{ ...maskStyle, overflow: 'hidden', width: '100%', height: '100%' }}>
-                                        <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                )}
+                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block' }}>
+                                <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                         </Transformable>
                     );
@@ -809,13 +776,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             </button>
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                         </>
-                    )}
-                    {selectedDraggableType === 'photo-frame' && (
-                        <button onMouseDown={(e) => { e.stopPropagation(); photoInputRef.current?.click(); }} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90 shadow-sm" title="Thay ảnh bên trong">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-                            </svg>
-                        </button>
                     )}
                     {(selectedDraggableType === 'accessory' || selectedDraggableType === 'pet') && (
                         <button onMouseDown={(e) => { e.stopPropagation(); if(onItemFlip) onItemFlip(selectedItemId); }} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90" title="Lật hình">

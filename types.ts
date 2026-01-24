@@ -1,5 +1,6 @@
 
-// types.ts (Updated)
+// types.ts
+
 export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business';
 
 export type StaffRole = 'admin' | 'warehouse';
@@ -54,7 +55,7 @@ export interface LegoPart {
   salePrice?: number;
   saleEndDate?: string;
   imageUrl: string;
-  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set' | 'mini-frame'; // Thêm mini-frame vào danh mục part
+  type: 'hair' | 'face' | 'shirt' | 'pants' | 'accessory' | 'pet' | 'hat' | 'set';
   widthCm: number;
   heightCm: number;
   colors?: OutfitColor[];
@@ -102,17 +103,16 @@ export interface TextConfig {
 export interface DraggableItem {
     id: number;
     partId: string; 
-    type: 'accessory' | 'pet' | 'charm' | 'hat' | 'photo-frame';
+    type: 'accessory' | 'pet' | 'charm' | 'hat';
     x: number; y: number; rotation: number; scale: number; 
     isFlipped?: boolean;
     selectedColor?: OutfitColor;
     lockedPosition?: boolean;
     lockedContent?: boolean;
-    maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star' | 'oval' | 'rect';
+    maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
     linkedCharId?: number;
     opacity?: number;
     isHidden?: boolean;
-    userPhotoUrl?: string;
 }
 
 export interface BackgroundConfig {
