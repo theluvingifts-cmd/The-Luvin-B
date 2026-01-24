@@ -184,7 +184,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [orderTab, setOrderTab] = useState<OrderTab>('active');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [orderSearch, setOrderSearch] = useState('');
-    // UPDATE: Default sort to 'urgent'
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('urgent');
     
     const [currentPage, setCurrentPage] = useState(1);
@@ -556,6 +555,25 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         });
     };
 
+    // --- HÀM XÓA SẢN PHẨM TRONG ĐƠN (QUAN TRỌNG) ---
+    const handleRemoveProductFromOrder = (itemIndex: number) => {
+        if (!editForm) return;
+        if (editForm.items.length <= 1) {
+            alert("Đơn hàng phải có ít nhất 1 sản phẩm. Nếu khách muốn hủy toàn bộ đơn, vui lòng chuyển trạng thái sang 'Huỷ đơn'.");
+            return;
+        }
+        
+        if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi đơn hàng? Hệ thống sẽ tính lại tổng tiền ngay lập tức.")) {
+            setEditForm(prev => {
+                if (!prev) return null;
+                const newItems = prev.items.filter((_, idx) => idx !== itemIndex);
+                const newOrder = { ...prev, items: newItems };
+                return updateEditFormWithPrice(newOrder);
+            });
+            alert("Đã xóa sản phẩm khỏi danh sách nháp.");
+        }
+    };
+
     const handleCharacterChange = (itemIndex: number, charIndex: number, partType: keyof LegoCharacterConfig, partId: string) => {
         if (!editForm) return;
         const selectedPart = products.find(p => p.id === partId);
@@ -811,7 +829,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
                                         const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
                                         
-                                        // Filter original assets uploaded by user, including form fields
                                         const formFieldImages = (item.formFields || [])
                                             .filter(f => f.type === 'image' && item.customFormData?.[f.id])
                                             .map(f => ({ url: item.customFormData![f.id], type: `Ảnh Form (${f.label})` }));
@@ -823,7 +840,18 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         ];
 
                                         return (
-                                        <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white shadow-sm">
+                                        <div key={idx} className="flex flex-col gap-4 border border-gray-100 rounded-lg p-4 bg-white shadow-sm relative group">
+                                            {/* NÚT XÓA SẢN PHẨM (KHI ĐANG SỬA) */}
+                                            {isEditingOrder && editForm && (
+                                                <button 
+                                                    onClick={() => handleRemoveProductFromOrder(idx)}
+                                                    className="absolute -top-3 -right-3 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-all z-40 border-2 border-white"
+                                                    title="Xóa sản phẩm này khỏi đơn hàng"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            )}
+
                                             {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={() => {}} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
 
                                             <div className="flex gap-4 items-start flex-col md:flex-row">
@@ -858,7 +886,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                         </div>
                                                     </div>
 
-                                                    {/* CUSTOMER RESOURCES SECTION */}
                                                     {customerAssets.length > 0 && (
                                                         <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
                                                             <h4 className="text-[10px] font-black text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-1">
@@ -885,7 +912,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                         </div>
                                                     )}
 
-                                                    {/* CUSTOM FORM DATA SECTION */}
                                                     {item.customFormData && Object.keys(item.customFormData).length > 0 && (
                                                         <div className="mb-4 p-4 bg-orange-50 border border-orange-100 rounded-xl">
                                                             <h4 className="text-[10px] font-black text-orange-700 uppercase tracking-wider mb-3 flex items-center gap-2">
