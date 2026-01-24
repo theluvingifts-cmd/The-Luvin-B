@@ -319,6 +319,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         const revenue = validOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const grossProfit = validOrders.reduce((sum, o) => sum + calculateOrderProfit(o), 0);
         
+        // --- TÍNH TOÁN COD ĐANG TREO (CHƯA THU HẾT) ---
+        const totalCodPending = allCurrentOrders
+            .filter(o => !['Huỷ đơn', 'Xoá đơn', 'Đã giao hàng'].includes(o.status))
+            .reduce((sum, o) => sum + (o.totalPrice - (o.amountPaid || 0)), 0);
+
         let totalAdsCost = 0;
         const tempDate = new Date(startDate);
         while (tempDate <= endDate) {
@@ -407,7 +412,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             loopDate.setDate(loopDate.getDate() + 1);
         }
 
-        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, chartData, totalAdsCost };
+        return { revenue, profit: netProfit, revenueGrowth, orderCount, orderGrowth, inventory, chartData, totalAdsCost, totalCodPending };
     }, [orders, startDate, endDate, allKnownParts, frames, dailyAdsCosts]); 
 
     return (
@@ -475,11 +480,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     </div>
                 </div>
 
-                <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Đơn hàng</p>
-                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
-                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{analytics.orderCount}</span>
-                        <span className={`text-[10px] sm:text-xs font-bold ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.orderGrowth).toFixed(0)}%</span>
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-red-50 rounded-bl-full flex items-start justify-end p-2">
+                        <span className="text-xs">💰</span>
+                    </div>
+                    <p className="text-[10px] sm:text-xs font-bold text-red-500 uppercase tracking-wider mb-1">Tổng COD đang treo</p>
+                    <div className="flex flex-col">
+                        <span className="text-lg sm:text-2xl font-bold text-red-600">{formatCurrency(analytics.totalCodPending, 'admin')}</span>
+                        <p className="text-[9px] text-gray-400 font-medium">* Chưa tính đơn đã giao nhưng chưa về ví</p>
                     </div>
                 </div>
                  

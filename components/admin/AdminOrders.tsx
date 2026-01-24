@@ -185,6 +185,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [orderSearch, setOrderSearch] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('urgent');
+    const [showOnlyCod, setShowOnlyCod] = useState(false); // --- BỔ SUNG: BỘ LỌC COD ---
     
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -213,7 +214,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [orderTab, filterStatus, orderSearch, itemsPerPage]);
+    }, [orderTab, filterStatus, orderSearch, itemsPerPage, showOnlyCod]);
 
     const allKnownParts = useMemo(() => {
         const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
@@ -237,6 +238,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         } else {
             result = result.filter(o => ['Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'].includes(o.status));
         }
+
+        // --- BỔ SUNG: LOGIC LỌC COD ---
+        if (showOnlyCod) {
+            result = result.filter(o => (o.totalPrice - (o.amountPaid || 0)) > 0);
+        }
+
         if (orderSearch.trim()) {
             const searchLower = orderSearch.trim().toLowerCase();
             result = result.filter(o => 
@@ -265,7 +272,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
-    }, [orders, orderTab, sortMode, filterStatus, orderSearch]);
+    }, [orders, orderTab, sortMode, filterStatus, orderSearch, showOnlyCod]);
 
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
     const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -726,12 +733,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         />
                         <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
-                    {orderTab === 'active' && (
-                        <div className="flex gap-2 w-full mt-1">
-                            <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Mới nhất</button>
-                            <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-700'}`}>Cần gấp</button>
-                        </div>
-                    )}
+                    
+                    <div className="flex gap-2 w-full mt-1">
+                        <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Mới nhất</button>
+                        <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-700'}`}>Cần gấp</button>
+                        {/* --- BỔ SUNG: NÚT LỌC COD --- */}
+                        <button onClick={() => setShowOnlyCod(!showOnlyCod)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors flex items-center justify-center gap-1 ${showOnlyCod ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-white text-gray-500 border border-gray-200 hover:text-gray-700'}`}>
+                            <span>💰</span> {showOnlyCod ? 'Chỉ đơn COD' : 'Tất cả COD'}
+                        </button>
+                    </div>
+
                     <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing mt-1" ref={scrollContainerRef} onMouseDown={handleMouseDown} onMouseLeave={handleMouseLeave} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove}>
                         <button onClick={() => setFilterStatus('all')} className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>Tất cả</button>
                         {STATUS_CONFIG.filter(s => !s.isAction).filter(s => orderTab === 'active' ? !['Đã giao hàng', 'Huỷ đơn'].includes(s.label) : ['Đã giao hàng', 'Huỷ đơn'].includes(s.label)).map(status => (
@@ -740,28 +751,39 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                     </div>
                 </div>
                 <div className="overflow-y-auto flex-grow divide-y divide-gray-100">
-                    {paginatedOrders.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">Không có đơn hàng nào.</div> : paginatedOrders.map(order => (
-                        <div 
-                            key={order.id} 
-                            onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} 
-                            className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-l-4 ${selectedOrder?.id === order.id ? 'bg-gray-50' : 'bg-white'} ${order.addGiftBox ? 'border-pink-300' : 'border-transparent'}`}
-                        >
-                            <div className="flex justify-between items-start mb-1">
-                                <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id} {order.paymentProofUrl && order.status === 'Chờ thanh toán' && <span className="ml-2 text-green-600 font-bold text-xs">📸</span>}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <p className="text-sm text-gray-600 truncate max-w-[120px]">{order.customer.name}</p>
-                                    {order.addGiftBox && (
-                                        <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
-                                    )}
+                    {paginatedOrders.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">Không có đơn hàng nào.</div> : paginatedOrders.map(order => {
+                        const remaining = order.totalPrice - (order.amountPaid || 0);
+                        return (
+                            <div 
+                                key={order.id} 
+                                onClick={() => { setSelectedOrder(order); setIsEditingOrder(false); }} 
+                                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-l-4 ${selectedOrder?.id === order.id ? 'bg-gray-50' : 'bg-white'} ${order.addGiftBox ? 'border-pink-300' : 'border-transparent'}`}
+                            >
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id} {order.paymentProofUrl && order.status === 'Chờ thanh toán' && <span className="ml-2 text-green-600 font-bold text-xs">📸</span>}</span>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
+                                        {/* --- HIỂN THỊ COD NGAY TRONG LIST --- */}
+                                        {remaining > 0 && order.status !== 'Huỷ đơn' && (
+                                            <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold border border-red-100">
+                                                COD: {formatCurrency(remaining, 'admin')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice, 'admin')}</p>
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <p className="text-sm text-gray-600 truncate max-w-[120px]">{order.customer.name}</p>
+                                        {order.addGiftBox && (
+                                            <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice, 'admin')}</p>
+                                </div>
+                                <div className="flex justify-between items-center mt-1"><p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>{(order.adminDeadline || order.delivery.date) && (<div className="text-right"><p className="text-xs text-gray-500">{order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}</p>{order.delivery.date && getCountdownText(order.delivery.date)}</div>)}</div>
                             </div>
-                            <div className="flex justify-between items-center mt-1"><p className="text-xs text-gray-400">{order.createdAt ? formatDateTime(order.createdAt) : '---'}</p>{(order.adminDeadline || order.delivery.date) && (<div className="text-right"><p className="text-xs text-gray-500">{order.adminDeadline ? `DL: ${formatDate(order.adminDeadline)}` : `Giao: ${formatDate(order.delivery.date)}`}</p>{order.delivery.date && getCountdownText(order.delivery.date)}</div>)}</div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
                 <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-2"><span className="text-xs text-gray-500">Hiển thị:</span><select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-white border border-gray-300 rounded text-xs p-1 focus:outline-none"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></div>
