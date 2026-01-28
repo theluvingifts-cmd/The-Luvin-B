@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
@@ -37,20 +36,27 @@ interface FramePreviewProps {
 }
 
 const SafeImage = memo(({ src, style, className, alt, priority, disableTransition, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean; disableTransition?: boolean }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
+    // Nếu là ảnh Base64 (vừa upload), hiển thị ngay lập tức (isLoaded = true)
+    const isBase64 = src?.startsWith('data:');
+    const [isLoaded, setIsLoaded] = useState(isBase64);
     const [hasError, setHasError] = useState(false);
     
     useEffect(() => {
-        setIsLoaded(false);
+        setIsLoaded(isBase64);
         setHasError(false);
-    }, [src]);
+    }, [src, isBase64]);
 
     if (hasError || !src) return null;
+
+    // Không dùng crossOrigin cho ảnh local base64
+    const imgProps: any = { ...props };
+    if (!isBase64) {
+        imgProps.crossOrigin = "anonymous";
+    }
 
     if (disableTransition) {
         return (
             <img 
-                crossOrigin="anonymous" 
                 referrerPolicy="no-referrer"
                 src={src}
                 alt={alt}
@@ -59,14 +65,13 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
                 className={className}
                 loading={priority ? "eager" : "lazy"}
                 {...(priority ? { fetchpriority: "high" } : {})}
-                {...props}
+                {...imgProps}
             />
         );
     }
 
     return (
         <img 
-            crossOrigin="anonymous" 
             referrerPolicy="no-referrer"
             src={src}
             alt={alt}
@@ -75,12 +80,12 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
             onError={() => setHasError(true)} 
             className={`
                 ${className} 
-                transition-all duration-500 ease-out
-                ${isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-[2px]'}
+                transition-opacity duration-300 ease-out
+                ${isLoaded ? 'opacity-100' : 'opacity-0'}
             `}
             loading={priority ? "eager" : "lazy"}
             {...(priority ? { fetchpriority: "high" } : {})}
-            {...props}
+            {...imgProps}
         />
     );
 });
@@ -206,7 +211,7 @@ const EditableText = memo(({
         color: text.color,
         whiteSpace: 'pre-wrap' as const,
         textAlign: text.textAlign || 'center',
-        padding: text.textAlign === 'left' ? '0.4em 0.8em' : '0.4em', // Thêm khoảng đệm khi căn lề trái
+        padding: text.textAlign === 'left' ? '0.4em 0.8em' : '0.4em', 
         wordBreak: 'break-word' as const,
         lineHeight: 1.4,
         fontWeight: text.fontWeight || 'normal',
@@ -296,7 +301,7 @@ const Transformable = memo(({
     };
 
     const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if (isPositionLocked) return; // Không cho phép kéo nếu bị khóa
+        if (isPositionLocked) return; 
         e.stopPropagation();
         onSelect(id);
 
@@ -637,6 +642,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         key={`shape-${shape.id}`}
                         id={`shape-${shape.id}`}
                         initialTransform={{ x: shape.x, y: shape.y, rotation: shape.rotation, scale: 1, width: shape.width, height: shape.height }}
+                        /* Fix: Changed handleItemTransform to onItemTransform */
                         onTransform={onItemTransform}
                         parentRef={previewContainerRef}
                         isSelected={selectedItemId === `shape-${shape.id}`}
@@ -670,7 +676,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                 {config.characters.map(char => (
                     <Transformable 
-                        key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} onTransform={onItemTransform} 
+                        key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} 
+                        /* Fix: Changed handleItemTransform to onItemTransform */
+                        onTransform={onItemTransform} 
                         parentRef={previewContainerRef} isSelected={selectedItemId === `character-${char.id}`} onSelect={setSelectedItemId}
                         isResizable={false} isRotatable={false} isDraggable={isInteractive} zIndex={5}
                         isPositionLocked={char.lockedPosition}
@@ -698,7 +706,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
                     return (
                         <Transformable 
-                            key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} onTransform={onItemTransform}
+                            key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} 
+                            /* Fix: Changed handleItemTransform to onItemTransform */
+                            onTransform={onItemTransform}
                             isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
                             isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
                             isPositionLocked={item.lockedPosition}
@@ -718,6 +728,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         <Transformable 
                             key={`text-${text.id}`} id={`text-${text.id}`} 
                             initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
+                            /* Fix: Changed handleItemTransform to onItemTransform */
                             onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={isSelected} onSelect={setSelectedItemId}
                             isDraggable={isInteractive} zIndex={15} resizeMode="dimensions" containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                             isPositionLocked={text.lockedPosition}

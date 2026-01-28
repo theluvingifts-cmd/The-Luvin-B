@@ -19,15 +19,16 @@ export const SmartImage: React.FC<SmartImageProps> = ({
   disableTransition = false,
   ...props 
 }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const isBase64 = src?.startsWith('data:');
+  const [isLoaded, setIsLoaded] = useState(isBase64);
   const [error, setError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(src);
 
   useEffect(() => {
     setCurrentSrc(src);
-    setIsLoaded(false);
+    setIsLoaded(isBase64);
     setError(false);
-  }, [src]);
+  }, [src, isBase64]);
 
   const handleLoad = () => {
     setIsLoaded(true);
@@ -40,11 +41,17 @@ export const SmartImage: React.FC<SmartImageProps> = ({
     }
   };
 
+  // Local data doesn't need anonymous crossOrigin
+  const imgProps: any = { ...props };
+  if (!isBase64) {
+      imgProps.crossOrigin = "anonymous";
+  }
+
   if (disableTransition) {
     return (
       <div className={`relative overflow-hidden ${className}`}>
         <img
-          {...props}
+          {...imgProps}
           src={currentSrc}
           alt={alt}
           loading={loading}
@@ -57,8 +64,8 @@ export const SmartImage: React.FC<SmartImageProps> = ({
 
   return (
     <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
-      {/* Pulse Skeleton Overlay */}
-      {!isLoaded && !error && (
+      {/* Pulse Skeleton Overlay - Only for non-base64 or not loaded */}
+      {!isLoaded && !error && !isBase64 && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50 animate-pulse">
           <svg 
             className="w-6 h-6 text-gray-200 animate-spin" 
@@ -73,17 +80,15 @@ export const SmartImage: React.FC<SmartImageProps> = ({
 
       {/* Actual Image with Enhanced Transitions */}
       <img
-        {...props}
+        {...imgProps}
         src={currentSrc}
         alt={alt}
         loading={loading}
         onLoad={handleLoad}
         onError={handleError}
         className={`
-          w-full h-full object-contain transition-all duration-700 ease-out
-          ${isLoaded 
-            ? 'opacity-100 scale-100 blur-0 grayscale-0' 
-            : 'opacity-0 scale-95 blur-sm grayscale-[0.5]'}
+          w-full h-full object-contain transition-opacity duration-500 ease-out
+          ${isLoaded ? 'opacity-100' : 'opacity-0'}
           ${className}
         `}
       />
