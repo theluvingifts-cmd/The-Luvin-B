@@ -111,7 +111,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
             setConfig({
                 ...config,
                 background: { type: 'upload', value: resized },
-                texts: config.texts.filter(t => t.linkedFieldId), 
+                // Khi khách tự up ảnh, xóa các text overlay của mẫu cũ để tránh đè chữ lung tung
+                texts: config.texts.filter(t => t.linkedFieldId), // Chỉ giữ lại các text liên kết với form
                 draggableItems: [],
                 shapes: []
             });
@@ -140,6 +141,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
           ))}
         </div>
         
+        {/* MANUAL UPLOAD AREA - KHÔI PHỤC THEO YÊU CẦU CỦA BỐ */}
         <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
             <input type="file" ref={manualBgInputRef} className="hidden" accept="image/*" onChange={handleManualBgUpload} />
             <button 
@@ -158,6 +160,9 @@ export const Step2BackgroundAndDecorations: React.FC<{
                     </>
                 )}
             </button>
+            {config.background.type === 'upload' && (
+                <p className="text-[9px] text-center text-gray-400 mt-2 italic">* Bạn đang sử dụng ảnh nền tự tải lên</p>
+            )}
         </div>
       </div>
 
@@ -166,51 +171,29 @@ export const Step2BackgroundAndDecorations: React.FC<{
         <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. NHẬP THÔNG TIN IN ẤN
         </h4>
-        <div className="space-y-5">
+        <div className="space-y-4">
             {activeFields.length > 0 ? activeFields.map(field => (
                 <div key={field.id} className="space-y-1.5">
                     <label className="text-[10px] font-black text-gray-400 uppercase ml-1">
                         {field.label} {field.required && <span className="text-red-500">*</span>}
                     </label>
-                    {field.type === 'image' ? (
-                        <div className="group relative">
-                            <input 
-                                type="file" 
-                                accept="image/*" 
-                                id={`form-image-${field.id}`}
-                                className="hidden"
-                                onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        setIsProcessingImage(true);
-                                        const resized = await resizeImage(file, 800, 800);
-                                        handleUpdateFormData(field.id, resized);
-                                        setIsProcessingImage(false);
-                                    }
-                                }} 
-                            />
-                            <div className="flex gap-3 items-center">
-                                <div className="w-16 h-16 bg-gray-100 rounded-xl border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                    {config.customFormData?.[field.id] ? (
-                                        <img src={config.customFormData[field.id]} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="text-xl">📷</span>
-                                    )}
-                                </div>
-                                <label 
-                                    htmlFor={`form-image-${field.id}`}
-                                    className="flex-grow py-3 px-4 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer text-center"
-                                >
-                                    {config.customFormData?.[field.id] ? 'Chọn ảnh khác' : 'Bấm để tải ảnh lên'}
-                                </label>
-                            </div>
-                        </div>
-                    ) : field.type === 'date' ? (
-                        <input type="date" value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
-                    ) : field.type === 'textarea' ? (
-                        <textarea placeholder={field.placeholder} rows={2} value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
-                    ) : (
+                    {field.type === 'text' && (
                         <input type="text" placeholder={field.placeholder} value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
+                    )}
+                    {field.type === 'textarea' && (
+                        <textarea placeholder={field.placeholder} rows={2} value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
+                    )}
+                    {field.type === 'date' && (
+                        <input type="date" value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
+                    )}
+                    {field.type === 'image' && (
+                        <input type="file" accept="image/*" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                const resized = await resizeImage(file, 800, 800);
+                                handleUpdateFormData(field.id, resized);
+                            }
+                        }} className="w-full text-xs" />
                     )}
                 </div>
             )) : (

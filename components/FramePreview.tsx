@@ -144,8 +144,7 @@ const EditableText = memo(({
     onBeginEditing,
     onEndEditing,
     isContentLocked,
-    previewFont,
-    displayValue // Nhận giá trị hiển thị (đã ưu tiên dữ liệu từ Form)
+    previewFont
 }: {
     text: TextConfig;
     fontSize: number;
@@ -154,10 +153,9 @@ const EditableText = memo(({
     onEndEditing: () => void;
     isContentLocked?: boolean;
     previewFont?: string | null;
-    displayValue: string;
 }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(displayValue);
+    const [editedContent, setEditedContent] = useState(text.content);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const activeFont = previewFont || text.font;
@@ -186,7 +184,7 @@ const EditableText = memo(({
         if (isContentLocked) return;
         e.stopPropagation();
         setIsEditing(true);
-        setEditedContent(displayValue);
+        setEditedContent(text.content);
         onBeginEditing();
     }
 
@@ -235,7 +233,7 @@ const EditableText = memo(({
 
     return (
         <div style={{minWidth: '20px', width: '100%', height: '100%'}} onDoubleClick={handleDoubleClick}>
-            <p style={textStyle}>{displayValue || " "}</p>
+            <p style={textStyle}>{text.content || " "}</p>
         </div>
     );
 });
@@ -675,17 +673,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
                     
+                    // --- BỔ SUNG LOGIC ĐỔ ẢNH TỪ FORM ---
+                    // Nếu sticker này được liên kết với một field Form (type Image) và field đó có dữ liệu
                     let imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
-                    let isUsingPlaceholder = false;
-
-                    if (isCharm && item.linkedFieldId) {
-                        const formDataValue = config.customFormData?.[item.linkedFieldId];
-                        if (formDataValue) {
-                            imageUrl = formDataValue;
-                        } else {
-                            imageUrl = 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2Fimage_placeholder_luvin.png?alt=media';
-                            isUsingPlaceholder = true;
-                        }
+                    if (isCharm && item.linkedFieldId && config.customFormData?.[item.linkedFieldId]) {
+                        imageUrl = config.customFormData[item.linkedFieldId];
                     }
 
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
@@ -710,13 +702,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             zIndex={item.type === 'hat' ? 12 : 10}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
-                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: isUsingPlaceholder ? 0.4 : (item.opacity ?? 1), display: item.isHidden ? 'none' : 'block' }}>
+                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block' }}>
                                 <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                {isUsingPlaceholder && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10">
-                                        <span className="text-[10px] font-black text-white uppercase text-center leading-none px-1">Tải ảnh<br/>ở Form</span>
-                                    </div>
-                                )}
                             </div>
                         </Transformable>
                     );
@@ -724,13 +711,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 
                 {(config.texts || []).map(text => {
                     const isSelected = selectedItemId === `text-${text.id}`;
-                    
-                    // --- LOGIC ƯU TIÊN HIỂN THỊ DỮ LIỆU TỪ FORM ---
-                    let displayValue = text.content;
-                    if (text.linkedFieldId && config.customFormData?.[text.linkedFieldId]) {
-                        displayValue = config.customFormData[text.linkedFieldId];
-                    }
-
                     return (
                         <Transformable 
                             key={`text-${text.id}`} id={`text-${text.id}`} 
@@ -743,7 +723,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         >
                         <EditableText 
                                 text={text} 
-                                displayValue={displayValue} // Truyền giá trị đã qua xử lý liên kết
                                 fontSize={text.size * responsiveScale}
                                 onUpdate={(updates) => onTextUpdate(text.id, updates)} 
                                 onBeginEditing={() => setIsEditingText(true)} 
