@@ -113,6 +113,7 @@ export interface DraggableItem {
     linkedCharId?: number;
     opacity?: number;
     isHidden?: boolean;
+    linkedFieldId?: string;
 }
 
 export interface BackgroundConfig {
@@ -158,6 +159,7 @@ export interface LegoCharacterConfig {
   x: number; y: number; rotation: number; scale: number; 
   opacity?: number;
   isHidden?: boolean;
+  lockedPosition?: boolean;
 }
 
 export interface Order {

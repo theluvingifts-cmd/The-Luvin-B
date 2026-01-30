@@ -434,7 +434,7 @@ const Transformable = memo(({
                 cursor: isPositionLocked ? 'default' : (isSelected ? 'move' : 'pointer'),
                 outline: isSelected ? (isPositionLocked ? '2px solid #ef4444' : '2px dashed #efa3b5') : 'none',
                 outlineOffset: '4px',
-                zIndex: zIndex
+                zIndex: isSelected ? 100 : zIndex
             }}
         >
             {children}
@@ -445,7 +445,7 @@ const Transformable = memo(({
                       <div 
                         onMouseDown={handleResizeWidthStart} 
                         onTouchStart={handleResizeWidthStart} 
-                        className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-3 h-6 rounded-md border-2 border-white shadow-sm" 
+                        className="transform-handle absolute top-1/2 -right-3 -translate-y-1/2 cursor-ew-resize bg-luvin-pink w-3 h-6 rounded-md border-2 border-white shadow-sm z-[110]" 
                         style={{ transform: `translateY(-50%) scale(${handleScale})` }}
                       ></div>
                   )}
@@ -454,7 +454,7 @@ const Transformable = memo(({
                       <div 
                         onMouseDown={handleRotateStart} 
                         onTouchStart={handleRotateStart} 
-                        className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm" 
+                        className="transform-handle absolute -top-8 left-1/2 -translate-x-1/2 cursor-alias bg-luvin-pink text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm z-[110]" 
                         style={{ transform: `translateX(-50%) scale(${handleScale})` }}
                       >
                           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -465,7 +465,7 @@ const Transformable = memo(({
                       <div 
                         onMouseDown={handleResizeStart} 
                         onTouchStart={handleResizeStart} 
-                        className="transform-handle absolute -bottom-2 -right-2 cursor-nwse-resize bg-luvin-pink w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
+                        className="transform-handle absolute -bottom-2 -right-2 cursor-nwse-resize bg-luvin-pink w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center z-[110]" 
                         style={{ transform: `scale(${handleScale})` }}
                       >
                           <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 20h16m0 0V4" /></svg>
@@ -672,7 +672,14 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 {(config.draggableItems || []).map(item => {
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
-                    const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
+                    
+                    // --- BỔ SUNG LOGIC ĐỔ ẢNH TỪ FORM ---
+                    // Nếu sticker này được liên kết với một field Form (type Image) và field đó có dữ liệu
+                    let imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
+                    if (isCharm && item.linkedFieldId && config.customFormData?.[item.linkedFieldId]) {
+                        imageUrl = config.customFormData[item.linkedFieldId];
+                    }
+
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
                     const widthCm = isCharm ? 2 : (part?.widthCm || 1);
                     const heightCm = isCharm ? 2 : (part?.heightCm || 1);
@@ -731,11 +738,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
 
         {isInteractive && selectedItemId && (
             <div 
-                className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none"
-                onMouseDown={(e) => e.stopPropagation()} 
+                className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none"
+                onMouseDown={(e) => { e.stopPropagation(); }} 
             >
                 {activeColors && activeColors.length > 0 && (
-                    <div className="pointer-events-auto w-fit bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto animate-subtle-pulse">
+                    <div className="pointer-events-auto w-fit bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto animate-subtle-pulse">
                         <div className="flex gap-2 w-max px-2">
                             {activeColors.map((color: OutfitColor, idx: number) => (
                                 <button
@@ -750,7 +757,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         </div>
                     </div>
                 )}
-                <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-3 py-1.5 mx-auto">
+                <div className="pointer-events-auto flex items-center justify-center gap-2 bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl rounded-full px-3 py-1.5 mx-auto">
                     {onAlign && (
                         <>
                             <button onMouseDown={(e) => { e.stopPropagation(); onAlign('center'); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Căn giữa">
@@ -764,6 +771,14 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             </button>
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                         </>
+                    )}
+                    {(selectedDraggableType === 'accessory' || selectedDraggableType === 'pet') && onItemFlip && (
+                        <button onMouseDown={(e) => { e.stopPropagation(); onItemFlip(selectedItemId); }} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90" title="Lật hình">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M7 9h10M14 6l3 3-3 3" />
+                                <path d="M17 15H7M10 12l-3 3 3 3" />
+                            </svg>
+                        </button>
                     )}
                     <button onMouseDown={(e) => { e.stopPropagation(); onItemRemove(selectedItemId); }} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

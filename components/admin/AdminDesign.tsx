@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart, LegoCharacterConfig } from '../../types';
+import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart, LegoCharacterConfig, OutfitColor } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG, LEGO_PARTS } from '../../constants';
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
@@ -111,6 +111,7 @@ export const AdminDesign: React.FC = () => {
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const previewRef = useRef<HTMLDivElement>(null);
+    const skipHistoryRef = useRef(false);
 
     const categories = useMemo(() => {
         const uniqueCats = Array.from(new Set(existingBackgrounds.map(bg => bg.category)));
@@ -137,18 +138,79 @@ export const AdminDesign: React.FC = () => {
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
-    // Handle History without Nested State Errors
+    // History Logic to prevent infinite loops
     useEffect(() => {
+        if (skipHistoryRef.current) {
+            skipHistoryRef.current = false;
+            return;
+        }
         const currentStr = JSON.stringify(config);
         if (currentStr !== history[historyIndex]) {
             setHistory(prev => {
                 const next = prev.slice(0, historyIndex + 1);
                 next.push(currentStr);
-                return next.slice(-20);
+                return next.slice(-30);
             });
-            setHistoryIndex(prev => Math.min(prev + 1, 19));
+            setHistoryIndex(prev => Math.min(prev + 1, 29));
         }
     }, [config]);
+
+    const handleUndo = useCallback(() => {
+        if (historyIndex > 0) {
+            skipHistoryRef.current = true;
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setConfig(JSON.parse(history[newIndex]));
+        }
+    }, [history, historyIndex]);
+
+    const handleRedo = useCallback(() => {
+        if (historyIndex < history.length - 1) {
+            skipHistoryRef.current = true;
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setConfig(JSON.parse(history[newIndex]));
+        }
+    }, [history, historyIndex]);
+
+    const handleItemRemove = useCallback((id: string) => {
+        const [type, ...rest] = id.split('-');
+        const rawId = rest.join('-');
+        const itemId = parseInt(rawId);
+        setSelectedItemId(null);
+        setConfig((prev: FrameConfig) => {
+            if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== itemId) };
+            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== itemId) };
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== itemId) };
+            if (type === 'character') return { ...prev, characters: prev.characters.filter(c => c.id !== itemId) };
+            return prev;
+        });
+    }, []);
+
+    // KEYBOARD SHORTCUTS
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Xoá vật thể: Delete hoặc Backspace
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId) {
+                if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+                e.preventDefault();
+                handleItemRemove(selectedItemId);
+            }
+            // Hoàn tác: Ctrl + Z
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) handleRedo();
+                else handleUndo();
+            }
+            // Làm lại: Ctrl + Y
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedItemId, handleItemRemove, handleUndo, handleRedo]);
 
     const updateSelected = (updates: any) => {
         if (!selectedItemId) return;
@@ -192,19 +254,44 @@ export const AdminDesign: React.FC = () => {
         });
     }, []);
 
-    const handleItemRemove = useCallback((id: string) => {
-        const [type, ...rest] = id.split('-');
-        const rawId = rest.join('-');
-        const itemId = parseInt(rawId);
-        setSelectedItemId(null);
-        setConfig((prev: FrameConfig) => {
-            if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== itemId) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== itemId) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== itemId) };
-            if (type === 'character') return { ...prev, characters: prev.characters.filter(c => c.id !== itemId) };
-            return prev;
-        });
+    const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
+        setConfig(prev => ({
+            ...prev,
+            texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
+        }));
     }, []);
+
+    const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
+        const itemId = parseInt(id.split('-')[1]);
+        setConfig(prev => ({
+            ...prev,
+            draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, ...updates } : i)
+        }));
+    }, []);
+
+    const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
+        setConfig(prev => ({
+            ...prev,
+            characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
+        }));
+    }, []);
+
+    const handleItemFlip = useCallback((id: string) => {
+        const itemId = parseInt(id.split('-')[1]);
+        setConfig(prev => ({
+            ...prev,
+            draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, isFlipped: !i.isFlipped } : i)
+        }));
+    }, []);
+
+    const handleAlignItem = (type: 'center' | 'horizontal' | 'vertical') => {
+        if (!selectedItemId) return;
+        let updates: any = {};
+        if (type === 'center') updates = { x: 50, y: 50 };
+        else if (type === 'horizontal') updates = { x: 50 };
+        else if (type === 'vertical') updates = { y: 50 };
+        updateSelected(updates);
+    };
 
     const selectedObject = useMemo(() => {
         if (!selectedItemId) return null;
@@ -261,15 +348,27 @@ export const AdminDesign: React.FC = () => {
                                 </button>
                             </div>
 
+                            {/* CHUNG CHO TEXT VÀ STICKER: LIÊN KẾT FORM */}
+                            {(selectedItemId?.startsWith('text-') || (selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm')) && (
+                                <div>
+                                    <label className="block text-[10px] font-black text-blue-600 uppercase mb-2 tracking-widest">🔗 Liên kết Form {selectedItemId?.startsWith('text-') ? '(Nội dung)' : '(Hình ảnh)'}</label>
+                                    <select 
+                                        className="w-full p-2.5 border-2 border-blue-100 rounded-lg text-xs font-bold bg-blue-50 focus:border-blue-400 outline-none" 
+                                        value={(selectedObject as any).linkedFieldId || ''} 
+                                        onChange={e => updateSelected({ linkedFieldId: e.target.value })}
+                                    >
+                                        <option value="">-- Không kết nối --</option>
+                                        {(config.formFields || [])
+                                            .filter(f => selectedItemId?.startsWith('text-') ? f.type !== 'image' : f.type === 'image')
+                                            .map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                                    </select>
+                                    <p className="text-[9px] text-gray-400 mt-1 italic">Vật thể này sẽ lấy dữ liệu tự động từ ô khách nhập trong form.</p>
+                                </div>
+                            )}
+
                             {selectedItemId?.startsWith('text-') && (
                                 <div className="space-y-5">
-                                    <div><label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Liên kết Form</label>
-                                        <select className="w-full p-2 border rounded-lg text-xs font-bold" value={(selectedObject as TextConfig).linkedFieldId || ''} onChange={e => updateSelected({ linkedFieldId: e.target.value })}>
-                                            <option value="">-- Không kết nối --</option>
-                                            {(config.formFields || []).map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                                        </select>
-                                    </div>
-                                    <div><label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase">Nội dung</label>
+                                    <div><label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase">Nội dung mặc định</label>
                                         <textarea className="w-full p-2 border rounded-lg text-sm" value={(selectedObject as TextConfig).content} onChange={e => updateSelected({ content: e.target.value })} />
                                     </div>
                                     <FontSelector value={(selectedObject as TextConfig).font} onChange={f => updateSelected({ font: f })} onPreview={setPreviewFont} uploadedFonts={uploadedFonts} />
@@ -285,6 +384,26 @@ export const AdminDesign: React.FC = () => {
                                     <div><label className="text-[10px] font-black text-gray-400 mb-1 uppercase">Màu đổ</label><input type="color" className="w-full h-10 border rounded-lg" value={(selectedObject as ShapeConfig).fillColor} onChange={e => updateSelected({ fillColor: e.target.value })} /></div>
                                     <div><label className="text-[10px] font-black text-gray-400 mb-1 uppercase">Bo góc</label><input type="range" min="0" max="100" className="w-full" value={(selectedObject as ShapeConfig).borderRadius} onChange={e => updateSelected({ borderRadius: Number(e.target.value) })} /></div>
                                     <div><label className="text-[10px] font-black text-gray-400 mb-1 uppercase">Độ đục</label><input type="range" min="0" max="1" step="0.1" className="w-full" value={(selectedObject as ShapeConfig).opacity ?? 1} onChange={e => updateSelected({ opacity: Number(e.target.value) })} /></div>
+                                </div>
+                            )}
+
+                            {selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm' && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 mb-1 uppercase block">Hình dạng Mask (Cắt ảnh)</label>
+                                        <select 
+                                            className="w-full p-2 border rounded-lg text-xs" 
+                                            value={(selectedObject as DraggableItem).maskShape || 'none'} 
+                                            onChange={e => updateSelected({ maskShape: e.target.value as any })}
+                                        >
+                                            <option value="none">Gốc (Chữ nhật)</option>
+                                            <option value="circle">Hình tròn</option>
+                                            <option value="rounded">Bo góc</option>
+                                            <option value="heart">Trái tim</option>
+                                            <option value="star">Ngôi sao</option>
+                                        </select>
+                                    </div>
+                                    <div><label className="text-[10px] font-black text-gray-400 mb-1 uppercase block">Độ đục</label><input type="range" min="0" max="1" step="0.1" className="w-full" value={(selectedObject as DraggableItem).opacity ?? 1} onChange={e => updateSelected({ opacity: Number(e.target.value) })} /></div>
                                 </div>
                             )}
 
@@ -341,7 +460,7 @@ export const AdminDesign: React.FC = () => {
                             {activeTool === 'upload' && (
                                 <div className="space-y-4">
                                     <div className="border-2 border-dashed border-gray-300 p-6 rounded-2xl text-center relative hover:bg-gray-50 transition-all">
-                                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleUploadSticker} disabled={isUploading} />
+                                        <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleUploadSticker} disabled={isUploading} />
                                         <p className="text-[10px] font-black text-gray-400 uppercase">{isUploading ? 'ĐANG TẢI...' : '+ TẢI STICKER'}</p>
                                     </div>
                                     <p className="text-[9px] text-gray-400 italic text-center">Sticker (Charm) sẽ được hiển thị đè lên nền.</p>
@@ -356,7 +475,7 @@ export const AdminDesign: React.FC = () => {
                                     ))}
                                     {config.draggableItems.map(i => (
                                         <div key={i.id} onClick={() => setSelectedItemId(`item-${i.id}`)} className={`p-2 border rounded-lg text-xs flex justify-between items-center cursor-pointer ${selectedItemId === `item-${i.id}` ? 'border-blue-500 bg-blue-50' : ''}`}>
-                                            <span>Ảnh nhỏ</span>
+                                            <span>{i.type === 'charm' ? 'Khung ảnh/Sticker' : 'Linh kiện'}</span>
                                         </div>
                                     ))}
                                     {(config.shapes || []).map(s => (
@@ -377,6 +496,10 @@ export const AdminDesign: React.FC = () => {
                         <select className="border-0 p-0 text-sm font-black text-gray-900 bg-transparent focus:ring-0 outline-none cursor-pointer" value={config.frameId} onChange={e => setConfig(prev => ({ ...prev, frameId: e.target.value }))}>
                             {frames.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                         </select>
+                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1 hover:bg-white rounded disabled:opacity-30">⟲</button>
+                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1 hover:bg-white rounded disabled:opacity-30">⟳</button>
+                        </div>
                         <input type="range" min="0.2" max="2" step="0.1" value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-24 accent-gray-900" />
                     </div>
                     <button onClick={() => setShowSaveModal(true)} className="px-8 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:bg-blue-700 transition-all">Lưu mẫu</button>
@@ -384,7 +507,25 @@ export const AdminDesign: React.FC = () => {
 
                 <div className="flex-grow relative flex items-center justify-center p-8 overflow-auto custom-scrollbar" onMouseDown={() => setSelectedItemId(null)}>
                     <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }} className="bg-white shadow-2xl transition-transform duration-300 ring-1 ring-gray-200">
-                        <FramePreview ref={previewRef} config={config} containerWidth={500} onItemTransform={handleItemTransform} onItemRemove={handleItemRemove} onTextUpdate={() => {}} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={allKnownParts} previewFont={previewFont} allowTextScaling />
+                        <FramePreview 
+                            ref={previewRef} 
+                            config={config} 
+                            containerWidth={500} 
+                            onItemTransform={handleItemTransform} 
+                            onItemRemove={handleItemRemove} 
+                            onTextUpdate={handleTextUpdate} 
+                            onItemUpdate={handleItemUpdate}
+                            onCharacterUpdate={handleCharacterUpdate}
+                            onItemFlip={handleItemFlip}
+                            onAlign={handleAlignItem}
+                            isInteractive={true} 
+                            selectedItemId={selectedItemId} 
+                            setSelectedItemId={setSelectedItemId} 
+                            setIsEditingText={() => {}} 
+                            allParts={allKnownParts} 
+                            previewFont={previewFont} 
+                            allowTextScaling 
+                        />
                     </div>
                 </div>
             </div>
