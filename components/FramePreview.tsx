@@ -673,11 +673,20 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
                     
-                    // --- BỔ SUNG LOGIC ĐỔ ẢNH TỪ FORM ---
-                    // Nếu sticker này được liên kết với một field Form (type Image) và field đó có dữ liệu
+                    // --- LOGIC ĐỔ ẢNH TỪ FORM HOẶC HIỂN THỊ PLACEHOLDER ---
                     let imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
-                    if (isCharm && item.linkedFieldId && config.customFormData?.[item.linkedFieldId]) {
-                        imageUrl = config.customFormData[item.linkedFieldId];
+                    let isUsingPlaceholder = false;
+
+                    if (isCharm && item.linkedFieldId) {
+                        const formDataValue = config.customFormData?.[item.linkedFieldId];
+                        if (formDataValue) {
+                            imageUrl = formDataValue;
+                        } else {
+                            // Nếu Sticker liên kết với Form nhưng khách chưa tải ảnh lên
+                            // Hiển thị một ảnh Placeholder gợi ý
+                            imageUrl = 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2Fimage_placeholder_luvin.png?alt=media';
+                            isUsingPlaceholder = true;
+                        }
                     }
 
                     const name = isCharm ? 'charm' : (item.selectedColor?.name ? `${part?.name} (${item.selectedColor.name})` : part?.name);
@@ -702,8 +711,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             zIndex={item.type === 'hat' ? 12 : 10}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
-                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block' }}>
+                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: isUsingPlaceholder ? 0.4 : (item.opacity ?? 1), display: item.isHidden ? 'none' : 'block' }}>
                                 <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                {isUsingPlaceholder && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10">
+                                        <span className="text-[10px] font-black text-white uppercase text-center leading-none px-1">Tải ảnh<br/>ở Form</span>
+                                    </div>
+                                )}
                             </div>
                         </Transformable>
                     );
