@@ -885,9 +885,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         </h1>
         
         <StepIndicator currentStep={step} setStep={setStep} />
+        
+        {/* NÂNG CẤP: Grid Layout với tính năng Sticky Preview cho PC */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">
-          <div className="lg:col-span-7" ref={previewContainerParentRef}>
-            <div className="lg:sticky lg:top-24">
+          
+          {/* CỘT TRÁI (Preview): Cố định lg:sticky khi cuộn chuột trên PC */}
+          <div className="lg:col-span-7 lg:sticky lg:top-24 lg:self-start z-10" ref={previewContainerParentRef}>
+            <div>
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight text-left">ẢNH XEM TRƯỚC</h3>
                     <div className="flex items-center gap-1.5 sm:gap-2">
@@ -941,6 +945,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             </div>
           </div>
 
+          {/* CỘT PHẢI (Tools): Cuộn chuột bình thường */}
           <div className="lg:col-span-5 mt-2 lg:mt-0" id="builder-action-area"> 
               {(step === 2 || step === 3) && (
                   <div className="mb-3 px-1 animate-fade-in text-left">
