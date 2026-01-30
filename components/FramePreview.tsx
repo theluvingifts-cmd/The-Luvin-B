@@ -144,7 +144,8 @@ const EditableText = memo(({
     onBeginEditing,
     onEndEditing,
     isContentLocked,
-    previewFont
+    previewFont,
+    displayValue // Nhận giá trị hiển thị (đã ưu tiên dữ liệu từ Form)
 }: {
     text: TextConfig;
     fontSize: number;
@@ -153,9 +154,10 @@ const EditableText = memo(({
     onEndEditing: () => void;
     isContentLocked?: boolean;
     previewFont?: string | null;
+    displayValue: string;
 }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(text.content);
+    const [editedContent, setEditedContent] = useState(displayValue);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const activeFont = previewFont || text.font;
@@ -184,7 +186,7 @@ const EditableText = memo(({
         if (isContentLocked) return;
         e.stopPropagation();
         setIsEditing(true);
-        setEditedContent(text.content);
+        setEditedContent(displayValue);
         onBeginEditing();
     }
 
@@ -233,7 +235,7 @@ const EditableText = memo(({
 
     return (
         <div style={{minWidth: '20px', width: '100%', height: '100%'}} onDoubleClick={handleDoubleClick}>
-            <p style={textStyle}>{text.content || " "}</p>
+            <p style={textStyle}>{displayValue || " "}</p>
         </div>
     );
 });
@@ -673,7 +675,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
                     
-                    // --- LOGIC ĐỔ ẢNH TỪ FORM HOẶC HIỂN THỊ PLACEHOLDER ---
                     let imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
                     let isUsingPlaceholder = false;
 
@@ -682,8 +683,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         if (formDataValue) {
                             imageUrl = formDataValue;
                         } else {
-                            // Nếu Sticker liên kết với Form nhưng khách chưa tải ảnh lên
-                            // Hiển thị một ảnh Placeholder gợi ý
                             imageUrl = 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2Fimage_placeholder_luvin.png?alt=media';
                             isUsingPlaceholder = true;
                         }
@@ -725,6 +724,13 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 
                 {(config.texts || []).map(text => {
                     const isSelected = selectedItemId === `text-${text.id}`;
+                    
+                    // --- LOGIC ƯU TIÊN HIỂN THỊ DỮ LIỆU TỪ FORM ---
+                    let displayValue = text.content;
+                    if (text.linkedFieldId && config.customFormData?.[text.linkedFieldId]) {
+                        displayValue = config.customFormData[text.linkedFieldId];
+                    }
+
                     return (
                         <Transformable 
                             key={`text-${text.id}`} id={`text-${text.id}`} 
@@ -737,6 +743,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                         >
                         <EditableText 
                                 text={text} 
+                                displayValue={displayValue} // Truyền giá trị đã qua xử lý liên kết
                                 fontSize={text.size * responsiveScale}
                                 onUpdate={(updates) => onTextUpdate(text.id, updates)} 
                                 onBeginEditing={() => setIsEditingText(true)} 
