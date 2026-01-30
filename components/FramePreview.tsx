@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
@@ -36,7 +37,6 @@ interface FramePreviewProps {
 }
 
 const SafeImage = memo(({ src, style, className, alt, priority, disableTransition, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean; disableTransition?: boolean }) => {
-    // Nếu là ảnh Base64 (vừa upload), hiển thị ngay lập tức (isLoaded = true)
     const isBase64 = src?.startsWith('data:');
     const [isLoaded, setIsLoaded] = useState(isBase64);
     const [hasError, setHasError] = useState(false);
@@ -48,7 +48,6 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
 
     if (hasError || !src) return null;
 
-    // Không dùng crossOrigin cho ảnh local base64
     const imgProps: any = { ...props };
     if (!isBase64) {
         imgProps.crossOrigin = "anonymous";
@@ -64,7 +63,6 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
                 onError={() => setHasError(true)} 
                 className={className}
                 loading={priority ? "eager" : "lazy"}
-                {...(priority ? { fetchpriority: "high" } : {})}
                 {...imgProps}
             />
         );
@@ -84,7 +82,6 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
                 ${isLoaded ? 'opacity-100' : 'opacity-0'}
             `}
             loading={priority ? "eager" : "lazy"}
-            {...(priority ? { fetchpriority: "high" } : {})}
             {...imgProps}
         />
     );
@@ -136,20 +133,6 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
 
 const getFontFamily = (fontName: string) => {
     if (!fontName) return 'sans-serif';
-    switch (fontName) {
-        case 'Anniversary': return '"Dancing Script", cursive';
-        case 'Serif': return '"Noto Serif", serif';
-        case 'Playfair Display': return '"Playfair Display", serif';
-        case 'Montserrat': return '"Montserrat", sans-serif';
-        case 'Poppins': return '"Poppins", sans-serif';
-        case 'Roboto': return '"Roboto", sans-serif';
-        case 'Open Sans': return '"Open Sans", sans-serif';
-        case 'Merriweather': return '"Merriweather", serif';
-        case 'Dancing Script': return '"Dancing Script", cursive';
-        case 'Lora': return '"Lora", serif';
-        case 'Nunito': return '"Nunito", sans-serif';
-        case 'Pacifico': return '"Pacifico", cursive';
-    }
     const cleanName = fontName.replace(/[^a-zA-Z0-9\s-]/g, '');
     return `'${cleanName}', sans-serif`;
 };
@@ -637,12 +620,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
-                {config.shapes && config.shapes.map(shape => (
+                {(config.shapes || []).map(shape => (
                     <Transformable
                         key={`shape-${shape.id}`}
                         id={`shape-${shape.id}`}
                         initialTransform={{ x: shape.x, y: shape.y, rotation: shape.rotation, scale: 1, width: shape.width, height: shape.height }}
-                        /* Fix: Changed handleItemTransform to onItemTransform */
                         onTransform={onItemTransform}
                         parentRef={previewContainerRef}
                         isSelected={selectedItemId === `shape-${shape.id}`}
@@ -674,10 +656,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </Transformable>
                 ))}
 
-                {config.characters.map(char => (
+                {(config.characters || []).map(char => (
                     <Transformable 
                         key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} 
-                        /* Fix: Changed handleItemTransform to onItemTransform */
                         onTransform={onItemTransform} 
                         parentRef={previewContainerRef} isSelected={selectedItemId === `character-${char.id}`} onSelect={setSelectedItemId}
                         isResizable={false} isRotatable={false} isDraggable={isInteractive} zIndex={5}
@@ -688,7 +669,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </Transformable>
                 ))}
                 
-                {config.draggableItems.map(item => {
+                {(config.draggableItems || []).map(item => {
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
                     const imageUrl = isCharm ? item.partId : (item.selectedColor?.imageUrl || part?.imageUrl);
@@ -707,7 +688,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     return (
                         <Transformable 
                             key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} 
-                            /* Fix: Changed handleItemTransform to onItemTransform */
                             onTransform={onItemTransform}
                             isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
                             isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
@@ -722,13 +702,12 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     );
                 })}
                 
-                {config.texts.map(text => {
+                {(config.texts || []).map(text => {
                     const isSelected = selectedItemId === `text-${text.id}`;
                     return (
                         <Transformable 
                             key={`text-${text.id}`} id={`text-${text.id}`} 
                             initialTransform={{x: text.x, y: text.y, rotation: text.rotation, scale: text.scale, width: text.width}} 
-                            /* Fix: Changed handleItemTransform to onItemTransform */
                             onTransform={onItemTransform} parentRef={previewContainerRef} isSelected={isSelected} onSelect={setSelectedItemId}
                             isDraggable={isInteractive} zIndex={15} resizeMode="dimensions" containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                             isPositionLocked={text.lockedPosition}
@@ -754,7 +733,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
             <div 
                 className="absolute -bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-max max-w-[90vw] pointer-events-none"
                 onMouseDown={(e) => e.stopPropagation()} 
-                onClick={(e) => e.stopPropagation()}
             >
                 {activeColors && activeColors.length > 0 && (
                     <div className="pointer-events-auto w-fit bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto animate-subtle-pulse">
@@ -765,7 +743,6 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                                     onMouseDown={(e) => { e.stopPropagation(); handleColorSelect(color); }}
                                     className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
                                     style={{ backgroundColor: color.hex }}
-                                    title={`${color.name}`}
                                 >
                                     {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
                                 </button>
@@ -788,25 +765,9 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             <div className="w-px h-4 bg-gray-300 mx-1"></div>
                         </>
                     )}
-                    {(selectedDraggableType === 'accessory' || selectedDraggableType === 'pet') && (
-                        <button onMouseDown={(e) => { e.stopPropagation(); if(onItemFlip) onItemFlip(selectedItemId); }} className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all active:scale-90" title="Lật hình">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M7 9h10M14 6l3 3-3 3" />
-                                <path d="M17 15H7M10 12l-3 3 3 3" />
-                            </svg>
-                        </button>
-                    )}
                     <button onMouseDown={(e) => { e.stopPropagation(); onItemRemove(selectedItemId); }} className="p-1.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors active:scale-90" title="Xóa">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
-                    {onAutoAdvance && (
-                        <>
-                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                            <button onMouseDown={(e) => { e.stopPropagation(); onAutoAdvance(); }} className="p-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors active:scale-90" title="Xong (Tiếp)">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                            </button>
-                        </>
-                    )}
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
                     <button onMouseDown={(e) => { e.stopPropagation(); setSelectedItemId(null); }} className="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors active:scale-90" title="Bỏ chọn">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

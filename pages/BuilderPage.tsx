@@ -195,7 +195,7 @@ const FontSelector: React.FC<{
 
 const TextEditor: React.FC<{
     activeText: TextConfig;
-    setConfig: (c: FrameConfig) => void;
+    setConfig: (c: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => void;
     config: FrameConfig;
     selectedTextId: number;
     deselect: () => void;
@@ -205,10 +205,10 @@ const TextEditor: React.FC<{
 }> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
     
     const updateActiveText = (updates: Partial<TextConfig>) => {
-        setConfig({
-            ...config,
-            texts: config.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
-        });
+        setConfig((prev: FrameConfig) => ({
+            ...prev,
+            texts: prev.texts.map((t) => t.id === selectedTextId ? { ...t, ...updates } : t)
+        }));
     }
 
     const isLocked = activeText.lockedContent;
@@ -332,12 +332,31 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
 
-  const [history, setHistory] = useState<FrameConfig[]>([config]);
+  const [history, setHistory] = useState<string[]>([JSON.stringify(config)]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const skipHistoryRef = useRef(false);
 
   const topCharmUploadRef = useRef<HTMLInputElement>(null);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+
+  // Handle History Management in Effect
+  useEffect(() => {
+    if (skipHistoryRef.current) {
+        skipHistoryRef.current = false;
+        return;
+    }
+    
+    const configStr = JSON.stringify(config);
+    if (configStr !== history[historyIndex]) {
+        setHistory(prev => {
+            const next = prev.slice(0, historyIndex + 1);
+            next.push(configStr);
+            return next.slice(-20);
+        });
+        setHistoryIndex(prev => Math.min(prev + 1, 19));
+    }
+  }, [config]);
 
   // FUNNEL TRACKING
   useEffect(() => {
@@ -356,12 +375,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     if (savedDraft && !isEditingOrder && step === 1) {
         try {
             const parsed = JSON.parse(savedDraft);
-            // Nếu có dữ liệu nhân vật hoặc nền khác mặc định
             if (parsed.characters.length > 0 || parsed.background.value !== INITIAL_FRAME_CONFIG.background.value) {
                 const recover = confirm("The Luvin tìm thấy một thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?");
                 if (recover) {
                     setConfig(parsed);
-                    setStep(3); // Đưa thẳng tới bước phối đồ
+                    setStep(3);
                 }
             }
         } catch(e) {}
@@ -453,40 +471,28 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     fetchHotTrends();
   }, []);
 
-  const setConfigWithHistory = useCallback((newConfigOrFn: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => {
-      setConfig(prev => {
-          const newConfig = typeof newConfigOrFn === 'function' ? newConfigOrFn(prev) : newConfigOrFn;
-          if (JSON.stringify(newConfig) !== JSON.stringify(prev)) {
-              const newHistory = history.slice(0, historyIndex + 1);
-              newHistory.push(newConfig);
-              if (newHistory.length > 20) newHistory.shift();
-              setHistory(newHistory);
-              setHistoryIndex(newHistory.length - 1);
-          }
-          return newConfig;
-      });
-  }, [history, historyIndex, setConfig]);
-
   const handleUndo = () => {
       if (historyIndex > 0) {
+          skipHistoryRef.current = true;
           const newIndex = historyIndex - 1;
           setHistoryIndex(newIndex);
-          setConfig(history[newIndex]);
+          setConfig(JSON.parse(history[newIndex]));
       }
   };
 
   const handleRedo = () => {
       if (historyIndex < history.length - 1) {
+          skipHistoryRef.current = true;
           const newIndex = historyIndex + 1;
           setHistoryIndex(newIndex);
-          setConfig(history[newIndex]);
+          setConfig(JSON.parse(history[newIndex]));
       }
   };
 
   const handleReset = () => {
     if (confirm("Bạn có chắc chắn muốn xóa toàn bộ thiết kế hiện tại và bắt đầu lại từ đầu?")) {
         setConfig(INITIAL_FRAME_CONFIG);
-        setHistory([INITIAL_FRAME_CONFIG]);
+        setHistory([JSON.stringify(INITIAL_FRAME_CONFIG)]);
         setHistoryIndex(0);
         localStorage.removeItem('active_design_draft');
         showToast("Đã làm mới thiết kế!", 'success');
@@ -571,7 +577,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
       
-      setConfigWithHistory((prev: FrameConfig) => {
+      setConfig((prev: FrameConfig) => {
           if (type === 'text') {
               const idToUpdate = parseInt(rawId);
               return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...nTransform } : item) };
@@ -584,7 +590,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           }
           return prev;
       });
-  }, [setConfigWithHistory]);
+  }, [setConfig]);
 
   const handleAlignItem = (direction: 'center' | 'center-x' | 'center-y' | 'horizontal' | 'vertical') => {
       if (!selectedItemId) return;
@@ -595,7 +601,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const rawId = rest.join('-');
       const idToUpdate = parseInt(rawId);
 
-      setConfigWithHistory((prev: FrameConfig) => {
+      setConfig((prev: FrameConfig) => {
           let updates: Partial<Transform> = {};
           if (direction === 'center') updates = { x: 50, y: 50 };
           else if (direction === 'center-x') updates = { x: 50 };
@@ -619,41 +625,41 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       const rawId = rest.join('-');
       if (type === 'item') {
           const itemId = parseInt(rawId);
-          setConfigWithHistory((prev: FrameConfig) => ({
+          setConfig((prev: FrameConfig) => ({
               ...prev,
               draggableItems: prev.draggableItems.map((item: any) => 
                   item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
               )
           }));
       }
-  }, [setConfigWithHistory]);
+  }, [setConfig]);
 
   const handleItemUpdate = useCallback((id: string, updates: any) => {
       const [type, ...rest] = id.split('-');
       const rawId = rest.join('-');
       if (type === 'item') {
           const itemId = parseInt(rawId);
-          setConfigWithHistory((prev: FrameConfig) => ({
+          setConfig((prev: FrameConfig) => ({
               ...prev,
               draggableItems: prev.draggableItems.map((item: any) => 
                   item.id === itemId ? { ...item, ...updates } : item
               )
           }));
       }
-  }, [setConfigWithHistory]);
+  }, [setConfig]);
 
   const handleCharacterUpdate = useCallback((id: number, updates: any) => {
-      setConfigWithHistory((prev: FrameConfig) => ({
+      setConfig((prev: FrameConfig) => ({
           ...prev,
           characters: prev.characters.map((c: any) => c.id === id ? { ...c, ...updates } : c)
       }));
-  }, [setConfigWithHistory]);
+  }, [setConfig]);
 
   const handleItemRemoveCompletely = useCallback((id: string) => {
     const [type, ...rest] = id.split('-');
     const rawId = rest.join('-');
     setSelectedItemId(null);
-    setConfigWithHistory((prev: FrameConfig) => {
+    setConfig((prev: FrameConfig) => {
         if (type === 'text') {
             const idToDelete = parseInt(rawId, 10);
             return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
@@ -664,7 +670,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== itemId) };
         return prev;
     });
-  }, [setConfigWithHistory]);
+  }, [setConfig]);
   
   const handleItemDelete = useCallback((id: string) => {
     const [type, ...rest] = id.split('-');
@@ -673,7 +679,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const idToUpdate = parseInt(rawId, 10);
         const textItem = config.texts.find(t => t.id === idToUpdate);
         if (textItem && textItem.content && textItem.content.trim() !== '') {
-             setConfigWithHistory((prev: FrameConfig) => ({
+             setConfig((prev: FrameConfig) => ({
                 ...prev,
                 texts: prev.texts.map(t => t.id === idToUpdate ? { ...t, content: '' } : t)
             }));
@@ -683,7 +689,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     } else {
         handleItemRemoveCompletely(id);
     }
-  }, [setConfigWithHistory, handleItemRemoveCompletely, config.texts]);
+  }, [handleItemRemoveCompletely, config.texts, setConfig]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -704,22 +710,22 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   }, [selectedItemId, handleItemDelete, isEditingText, handleUndo, handleRedo]);
 
   const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-    setConfigWithHistory((prev: FrameConfig) => ({
+    setConfig((prev: FrameConfig) => ({
         ...prev,
         texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
     }));
-  }, [setConfigWithHistory]);
+  }, [setConfig]);
   
   const addText = () => {
       const newId = Date.now();
       const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
-      setConfigWithHistory((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
+      setConfig((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
       setSelectedItemId(`text-${newId}`);
   };
 
   const addCharm = (dataUrl: string) => {
       const newCharm: any = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
-      setConfigWithHistory((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
+      setConfig((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
   }
   
   const captureFrameAsImage = async (): Promise<string> => {
@@ -858,9 +864,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   const renderStepContent = () => {
     switch (step) {
-      case 1: return <Step1Frame config={config} setConfig={setConfigWithHistory} frames={frames} />;
-      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfigWithHistory} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfigWithHistory} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
+      case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
+      case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
       case 4: return <Step4Summary totalPrice={totalPrice} priceBreakdown={priceBreakdown} frameName={frames.find(f => f.id === config.frameId)?.name || ''} charCount={config.characters.length} onAddToCart={() => handleAddToCartWrapper(false)} onBuyNow={() => handleAddToCartWrapper(true)} isSaving={isSaving} isEditingOrder={isEditingOrder} urgencyTimeLeft={urgencyTimeLeft} />;
       default: return null;
     }
@@ -946,7 +952,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   </div>
               )}
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  {selectedText ? (<TextEditor activeText={selectedText} setConfig={setConfigWithHistory} config={config} selectedTextId={selectedText.id} deselect={() => setSelectedItemId(null)} onAddText={addText} uploadedFonts={uploadedFonts} setPreviewFont={setPreviewFont} />) : (<div className="min-h-[350px]">{renderStepContent()}</div>)}
+                  {selectedText ? (<TextEditor activeText={selectedText} setConfig={setConfig} config={config} selectedTextId={selectedText.id} deselect={() => setSelectedItemId(null)} onAddText={addText} uploadedFonts={uploadedFonts} setPreviewFont={setPreviewFont} />) : (<div className="min-h-[350px]">{renderStepContent()}</div>)}
               </div>
               {!selectedText && (
                 <>

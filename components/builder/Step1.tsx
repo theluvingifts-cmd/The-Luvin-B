@@ -3,21 +3,21 @@ import React, { useEffect } from 'react';
 import type { FrameConfig, FrameOption } from '../../types';
 import { getEffectivePrice, formatCurrency } from '../../utils/pricing';
 
-export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
+export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
       if (selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0) {
           if (!config.frameColor || !selectedFrame.colors.includes(config.frameColor)) {
-              setConfig({ ...config, frameColor: selectedFrame.colors[0] });
+              setConfig(prev => ({ ...prev, frameColor: selectedFrame.colors[0] }));
           }
       }
-  }, [selectedFrame, config.frameColor, setConfig, config]);
+  }, [selectedFrame, config.frameColor, setConfig]); // Optimized dependencies: removed the broad 'config' object
 
   return (
     <div className="space-y-4">
       <div className="p-4 border border-gray-200 rounded-lg text-left">
-        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHỌN KÍCH THƯỚC</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHÔNG KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
           {frames.map(frame => {
             const effectivePrice = getEffectivePrice(frame);
@@ -26,7 +26,7 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
             return (
                 <button
                 key={frame.id}
-                onClick={() => setConfig({ ...config, frameId: frame.id })}
+                onClick={() => setConfig(prev => ({ ...prev, frameId: frame.id }))}
                 disabled={frame.stock === 0}
                 className={`border rounded-lg py-2 px-1 text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center h-20 relative hover:scale-105 active:scale-95 ${
                     config.frameId === frame.id ? 'bg-luvin-pink text-gray-800 border-luvin-pink shadow-md' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-50'
@@ -72,7 +72,7 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
                         return (
                             <button 
                                 key={color}
-                                onClick={() => setConfig({ ...config, frameColor: color })}
+                                onClick={() => setConfig(prev => ({ ...prev, frameColor: color }))}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all capitalize hover:shadow-sm ${isSelected ? 'border-luvin-pink ring-1 ring-luvin-pink bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}`}
                             >
                                 <div 
