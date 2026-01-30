@@ -138,7 +138,7 @@ export const AdminDesign: React.FC = () => {
         return { ...defaultParts, ...dbParts }; 
     }, [products]);
 
-    // History Logic to prevent infinite loops
+    // History Logic
     useEffect(() => {
         if (skipHistoryRef.current) {
             skipHistoryRef.current = false;
@@ -173,6 +173,19 @@ export const AdminDesign: React.FC = () => {
         }
     }, [history, historyIndex]);
 
+    const updateSelected = useCallback((updates: any) => {
+        if (!selectedItemId) return;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        setConfig(prev => {
+            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
+            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
+            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            if (type === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
+            return prev;
+        });
+    }, [selectedItemId]);
+
     const handleItemRemove = useCallback((id: string) => {
         const [type, ...rest] = id.split('-');
         const rawId = rest.join('-');
@@ -187,43 +200,59 @@ export const AdminDesign: React.FC = () => {
         });
     }, []);
 
+    const selectedObject = useMemo(() => {
+        if (!selectedItemId) return null;
+        const [type, idStr] = selectedItemId.split('-');
+        const id = parseInt(idStr);
+        if (type === 'text') return config.texts.find(t => t.id === id);
+        if (type === 'item') return config.draggableItems.find(i => i.id === id);
+        if (type === 'shape') return config.shapes?.find(s => s.id === id);
+        if (type === 'character') return config.characters.find(c => c.id === id);
+        return null;
+    }, [selectedItemId, config]);
+
     // KEYBOARD SHORTCUTS
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Xoá vật thể: Delete hoặc Backspace
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId) {
-                if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            const isTyping = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+            // Di chuyển bằng phím mũi tên
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedItemId && !isTyping) {
+                if ((selectedObject as any)?.lockedPosition) return;
+                e.preventDefault();
+                const step = e.shiftKey ? 2.0 : 0.5; // Shift di chuyển xa hơn
+                let dx = 0, dy = 0;
+                if (e.key === 'ArrowUp') dy = -step;
+                if (e.key === 'ArrowDown') dy = step;
+                if (e.key === 'ArrowLeft') dx = -step;
+                if (e.key === 'ArrowRight') dx = step;
+
+                const current = selectedObject as any;
+                updateSelected({
+                    x: Math.max(0, Math.min(100, current.x + dx)),
+                    y: Math.max(0, Math.min(100, current.y + dy))
+                });
+            }
+
+            // Xoá vật thể
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isTyping) {
                 e.preventDefault();
                 handleItemRemove(selectedItemId);
             }
-            // Hoàn tác: Ctrl + Z
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+
+            // Hoàn tác
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
-                if (e.shiftKey) handleRedo();
-                else handleUndo();
+                handleUndo();
             }
-            // Làm lại: Ctrl + Y
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
                 e.preventDefault();
                 handleRedo();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedItemId, handleItemRemove, handleUndo, handleRedo]);
-
-    const updateSelected = (updates: any) => {
-        if (!selectedItemId) return;
-        const [type, idStr] = selectedItemId.split('-');
-        const id = parseInt(idStr);
-        setConfig(prev => {
-            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
-            if (type === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
-            return prev;
-        });
-    };
+    }, [selectedItemId, selectedObject, updateSelected, handleItemRemove, handleUndo, handleRedo]);
 
     const handleLoadTemplate = (bg: PresetBackground) => {
         setEditingBgId(bg.id);
@@ -254,55 +283,18 @@ export const AdminDesign: React.FC = () => {
         });
     }, []);
 
-    const handleTextUpdate = useCallback((id: number, updates: Partial<TextConfig>) => {
-        setConfig(prev => ({
-            ...prev,
-            texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
-        }));
-    }, []);
-
-    const handleItemUpdate = useCallback((id: string, updates: Partial<DraggableItem>) => {
-        const itemId = parseInt(id.split('-')[1]);
-        setConfig(prev => ({
-            ...prev,
-            draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, ...updates } : i)
-        }));
-    }, []);
-
-    const handleCharacterUpdate = useCallback((id: number, updates: Partial<LegoCharacterConfig>) => {
-        setConfig(prev => ({
-            ...prev,
-            characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
-        }));
-    }, []);
-
-    const handleItemFlip = useCallback((id: string) => {
-        const itemId = parseInt(id.split('-')[1]);
-        setConfig(prev => ({
-            ...prev,
-            draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, isFlipped: !i.isFlipped } : i)
-        }));
-    }, []);
-
-    const handleAlignItem = (type: 'center' | 'horizontal' | 'vertical') => {
-        if (!selectedItemId) return;
-        let updates: any = {};
-        if (type === 'center') updates = { x: 50, y: 50 };
-        else if (type === 'horizontal') updates = { x: 50 };
-        else if (type === 'vertical') updates = { y: 50 };
-        updateSelected(updates);
+    const handleAddField = () => {
+        const newField: FormField = { id: `field_${Date.now()}`, label: 'Trường mới', type: 'text', required: false };
+        setConfig(prev => ({ ...prev, formFields: [...(prev.formFields || []), newField] }));
     };
 
-    const selectedObject = useMemo(() => {
-        if (!selectedItemId) return null;
-        const [type, idStr] = selectedItemId.split('-');
-        const id = parseInt(idStr);
-        if (type === 'text') return config.texts.find(t => t.id === id);
-        if (type === 'item') return config.draggableItems.find(i => i.id === id);
-        if (type === 'shape') return config.shapes?.find(s => s.id === id);
-        if (type === 'character') return config.characters.find(c => c.id === id);
-        return null;
-    }, [selectedItemId, config]);
+    const updateField = (id: string, updates: Partial<FormField>) => {
+        setConfig(prev => ({ ...prev, formFields: (prev.formFields || []).map(f => f.id === id ? { ...f, ...updates } : f) }));
+    };
+
+    const removeField = (id: string) => {
+        setConfig(prev => ({ ...prev, formFields: (prev.formFields || []).filter(f => f.id !== id) }));
+    };
 
     const handleUploadSticker = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -348,7 +340,7 @@ export const AdminDesign: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* CHUNG CHO TEXT VÀ STICKER: LIÊN KẾT FORM */}
+                            {/* LIÊN KẾT FORM: HIỂN THỊ CHO TEXT VÀ STICKER */}
                             {(selectedItemId?.startsWith('text-') || (selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm')) && (
                                 <div>
                                     <label className="block text-[10px] font-black text-blue-600 uppercase mb-2 tracking-widest">🔗 Liên kết Form {selectedItemId?.startsWith('text-') ? '(Nội dung)' : '(Hình ảnh)'}</label>
@@ -362,7 +354,6 @@ export const AdminDesign: React.FC = () => {
                                             .filter(f => selectedItemId?.startsWith('text-') ? f.type !== 'image' : f.type === 'image')
                                             .map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
                                     </select>
-                                    <p className="text-[9px] text-gray-400 mt-1 italic">Vật thể này sẽ lấy dữ liệu tự động từ ô khách nhập trong form.</p>
                                 </div>
                             )}
 
@@ -390,20 +381,11 @@ export const AdminDesign: React.FC = () => {
                             {selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm' && (
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 mb-1 uppercase block">Hình dạng Mask (Cắt ảnh)</label>
-                                        <select 
-                                            className="w-full p-2 border rounded-lg text-xs" 
-                                            value={(selectedObject as DraggableItem).maskShape || 'none'} 
-                                            onChange={e => updateSelected({ maskShape: e.target.value as any })}
-                                        >
-                                            <option value="none">Gốc (Chữ nhật)</option>
-                                            <option value="circle">Hình tròn</option>
-                                            <option value="rounded">Bo góc</option>
-                                            <option value="heart">Trái tim</option>
-                                            <option value="star">Ngôi sao</option>
+                                        <label className="text-[10px] font-black text-gray-400 mb-1 uppercase block">Hình dạng Mask</label>
+                                        <select className="w-full p-2 border rounded-lg text-xs" value={(selectedObject as DraggableItem).maskShape || 'none'} onChange={e => updateSelected({ maskShape: e.target.value as any })}>
+                                            <option value="none">Gốc</option><option value="circle">Hình tròn</option><option value="rounded">Bo góc</option><option value="heart">Trái tim</option><option value="star">Ngôi sao</option>
                                         </select>
                                     </div>
-                                    <div><label className="text-[10px] font-black text-gray-400 mb-1 uppercase block">Độ đục</label><input type="range" min="0" max="1" step="0.1" className="w-full" value={(selectedObject as DraggableItem).opacity ?? 1} onChange={e => updateSelected({ opacity: Number(e.target.value) })} /></div>
                                 </div>
                             )}
 
@@ -442,12 +424,12 @@ export const AdminDesign: React.FC = () => {
                                         const id = Date.now();
                                         setConfig(prev => ({...prev, shapes: [...(prev.shapes || []), { id, type: 'rect', x: 50, y: 50, width: 20, height: 20, rotation: 0, strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: 0, fillColor: '#cccccc', opacity: 1 }]}));
                                         setSelectedItemId(`shape-${id}`);
-                                    }} className="p-4 border rounded-xl flex flex-col items-center gap-2 hover:bg-gray-50 transition-all"><div className="w-8 h-8 bg-gray-300 rounded-sm"></div><span className="text-[10px] font-bold">HÌNH VUÔNG</span></button>
+                                    }} className="p-4 border rounded-xl flex flex-col items-center gap-2 hover:bg-gray-50 transition-all"><div className="w-8 h-8 bg-gray-300 rounded-sm"></div><span className="text-[10px] font-bold uppercase">Hình vuông</span></button>
                                     <button onClick={() => {
                                         const id = Date.now();
                                         setConfig(prev => ({...prev, shapes: [...(prev.shapes || []), { id, type: 'circle', x: 50, y: 50, width: 20, height: 20, rotation: 0, strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: 100, fillColor: '#cccccc', opacity: 1 }]}));
                                         setSelectedItemId(`shape-${id}`);
-                                    }} className="p-4 border rounded-xl flex flex-col items-center gap-2 hover:bg-gray-50 transition-all"><div className="w-8 h-8 bg-gray-300 rounded-full"></div><span className="text-[10px] font-bold">HÌNH TRÒN</span></button>
+                                    }} className="p-4 border rounded-xl flex flex-col items-center gap-2 hover:bg-gray-50 transition-all"><div className="w-8 h-8 bg-gray-300 rounded-full"></div><span className="text-[10px] font-bold uppercase">Hình tròn</span></button>
                                 </div>
                             )}
                             {activeTool === 'text' && (
@@ -461,9 +443,30 @@ export const AdminDesign: React.FC = () => {
                                 <div className="space-y-4">
                                     <div className="border-2 border-dashed border-gray-300 p-6 rounded-2xl text-center relative hover:bg-gray-50 transition-all">
                                         <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleUploadSticker} disabled={isUploading} />
-                                        <p className="text-[10px] font-black text-gray-400 uppercase">{isUploading ? 'ĐANG TẢI...' : '+ TẢI STICKER'}</p>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isUploading ? 'ĐANG TẢI...' : '+ TẢI STICKER'}</p>
                                     </div>
-                                    <p className="text-[9px] text-gray-400 italic text-center">Sticker (Charm) sẽ được hiển thị đè lên nền.</p>
+                                </div>
+                            )}
+                            {activeTool === 'form' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Danh sách trường</h4>
+                                        <button onClick={handleAddField} className="text-blue-600 font-bold text-xs">+ Thêm</button>
+                                    </div>
+                                    {(config.formFields || []).map((f) => (
+                                        <div key={f.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group">
+                                            <button onClick={() => removeField(f.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                                            <input className="w-full p-1.5 border rounded text-xs font-bold" value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Tên trường..." />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select className="p-1.5 border rounded text-[10px]" value={f.type} onChange={e => updateField(f.id, { type: e.target.value as any })}>
+                                                    <option value="text">Chữ ngắn</option><option value="textarea">Chữ dài</option><option value="date">Ngày tháng</option><option value="image">Hình ảnh</option>
+                                                </select>
+                                                <label className="flex items-center gap-1 text-[10px] cursor-pointer font-bold text-gray-500 uppercase">
+                                                    <input type="checkbox" checked={f.required} onChange={e => updateField(f.id, { required: e.target.checked })} /> Cần nhập
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                             {activeTool === 'layers' && (
@@ -475,7 +478,7 @@ export const AdminDesign: React.FC = () => {
                                     ))}
                                     {config.draggableItems.map(i => (
                                         <div key={i.id} onClick={() => setSelectedItemId(`item-${i.id}`)} className={`p-2 border rounded-lg text-xs flex justify-between items-center cursor-pointer ${selectedItemId === `item-${i.id}` ? 'border-blue-500 bg-blue-50' : ''}`}>
-                                            <span>{i.type === 'charm' ? 'Khung ảnh/Sticker' : 'Linh kiện'}</span>
+                                            <span>{i.type === 'charm' ? 'Sticker/Ảnh' : 'Linh kiện'}</span>
                                         </div>
                                     ))}
                                     {(config.shapes || []).map(s => (
@@ -497,35 +500,17 @@ export const AdminDesign: React.FC = () => {
                             {frames.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                         </select>
                         <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1 hover:bg-white rounded disabled:opacity-30">⟲</button>
-                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1 hover:bg-white rounded disabled:opacity-30">⟳</button>
+                            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1 hover:bg-white rounded disabled:opacity-30" title="Ctrl + Z">⟲</button>
+                            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1 hover:bg-white rounded disabled:opacity-30" title="Ctrl + Y">⟳</button>
                         </div>
                         <input type="range" min="0.2" max="2" step="0.1" value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-24 accent-gray-900" />
                     </div>
-                    <button onClick={() => setShowSaveModal(true)} className="px-8 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:bg-blue-700 transition-all">Lưu mẫu</button>
+                    <button onClick={() => setShowSaveModal(true)} className="px-8 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:bg-blue-700 transition-all">Lưu mẫu thiết kế</button>
                 </div>
 
                 <div className="flex-grow relative flex items-center justify-center p-8 overflow-auto custom-scrollbar" onMouseDown={() => setSelectedItemId(null)}>
                     <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }} className="bg-white shadow-2xl transition-transform duration-300 ring-1 ring-gray-200">
-                        <FramePreview 
-                            ref={previewRef} 
-                            config={config} 
-                            containerWidth={500} 
-                            onItemTransform={handleItemTransform} 
-                            onItemRemove={handleItemRemove} 
-                            onTextUpdate={handleTextUpdate} 
-                            onItemUpdate={handleItemUpdate}
-                            onCharacterUpdate={handleCharacterUpdate}
-                            onItemFlip={handleItemFlip}
-                            onAlign={handleAlignItem}
-                            isInteractive={true} 
-                            selectedItemId={selectedItemId} 
-                            setSelectedItemId={setSelectedItemId} 
-                            setIsEditingText={() => {}} 
-                            allParts={allKnownParts} 
-                            previewFont={previewFont} 
-                            allowTextScaling 
-                        />
+                        <FramePreview ref={previewRef} config={config} containerWidth={500} onItemTransform={handleItemTransform} onItemRemove={handleItemRemove} onTextUpdate={() => {}} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={allKnownParts} previewFont={previewFont} allowTextScaling />
                     </div>
                 </div>
             </div>
@@ -533,7 +518,7 @@ export const AdminDesign: React.FC = () => {
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowSaveModal(false)}>
                     <div className="bg-white p-8 rounded-[2rem] w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-black mb-6 uppercase">Xác nhận Lưu Mẫu</h3>
+                        <h3 className="text-xl font-black mb-6 uppercase">Lưu thiết kế vào database</h3>
                         <div className="space-y-4">
                             <input className="w-full p-3 border rounded-xl font-bold" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="Tên mẫu thiết kế..." />
                             <select className="w-full p-3 border rounded-xl font-bold" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
@@ -551,7 +536,7 @@ export const AdminDesign: React.FC = () => {
                                     formFields: config.formFields || []
                                 };
                                 const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
-                                if (success) { alert("Lưu mẫu thành công!"); setShowSaveModal(false); }
+                                if (success) { alert("Đã lưu thiết kế thành công!"); setShowSaveModal(false); }
                             }} className="px-10 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs shadow-xl hover:bg-black transition-all">Xác nhận Lưu</button>
                         </div>
                     </div>
