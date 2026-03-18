@@ -211,6 +211,10 @@ export interface CollectionTemplate {
     config: FrameConfig;
     category?: string; 
     purchaseCount?: number;
+    // New fields for simple templates
+    isSimpleTemplate?: boolean;
+    basePrice?: number;
+    includedPartIds?: string[];
 }
 
 export interface FeedbackItem {

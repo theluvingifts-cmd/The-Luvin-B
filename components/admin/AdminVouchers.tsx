@@ -4,11 +4,25 @@ import { Voucher } from '../../types';
 import { getAllVouchers, addVoucher, updateVoucher, deleteVoucher } from '../../services/voucherService';
 import { formatCurrency } from '../../utils/pricing';
 
-export const AdminVouchers: React.FC = () => {
+import { StoreConfig, updateStoreConfig } from '../../services/configService';
+
+interface AdminVouchersProps {
+    storeConfig: StoreConfig;
+    setStoreConfig: React.Dispatch<React.SetStateAction<StoreConfig>>;
+}
+
+export const AdminVouchers: React.FC<AdminVouchersProps> = ({ storeConfig, setStoreConfig }) => {
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
-    const [viewMode, setViewMode] = useState<'list' | 'edit'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'edit' | 'rewards'>('list');
     const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
     const [loading, setLoading] = useState(false);
+
+    // Reward Tiers State
+    const [rewardTiers, setRewardTiers] = useState<{ threshold: number; reward: string; icon: string; }[]>(storeConfig.rewardTiers || []);
+
+    useEffect(() => {
+        if (storeConfig.rewardTiers) setRewardTiers(storeConfig.rewardTiers);
+    }, [storeConfig.rewardTiers]);
 
     // Form state
     const [formData, setFormData] = useState<Partial<Voucher>>({
@@ -69,6 +83,24 @@ export const AdminVouchers: React.FC = () => {
         setLoading(false);
     };
 
+    const handleSaveRewards = async () => {
+        setLoading(true);
+        const success = await updateStoreConfig({ 
+            ...storeConfig,
+            rewardTiers: rewardTiers
+        });
+        if (success) {
+            setStoreConfig(prev => ({ 
+                ...prev, 
+                rewardTiers: rewardTiers
+            }));
+            alert("Đã lưu ngưỡng quà tặng thành công!");
+        } else {
+            alert("Lỗi lưu ngưỡng quà tặng.");
+        }
+        setLoading(false);
+    };
+
     const handleDelete = async (id: string) => {
         if (confirm("Bạn có chắc muốn xóa mã này?")) {
             setLoading(true);
@@ -90,10 +122,18 @@ export const AdminVouchers: React.FC = () => {
             {viewMode === 'list' && (
                 <>
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold text-gray-800">Quản lý Mã Giảm Giá</h2>
-                        <button onClick={handleAddNew} className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-black transition-colors shadow-lg">
-                            + Tạo Mã Mới
-                        </button>
+                        <h2 className="text-xl font-bold text-gray-800">Quản lý Mã Giảm Giá & Quà tặng</h2>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setViewMode('rewards')} 
+                                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors border ${viewMode === 'rewards' ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}
+                            >
+                                🎁 Ngưỡng Quà tặng
+                            </button>
+                            <button onClick={handleAddNew} className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-black transition-colors shadow-lg">
+                                + Tạo Mã Mới
+                            </button>
+                        </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -244,6 +284,87 @@ export const AdminVouchers: React.FC = () => {
                         <button onClick={() => setViewMode('list')} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Hủy</button>
                         <button onClick={handleSave} className="px-6 py-2 bg-gray-900 text-white font-bold rounded hover:bg-black shadow-md transition-colors">
                             {loading ? 'Đang lưu...' : 'Lưu Mã'}
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* Reward Tiers View */}
+            {viewMode === 'rewards' && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-2xl mx-auto">
+                    <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 className="font-bold text-lg text-gray-800">Cấu hình Ngưỡng Quà tặng</h3>
+                        <button onClick={() => setViewMode('list')} className="text-gray-500 hover:text-gray-700 text-sm font-bold flex items-center gap-1">
+                            &larr; Quay lại
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-6">
+                        <p className="text-xs text-gray-500 italic">Thiết lập các ngưỡng quà tặng để khuyến khích khách hàng mua thêm. Quà tặng sẽ được tự động thêm vào đơn hàng khi đạt ngưỡng.</p>
+                        
+                        <div className="space-y-4">
+                            {rewardTiers.map((tier, idx) => (
+                                <div key={idx} className="p-4 border rounded-xl bg-gray-50 relative group">
+                                    <button 
+                                        onClick={() => setRewardTiers(rewardTiers.filter((_, i) => i !== idx))}
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                    >×</button>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div className="flex gap-2">
+                                            <div className="w-1/3">
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Ngưỡng (₫)</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full p-2 border rounded text-sm font-bold" 
+                                                    value={tier.threshold} 
+                                                    onChange={(e) => {
+                                                        const newTiers = [...rewardTiers];
+                                                        newTiers[idx].threshold = Number(e.target.value);
+                                                        setRewardTiers(newTiers);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="w-2/3">
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tên quà tặng</label>
+                                                <input 
+                                                    type="text" 
+                                                    className="w-full p-2 border rounded text-sm" 
+                                                    value={tier.reward} 
+                                                    onChange={(e) => {
+                                                        const newTiers = [...rewardTiers];
+                                                        newTiers[idx].reward = e.target.value;
+                                                        setRewardTiers(newTiers);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Icon (Emoji)</label>
+                                            <input 
+                                                type="text" 
+                                                className="w-full p-2 border rounded text-sm" 
+                                                value={tier.icon} 
+                                                onChange={(e) => {
+                                                    const newTiers = [...rewardTiers];
+                                                    newTiers[idx].icon = e.target.value;
+                                                    setRewardTiers(newTiers);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            <button 
+                                onClick={() => setRewardTiers([...rewardTiers, { threshold: 0, reward: '', icon: '🎁' }])}
+                                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-sm hover:border-gray-900 hover:text-gray-900 transition-all"
+                            >
+                                + Thêm ngưỡng quà tặng mới
+                            </button>
+                        </div>
+                    </div>
+                    <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+                        <button onClick={() => setViewMode('list')} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded">Hủy</button>
+                        <button onClick={handleSaveRewards} className="px-6 py-2 bg-gray-900 text-white font-bold rounded hover:bg-black shadow-md transition-colors">
+                            {loading ? 'Đang lưu...' : 'Lưu Ngưỡng Quà Tặng'}
                         </button>
                     </div>
                 </div>

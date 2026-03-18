@@ -4,6 +4,7 @@ import { FRAME_OPTIONS } from '../constants';
 
 export const CHARACTER_BASE_PRICE = 10000;
 export const FREE_SHIPPING_THRESHOLD = 349000;
+export const GIFT_BOX_PRICE = 30000;
 
 // Helper: Get effective price checking sale conditions
 export const getEffectivePrice = (item: { price: number, salePrice?: number, saleEndDate?: string }, quantity: number = 1, bulkPricing?: { quantity: number, price: number }[]) => {
@@ -49,13 +50,22 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
-export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
+export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: any[]) => {
     const breakdown: PriceBreakdownItem[] = [];
     let total = 0;
 
     // 1. FRAME PRICE
     const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
-    const frameEffective = getEffectivePrice(frame);
+    let frameEffective = getEffectivePrice(frame);
+    
+    // Check if it's a simple template with its own base price
+    if (config.templateId && templates) {
+        const template = templates.find(t => t.id === config.templateId);
+        if (template && template.isSimpleTemplate && template.basePrice !== undefined) {
+            frameEffective = template.basePrice;
+        }
+    }
+    
     total += frameEffective;
     
     breakdown.push({ 
@@ -161,7 +171,8 @@ export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoP
         const { totalPrice } = calculatePrice(item, allParts, frames);
         subtotal += totalPrice * (item.quantity || 1);
     });
-    const giftBoxFee = order.addGiftBox ? 30000 : 0;
+    const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const giftBoxFee = order.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
     const shippingFee = order.shipping.fee || 0;
     const discount = order.discountAmount || 0;
     return Math.max(0, subtotal + giftBoxFee + shippingFee - discount);

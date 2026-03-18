@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
-import { calculatePrice, formatCurrency } from '../../utils/pricing';
+import { calculatePrice, formatCurrency, GIFT_BOX_PRICE } from '../../utils/pricing';
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
@@ -168,11 +168,12 @@ interface AdminOrdersProps {
     currentUser: any;
     role: 'admin' | 'warehouse' | null;
     onRefreshProducts: () => void;
+    storeConfig: any;
 }
 
 type OrderTab = 'active' | 'history';
 
-export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
+export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts, storeConfig }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -491,7 +492,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         let subtotal = 0;
         const partLookup = allKnownParts;
         orderItems.forEach(item => {
-            const { totalPrice } = calculatePrice(item, partLookup, frames);
+            const { totalPrice } = calculatePrice(item, partLookup, frames, storeConfig.rewardTiers);
             subtotal += totalPrice * (item.quantity || 1);
         });
         return subtotal;
@@ -499,7 +500,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const updateEditFormWithPrice = (newOrder: Order) => {
         const subtotal = calculateOrderPriceDetails(newOrder.items);
-        const giftBoxFee = newOrder.addGiftBox ? 30000 : 0;
+        const totalQuantity = newOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const giftBoxFee = newOrder.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
         const finalPrice = Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
@@ -655,7 +657,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         if (!order) return null;
         
         const subtotal = calculateOrderPriceDetails(order.items);
-        const giftBoxFee = order.addGiftBox ? 30000 : 0;
+        const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const giftBoxFee = order.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 
@@ -849,7 +852,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
-                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
+                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames, storeConfig.rewardTiers);
                                         
                                         const formFieldImages = (item.formFields || [])
                                             .filter(f => f.type === 'image' && item.customFormData?.[f.id])

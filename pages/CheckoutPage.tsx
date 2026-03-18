@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, Order, Voucher } from '../types';
-import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
+import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD, GIFT_BOX_PRICE, calculateRewards } from '../utils/pricing';
+import { UnifiedProgressBar } from '../components/UnifiedProgressBar';
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
@@ -23,9 +24,10 @@ interface CheckoutPageProps {
   onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => Promise<void>;
   onZoomImage: (url: string) => void;
   initialOrder?: Order | null;
+  storeConfig: StoreConfig;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, initialOrder }) => {
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, initialOrder, storeConfig }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -53,8 +55,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [phoneError, setPhoneError] = useState('');
   const [submissionError, setSubmissionError] = useState('');
   
-  const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
-
   // Voucher State
   const [voucherCode, setVoucherCode] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
@@ -65,14 +65,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
 
-  const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
   const EARLY_BIRD_THRESHOLD = 20; 
   const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; 
   const LOYALTY_DISCOUNT_PERCENT = 0.05; 
 
   useEffect(() => {
-    getStoreConfig().then(cfg => setStoreConfig(cfg));
     if (!initialOrder) trackFunnelStep('checkout_start');
   }, []);
 
@@ -145,7 +143,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }, [selectedDistrict, isApiError]);
 
 
-  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0), [cartItems, allParts]);
+  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, storeConfig.rewardTiers).totalPrice * (item.quantity || 1), 0), [cartItems, allParts, storeConfig.rewardTiers]);
   
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
   const isFreeShippingEligible = subtotal >= FREE_SHIPPING_THRESHOLD;
@@ -155,8 +153,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
   
   const shippingFee = calculatedShippingFee;
-  // Gói quà chỉ tính tiền nếu còn hàng và khách chọn
-  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE : 0;
+  // Gói quà tính tiền theo số lượng sản phẩm nếu còn hàng và khách chọn
+  const totalQuantity = useMemo(() => cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0), [cartItems]);
+  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? (GIFT_BOX_PRICE * totalQuantity) : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -518,6 +517,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
             </div>
 
+            {/* Temporarily hide gift box section */}
+            {false && (
             <div className={`bg-gray-50 p-4 rounded-lg border transition-all ${isGiftBoxOutOfStock ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                 <label className={`flex items-center p-3 rounded-lg bg-white border transition-all ${isGiftBoxOutOfStock ? 'cursor-not-allowed border-gray-200' : 'cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50'}`}>
                     <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
@@ -531,7 +532,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
                     </div>
                     <div className="flex flex-col items-end">
-                        <span className="font-bold text-luvin-pink">+{formatCurrency(GIFT_BOX_PRICE)}</span>
+                        <span className="font-bold text-luvin-pink">+{formatCurrency(GIFT_BOX_PRICE * totalQuantity)}</span>
+                        <span className="text-[10px] text-gray-400">({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</span>
                         {!isGiftBoxOutOfStock && (
                             <input 
                                 type="checkbox" 
@@ -548,34 +550,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     </p>
                 )}
             </div>
+            )}
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
                 
               <div className="mb-4 pb-4 border-b border-gray-200">
-                 {subtotal >= FREE_SHIPPING_THRESHOLD ? (
-                    <div className="bg-green-100 text-green-800 p-3 rounded-lg text-sm font-bold flex items-center gap-2">
-                        <span>🎉</span>
-                        <span>Chúc mừng! Bạn được Miễn phí giao hàng thường.</span>
-                    </div>
-                ) : (
-                    <div>
-                        <div className="flex justify-between text-xs mb-1">
-                            <span className="text-gray-600">Tiến độ Freeship</span>
-                            <span className="font-bold text-gray-900">{Math.round((subtotal/FREE_SHIPPING_THRESHOLD)*100)}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-1">
-                            <div className="h-full bg-luvin-pink transition-all duration-500" style={{width: `${(subtotal/FREE_SHIPPING_THRESHOLD)*100}%`}}></div>
-                        </div>
-                        <p className="text-xs text-gray-500 text-right">Mua thêm <span className="font-bold text-gray-900">{formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)}</span> để được Freeship</p>
-                    </div>
-                )}
+                  <UnifiedProgressBar 
+                    subtotal={subtotal} 
+                    freeShippingThreshold={FREE_SHIPPING_THRESHOLD} 
+                    rewardTiers={storeConfig.rewardTiers || []} 
+                  />
               </div>
 
               <h2 className="font-bold text-lg mb-4 border-b pb-2">Đơn hàng của bạn</h2>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {cartItems.map((item, index) => {
-                  const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+                  const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, storeConfig.rewardTiers);
                   const quantity = item.quantity || 1;
                   
                   return (
@@ -636,6 +627,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     <div className="flex justify-between text-purple-600 font-bold">
                         <span>Voucher ({appliedVoucher.code})</span>
                         <span>-{formatCurrency(voucherDiscountAmount)}</span>
+                    </div>
+                )}
+                
+                {/* Earned Rewards Section */}
+                {calculateRewards(subtotal, storeConfig.rewardTiers).earned.length > 0 && (
+                    <div className="pt-2 mt-2 border-t border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Quà tặng kèm (Đã đạt ngưỡng)</p>
+                        <div className="space-y-1">
+                            {calculateRewards(subtotal, storeConfig.rewardTiers).earned.map((tier, idx) => (
+                                <div key={idx} className="flex justify-between items-center text-xs bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
+                                    <span className="flex items-center gap-1"><span>{tier.icon}</span> {tier.reward}</span>
+                                    <span className="font-bold">Miễn phí</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
               </div>

@@ -11,6 +11,7 @@ import * as firebaseApp from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';
+import { REWARD_TIERS } from '../../constants';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -19,7 +20,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'rewards';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -85,6 +86,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     // B2B Config
     const [b2bDiscount, setB2bDiscount] = useState(storeConfig.b2bDiscountPercent || 5);
 
+    // Reward Tiers State
+    const [rewardTiers, setRewardTiers] = useState<{ threshold: number; reward: string; icon: string; enabled?: boolean; }[]>(storeConfig.rewardTiers || REWARD_TIERS);
+
     // Refs for scrolling to inputs
     const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -123,6 +127,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         if (storeConfig.telegramBotToken) setTelegramToken(storeConfig.telegramBotToken);
         if (storeConfig.telegramChatId) setTelegramChatId(storeConfig.telegramChatId);
         if (storeConfig.b2bDiscountPercent !== undefined) setB2bDiscount(storeConfig.b2bDiscountPercent);
+        if (storeConfig.rewardTiers) setRewardTiers(storeConfig.rewardTiers);
     }, [storeConfig]);
 
     const handleThemeChange = (path: string, value: string) => {
@@ -146,7 +151,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             theme: themeConfig,
             telegramBotToken: telegramToken,
             telegramChatId: telegramChatId,
-            b2bDiscountPercent: b2bDiscount
+            b2bDiscountPercent: b2bDiscount,
+            rewardTiers: rewardTiers
         });
         if (success) {
             setStoreConfig(prev => ({ 
@@ -154,7 +160,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 theme: themeConfig, 
                 telegramBotToken: telegramToken, 
                 telegramChatId: telegramChatId,
-                b2bDiscountPercent: b2bDiscount
+                b2bDiscountPercent: b2bDiscount,
+                rewardTiers: rewardTiers
             }));
             alert("Đã lưu cấu hình thành công!");
         } else {
@@ -321,13 +328,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
             <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
-                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo'].map((tab) => (
+                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo', 'rewards'].map((tab) => (
                         <button 
                             key={tab}
                             onClick={() => setActiveTab(tab as ConfigTab)} 
                             className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : 'SEO & Social'}
+                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'rewards' ? 'Quà tặng & Ưu đãi' : 'SEO & Social'}
                         </button>
                     ))}
                 </div>
@@ -538,6 +545,106 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <option value="admin">Admin</option>
                                 </select>
                                 <button onClick={handleAddStaff} className="w-full py-2 bg-gray-900 text-white rounded-lg text-sm font-bold">+ Thêm nhân viên</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'rewards' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Quà tặng & Ngưỡng chi tiêu</h3>
+                            <p className="text-xs text-gray-500 italic">Thiết lập các ngưỡng quà tặng để khuyến khích khách hàng mua thêm.</p>
+                            
+                            <div className="space-y-4">
+                                {rewardTiers.map((tier, idx) => (
+                                    <div key={idx} className={`p-4 border rounded-xl relative group transition-all ${tier.enabled === false ? 'bg-gray-100 opacity-60' : 'bg-gray-50'}`}>
+                                        <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => {
+                                                    const newTiers = [...rewardTiers];
+                                                    newTiers[idx].enabled = tier.enabled === false ? true : false;
+                                                    setRewardTiers(newTiers);
+                                                }}
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center shadow-md ${tier.enabled === false ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}
+                                                title={tier.enabled === false ? "Bật" : "Tắt"}
+                                            >
+                                                {tier.enabled === false ? '✓' : '✕'}
+                                            </button>
+                                            <button 
+                                                onClick={() => setRewardTiers(rewardTiers.filter((_, i) => i !== idx))}
+                                                className="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                                                title="Xóa"
+                                            >×</button>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <div className="flex gap-2">
+                                                <div className="w-1/3">
+                                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Ngưỡng (₫)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-full p-2 border rounded text-sm font-bold" 
+                                                        value={tier.threshold} 
+                                                        disabled={tier.enabled === false}
+                                                        onChange={(e) => {
+                                                            const newTiers = [...rewardTiers];
+                                                            newTiers[idx].threshold = Number(e.target.value);
+                                                            setRewardTiers(newTiers);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="w-2/3">
+                                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tên quà tặng</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full p-2 border rounded text-sm" 
+                                                        value={tier.reward} 
+                                                        disabled={tier.enabled === false}
+                                                        onChange={(e) => {
+                                                            const newTiers = [...rewardTiers];
+                                                            newTiers[idx].reward = e.target.value;
+                                                            setRewardTiers(newTiers);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-end gap-2">
+                                                <div className="flex-grow">
+                                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Icon (Emoji)</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full p-2 border rounded text-sm" 
+                                                        value={tier.icon} 
+                                                        disabled={tier.enabled === false}
+                                                        onChange={(e) => {
+                                                            const newTiers = [...rewardTiers];
+                                                            newTiers[idx].icon = e.target.value;
+                                                            setRewardTiers(newTiers);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col items-center mb-1">
+                                                    <label className="block text-[8px] font-bold text-gray-400 uppercase mb-1">Trạng thái</label>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const newTiers = [...rewardTiers];
+                                                            newTiers[idx].enabled = tier.enabled === false ? true : false;
+                                                            setRewardTiers(newTiers);
+                                                        }}
+                                                        className={`w-10 h-5 rounded-full p-1 transition-colors ${tier.enabled === false ? 'bg-gray-300' : 'bg-green-500'}`}
+                                                    >
+                                                        <div className={`w-3 h-3 bg-white rounded-full transition-transform ${tier.enabled === false ? '' : 'translate-x-5'}`}></div>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                
+                                <button 
+                                    onClick={() => setRewardTiers([...rewardTiers, { threshold: 0, reward: '', icon: '🎁', enabled: true }])}
+                                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-sm hover:border-gray-900 hover:text-gray-900 transition-all"
+                                >
+                                    + Thêm ngưỡng quà tặng mới
+                                </button>
                             </div>
                         </div>
                     )}

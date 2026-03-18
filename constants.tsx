@@ -39,7 +39,8 @@ export const LEGO_PARTS: {
   accessory: [
       { id: 'acc1', name: 'Hoa', price: 10000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/346/346167.png', type: 'accessory', widthCm: 1, heightCm: 1, isHot: true },
       { id: 'acc2', name: 'Túi', price: 15000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/2855/2855589.png', type: 'accessory', widthCm: 1, heightCm: 1 },
-      { id: 'acc3', name: 'Bóng bay', price: 12000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/2412/2412845.png', type: 'accessory', widthCm: 1.2, heightCm: 1.5, isHot: true }
+      { id: 'acc3', name: 'Bóng bay', price: 12000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/2412/2412845.png', type: 'accessory', widthCm: 1.2, heightCm: 1.5, isHot: true },
+      { id: 'acc4', name: 'Trái tim', price: 10000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/833/833472.png', type: 'accessory', widthCm: 1, heightCm: 1, isHot: true }
   ],
   pet: [
       { id: 'pet1', name: 'Corgi', price: 20000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/616/616408.png', type: 'pet', widthCm: 1.5, heightCm: 1.5, isHot: true }
@@ -77,6 +78,12 @@ export const FEEDBACK_ITEMS = [];
 export const MOCK_ORDERS: Record<string, Order> = {};
 
 export const PRODUCT_HIGHLIGHTS = []
+
+export const REWARD_TIERS = [
+    { threshold: 360000, reward: '1 Trái tim hoặc 1 Hoa', icon: '💝', enabled: false },
+    { threshold: 500000, reward: '1 Phụ kiện tùy chọn', icon: '🎁', enabled: false },
+    { threshold: 1000000, reward: 'Miễn phí 1 nhân vật', icon: '👤', enabled: false },
+];
 
 export const GENERAL_ASSETS = {
   hero: '',

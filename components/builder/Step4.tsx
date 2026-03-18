@@ -64,7 +64,8 @@ export const Step4Summary: React.FC<{
 
   return (
     <div className="text-left">
-        {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
+        {/* Temporarily hide urgency flash sale */}
+        {false && !isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
         
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
             <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
@@ -120,7 +121,7 @@ export const Step4Summary: React.FC<{
             <div>
                 <p className="font-bold text-indigo-900 text-sm mb-1">Mẹo: Đặt Lịch Sớm (Early Bird)</p>
                 <p className="text-xs text-indigo-700 leading-relaxed">
-                    Sản phẩm thủ công cần <b>1-2 ngày hoàn thiện</b> và 2-4 ngày vận chuyển.
+                    Sản phẩm thủ công cần <b>1-2 ngày hoàn thiện</b> (với in theo yêu cầu cần <b>10-15 ngày</b>) và 2-4 ngày vận chuyển.
                     <br/>
                     Nếu bạn có kế hoạch tặng quà xa, hãy chọn ngày nhận <b>sau 20 ngày</b> ở bước thanh toán để được <b>Giảm ngay 5%</b>!
                 </p>

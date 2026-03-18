@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Order, Page } from '../types';
-import { formatCurrency } from '../utils/pricing';
+import { formatCurrency, GIFT_BOX_PRICE, calculateRewards } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { uploadToCloudinary } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
@@ -13,9 +13,10 @@ interface OrderConfirmationPageProps {
     navigateTo: (page: Page) => void;
     onZoomImage: (url: string) => void;
     actionType?: 'create' | 'update';
+    storeConfig: any;
 }
 
-export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create' }) => {
+export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create', storeConfig }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [proofUrl, setProofUrl] = useState<string | null>(order?.paymentProofUrl || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +91,10 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
         }
     };
 
+    const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const giftBoxFee = order.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
+    const subtotal = order.totalPrice - order.shipping.fee - giftBoxFee + (order.discountAmount || 0);
+    
     return (
         <div className="bg-gray-50 py-12">
             <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
@@ -163,14 +168,14 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                     </div>
                                   </div>
                                   <div>
-                                    <p className="font-semibold">Khung tùy chỉnh x {order.items.length}</p>
+                                    <p className="font-semibold">Khung tùy chỉnh x {totalQuantity}</p>
                                   </div>
                                 </div>
-                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
+                                <p className="font-semibold">{formatCurrency(subtotal)}</p>
                             </div>
 
                             <div className="text-sm space-y-2">
-                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</span></div>
+                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(subtotal)}</span></div>
                                 <div className="flex justify-between">
                                     <span>Phí vận chuyển:</span>
                                     {order.shipping.fee === 0 && order.shipping.method === 'standard' ? (
@@ -179,11 +184,31 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                         <span className="font-medium">{formatCurrency(order.shipping.fee)}</span>
                                     )}
                                 </div>
-                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà:</span><span className="font-medium">{formatCurrency(30000)}</span></div>}
+                                {order.addGiftBox && (
+                                    <div className="flex justify-between">
+                                        <span>Hộp quà ({totalQuantity}):</span>
+                                        <span className="font-medium">{formatCurrency(giftBoxFee)}</span>
+                                    </div>
+                                )}
                                 <div className="border-t my-2"></div>
                                 <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
                                 <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
                                 <div className="flex justify-between text-xs text-gray-500"><span>Còn lại (thanh toán khi nhận hàng):</span><span>{formatCurrency(amountRemaining)}</span></div>
+                                
+                                {/* Earned Rewards Section */}
+                                {calculateRewards(subtotal, storeConfig.rewardTiers).earned.length > 0 && (
+                                    <div className="pt-3 mt-3 border-t border-dashed border-gray-200">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Quà tặng kèm theo đơn</p>
+                                        <div className="space-y-1">
+                                            {calculateRewards(subtotal, storeConfig.rewardTiers).earned.map((tier, idx) => (
+                                                <div key={idx} className="flex justify-between items-center text-xs bg-green-50 text-green-700 px-2 py-1.5 rounded border border-green-100">
+                                                    <span className="flex items-center gap-1"><span>{tier.icon}</span> {tier.reward}</span>
+                                                    <span className="font-bold">✓ Đã nhận</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             
                             <div className="border-t pt-4 text-sm space-y-1">

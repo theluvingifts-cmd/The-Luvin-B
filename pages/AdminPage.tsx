@@ -191,11 +191,11 @@ const AdminPage: React.FC = () => {
             </header>
 
             <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
-                {activeTab === 'dashboard' && role === 'admin' && <AdminDashboard orders={orders} products={products} frames={frames} />}
-                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
+                {activeTab === 'dashboard' && role === 'admin' && <AdminDashboard orders={orders} products={products} frames={frames} storeConfig={storeConfig} />}
+                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} storeConfig={storeConfig} />}
                 {activeTab === 'products' && role === 'admin' && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} />}
                 {activeTab === 'config' && role === 'admin' && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
-                {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}
+                {activeTab === 'marketing' && role === 'admin' && <AdminVouchers storeConfig={storeConfig} setStoreConfig={setStoreConfig} />}
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
                 {activeTab === 'design' && role === 'admin' && <AdminDesign />}
             </main>

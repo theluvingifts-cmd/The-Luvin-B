@@ -7,7 +7,7 @@ import {
 } from '../constants';
 import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
-import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
+import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD, calculateRewards } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getAllOrders } from '../services/orderService';
 import { trackFunnelStep } from '../services/analyticsService'; 
@@ -18,6 +18,7 @@ import { Step1Frame } from '../components/builder/Step1';
 import { Step2BackgroundAndDecorations } from '../components/builder/Step2';
 import { Step3Characters } from '../components/builder/Step3';
 import { Step4Summary } from '../components/builder/Step4';
+import { UnifiedProgressBar } from '../components/UnifiedProgressBar';
 
 declare var html2canvas: any;
 
@@ -312,9 +313,11 @@ interface BuilderPageProps {
     initialStep?: number; 
     isEditingOrder?: boolean;
     uploadedFonts: CustomFont[];
+    templates: any[];
+    storeConfig: any;
 }
 
-export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts, templates, storeConfig }) => {
   const [step, setStep] = useState(initialStep || 1); 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
@@ -399,7 +402,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     });
   }, [backgrounds, hotPartIds, allParts, legoParts]);
 
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames, storeConfig.rewardTiers), [config, allParts, frames, storeConfig.rewardTiers]);
+  const { earned, nextTier } = useMemo(() => calculateRewards(totalPrice, storeConfig.rewardTiers), [totalPrice, storeConfig.rewardTiers]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -866,7 +870,54 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
+      case 3: return (
+        <div className="space-y-6">
+            {/* Reward Progress for Upsell - Smaller UI */}
+            {nextTier && (
+                <div className="bg-white p-3 rounded-xl border border-pink-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] font-bold text-luvin-pink uppercase tracking-wider flex items-center gap-1">
+                            {nextTier.icon} Ưu đãi tiếp theo
+                        </span>
+                        <span className="text-[10px] font-black text-gray-900">{formatCurrency(nextTier.threshold - totalPrice)} nữa</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
+                        <div 
+                            className="h-full bg-luvin-pink transition-all duration-1000 ease-out"
+                            style={{ width: `${Math.min(100, (totalPrice / nextTier.threshold) * 100)}%` }}
+                        ></div>
+                    </div>
+                    <p className="text-[9px] text-gray-500 leading-tight">
+                        Thêm nhân vật hoặc phụ kiện để nhận miễn phí: <span className="font-bold text-luvin-pink">{nextTier.reward}</span>
+                    </p>
+                </div>
+            )}
+            
+            {earned.length > 0 && !nextTier && (
+                <div className="bg-green-50 p-2 rounded-lg border border-green-100 flex items-center gap-2">
+                    <span className="text-sm">🎉</span>
+                    <p className="text-[10px] font-bold text-green-700">Bạn đã đạt được tất cả ưu đãi!</p>
+                </div>
+            )}
+
+            <Step3Characters 
+                config={config} 
+                setConfig={setConfig} 
+                legoParts={legoParts} 
+                selectedItemId={selectedItemId} 
+                setSelectedItemId={setSelectedItemId} 
+                activePartType={activePartType} 
+                setActivePartType={setActivePartType} 
+                hotPartIds={hotPartIds} 
+                showToast={showToast} 
+                allParts={allParts} 
+                templates={templates} 
+                handleItemRemoveCompletely={handleItemRemoveCompletely} 
+                earnedRewards={earned}
+                storeConfig={storeConfig}
+            />
+        </div>
+      );
       case 4: return <Step4Summary totalPrice={totalPrice} priceBreakdown={priceBreakdown} frameName={frames.find(f => f.id === config.frameId)?.name || ''} charCount={config.characters.length} onAddToCart={() => handleAddToCartWrapper(false)} onBuyNow={() => handleAddToCartWrapper(true)} isSaving={isSaving} isEditingOrder={isEditingOrder} urgencyTimeLeft={urgencyTimeLeft} />;
       default: return null;
     }
@@ -948,12 +999,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           {/* CỘT PHẢI (Tools): Cuộn chuột bình thường */}
           <div className="lg:col-span-5 mt-2 lg:mt-0" id="builder-action-area"> 
               {(step === 2 || step === 3) && (
-                  <div className="mb-3 px-1 animate-fade-in text-left">
-                      <div className="flex justify-between items-center text-[10px] mb-1">
-                          <span className="text-gray-500 font-medium">{remainingForFreeShip > 0 ? (<>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>) : (<b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>)}</span>
-                          <span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span>
-                      </div>
-                      <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" style={{ width: `${freeShipPercent}%` }}></div></div>
+                  <div className="mb-4 px-1 animate-fade-in">
+                      <UnifiedProgressBar 
+                          subtotal={totalPrice} 
+                          freeShippingThreshold={FREE_SHIPPING_THRESHOLD} 
+                          rewardTiers={storeConfig.rewardTiers || []} 
+                      />
                   </div>
               )}
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">

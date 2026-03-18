@@ -4,7 +4,7 @@ import { Order, FrameOption } from '../types';
 import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderService';
 import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS, FRAME_OPTIONS } from '../constants';
-import { formatCurrency } from '../utils/pricing';
+import { formatCurrency, GIFT_BOX_PRICE } from '../utils/pricing';
 import { getAllFrames } from '../services/frameService';
 
 // Orders that can be edited by customer must not have these statuses
@@ -410,20 +410,29 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         </div>
 
                                         <div className="bg-gray-50 rounded-xl p-5 space-y-3 text-sm">
-                                            <div className="flex justify-between text-gray-600">
-                                                <span>Tổng tiền hàng</span>
-                                                <span>{formatCurrency(foundOrder.totalPrice - foundOrder.shipping.fee - (foundOrder.addGiftBox ? 30000 : 0))}</span>
-                                            </div>
-                                            <div className="flex justify-between text-gray-600">
-                                                <span>Phí vận chuyển</span>
-                                                <span>{foundOrder.shipping.fee > 0 ? formatCurrency(foundOrder.shipping.fee) : 'Miễn phí'}</span>
-                                            </div>
-                                            {foundOrder.addGiftBox && (
-                                                <div className="flex justify-between text-gray-600">
-                                                    <span>Hộp quà cao cấp</span>
-                                                    <span>{formatCurrency(30000)}</span>
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const totalQuantity = foundOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                                                const giftBoxFee = foundOrder.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
+                                                const subtotal = foundOrder.totalPrice - foundOrder.shipping.fee - giftBoxFee + (foundOrder.discountAmount || 0);
+                                                return (
+                                                    <>
+                                                        <div className="flex justify-between text-gray-600">
+                                                            <span>Tổng tiền hàng</span>
+                                                            <span>{formatCurrency(subtotal)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-gray-600">
+                                                            <span>Phí vận chuyển</span>
+                                                            <span>{foundOrder.shipping.fee > 0 ? formatCurrency(foundOrder.shipping.fee) : 'Miễn phí'}</span>
+                                                        </div>
+                                                        {foundOrder.addGiftBox && (
+                                                            <div className="flex justify-between text-gray-600">
+                                                                <span>Hộp quà cao cấp ({totalQuantity})</span>
+                                                                <span>{formatCurrency(giftBoxFee)}</span>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                             {foundOrder.discountAmount && foundOrder.discountAmount > 0 && (
                                                 <div className="flex justify-between text-green-600 font-medium">
                                                     <span>Giảm giá</span>

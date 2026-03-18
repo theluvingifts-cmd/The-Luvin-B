@@ -134,7 +134,11 @@ export const Step3Characters: React.FC<{
     hotPartIds: string[];
     showToast?: (msg: string, type: 'success' | 'error') => void;
     allParts: Record<string, LegoPart>; 
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts }) => {
+    earnedRewards?: { threshold: number; reward: string; icon: string; }[];
+    storeConfig?: any;
+    templates?: any[];
+    handleItemRemoveCompletely?: (id: number) => void;
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts, earnedRewards = [], storeConfig, templates = [], handleItemRemoveCompletely }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -416,8 +420,16 @@ export const Step3Characters: React.FC<{
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
 
+        // Prioritize reward items if earned
+        if (earnedRewards.length > 0 && accessoryCategory === 'Tất cả' && !accessorySearch) {
+            const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
+            const rewardItems = list.filter(p => rewardNames.some(rn => rn.includes(p.name.toLowerCase())));
+            const otherItems = list.filter(p => !rewardNames.some(rn => rn.includes(p.name.toLowerCase())));
+            list = [...rewardItems, ...otherItems];
+        }
+
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds, earnedRewards]);
 
     const availablePets = useMemo(() => {
         let list = getAvailableParts(legoParts.pet || []);
@@ -425,8 +437,17 @@ export const Step3Characters: React.FC<{
             const query = accessorySearch.toLowerCase().trim();
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
+        
+        // Prioritize reward pets if earned
+        if (earnedRewards.length > 0 && !accessorySearch) {
+            const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
+            const rewardItems = list.filter(p => rewardNames.some(rn => rn.includes('thú cưng') || rn.includes(p.name.toLowerCase())));
+            const otherItems = list.filter(p => !rewardNames.some(rn => rn.includes('thú cưng') || rn.includes(p.name.toLowerCase())));
+            list = [...rewardItems, ...otherItems];
+        }
+
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch]);
+    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch, earnedRewards]);
 
     return (
         <div className="space-y-4 text-left">
@@ -434,7 +455,7 @@ export const Step3Characters: React.FC<{
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
                   <h3 className="font-bold text-lg mb-2">Chọn chất lượng in</h3>
-                  <p className="text-sm text-gray-600 mb-4">In theo yêu cầu sẽ có chi phí cao hơn. Vui lòng chọn chất lượng mong muốn cho nhân vật này.</p>
+                  <p className="text-sm text-gray-600 mb-4">In theo yêu cầu sẽ có chi phí cao hơn. <strong>Thời gian hoàn thiện dự kiến từ 10-15 ngày (bao gồm cả thiết kế và in).</strong> Vui lòng chọn chất lượng mong muốn cho nhân vật này.</p>
                   <div className="space-y-2">
                     <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">In thường - {formatCurrency(150000)}</button>
                     <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">In cao cấp - {formatCurrency(300000)}</button>
@@ -474,10 +495,15 @@ export const Step3Characters: React.FC<{
                     <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
                 </div>
                 {activeCharacter && 
-                  <div className="mt-4 pt-4 border-t flex items-center justify-start">
+                  <div className="mt-4 pt-4 border-t flex flex-col items-start gap-1">
                     <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
                       {activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}
                     </button>
+                    {activeCharacter.customPrintPrice > 0 && (
+                      <p className="text-[10px] text-amber-600 font-bold italic flex items-center gap-1">
+                        <span className="animate-pulse">⚠️</span> Thời gian in & thiết kế: 10-15 ngày
+                      </p>
+                    )}
                   </div>
                 }
             </div>
@@ -592,18 +618,34 @@ export const Step3Characters: React.FC<{
                     </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
-                    {filteredAccessories.length > 0 ? filteredAccessories.map((part, index) => (
-                        <PartButton 
-                            key={part.id} 
-                            part={part} 
-                            isSelected={false} 
-                            onClick={() => addDraggableItem(part)} 
-                            priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
-                            originalPrice={part.price + (part.colors?.[0]?.price || 0)}
-                            isHot={hotPartIds.includes(part.id)}
-                            priority={index < 4 || hotPartIds.includes(part.id)} 
-                        />
-                    )) : (
+                    {filteredAccessories.length > 0 ? filteredAccessories.map((part, index) => {
+                        const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
+                        const isReward = rewardNames.some(rn => rn.includes(part.name.toLowerCase()) || (rn.includes('phụ kiện') && part.type === 'accessory'));
+                        
+                        // Check if this reward is already "used" in the config
+                        const usedCount = config.draggableItems.filter(item => allParts[item.partId]?.name === part.name).length;
+                        const totalEarnedForThis = earnedRewards.filter(r => r.reward.toLowerCase().includes(part.name.toLowerCase()) || (r.reward.toLowerCase().includes('phụ kiện') && part.type === 'accessory')).length;
+                        const isFree = isReward && usedCount < totalEarnedForThis;
+
+                        return (
+                            <div key={part.id} className="relative">
+                                <PartButton 
+                                    part={part} 
+                                    isSelected={false} 
+                                    onClick={() => addDraggableItem(part)} 
+                                    priceToDisplay={isFree ? 0 : (getEffectivePrice(part) + (part.colors?.[0]?.price || 0))} 
+                                    originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                                    isHot={hotPartIds.includes(part.id)}
+                                    priority={index < 4 || hotPartIds.includes(part.id)} 
+                                />
+                                {isFree && (
+                                    <div className="absolute -top-1 -left-1 z-30 bg-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-bounce">
+                                        FREE
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }) : (
                         <div className="col-span-4 text-center py-10 border-2 border-dashed border-gray-100 rounded-xl">
                             <p className="text-xs text-gray-400 italic">Không tìm thấy phụ kiện phù hợp.</p>
                         </div>
@@ -614,18 +656,34 @@ export const Step3Characters: React.FC<{
                     <div className="mt-8 border-t border-gray-100 pt-6">
                         <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm mb-4">THÊM THÚ CƯNG</h4>
                         <div className="grid grid-cols-4 gap-2">
-                            {availablePets.map((part, index) => (
-                                <PartButton 
-                                    key={part.id} 
-                                    part={part} 
-                                    isSelected={false} 
-                                    onClick={() => addDraggableItem(part)} 
-                                    priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
-                                    originalPrice={part.price + (part.colors?.[0]?.price || 0)}
-                                    isHot={hotPartIds.includes(part.id)}
-                                    priority={index < 4 || hotPartIds.includes(part.id)}
-                                />
-                            ))}
+                            {availablePets.map((part, index) => {
+                                const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
+                                const isReward = rewardNames.some(rn => rn.includes(part.name.toLowerCase()) || rn.includes('thú cưng'));
+                                
+                                // Check if this reward is already "used" in the config
+                                const usedCount = config.draggableItems.filter(item => allParts[item.partId]?.name === part.name).length;
+                                const totalEarnedForThis = earnedRewards.filter(r => r.reward.toLowerCase().includes(part.name.toLowerCase()) || r.reward.toLowerCase().includes('thú cưng')).length;
+                                const isFree = isReward && usedCount < totalEarnedForThis;
+
+                                return (
+                                    <div key={part.id} className="relative">
+                                        <PartButton 
+                                            part={part} 
+                                            isSelected={false} 
+                                            onClick={() => addDraggableItem(part)} 
+                                            priceToDisplay={isFree ? 0 : (getEffectivePrice(part) + (part.colors?.[0]?.price || 0))} 
+                                            originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                                            isHot={hotPartIds.includes(part.id)}
+                                            priority={index < 4 || hotPartIds.includes(part.id)}
+                                        />
+                                        {isFree && (
+                                            <div className="absolute -top-1 -left-1 z-30 bg-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-bounce">
+                                                FREE
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
