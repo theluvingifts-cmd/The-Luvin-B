@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
 import { adjustStock } from '../../services/productService';
-import { calculatePrice, formatCurrency, GIFT_BOX_PRICE } from '../../utils/pricing';
+import { calculatePrice, formatCurrency } from '../../utils/pricing';
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
@@ -499,8 +499,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const updateEditFormWithPrice = (newOrder: Order) => {
         const subtotal = calculateOrderPriceDetails(newOrder.items);
-        const totalQuantity = newOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-        const giftBoxFee = newOrder.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
+        const giftBoxFee = newOrder.addGiftBox ? 30000 : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
         const finalPrice = Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
@@ -656,8 +655,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         if (!order) return null;
         
         const subtotal = calculateOrderPriceDetails(order.items);
-        const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-        const giftBoxFee = order.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
+        const giftBoxFee = order.addGiftBox ? 30000 : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 

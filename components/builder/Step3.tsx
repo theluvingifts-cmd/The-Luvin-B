@@ -434,7 +434,7 @@ export const Step3Characters: React.FC<{
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
                   <h3 className="font-bold text-lg mb-2">Chọn chất lượng in</h3>
-                  <p className="text-sm text-gray-600 mb-4">In theo yêu cầu sẽ có chi phí cao hơn. <strong>Thời gian hoàn thiện dự kiến từ 10-15 ngày (bao gồm cả thiết kế và in).</strong> Vui lòng chọn chất lượng mong muốn cho nhân vật này.</p>
+                  <p className="text-sm text-gray-600 mb-4">In theo yêu cầu sẽ có chi phí cao hơn. Vui lòng chọn chất lượng mong muốn cho nhân vật này.</p>
                   <div className="space-y-2">
                     <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">In thường - {formatCurrency(150000)}</button>
                     <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">In cao cấp - {formatCurrency(300000)}</button>
@@ -474,15 +474,10 @@ export const Step3Characters: React.FC<{
                     <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
                 </div>
                 {activeCharacter && 
-                  <div className="mt-4 pt-4 border-t flex flex-col items-start gap-1">
+                  <div className="mt-4 pt-4 border-t flex items-center justify-start">
                     <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
                       {activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}
                     </button>
-                    {activeCharacter.customPrintPrice > 0 && (
-                      <p className="text-[10px] text-amber-600 font-bold italic flex items-center gap-1">
-                        <span className="animate-pulse">⚠️</span> Thời gian in & thiết kế: 10-15 ngày
-                      </p>
-                    )}
                   </div>
                 }
             </div>

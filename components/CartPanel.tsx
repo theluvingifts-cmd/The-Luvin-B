@@ -15,11 +15,10 @@ interface CartPanelProps {
   navigateTo: (page: Page) => void;
   onUpdateQuantity: (index: number, newQuantity: number) => void;
   onZoomImage: (url: string) => void;
-  templates: any[];
 }
 
-export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, templates }) => {
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
+export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -67,7 +66,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {cartItems.map((item, index) => {
-              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
+              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
               const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
               const quantity = item.quantity || 1;
 

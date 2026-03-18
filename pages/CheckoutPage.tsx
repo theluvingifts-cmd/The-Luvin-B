@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, Order, Voucher } from '../types';
-import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD, GIFT_BOX_PRICE } from '../utils/pricing';
+import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
@@ -65,6 +65,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
 
+  const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
   const EARLY_BIRD_THRESHOLD = 20; 
   const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; 
@@ -154,9 +155,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
   
   const shippingFee = calculatedShippingFee;
-  // Gói quà tính tiền theo số lượng sản phẩm nếu còn hàng và khách chọn
-  const totalQuantity = useMemo(() => cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0), [cartItems]);
-  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? (GIFT_BOX_PRICE * totalQuantity) : 0;
+  // Gói quà chỉ tính tiền nếu còn hàng và khách chọn
+  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -531,8 +531,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <p className="text-xs text-gray-500">Gói quà cao cấp, rơm & thiệp viết tay.</p>
                     </div>
                     <div className="flex flex-col items-end">
-                        <span className="font-bold text-luvin-pink">+{formatCurrency(GIFT_BOX_PRICE * totalQuantity)}</span>
-                        <span className="text-[10px] text-gray-400">({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</span>
+                        <span className="font-bold text-luvin-pink">+{formatCurrency(GIFT_BOX_PRICE)}</span>
                         {!isGiftBoxOutOfStock && (
                             <input 
                                 type="checkbox" 

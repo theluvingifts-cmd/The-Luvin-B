@@ -4,7 +4,6 @@ import { FRAME_OPTIONS } from '../constants';
 
 export const CHARACTER_BASE_PRICE = 10000;
 export const FREE_SHIPPING_THRESHOLD = 349000;
-export const GIFT_BOX_PRICE = 30000;
 
 // Helper: Get effective price checking sale conditions
 export const getEffectivePrice = (item: { price: number, salePrice?: number, saleEndDate?: string }, quantity: number = 1, bulkPricing?: { quantity: number, price: number }[]) => {
@@ -162,8 +161,7 @@ export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoP
         const { totalPrice } = calculatePrice(item, allParts, frames);
         subtotal += totalPrice * (item.quantity || 1);
     });
-    const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-    const giftBoxFee = order.addGiftBox ? GIFT_BOX_PRICE * totalQuantity : 0;
+    const giftBoxFee = order.addGiftBox ? 30000 : 0;
     const shippingFee = order.shipping.fee || 0;
     const discount = order.discountAmount || 0;
     return Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
