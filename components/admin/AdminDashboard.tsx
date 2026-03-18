@@ -10,7 +10,6 @@ interface AdminDashboardProps {
     orders: Order[];
     products: LegoPart[];
     frames: FrameOption[];
-    storeConfig: any;
 }
 
 const getStartOfDay = (date: Date) => {
@@ -188,7 +187,7 @@ const BarChart: React.FC<{ data: { date: string; revenue: number; profit: number
     );
 };
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products, frames, storeConfig }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products, frames }) => {
     const [filterType, setFilterType] = useState<'period' | 'month' | 'custom'>('period');
     const [period, setPeriod] = useState<'today' | 'yesterday' | '7days' | '30days'>('today');
     const [month, setMonth] = useState<number>(new Date().getMonth()); 
@@ -502,34 +501,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     </div>
                 </div>
             </div>
-
-            {/* Reward Tiers Overview */}
-            {storeConfig.rewardTiers && storeConfig.rewardTiers.length > 0 && (
-                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                            🎁 Quà tặng theo ngưỡng chi tiêu
-                        </h3>
-                        <button 
-                            onClick={() => window.location.hash = '#/admin/config'} 
-                            className="text-[10px] font-bold text-blue-600 hover:underline"
-                        >
-                            Chỉnh sửa trong Cấu hình &rarr;
-                        </button>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                        {storeConfig.rewardTiers.sort((a: any, b: any) => a.threshold - b.threshold).map((tier: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                                <div className="text-xl">{tier.icon}</div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase leading-none mb-1">Từ {formatCurrency(tier.threshold)}</p>
-                                    <p className="text-xs font-black text-gray-800">{tier.reward}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">

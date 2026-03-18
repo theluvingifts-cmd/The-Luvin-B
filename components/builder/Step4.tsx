@@ -64,8 +64,7 @@ export const Step4Summary: React.FC<{
 
   return (
     <div className="text-left">
-        {/* Temporarily hide urgency flash sale */}
-        {false && !isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
+        {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
         
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
             <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">

@@ -56,9 +56,6 @@ export interface StoreConfig {
     seoTitle?: string;
     seoDescription?: string;
     seoImageUrl?: string;
-
-    // Rewards Config
-    rewardTiers?: { threshold: number; reward: string; icon: string; enabled?: boolean; }[];
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

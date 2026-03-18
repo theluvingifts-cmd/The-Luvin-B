@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { FrameConfig, LegoPart, Page } from '../types';
-import { calculatePrice, formatCurrency, calculateRewards, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
-import { UnifiedProgressBar } from '../components/UnifiedProgressBar';
+import { calculatePrice, formatCurrency } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 
@@ -16,12 +15,10 @@ interface CartPageProps {
     onZoomImage: (url: string) => void;
     isEditingOrder?: boolean;
     templates: any[];
-    storeConfig: any;
 }
 
-export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder, templates, storeConfig }) => {
-    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, storeConfig.rewardTiers).totalPrice * (item.quantity || 1), 0);
-    const { earned, nextTier } = calculateRewards(totalCartPrice, storeConfig.rewardTiers);
+export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder, templates }) => {
+    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
@@ -32,7 +29,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
                         {cartItems.map((item, index) => {
-                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, storeConfig.rewardTiers);
+                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
                             const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
                             const quantity = item.quantity || 1;
                             
@@ -90,17 +87,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                             );
                         })}
                     </div>
-
-                    {/* Reward & Shipping Progress Section */}
-                    <div className="mt-8 bg-white rounded-lg shadow-md p-6 border-2 border-dashed border-luvin-pink/30">
-                        <UnifiedProgressBar 
-                            subtotal={totalCartPrice} 
-                            freeShippingThreshold={FREE_SHIPPING_THRESHOLD} 
-                            rewardTiers={storeConfig.rewardTiers || []} 
-                        />
-                    </div>
-
-                    <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+                    <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                         <div className="flex justify-between items-center text-2xl font-bold font-body text-luvin-pink">
                             <span>Tổng cộng:</span>
                             <span>{formatCurrency(totalCartPrice)}</span>

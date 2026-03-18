@@ -17,7 +17,7 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
   return (
     <div className="space-y-4">
       <div className="p-4 border border-gray-200 rounded-lg text-left">
-        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHỌN KÍCH THƯỚC</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHÔNG KÍCH THƯỚC</h4>
         <div className="grid grid-cols-3 gap-3">
           {frames.map(frame => {
             const effectivePrice = getEffectivePrice(frame);

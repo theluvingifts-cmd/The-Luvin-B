@@ -9,9 +9,9 @@ import { dataURLToBlob } from '../utils/helpers';
  * @param file File object or Base64 string
  * @returns Public Download URL or null if failed
  */
+// Renamed from uploadToFirebase to uploadToCloudinary to fix missing export errors across the project
 export const uploadToCloudinary = async (file: File | string): Promise<string | null> => {
     try {
-        console.log("Starting Firebase Storage upload...");
         let blob: Blob | null;
         let fileName = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
@@ -46,24 +46,20 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
         const storageRef = ref(storage, fileName);
 
         // Upload the bytes
-        console.log("Uploading blob to path:", fileName);
         const snapshot = await uploadBytes(storageRef, blob);
 
         // Get the permanent download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        console.log("Firebase Storage Upload Success:", downloadURL);
+        console.log("Upload success to Firebase Storage:", downloadURL);
         return downloadURL;
     } catch (error: any) {
         console.error("Firebase Storage Upload Error:", error);
         
-        // Detailed error handling for Vercel CORS/Rules issues
         if (error.code === 'storage/unauthorized') {
-            alert("Lỗi 403: Bạn chưa cấu hình Rules cho Firebase Storage. Vui lòng vào Firebase Console -> Storage -> Rules và đổi thành 'allow read, write: if true;' (hoặc cấu hình bảo mật hơn).");
-        } else if (error.message && error.message.includes('CORS')) {
-            alert("Lỗi CORS: Bạn cần cấu hình CORS cho Firebase Storage để cho phép upload từ Vercel. Hãy xem hướng dẫn trong phần chat.");
+            alert("Lỗi quyền truy cập (403): Vui lòng kiểm tra Firebase Storage Rules trong Console.");
         } else {
-            alert(`Lỗi upload Firebase: ${error.message || "Kết nối thất bại"}`);
+            alert(`Lỗi upload: ${error.message || "Kết nối thất bại"}`);
         }
         return null;
     }

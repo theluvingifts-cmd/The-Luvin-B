@@ -134,11 +134,7 @@ export const Step3Characters: React.FC<{
     hotPartIds: string[];
     showToast?: (msg: string, type: 'success' | 'error') => void;
     allParts: Record<string, LegoPart>; 
-    earnedRewards?: { threshold: number; reward: string; icon: string; }[];
-    storeConfig?: any;
-    templates?: any[];
-    handleItemRemoveCompletely?: (id: number) => void;
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts, earnedRewards = [], storeConfig, templates = [], handleItemRemoveCompletely }) => {
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts }) => {
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
@@ -420,16 +416,8 @@ export const Step3Characters: React.FC<{
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
 
-        // Prioritize reward items if earned
-        if (earnedRewards.length > 0 && accessoryCategory === 'Tất cả' && !accessorySearch) {
-            const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
-            const rewardItems = list.filter(p => rewardNames.some(rn => rn.includes(p.name.toLowerCase())));
-            const otherItems = list.filter(p => !rewardNames.some(rn => rn.includes(p.name.toLowerCase())));
-            list = [...rewardItems, ...otherItems];
-        }
-
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds, earnedRewards]);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
 
     const availablePets = useMemo(() => {
         let list = getAvailableParts(legoParts.pet || []);
@@ -437,17 +425,8 @@ export const Step3Characters: React.FC<{
             const query = accessorySearch.toLowerCase().trim();
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
-        
-        // Prioritize reward pets if earned
-        if (earnedRewards.length > 0 && !accessorySearch) {
-            const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
-            const rewardItems = list.filter(p => rewardNames.some(rn => rn.includes('thú cưng') || rn.includes(p.name.toLowerCase())));
-            const otherItems = list.filter(p => !rewardNames.some(rn => rn.includes('thú cưng') || rn.includes(p.name.toLowerCase())));
-            list = [...rewardItems, ...otherItems];
-        }
-
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch, earnedRewards]);
+    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch]);
 
     return (
         <div className="space-y-4 text-left">
@@ -618,34 +597,18 @@ export const Step3Characters: React.FC<{
                     </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
-                    {filteredAccessories.length > 0 ? filteredAccessories.map((part, index) => {
-                        const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
-                        const isReward = rewardNames.some(rn => rn.includes(part.name.toLowerCase()) || (rn.includes('phụ kiện') && part.type === 'accessory'));
-                        
-                        // Check if this reward is already "used" in the config
-                        const usedCount = config.draggableItems.filter(item => allParts[item.partId]?.name === part.name).length;
-                        const totalEarnedForThis = earnedRewards.filter(r => r.reward.toLowerCase().includes(part.name.toLowerCase()) || (r.reward.toLowerCase().includes('phụ kiện') && part.type === 'accessory')).length;
-                        const isFree = isReward && usedCount < totalEarnedForThis;
-
-                        return (
-                            <div key={part.id} className="relative">
-                                <PartButton 
-                                    part={part} 
-                                    isSelected={false} 
-                                    onClick={() => addDraggableItem(part)} 
-                                    priceToDisplay={isFree ? 0 : (getEffectivePrice(part) + (part.colors?.[0]?.price || 0))} 
-                                    originalPrice={part.price + (part.colors?.[0]?.price || 0)}
-                                    isHot={hotPartIds.includes(part.id)}
-                                    priority={index < 4 || hotPartIds.includes(part.id)} 
-                                />
-                                {isFree && (
-                                    <div className="absolute -top-1 -left-1 z-30 bg-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-bounce">
-                                        FREE
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    }) : (
+                    {filteredAccessories.length > 0 ? filteredAccessories.map((part, index) => (
+                        <PartButton 
+                            key={part.id} 
+                            part={part} 
+                            isSelected={false} 
+                            onClick={() => addDraggableItem(part)} 
+                            priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
+                            originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                            isHot={hotPartIds.includes(part.id)}
+                            priority={index < 4 || hotPartIds.includes(part.id)} 
+                        />
+                    )) : (
                         <div className="col-span-4 text-center py-10 border-2 border-dashed border-gray-100 rounded-xl">
                             <p className="text-xs text-gray-400 italic">Không tìm thấy phụ kiện phù hợp.</p>
                         </div>
@@ -656,34 +619,18 @@ export const Step3Characters: React.FC<{
                     <div className="mt-8 border-t border-gray-100 pt-6">
                         <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm mb-4">THÊM THÚ CƯNG</h4>
                         <div className="grid grid-cols-4 gap-2">
-                            {availablePets.map((part, index) => {
-                                const rewardNames = earnedRewards.map(r => r.reward.toLowerCase());
-                                const isReward = rewardNames.some(rn => rn.includes(part.name.toLowerCase()) || rn.includes('thú cưng'));
-                                
-                                // Check if this reward is already "used" in the config
-                                const usedCount = config.draggableItems.filter(item => allParts[item.partId]?.name === part.name).length;
-                                const totalEarnedForThis = earnedRewards.filter(r => r.reward.toLowerCase().includes(part.name.toLowerCase()) || r.reward.toLowerCase().includes('thú cưng')).length;
-                                const isFree = isReward && usedCount < totalEarnedForThis;
-
-                                return (
-                                    <div key={part.id} className="relative">
-                                        <PartButton 
-                                            part={part} 
-                                            isSelected={false} 
-                                            onClick={() => addDraggableItem(part)} 
-                                            priceToDisplay={isFree ? 0 : (getEffectivePrice(part) + (part.colors?.[0]?.price || 0))} 
-                                            originalPrice={part.price + (part.colors?.[0]?.price || 0)}
-                                            isHot={hotPartIds.includes(part.id)}
-                                            priority={index < 4 || hotPartIds.includes(part.id)}
-                                        />
-                                        {isFree && (
-                                            <div className="absolute -top-1 -left-1 z-30 bg-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-bounce">
-                                                FREE
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                            {availablePets.map((part, index) => (
+                                <PartButton 
+                                    key={part.id} 
+                                    part={part} 
+                                    isSelected={false} 
+                                    onClick={() => addDraggableItem(part)} 
+                                    priceToDisplay={getEffectivePrice(part) + (part.colors?.[0]?.price || 0)} 
+                                    originalPrice={part.price + (part.colors?.[0]?.price || 0)}
+                                    isHot={hotPartIds.includes(part.id)}
+                                    priority={index < 4 || hotPartIds.includes(part.id)}
+                                />
+                            ))}
                         </div>
                     </div>
                 )}

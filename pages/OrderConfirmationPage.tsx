@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Order, Page } from '../types';
-import { formatCurrency, GIFT_BOX_PRICE, calculateRewards } from '../utils/pricing';
+import { formatCurrency, GIFT_BOX_PRICE } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { uploadToCloudinary } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
@@ -13,10 +13,9 @@ interface OrderConfirmationPageProps {
     navigateTo: (page: Page) => void;
     onZoomImage: (url: string) => void;
     actionType?: 'create' | 'update';
-    storeConfig: any;
 }
 
-export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create', storeConfig }) => {
+export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create' }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [proofUrl, setProofUrl] = useState<string | null>(order?.paymentProofUrl || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,21 +193,6 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                 <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
                                 <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
                                 <div className="flex justify-between text-xs text-gray-500"><span>Còn lại (thanh toán khi nhận hàng):</span><span>{formatCurrency(amountRemaining)}</span></div>
-                                
-                                {/* Earned Rewards Section */}
-                                {calculateRewards(subtotal, storeConfig.rewardTiers).earned.length > 0 && (
-                                    <div className="pt-3 mt-3 border-t border-dashed border-gray-200">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Quà tặng kèm theo đơn</p>
-                                        <div className="space-y-1">
-                                            {calculateRewards(subtotal, storeConfig.rewardTiers).earned.map((tier, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-xs bg-green-50 text-green-700 px-2 py-1.5 rounded border border-green-100">
-                                                    <span className="flex items-center gap-1"><span>{tier.icon}</span> {tier.reward}</span>
-                                                    <span className="font-bold">✓ Đã nhận</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                             
                             <div className="border-t pt-4 text-sm space-y-1">

@@ -168,12 +168,11 @@ interface AdminOrdersProps {
     currentUser: any;
     role: 'admin' | 'warehouse' | null;
     onRefreshProducts: () => void;
-    storeConfig: any;
 }
 
 type OrderTab = 'active' | 'history';
 
-export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts, storeConfig }) => {
+export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -492,7 +491,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         let subtotal = 0;
         const partLookup = allKnownParts;
         orderItems.forEach(item => {
-            const { totalPrice } = calculatePrice(item, partLookup, frames, storeConfig.rewardTiers);
+            const { totalPrice } = calculatePrice(item, partLookup, frames);
             subtotal += totalPrice * (item.quantity || 1);
         });
         return subtotal;
@@ -852,7 +851,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
-                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames, storeConfig.rewardTiers);
+                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
                                         
                                         const formFieldImages = (item.formFields || [])
                                             .filter(f => f.type === 'image' && item.customFormData?.[f.id])

@@ -50,22 +50,13 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
-export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: any[]) => {
+export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
     const breakdown: PriceBreakdownItem[] = [];
     let total = 0;
 
     // 1. FRAME PRICE
     const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
-    let frameEffective = getEffectivePrice(frame);
-    
-    // Check if it's a simple template with its own base price
-    if (config.templateId && templates) {
-        const template = templates.find(t => t.id === config.templateId);
-        if (template && template.isSimpleTemplate && template.basePrice !== undefined) {
-            frameEffective = template.basePrice;
-        }
-    }
-    
+    const frameEffective = getEffectivePrice(frame);
     total += frameEffective;
     
     breakdown.push({ 

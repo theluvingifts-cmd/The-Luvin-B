@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { FrameConfig, LegoPart, Page } from '../types';
-import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD, calculateRewards } from '../utils/pricing';
-import { UnifiedProgressBar } from './UnifiedProgressBar';
+import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from './ZoomIcon';
 
@@ -17,15 +16,12 @@ interface CartPanelProps {
   onUpdateQuantity: (index: number, newQuantity: number) => void;
   onZoomImage: (url: string) => void;
   templates: any[];
-  storeConfig: any;
 }
 
-export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, templates, storeConfig }) => {
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, storeConfig.rewardTiers).totalPrice * (item.quantity || 1), 0);
+export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, templates }) => {
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
-  
-  const { earned, nextTier } = calculateRewards(subtotal, storeConfig.rewardTiers);
 
   const handleCheckout = () => {
     onClose();
@@ -49,11 +45,20 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
 
         {cartItems.length > 0 && (
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                <UnifiedProgressBar 
-                    subtotal={subtotal} 
-                    freeShippingThreshold={FREE_SHIPPING_THRESHOLD} 
-                    rewardTiers={storeConfig.rewardTiers || []} 
-                />
+                 {remaining > 0 ? (
+                    <div className="space-y-1">
+                        <p className="text-xs text-gray-600">
+                            Thêm <span className="font-bold text-gray-900">{formatCurrency(remaining)}</span> để được <span className="font-bold text-green-600">Free Ship</span>
+                        </p>
+                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 transition-all duration-500" style={{width: `${percentage}%`}}></div>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-xs text-green-600 font-bold flex items-center gap-1">
+                        <span>✨</span> Bạn đã được Miễn phí vận chuyển!
+                    </p>
+                )}
             </div>
         )}
 
@@ -62,7 +67,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {cartItems.map((item, index) => {
-              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, storeConfig.rewardTiers);
+              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
               const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
               const quantity = item.quantity || 1;
 

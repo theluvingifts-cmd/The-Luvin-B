@@ -10,7 +10,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^1.44.0",
     "@types/nodemailer": "^7.0.4",
     "firebase": "^10.8.0",
     "nodemailer": "^7.0.10",

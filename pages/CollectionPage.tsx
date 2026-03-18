@@ -10,11 +10,10 @@ interface CollectionPageProps {
     templates?: CollectionTemplate[],
     onZoomImage: (url: string) => void,
     allParts: Record<string, LegoPart>,
-    frames: FrameOption[],
-    storeConfig: any
+    frames: FrameOption[]
 }
 
-export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, templates, onZoomImage, allParts, frames, storeConfig }) => {
+export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, templates, onZoomImage, allParts, frames }) => {
     const displayTemplates: CollectionTemplate[] = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
     const [searchTerm, setSearchTerm] = useState('');
@@ -87,7 +86,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             {filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {filteredTemplates.map((template, index) => {
-                    const { totalPrice } = calculatePrice(template.config, allParts, frames, storeConfig.rewardTiers);
+                    const { totalPrice } = calculatePrice(template.config, allParts, frames);
                     const purchaseCount = template.purchaseCount || 0;
                     
                     return ( 
