@@ -261,7 +261,7 @@ const App: React.FC = () => {
       const newConfig = { ...template.config, templateId: template.id };
       setConfig(newConfig);
       setBuilderInitialStep(3); 
-      setCurrentPage('builder');
+      navigate('/builder');
       window.scrollTo(0, 0);
   };
 
