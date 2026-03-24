@@ -11,6 +11,7 @@ import * as firebaseApp from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';
+import { findUnusedImages, deleteStorageFiles, UnusedFile } from '../../services/cleanupService';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -19,7 +20,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'cleanup';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -77,6 +78,11 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     // Edit Modal States
     const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
+
+    // Cleanup State
+    const [unusedFiles, setUnusedFiles] = useState<UnusedFile[]>([]);
+    const [isScanning, setIsScanning] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Telegram Config
     const [telegramToken, setTelegramToken] = useState(storeConfig.telegramBotToken || '');
@@ -161,6 +167,39 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             alert("Lỗi lưu cấu hình.");
         }
         setLoading(false);
+    };
+
+    const handleScanUnused = async () => {
+        setIsScanning(true);
+        try {
+            const files = await findUnusedImages();
+            setUnusedFiles(files);
+            if (files.length === 0) {
+                alert("Không tìm thấy ảnh thừa nào!");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi khi quét ảnh.");
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    const handleDeleteUnused = async () => {
+        if (unusedFiles.length === 0) return;
+        if (!confirm(`Bạn có chắc muốn xóa ${unusedFiles.length} ảnh này không? Hành động này không thể hoàn tác!`)) return;
+
+        setIsDeleting(true);
+        try {
+            const result = await deleteStorageFiles(unusedFiles);
+            alert(`Đã xóa thành công ${result.success} ảnh. Thất bại: ${result.failed}`);
+            setUnusedFiles([]);
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi khi xóa ảnh.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
@@ -321,13 +360,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
             <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
-                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo'].map((tab) => (
+                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo', 'cleanup'].map((tab) => (
                         <button 
                             key={tab}
                             onClick={() => setActiveTab(tab as ConfigTab)} 
                             className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : 'SEO & Social'}
+                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'seo' ? 'SEO & Social' : 'Dọn dẹp Storage'}
                         </button>
                     ))}
                 </div>
@@ -412,6 +451,52 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 </div>
                                 <ConfigImageUpload label="Ảnh SEO (OG Image)" description="1200x630px" currentUrl={storeConfig.seoImageUrl} onUpload={(f) => handleConfigUpload(f, 'seoImageUrl')} isUploading={uploadingField === 'seoImageUrl'} />
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'cleanup' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Dọn dẹp Firebase Storage</h3>
+                            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800">
+                                <p className="font-bold mb-1">⚠️ Lưu ý quan trọng:</p>
+                                <p>Tính năng này sẽ quét toàn bộ ảnh trong thư mục <b>uploads/</b> và so sánh với dữ liệu trong Firestore. Những ảnh không được sử dụng trong bất kỳ đơn hàng, sản phẩm hay cấu hình nào sẽ được liệt kê để xóa.</p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={handleScanUnused}
+                                    disabled={isScanning || isDeleting}
+                                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {isScanning ? 'Đang quét...' : '🔍 Quét ảnh thừa'}
+                                </button>
+                                {unusedFiles.length > 0 && (
+                                    <button 
+                                        onClick={handleDeleteUnused}
+                                        disabled={isDeleting}
+                                        className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                    >
+                                        {isDeleting ? 'Đang xóa...' : `🗑️ Xóa ${unusedFiles.length} ảnh`}
+                                    </button>
+                                )}
+                            </div>
+
+                            {unusedFiles.length > 0 && (
+                                <div className="space-y-3">
+                                    <h4 className="font-bold text-sm text-gray-500 uppercase">Danh sách ảnh thừa ({unusedFiles.length})</h4>
+                                    <div className="max-h-[400px] overflow-y-auto border rounded-lg divide-y">
+                                        {unusedFiles.map((file, idx) => (
+                                            <div key={idx} className="p-3 flex items-center gap-4 hover:bg-gray-50">
+                                                <img src={file.url} className="w-12 h-12 object-cover rounded border" alt="" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-mono truncate text-gray-500">{file.name}</p>
+                                                </div>
+                                                <a href={file.url} target="_blank" rel="noreferrer" className="text-blue-500 text-xs font-bold">Xem</a>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
