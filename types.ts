@@ -185,6 +185,7 @@ export interface Order {
   paymentProofUploadedAt?: string;
   discountCode?: string;
   discountAmount?: number;
+  imagesCleaned?: boolean;
 }
 
 export interface PresetBackground {

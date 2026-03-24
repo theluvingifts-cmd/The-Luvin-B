@@ -56,6 +56,11 @@ export interface StoreConfig {
     seoTitle?: string;
     seoDescription?: string;
     seoImageUrl?: string;
+
+    // Cleanup Config
+    enableAutoCleanup?: boolean;
+    autoCleanupDays?: number;
+    lastAutoCleanupAt?: number;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

@@ -11,7 +11,7 @@ import * as firebaseApp from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';
-import { findUnusedImages, deleteStorageFiles, UnusedFile } from '../../services/cleanupService';
+import { findUnusedImages, deleteStorageFiles, UnusedFile, cleanupOldOrderImages } from '../../services/cleanupService';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -83,6 +83,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [unusedFiles, setUnusedFiles] = useState<UnusedFile[]>([]);
     const [isScanning, setIsScanning] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isCleaningOldOrders, setIsCleaningOldOrders] = useState(false);
+    const [cleanupResult, setCleanupResult] = useState<{ ordersProcessed: number; filesDeleted: number } | null>(null);
 
     // Telegram Config
     const [telegramToken, setTelegramToken] = useState(storeConfig.telegramBotToken || '');
@@ -129,6 +131,27 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         if (storeConfig.telegramBotToken) setTelegramToken(storeConfig.telegramBotToken);
         if (storeConfig.telegramChatId) setTelegramChatId(storeConfig.telegramChatId);
         if (storeConfig.b2bDiscountPercent !== undefined) setB2bDiscount(storeConfig.b2bDiscountPercent);
+
+        // Auto Cleanup Logic
+        const runAutoCleanup = async () => {
+            if (storeConfig.enableAutoCleanup) {
+                const now = Date.now();
+                const lastRun = storeConfig.lastAutoCleanupAt || 0;
+                const oneDay = 24 * 60 * 60 * 1000;
+
+                if (now - lastRun > oneDay) {
+                    console.log("Running scheduled auto-cleanup...");
+                    try {
+                        const days = storeConfig.autoCleanupDays || 30;
+                        await cleanupOldOrderImages(days);
+                        await updateStoreConfig({ lastAutoCleanupAt: now });
+                    } catch (error) {
+                        console.error("Auto-cleanup failed:", error);
+                    }
+                }
+            }
+        };
+        runAutoCleanup();
     }, [storeConfig]);
 
     const handleThemeChange = (path: string, value: string) => {
@@ -199,6 +222,23 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             alert("Lỗi khi xóa ảnh.");
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleCleanupOldOrders = async () => {
+        if (!confirm("Bạn có chắc muốn xóa ảnh của các đơn hàng cũ hơn 30 ngày? Hành động này không thể hoàn tác!")) return;
+        
+        setIsCleaningOldOrders(true);
+        setCleanupResult(null);
+        try {
+            const result = await cleanupOldOrderImages(30);
+            setCleanupResult(result);
+            alert(`Đã dọn dẹp xong! Xử lý ${result.ordersProcessed} đơn hàng, xóa ${result.filesDeleted} tệp ảnh.`);
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi khi dọn dẹp ảnh đơn hàng cũ.");
+        } finally {
+            setIsCleaningOldOrders(false);
         }
     };
 
@@ -478,6 +518,58 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     >
                                         {isDeleting ? 'Đang xóa...' : `🗑️ Xóa ${unusedFiles.length} ảnh`}
                                     </button>
+                                )}
+                            </div>
+
+                            <div className="border-t pt-6">
+                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Dọn dẹp ảnh đơn hàng cũ</h3>
+                                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 text-sm text-indigo-800 mb-4">
+                                    <p className="font-bold mb-1">💡 Tự động dọn dẹp:</p>
+                                    <p>Hệ thống sẽ tìm các đơn hàng đã tạo hơn <b>30 ngày</b> trước và xóa vĩnh viễn các tệp ảnh đính kèm (ảnh preview, ảnh upload) để giải phóng dung lượng Storage.</p>
+                                </div>
+                                <button 
+                                    onClick={handleCleanupOldOrders}
+                                    disabled={isCleaningOldOrders}
+                                    className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {isCleaningOldOrders ? 'Đang dọn dẹp...' : '🧹 Dọn dẹp ảnh đơn hàng > 30 ngày'}
+                                </button>
+
+                                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-700">Tự động dọn dẹp</h4>
+                                            <p className="text-[10px] text-gray-500">Hệ thống sẽ tự động chạy dọn dẹp khi bạn đăng nhập Admin</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => setStoreConfig({...storeConfig, enableAutoCleanup: !storeConfig.enableAutoCleanup})}
+                                            className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.enableAutoCleanup ? 'bg-green-500' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.enableAutoCleanup ? 'translate-x-6' : ''}`}></div>
+                                        </button>
+                                    </div>
+                                    {storeConfig.enableAutoCleanup && (
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Số ngày lưu trữ tối đa</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full p-2 border rounded text-sm" 
+                                                    value={storeConfig.autoCleanupDays || 30} 
+                                                    onChange={(e) => setStoreConfig({...storeConfig, autoCleanupDays: parseInt(e.target.value)})}
+                                                />
+                                            </div>
+                                            <div className="text-[10px] text-gray-400">
+                                                Lần chạy cuối: {storeConfig.lastAutoCleanupAt ? new Date(storeConfig.lastAutoCleanupAt).toLocaleString() : 'Chưa bao giờ'}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {cleanupResult && (
+                                    <div className="mt-3 p-3 bg-green-50 text-green-700 text-xs rounded border border-green-200">
+                                        ✅ Đã xử lý {cleanupResult.ordersProcessed} đơn hàng và xóa {cleanupResult.filesDeleted} tệp ảnh.
+                                    </div>
                                 )}
                             </div>
 

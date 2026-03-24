@@ -1,6 +1,6 @@
 
 import { db, storage } from '../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { ref, listAll, deleteObject, getDownloadURL } from 'firebase/storage';
 import { Order, LegoPart, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont, FrameConfig } from '../types';
 import { StoreConfig } from './configService';
@@ -98,6 +98,66 @@ const extractUrls = (obj: any, urls: Set<string>) => {
     }
 };
 
+/**
+ * Finds and deletes images from orders older than 30 days.
+ */
+export const cleanupOldOrderImages = async (days: number = 30): Promise<{ ordersProcessed: number; filesDeleted: number }> => {
+    try {
+        const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+        
+        // 1. Find old orders that haven't been cleaned yet
+        const q = query(
+            collection(db, 'orders'),
+            where('createdAt', '<', cutoff)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        let ordersProcessed = 0;
+        let filesDeleted = 0;
+
+        for (const orderDoc of querySnapshot.docs) {
+            const orderData = orderDoc.data() as Order;
+            
+            // Skip if already cleaned or if it's a very new order (though query should handle it)
+            if (orderData.imagesCleaned) continue;
+
+            const urlsToDelete = new Set<string>();
+            extractUrls(orderData, urlsToDelete);
+
+            // Delete files from Storage
+            for (const url of urlsToDelete) {
+                try {
+                    // Extract path from Firebase Storage URL
+                    // Example: https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/uploads%2Ffilename?alt=media
+                    const match = url.match(/\/o\/(.+)\?alt=media/);
+                    if (match) {
+                        const fullPath = decodeURIComponent(match[1]);
+                        const fileRef = ref(storage, fullPath);
+                        await deleteObject(fileRef);
+                        filesDeleted++;
+                    }
+                } catch (error) {
+                    // File might already be deleted or not in our Storage
+                    console.warn(`Could not delete file at ${url}:`, error);
+                }
+            }
+
+            // Update order to mark as cleaned
+            await updateDoc(doc(db, 'orders', orderDoc.id), {
+                imagesCleaned: true,
+                // Optional: clear the actual URLs to save space in Firestore and avoid broken links
+                // But keeping them marked as cleaned is safer for record keeping
+            });
+
+            ordersProcessed++;
+        }
+
+        return { ordersProcessed, filesDeleted };
+    } catch (error) {
+        console.error("Error cleaning up old order images:", error);
+        throw error;
+    }
+};
 /**
  * Deletes a list of files from Firebase Storage.
  */
