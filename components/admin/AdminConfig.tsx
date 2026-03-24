@@ -20,7 +20,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'cleanup';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'cleanup' | 'restore';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -85,6 +85,25 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [isDeleting, setIsDeleting] = useState(false);
     const [isCleaningOldOrders, setIsCleaningOldOrders] = useState(false);
     const [cleanupResult, setCleanupResult] = useState<{ ordersProcessed: number; filesDeleted: number } | null>(null);
+    const [cleanupLogs, setCleanupLogs] = useState<{msg: string, type: 'info' | 'success' | 'error', time: string}[]>([]);
+
+    // Restore State
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [restoreLogs, setRestoreLogs] = useState<{time: string, msg: string, type: 'info' | 'success' | 'error'}[]>([]);
+    const [restoreFiles, setRestoreFiles] = useState<File[]>([]);
+    const [restoreResult, setRestoreResult] = useState<{updatedCount: number} | null>(null);
+
+    const addRestoreLog = (msg: string, type: 'info' | 'success' | 'error' = 'info') => {
+        setRestoreLogs(prev => [{time: new Date().toLocaleTimeString(), msg, type}, ...prev].slice(0, 50));
+    };
+
+    const addLog = (msg: string, type: 'info' | 'success' | 'error' = 'info') => {
+        setCleanupLogs(prev => [{
+            msg,
+            type,
+            time: new Date().toLocaleTimeString()
+        }, ...prev].slice(0, 10)); // Giữ 10 log gần nhất
+    };
 
     // Telegram Config
     const [telegramToken, setTelegramToken] = useState(storeConfig.telegramBotToken || '');
@@ -194,15 +213,18 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     const handleScanUnused = async () => {
         setIsScanning(true);
+        addLog("Đang quét ảnh thừa trong Storage...", "info");
         try {
             const files = await findUnusedImages();
             setUnusedFiles(files);
             if (files.length === 0) {
-                alert("Không tìm thấy ảnh thừa nào!");
+                addLog("Không tìm thấy ảnh thừa nào.", "success");
+            } else {
+                addLog(`Tìm thấy ${files.length} ảnh không được sử dụng.`, "info");
             }
         } catch (error) {
             console.error(error);
-            alert("Lỗi khi quét ảnh.");
+            addLog("Lỗi khi quét ảnh thừa.", "error");
         } finally {
             setIsScanning(false);
         }
@@ -213,13 +235,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         if (!confirm(`Bạn có chắc muốn xóa ${unusedFiles.length} ảnh này không? Hành động này không thể hoàn tác!`)) return;
 
         setIsDeleting(true);
+        addLog(`Đang xóa ${unusedFiles.length} ảnh thừa...`, "info");
         try {
             const result = await deleteStorageFiles(unusedFiles);
-            alert(`Đã xóa thành công ${result.success} ảnh. Thất bại: ${result.failed}`);
+            addLog(`Đã xóa thành công ${result.success} ảnh. Thất bại: ${result.failed}`, result.failed === 0 ? "success" : "error");
             setUnusedFiles([]);
         } catch (error) {
             console.error(error);
-            alert("Lỗi khi xóa ảnh.");
+            addLog("Lỗi khi xóa ảnh thừa.", "error");
         } finally {
             setIsDeleting(false);
         }
@@ -230,15 +253,42 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         
         setIsCleaningOldOrders(true);
         setCleanupResult(null);
+        addLog("Đang bắt đầu dọn dẹp ảnh đơn hàng cũ (>30 ngày)...", "info");
         try {
             const result = await cleanupOldOrderImages(30);
             setCleanupResult(result);
-            alert(`Đã dọn dẹp xong! Xử lý ${result.ordersProcessed} đơn hàng, xóa ${result.filesDeleted} tệp ảnh.`);
+            addLog(`Dọn dẹp hoàn tất! Đã xử lý ${result.ordersProcessed} đơn hàng, xóa ${result.filesDeleted} tệp ảnh.`, "success");
         } catch (error) {
             console.error(error);
-            alert("Lỗi khi dọn dẹp ảnh đơn hàng cũ.");
+            addLog("Lỗi khi dọn dẹp ảnh đơn hàng cũ.", "error");
         } finally {
             setIsCleaningOldOrders(false);
+        }
+    };
+
+    const handleRestoreFiles = async () => {
+        if (restoreFiles.length === 0) return;
+        setIsRestoring(true);
+        setRestoreLogs([]);
+        setRestoreResult(null);
+        
+        try {
+            const { restoreImagesByFileName } = await import('../../services/restoreService');
+            const result = await restoreImagesByFileName(restoreFiles, (msg) => {
+                const type = msg.startsWith('✅') ? 'success' : msg.startsWith('❓') ? 'error' : 'info';
+                addRestoreLog(msg, type);
+            });
+            
+            if (result.success) {
+                setRestoreResult({ updatedCount: result.updatedCount });
+                addRestoreLog(`Hoàn tất khôi phục ${result.updatedCount} mục!`, 'success');
+            } else {
+                addRestoreLog(`Lỗi khôi phục: ${result.message}`, 'error');
+            }
+        } catch (error: any) {
+            addRestoreLog(`Lỗi hệ thống: ${error.message}`, 'error');
+        } finally {
+            setIsRestoring(false);
         }
     };
 
@@ -400,13 +450,19 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
             <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
-                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo', 'cleanup'].map((tab) => (
+                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo', 'cleanup', 'restore'].map((tab) => (
                         <button 
                             key={tab}
                             onClick={() => setActiveTab(tab as ConfigTab)} 
-                            className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
+                            className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'seo' ? 'SEO & Social' : 'Dọn dẹp Storage'}
+                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : 'Khôi phục ảnh'}
+                            {tab === 'cleanup' && (isScanning || isDeleting || isCleaningOldOrders) && (
+                                <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            )}
+                            {tab === 'restore' && isRestoring && (
+                                <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -494,105 +550,163 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {activeTab === 'cleanup' && (
-                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Dọn dẹp Firebase Storage</h3>
-                            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800">
-                                <p className="font-bold mb-1">⚠️ Lưu ý quan trọng:</p>
-                                <p>Tính năng này sẽ quét toàn bộ ảnh trong thư mục <b>uploads/</b> và so sánh với dữ liệu trong Firestore. Những ảnh không được sử dụng trong bất kỳ đơn hàng, sản phẩm hay cấu hình nào sẽ được liệt kê để xóa. <b>Ảnh sản phẩm và hình nền đang sử dụng sẽ KHÔNG bị xóa.</b></p>
+                    {activeTab === 'restore' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                                <span className="text-2xl">🛠️</span> Khôi phục ảnh khẩn cấp
+                            </h3>
+                            
+                            <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-sm text-green-800">
+                                <p className="font-bold mb-1">💡 Hướng dẫn khôi phục:</p>
+                                <p>1. Chọn toàn bộ ảnh gốc (Tóc, Mặt, Nền...) từ máy tính của bạn.</p>
+                                <p>2. Hệ thống sẽ tự động so sánh tên file và cập nhật lại link ảnh vào Firestore.</p>
+                                <p className="mt-2 text-[10px] opacity-70 italic">* Lưu ý: Tên file nên giống với tên file cũ bạn đã upload trước đây.</p>
                             </div>
 
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={handleScanUnused}
-                                    disabled={isScanning || isDeleting}
-                                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                                >
-                                    {isScanning ? 'Đang quét...' : '🔍 Quét ảnh thừa'}
-                                </button>
-                                {unusedFiles.length > 0 && (
-                                    <button 
-                                        onClick={handleDeleteUnused}
-                                        disabled={isDeleting}
-                                        className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 transition-colors"
-                                    >
-                                        {isDeleting ? 'Đang xóa...' : `🗑️ Xóa ${unusedFiles.length} ảnh`}
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="border-t pt-6">
-                                <h3 className="text-lg font-bold mb-4 border-b pb-2">Dọn dẹp ảnh đơn hàng cũ</h3>
-                                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 text-sm text-indigo-800 mb-4">
-                                    <p className="font-bold mb-1">💡 Tự động dọn dẹp:</p>
-                                    <p>Hệ thống sẽ tìm các đơn hàng đã tạo hơn <b>30 ngày</b> trước và xóa vĩnh viễn các tệp ảnh đính kèm (ảnh preview, ảnh upload, ảnh chuyển khoản). <b>Hệ thống đã được thiết lập để bảo vệ ảnh sản phẩm và hình nền mẫu, không bao giờ xóa chúng.</b></p>
-                                </div>
-                                <button 
-                                    onClick={handleCleanupOldOrders}
-                                    disabled={isCleaningOldOrders}
-                                    className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                                >
-                                    {isCleaningOldOrders ? 'Đang dọn dẹp...' : '🧹 Dọn dẹp ảnh đơn hàng > 30 ngày'}
-                                </button>
-
-                                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h4 className="text-sm font-bold text-gray-700">Tự động dọn dẹp</h4>
-                                            <p className="text-[10px] text-gray-500">Hệ thống sẽ tự động chạy dọn dẹp khi bạn đăng nhập Admin</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => setStoreConfig({...storeConfig, enableAutoCleanup: !storeConfig.enableAutoCleanup})}
-                                            className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.enableAutoCleanup ? 'bg-green-500' : 'bg-gray-300'}`}
-                                        >
-                                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.enableAutoCleanup ? 'translate-x-6' : ''}`}></div>
-                                        </button>
-                                    </div>
-                                    {storeConfig.enableAutoCleanup && (
-                                        <div className="space-y-3">
-                                            <div>
-                                                <label className="block text-xs font-bold mb-1">Số ngày lưu trữ tối đa</label>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full p-2 border rounded text-sm" 
-                                                    value={storeConfig.autoCleanupDays || 30} 
-                                                    onChange={(e) => setStoreConfig({...storeConfig, autoCleanupDays: parseInt(e.target.value)})}
-                                                />
-                                            </div>
-                                            <div className="text-[10px] text-gray-400">
-                                                Lần chạy cuối: {storeConfig.lastAutoCleanupAt ? new Date(storeConfig.lastAutoCleanupAt).toLocaleString() : 'Chưa bao giờ'}
-                                            </div>
-                                        </div>
-                                    )}
+                            <div className="space-y-4">
+                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-green-400 transition-colors bg-gray-50/50">
+                                    <input 
+                                        type="file" 
+                                        multiple 
+                                        accept="image/*"
+                                        onChange={(e) => setRestoreFiles(Array.from(e.target.files || []))}
+                                        className="hidden" 
+                                        id="restore-upload"
+                                    />
+                                    <label htmlFor="restore-upload" className="cursor-pointer space-y-2 block">
+                                        <div className="text-4xl">📁</div>
+                                        <p className="text-sm font-bold text-gray-700">
+                                            {restoreFiles.length > 0 ? `Đã chọn ${restoreFiles.length} tệp` : 'Nhấn để chọn ảnh khôi phục'}
+                                        </p>
+                                        <p className="text-xs text-gray-400">Hỗ trợ chọn nhiều file cùng lúc</p>
+                                    </label>
                                 </div>
 
-                                {cleanupResult && (
-                                    <div className="mt-3 p-3 bg-green-50 text-green-700 text-xs rounded border border-green-200">
-                                        ✅ Đã xử lý {cleanupResult.ordersProcessed} đơn hàng và xóa {cleanupResult.filesDeleted} tệp ảnh.
-                                    </div>
-                                )}
+                                <button 
+                                    onClick={handleRestoreFiles}
+                                    disabled={isRestoring || restoreFiles.length === 0}
+                                    className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 shadow-lg shadow-green-100 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isRestoring ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            Đang khôi phục...
+                                        </>
+                                    ) : '🚀 Bắt đầu khôi phục tự động'}
+                                </button>
                             </div>
 
-                            {unusedFiles.length > 0 && (
-                                <div className="space-y-3">
-                                    <h4 className="font-bold text-sm text-gray-500 uppercase">Danh sách ảnh thừa ({unusedFiles.length})</h4>
-                                    <div className="max-h-[400px] overflow-y-auto border rounded-lg divide-y">
-                                        {unusedFiles.map((file, idx) => (
-                                            <div key={idx} className="p-3 flex items-center gap-4 hover:bg-gray-50">
-                                                <img src={file.url} className="w-12 h-12 object-cover rounded border" alt="" />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-mono truncate text-gray-500">{file.name}</p>
-                                                </div>
-                                                <a href={file.url} target="_blank" rel="noreferrer" className="text-blue-500 text-xs font-bold">Xem</a>
-                                            </div>
-                                        ))}
+                            {restoreLogs.length > 0 && (
+                                <div className="p-4 bg-gray-900 rounded-xl font-mono text-[11px] text-green-400 space-y-1 max-h-60 overflow-y-auto shadow-inner custom-scrollbar">
+                                    <div className="text-gray-500 border-b border-gray-800 pb-2 mb-2 uppercase flex justify-between items-center sticky top-0 bg-gray-900">
+                                        <span>Nhật ký khôi phục</span>
+                                        <button onClick={() => setRestoreLogs([])} className="text-[9px] hover:text-white">Xóa log</button>
                                     </div>
+                                    {restoreLogs.map((log, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <span className="text-gray-600">[{log.time}]</span>
+                                            <span className={log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : 'text-blue-400'}>
+                                                {log.msg}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {restoreResult && (
+                                <div className="p-4 bg-green-100 text-green-800 rounded-xl border border-green-200 text-center animate-bounce">
+                                    <p className="font-bold">🎉 Khôi phục hoàn tất!</p>
+                                    <p className="text-sm">Đã cập nhật thành công {restoreResult.updatedCount} mục dữ liệu.</p>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {activeTab === 'theme' && (
+                    {activeTab === 'cleanup' && (
+                        <div className="bg-red-50 p-12 rounded-2xl border-2 border-red-200 text-center space-y-6 shadow-sm">
+                            <div className="text-6xl animate-bounce">⚠️</div>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-black text-red-800 uppercase tracking-tight">Tính năng tạm khóa bảo trì</h3>
+                                <p className="text-red-600 font-medium max-w-md mx-auto leading-relaxed">
+                                    Chúng tôi đang nâng cấp thuật toán bảo vệ dữ liệu để đảm bảo an toàn tuyệt đối cho hình ảnh sản phẩm, linh kiện và hình nền của bạn. 
+                                    <br/><span className="font-bold">Vui lòng quay lại sau khi quá trình bảo trì hoàn tất.</span>
+                                </p>
+                            </div>
+                            <div className="pt-4">
+                                <button 
+                                    onClick={() => setActiveTab('branding')}
+                                    className="px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                                >
+                                    Quay lại Trang chủ
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'restore' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Khôi phục ảnh đã mất</h3>
+                            
+                            <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-sm text-green-800">
+                                <p className="font-bold mb-1">💡 Hướng dẫn khôi phục nhanh:</p>
+                                <p>1. Chọn toàn bộ ảnh gốc (Tóc, Mặt, Nền...) từ máy tính của bạn.</p>
+                                <p>2. Hệ thống sẽ tự động so sánh tên file và cập nhật lại link ảnh vào Firestore.</p>
+                                <p className="mt-2 text-[10px] opacity-70 italic">* Lưu ý: Tên file nên giống với tên file cũ bạn đã upload trước đây.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-green-400 transition-colors">
+                                    <input 
+                                        type="file" 
+                                        multiple 
+                                        accept="image/*"
+                                        onChange={(e) => setRestoreFiles(Array.from(e.target.files || []))}
+                                        className="hidden" 
+                                        id="restore-upload"
+                                    />
+                                    <label htmlFor="restore-upload" className="cursor-pointer space-y-2 block">
+                                        <div className="text-4xl">📁</div>
+                                        <p className="text-sm font-bold text-gray-700">
+                                            {restoreFiles.length > 0 ? `Đã chọn ${restoreFiles.length} tệp` : 'Nhấn để chọn ảnh khôi phục'}
+                                        </p>
+                                        <p className="text-xs text-gray-400">Hỗ trợ chọn nhiều file cùng lúc</p>
+                                    </label>
+                                </div>
+
+                                <button 
+                                    onClick={handleRestoreFiles}
+                                    disabled={isRestoring || restoreFiles.length === 0}
+                                    className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 shadow-lg shadow-green-100 transition-all"
+                                >
+                                    {isRestoring ? 'Đang khôi phục...' : '🚀 Bắt đầu khôi phục tự động'}
+                                </button>
+                            </div>
+
+                            {restoreLogs.length > 0 && (
+                                <div className="p-4 bg-gray-900 rounded-xl font-mono text-[11px] text-green-400 space-y-1 max-h-60 overflow-y-auto shadow-inner">
+                                    <div className="text-gray-500 border-b border-gray-800 pb-2 mb-2 uppercase flex justify-between items-center">
+                                        <span>Nhật ký khôi phục</span>
+                                        <button onClick={() => setRestoreLogs([])} className="text-[9px] hover:text-white">Xóa log</button>
+                                    </div>
+                                    {restoreLogs.map((log, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <span className="text-gray-600">[{log.time}]</span>
+                                            <span className={log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : 'text-blue-400'}>
+                                                {log.msg}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {restoreResult && (
+                                <div className="p-4 bg-green-100 text-green-800 rounded-xl border border-green-200 text-center">
+                                    <p className="font-bold">🎉 Khôi phục hoàn tất!</p>
+                                    <p className="text-sm">Đã cập nhật thành công {restoreResult.updatedCount} mục dữ liệu.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Màu sắc & Phông chữ</h3>
                             <div>

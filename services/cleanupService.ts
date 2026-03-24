@@ -29,7 +29,9 @@ export const findUnusedImages = async (): Promise<UnusedFile[]> => {
             'feedbacks',
             'frames',
             'config',
-            'assets'
+            'assets',
+            'vouchers',
+            'users'
         ];
 
         for (const colName of collections) {
@@ -45,15 +47,16 @@ export const findUnusedImages = async (): Promise<UnusedFile[]> => {
         const res = await listAll(storageRef);
         
         const unusedFiles: UnusedFile[] = [];
+        const totalFiles = res.items.length;
 
         for (const item of res.items) {
             const url = await getDownloadURL(item);
-            // Check if the URL is in the used set
-            // Note: Firebase Storage URLs contain a token, so we might need to compare the base path or just check if the URL contains the filename
             
             let isUsed = false;
             for (const usedUrl of usedUrls) {
-                if (usedUrl.includes(item.fullPath)) {
+                // Fix: Decode URL to handle encoded characters like %2F (slash)
+                const decodedUrl = decodeURIComponent(usedUrl);
+                if (decodedUrl.includes(item.fullPath)) {
                     isUsed = true;
                     break;
                 }
@@ -66,6 +69,12 @@ export const findUnusedImages = async (): Promise<UnusedFile[]> => {
                     url: url
                 });
             }
+        }
+
+        // Safety Check: If more than 50% of files are marked as unused, it's suspicious
+        if (totalFiles > 10 && unusedFiles.length > totalFiles * 0.5) {
+            console.warn(`Suspicious cleanup: ${unusedFiles.length}/${totalFiles} files marked as unused. Aborting for safety.`);
+            return []; // Return empty to prevent accidental mass deletion
         }
 
         return unusedFiles;
@@ -115,7 +124,9 @@ export const cleanupOldOrderImages = async (days: number = 30): Promise<{ orders
             'feedbacks',
             'frames',
             'config',
-            'assets'
+            'assets',
+            'vouchers',
+            'users'
         ];
 
         for (const colName of collectionsToProtect) {
@@ -156,8 +167,10 @@ export const cleanupOldOrderImages = async (days: number = 30): Promise<{ orders
 
                 // Check if it's protected
                 let isProtected = false;
+                const decodedUrl = decodeURIComponent(url);
                 for (const protectedUrl of protectedUrls) {
-                    if (protectedUrl.includes(url) || url.includes(protectedUrl)) {
+                    const decodedProtected = decodeURIComponent(protectedUrl);
+                    if (decodedProtected.includes(decodedUrl) || decodedUrl.includes(decodedProtected)) {
                         isProtected = true;
                         break;
                     }
