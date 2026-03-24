@@ -241,6 +241,9 @@ export const BackgroundForm: React.FC<{
                                             <option value="text">Chữ ngắn</option>
                                             <option value="textarea">Chữ dài</option>
                                             <option value="date">Ngày tháng</option>
+                                            <option value="number">Số lượng</option>
+                                            <option value="select">Lựa chọn (Dropdown)</option>
+                                            <option value="color">Màu sắc</option>
                                             <option value="image">Hình ảnh</option>
                                         </select>
                                     </div>
@@ -258,17 +261,61 @@ export const BackgroundForm: React.FC<{
                                         </label>
                                     </div>
 
-                                    {/* Placeholder (Optional for text types) */}
-                                    {['text', 'textarea'].includes(field.type) && (
-                                        <div className="col-span-11 col-start-2 -mt-2">
-                                            <input 
-                                                value={field.placeholder || ''} 
-                                                onChange={e => handleUpdateField(field.id, { placeholder: e.target.value })}
-                                                className="w-full p-1.5 border-b border-gray-200 bg-transparent text-[10px] outline-none italic text-gray-500"
-                                                placeholder="Gợi ý nhập (VD: Nhập tên cặp đôi tại đây...)"
-                                            />
+                                    {/* Additional Settings based on Type */}
+                                    <div className="col-span-11 col-start-2 grid grid-cols-2 gap-4 mt-2 border-t pt-2">
+                                        {/* Placeholder / Help Text */}
+                                        <div className="col-span-2 grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Gợi ý nhập (Placeholder)</label>
+                                                <input 
+                                                    value={field.placeholder || ''} 
+                                                    onChange={e => handleUpdateField(field.id, { placeholder: e.target.value })}
+                                                    className="w-full p-2 border rounded-lg text-[10px] outline-none italic text-gray-500"
+                                                    placeholder="VD: Nhập tên cặp đôi tại đây..."
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Hướng dẫn (Help Text)</label>
+                                                <input 
+                                                    value={field.helpText || ''} 
+                                                    onChange={e => handleUpdateField(field.id, { helpText: e.target.value })}
+                                                    className="w-full p-2 border rounded-lg text-[10px] outline-none italic text-gray-500"
+                                                    placeholder="VD: Tên sẽ được in hoa toàn bộ..."
+                                                />
+                                            </div>
                                         </div>
-                                    )}
+
+                                        {/* Number Settings */}
+                                        {field.type === 'number' && (
+                                            <div className="col-span-2 grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Tối thiểu (Min)</label>
+                                                    <input type="number" value={field.min || ''} onChange={e => handleUpdateField(field.id, { min: Number(e.target.value) })} className="w-full p-2 border rounded-lg text-[10px]" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Tối đa (Max)</label>
+                                                    <input type="number" value={field.max || ''} onChange={e => handleUpdateField(field.id, { max: Number(e.target.value) })} className="w-full p-2 border rounded-lg text-[10px]" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Bước nhảy (Step)</label>
+                                                    <input type="number" value={field.step || ''} onChange={e => handleUpdateField(field.id, { step: Number(e.target.value) })} className="w-full p-2 border rounded-lg text-[10px]" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Select Options */}
+                                        {field.type === 'select' && (
+                                            <div className="col-span-2">
+                                                <label className="block text-[9px] font-black text-gray-400 uppercase mb-1">Các lựa chọn (Cách nhau bằng dấu phẩy)</label>
+                                                <input 
+                                                    value={field.options?.join(', ') || ''} 
+                                                    onChange={e => handleUpdateField(field.id, { options: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '') })}
+                                                    className="w-full p-2 border rounded-lg text-[10px]"
+                                                    placeholder="VD: Đỏ, Xanh, Vàng"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

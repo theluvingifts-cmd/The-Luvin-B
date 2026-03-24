@@ -52,22 +52,49 @@ export const Step2BackgroundAndDecorations: React.FC<{
     const newFormData = { ...(config.customFormData || {}), [fieldId]: value };
     
     let displayValue = value;
-    if (value && value.includes('-') && value.length === 10) {
+    // Format date if it's a date string (YYYY-MM-DD)
+    if (value && value.includes('-') && value.split('-').length === 3 && value.length === 10) {
         const p = value.split('-');
         displayValue = `${p[2]}/${p[1]}/${p[0]}`;
     }
 
     const updatedTexts = config.texts.map(t => {
         if (t.linkedFieldId === fieldId) {
+            const field = activeFields.find(f => f.id === fieldId);
+            if (field?.type === 'color') {
+                return { ...t, color: value };
+            }
             return { ...t, content: displayValue || ' ' };
         }
         return t;
     });
 
+    const updatedDraggableItems = (config.draggableItems || []).map(item => {
+        if (item.linkedFieldId === fieldId) {
+            const field = activeFields.find(f => f.id === fieldId);
+            if (field?.type === 'image') {
+                return { ...item, partId: value };
+            }
+        }
+        return item;
+    });
+
+    const updatedShapes = (config.shapes || []).map(s => {
+        if (s.linkedFieldId === fieldId) {
+            const field = activeFields.find(f => f.id === fieldId);
+            if (field?.type === 'color') {
+                return { ...s, fillColor: value };
+            }
+        }
+        return s;
+    });
+
     setConfig({ 
         ...config, 
         customFormData: newFormData,
-        texts: updatedTexts
+        texts: updatedTexts,
+        draggableItems: updatedDraggableItems,
+        shapes: updatedShapes
     });
   };
 
@@ -81,13 +108,27 @@ export const Step2BackgroundAndDecorations: React.FC<{
     const overlayTexts = (bg.overlayConfig?.texts || []).map(t => {
         if (t.linkedFieldId && config.customFormData?.[t.linkedFieldId]) {
             let val = config.customFormData[t.linkedFieldId];
-            if (val.includes('-')) {
+            if (val.includes('-') && val.split('-').length === 3 && val.length === 10) {
                 const p = val.split('-');
                 val = `${p[2]}/${p[1]}/${p[0]}`;
             }
             return { ...t, content: val };
         }
         return t;
+    });
+
+    const overlayDraggableItems = (bg.overlayConfig?.draggableItems || []).map(item => {
+        if (item.linkedFieldId && config.customFormData?.[item.linkedFieldId]) {
+            return { ...item, partId: config.customFormData[item.linkedFieldId] };
+        }
+        return item;
+    });
+
+    const overlayShapes = (bg.overlayConfig?.shapes || []).map(s => {
+        if (s.linkedFieldId && config.customFormData?.[s.linkedFieldId]) {
+            return { ...s, fillColor: config.customFormData[s.linkedFieldId] };
+        }
+        return s;
     });
 
     setConfig({ 
@@ -97,8 +138,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
         isRotated: bg.orientation === 'landscape',
         formFields: bg.formFields || [],
         texts: overlayTexts,
-        draggableItems: bg.overlayConfig?.draggableItems || [],
-        shapes: bg.overlayConfig?.shapes || []
+        draggableItems: overlayDraggableItems,
+        shapes: overlayShapes
     });
   };
 
@@ -125,35 +166,54 @@ export const Step2BackgroundAndDecorations: React.FC<{
     }
   };
 
+  const isFieldLinked = (fieldId: string) => {
+      return config.texts.some(t => t.linkedFieldId === fieldId) || 
+             config.draggableItems.some(i => i.linkedFieldId === fieldId) ||
+             config.shapes.some(s => s.linkedFieldId === fieldId);
+  };
+
   return (
     <div className="space-y-6 text-left animate-fade-in">
       {/* SECTION 1: PRESET BACKGROUNDS */}
       <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm">
-        <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px]">1. CHỌN MẪU NỀN</h4>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
+        <div className="flex justify-between items-center mb-4">
+            <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px]">1. CHỌN MẪU NỀN</h4>
+            <span className="text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                {filteredBackgrounds.length} mẫu
+            </span>
+        </div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
             {categories.map(category => (
-                <button key={category} onClick={() => setSelectedCategory(category)} className={`flex-shrink-0 px-3 py-1 text-[10px] rounded-full font-bold transition-all ${selectedCategory === category ? 'bg-luvin-pink text-white' : 'bg-gray-100 text-gray-500'}`}>{category}</button>
+                <button 
+                    key={category} 
+                    onClick={() => setSelectedCategory(category)} 
+                    className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-black transition-all uppercase tracking-tight ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-md shadow-pink-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                    {category}
+                </button>
             ))}
         </div>
-        <div className="grid grid-cols-4 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="grid grid-cols-4 gap-2.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
           {filteredBackgrounds.map(bg => (
             <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} />
           ))}
         </div>
         
-        {/* MANUAL UPLOAD AREA - KHÔI PHỤC THEO YÊU CẦU CỦA BỐ */}
         <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
             <input type="file" ref={manualBgInputRef} className="hidden" accept="image/*" onChange={handleManualBgUpload} />
             <button 
                 onClick={() => manualBgInputRef.current?.click()}
                 disabled={isProcessingImage}
-                className={`w-full py-3 rounded-xl border-2 border-dashed transition-all flex items-center justify-center gap-2 ${config.background.type === 'upload' ? 'border-luvin-pink bg-pink-50 text-luvin-pink' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
+                className={`w-full py-3.5 rounded-xl border-2 border-dashed transition-all flex items-center justify-center gap-2.5 ${config.background.type === 'upload' ? 'border-luvin-pink bg-pink-50 text-luvin-pink' : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
             >
                 {isProcessingImage ? (
-                    <span className="text-xs font-bold animate-pulse">Đang xử lý ảnh...</span>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-luvin-pink border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-[11px] font-black uppercase">Đang xử lý ảnh...</span>
+                    </div>
                 ) : (
                     <>
-                        <span className="text-xl">☁️</span>
+                        <span className="text-xl">📸</span>
                         <span className="text-[11px] font-black uppercase tracking-tight">
                             {config.background.type === 'upload' ? 'Thay ảnh nền khác' : 'Tải ảnh nền của riêng bạn'}
                         </span>
@@ -161,47 +221,179 @@ export const Step2BackgroundAndDecorations: React.FC<{
                 )}
             </button>
             {config.background.type === 'upload' && (
-                <p className="text-[9px] text-center text-gray-400 mt-2 italic">* Bạn đang sử dụng ảnh nền tự tải lên</p>
+                <div className="flex items-center justify-center gap-1.5 mt-2">
+                    <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></span>
+                    <p className="text-[9px] text-gray-400 italic font-medium">Bạn đang sử dụng ảnh nền tự tải lên</p>
+                </div>
             )}
         </div>
       </div>
 
       {/* SECTION 2: PRINT INFO FORM */}
-      <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm">
-        <h4 className="font-bold text-gray-800 mb-4 uppercase tracking-wider text-[11px] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 2. NHẬP THÔNG TIN IN ẤN
-        </h4>
-        <div className="space-y-4">
-            {activeFields.length > 0 ? activeFields.map(field => (
-                <div key={field.id} className="space-y-1.5">
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
-                    </label>
-                    {field.type === 'text' && (
-                        <input type="text" placeholder={field.placeholder} value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
-                    )}
-                    {field.type === 'textarea' && (
-                        <textarea placeholder={field.placeholder} rows={2} value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
-                    )}
-                    {field.type === 'date' && (
-                        <input type="date" value={config.customFormData?.[field.id] || ''} onChange={(e) => handleUpdateFormData(field.id, e.target.value)} className="w-full p-2.5 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-luvin-pink" />
-                    )}
-                    {field.type === 'image' && (
-                        <input type="file" accept="image/*" onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                                const resized = await resizeImage(file, 800, 800);
-                                handleUpdateFormData(field.id, resized);
-                            }
-                        }} className="w-full text-xs" />
-                    )}
-                </div>
-            )) : (
-                <div className="py-8 text-center border-2 border-dashed border-gray-100 rounded-2xl">
-                    <p className="text-xs text-gray-400 italic font-medium">Mẫu này không có ô nhập liệu.</p>
+      <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-20"></div>
+        <div className="flex justify-between items-center mb-5">
+            <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px] flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span> 
+                2. NHẬP THÔNG TIN IN ẤN
+            </h4>
+            {activeFields.length > 0 && (
+                <button 
+                    onClick={() => setConfig({ ...config, customFormData: {} })}
+                    className="text-[9px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-tighter transition-colors"
+                >
+                    Xóa tất cả
+                </button>
+            )}
+        </div>
+
+        <div className="space-y-5">
+            {activeFields.length > 0 ? activeFields.map(field => {
+                const isLinked = isFieldLinked(field.id);
+                return (
+                    <div key={field.id} className="space-y-1.5 group">
+                        <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-black text-gray-500 uppercase ml-1 flex items-center gap-1.5">
+                                {field.label} 
+                                {field.required && <span className="text-red-500 text-xs">*</span>}
+                                {isLinked && (
+                                    <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-600 rounded text-[8px] font-bold border border-green-100 animate-pulse">
+                                        <span className="w-1 h-1 rounded-full bg-green-500"></span>
+                                        LIVE
+                                    </span>
+                                )}
+                            </label>
+                            {field.helpText && (
+                                <span className="text-[9px] text-gray-400 italic font-medium">{field.helpText}</span>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            {field.type === 'text' && (
+                                <input 
+                                    type="text" 
+                                    placeholder={field.placeholder || `Nhập ${field.label.toLowerCase()}...`} 
+                                    value={config.customFormData?.[field.id] || ''} 
+                                    onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
+                                />
+                            )}
+                            {field.type === 'textarea' && (
+                                <textarea 
+                                    placeholder={field.placeholder || `Nhập ${field.label.toLowerCase()}...`} 
+                                    rows={2} 
+                                    value={config.customFormData?.[field.id] || ''} 
+                                    onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none" 
+                                />
+                            )}
+                            {field.type === 'date' && (
+                                <input 
+                                    type="date" 
+                                    value={config.customFormData?.[field.id] || ''} 
+                                    onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
+                                />
+                            )}
+                            {field.type === 'number' && (
+                                <input 
+                                    type="number" 
+                                    min={field.min}
+                                    max={field.max}
+                                    step={field.step}
+                                    placeholder={field.placeholder}
+                                    value={config.customFormData?.[field.id] || ''} 
+                                    onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
+                                />
+                            )}
+                            {field.type === 'select' && (
+                                <select 
+                                    value={config.customFormData?.[field.id] || ''} 
+                                    onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="">-- Chọn {field.label.toLowerCase()} --</option>
+                                    {field.options?.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            )}
+                            {field.type === 'color' && (
+                                <div className="flex items-center gap-3 p-2 bg-gray-50 border border-gray-200 rounded-xl">
+                                    <input 
+                                        type="color" 
+                                        value={config.customFormData?.[field.id] || '#000000'} 
+                                        onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
+                                        className="w-10 h-10 rounded-lg border-none cursor-pointer bg-transparent" 
+                                    />
+                                    <span className="text-xs font-mono text-gray-500 uppercase">{config.customFormData?.[field.id] || '#000000'}</span>
+                                </div>
+                            )}
+                            {field.type === 'image' && (
+                                <div className="flex flex-col gap-2">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                const resized = await resizeImage(file, 800, 800);
+                                                handleUpdateFormData(field.id, resized);
+                                            }
+                                        }} 
+                                        className="hidden" 
+                                        id={`file-${field.id}`}
+                                    />
+                                    <label 
+                                        htmlFor={`file-${field.id}`}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-100 transition-all border-dashed"
+                                    >
+                                        <span className="text-lg">🖼️</span>
+                                        <span className="text-xs font-bold text-gray-600">
+                                            {config.customFormData?.[field.id] ? 'Thay đổi ảnh' : 'Chọn ảnh tải lên'}
+                                        </span>
+                                    </label>
+                                    {config.customFormData?.[field.id] && (
+                                        <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                                            <img src={config.customFormData[field.id]} alt="Preview" className="w-full h-full object-cover" />
+                                            <button 
+                                                onClick={() => handleUpdateFormData(field.id, '')}
+                                                className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl-lg"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {field.type === 'select' && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }) : (
+                <div className="py-10 text-center border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/50">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
+                        <span className="text-xl">📝</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 italic font-bold uppercase tracking-tight">Mẫu này không có ô nhập liệu tùy chỉnh.</p>
+                    <p className="text-[9px] text-gray-300 mt-1">Bạn có thể thêm chữ trực tiếp trên ảnh xem trước.</p>
                 </div>
             )}
         </div>
+        
+        {activeFields.length > 0 && (
+            <div className="mt-6 p-3 bg-blue-50 rounded-xl border border-blue-100 flex gap-3 items-start">
+                <span className="text-blue-500 mt-0.5">💡</span>
+                <p className="text-[10px] text-blue-800 leading-relaxed font-medium">
+                    Thông tin bạn nhập sẽ được hiển thị <b>trực tiếp</b> trên ảnh xem trước. Hãy kiểm tra kỹ chính tả trước khi sang bước tiếp theo.
+                </p>
+            </div>
+        )}
       </div>
     </div>
   );

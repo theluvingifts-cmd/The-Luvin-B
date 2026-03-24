@@ -14,7 +14,7 @@ const TOOLS = [
     { id: 'background', icon: '🎨', label: 'Nền' },
     { id: 'shape', icon: '🟥', label: 'Khối' },
     { id: 'text', icon: 'abc', label: 'Chữ' },
-    { id: 'upload', icon: '☁️', label: 'Upload' },
+    { id: 'upload', icon: '🖼️', label: 'Sticker/Ảnh' },
     { id: 'form', icon: '📝', label: 'Form' }, 
     { id: 'layers', icon: '📚', label: 'Lớp' },
 ];
@@ -107,11 +107,20 @@ export const AdminDesign: React.FC = () => {
     const [bgCategory, setBgCategory] = useState('Tình yêu');
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
     const [showSaveModal, setShowSaveModal] = useState(false);
+    const [isNewCategory, setIsNewCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
     const [uploadedFonts, setUploadedFonts] = useState<CustomFont[]>([]);
     const [previewFont, setPreviewFont] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [clipboard, setClipboard] = useState<any>(null);
+    const [testFormData, setTestFormData] = useState<Record<string, string>>({});
+    const [isTestMode, setIsTestMode] = useState(false);
     const previewRef = useRef<HTMLDivElement>(null);
     const skipHistoryRef = useRef(false);
+
+    useEffect(() => {
+        setBgType(config.frameId === 'md' ? 'rectangle' : 'square');
+    }, [config.frameId]);
 
     const categories = useMemo(() => {
         const uniqueCats = Array.from(new Set(existingBackgrounds.map(bg => bg.category)));
@@ -125,7 +134,29 @@ export const AdminDesign: React.FC = () => {
                 getAllFrames(), getStoreConfig(), getAllBackgrounds(), getAllParts()
             ]);
             if (framesData.length > 0) setFrames(framesData);
-            if (configData?.uploadedFonts) setUploadedFonts(configData.uploadedFonts);
+            if (configData?.uploadedFonts) {
+                setUploadedFonts(configData.uploadedFonts);
+                
+                // Inject custom fonts into head
+                const existingStyle = document.getElementById('admin-design-fonts');
+                if (existingStyle) existingStyle.remove();
+                const style = document.createElement('style');
+                style.id = 'admin-design-fonts';
+                let css = '';
+                configData.uploadedFonts.forEach((font: CustomFont) => {
+                    css += `
+                        @font-face {
+                            font-family: '${font.name}';
+                            src: url('${font.url}');
+                            font-weight: normal;
+                            font-style: normal;
+                            font-display: swap;
+                        }
+                    `;
+                });
+                style.innerHTML = css;
+                document.head.appendChild(style);
+            }
             if (bgData) setExistingBackgrounds(bgData);
             if (productsData) setProducts(productsData);
         };
@@ -211,16 +242,71 @@ export const AdminDesign: React.FC = () => {
         return null;
     }, [selectedItemId, config]);
 
+    const handleDuplicate = useCallback(() => {
+        if (!selectedItemId || !selectedObject) return;
+        const [type] = selectedItemId.split('-');
+        const newId = Date.now();
+        const offset = 2; // Offset for the duplicate
+        
+        setConfig(prev => {
+            if (type === 'text') {
+                const item = prev.texts.find(t => t.id === parseInt(selectedItemId.split('-')[1]));
+                if (!item) return prev;
+                return { ...prev, texts: [...prev.texts, { ...item, id: newId, x: Math.min(100, item.x + offset), y: Math.min(100, item.y + offset) }] };
+            }
+            if (type === 'item') {
+                const item = prev.draggableItems.find(i => i.id === parseInt(selectedItemId.split('-')[1]));
+                if (!item) return prev;
+                return { ...prev, draggableItems: [...prev.draggableItems, { ...item, id: newId, x: Math.min(100, item.x + offset), y: Math.min(100, item.y + offset) }] };
+            }
+            if (type === 'shape') {
+                const item = (prev.shapes || []).find(s => s.id === parseInt(selectedItemId.split('-')[1]));
+                if (!item) return prev;
+                return { ...prev, shapes: [...(prev.shapes || []), { ...item, id: newId, x: Math.min(100, item.x + offset), y: Math.min(100, item.y + offset) }] };
+            }
+            return prev;
+        });
+        
+        // Select the new item
+        setTimeout(() => setSelectedItemId(`${type}-${newId}`), 50);
+    }, [selectedItemId, selectedObject]);
+
+    const handleCopy = useCallback(() => {
+        if (!selectedItemId || !selectedObject) return;
+        setClipboard({ type: selectedItemId.split('-')[0], data: { ...selectedObject } });
+    }, [selectedItemId, selectedObject]);
+
+    const handlePaste = useCallback(() => {
+        if (!clipboard) return;
+        const newId = Date.now();
+        const offset = 5;
+        setConfig(prev => {
+            const newData = { ...clipboard.data, id: newId, x: Math.min(100, clipboard.data.x + offset), y: Math.min(100, clipboard.data.y + offset) };
+            if (clipboard.type === 'text') return { ...prev, texts: [...prev.texts, newData] };
+            if (clipboard.type === 'item') return { ...prev, draggableItems: [...prev.draggableItems, newData] };
+            if (clipboard.type === 'shape') return { ...prev, shapes: [...(prev.shapes || []), newData] };
+            return prev;
+        });
+        setTimeout(() => setSelectedItemId(`${clipboard.type}-${newId}`), 50);
+    }, [clipboard]);
+
+    const handleSave = useCallback(() => {
+        setShowSaveModal(true);
+    }, []);
+
     // KEYBOARD SHORTCUTS
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            const isTyping = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+            const target = e.target as HTMLElement;
+            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+
+            if (isTyping) return;
 
             // Di chuyển bằng phím mũi tên
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedItemId && !isTyping) {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedItemId) {
                 if ((selectedObject as any)?.lockedPosition) return;
                 e.preventDefault();
-                const step = e.shiftKey ? 2.0 : 0.5; // Shift di chuyển xa hơn
+                const step = e.shiftKey ? 2.0 : 0.5;
                 let dx = 0, dy = 0;
                 if (e.key === 'ArrowUp') dy = -step;
                 if (e.key === 'ArrowDown') dy = step;
@@ -235,9 +321,38 @@ export const AdminDesign: React.FC = () => {
             }
 
             // Xoá vật thể
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isTyping) {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId) {
                 e.preventDefault();
                 handleItemRemove(selectedItemId);
+            }
+
+            // Bỏ chọn
+            if ((e.key === 'Escape' || e.key === 'Enter') && selectedItemId) {
+                setSelectedItemId(null);
+            }
+
+            // Duplicate (Ctrl+D)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedItemId) {
+                e.preventDefault();
+                handleDuplicate();
+            }
+
+            // Copy (Ctrl+C)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedItemId) {
+                e.preventDefault();
+                handleCopy();
+            }
+
+            // Paste (Ctrl+V)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault();
+                handlePaste();
+            }
+
+            // Save (Ctrl+S)
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
             }
 
             // Hoàn tác
@@ -252,7 +367,7 @@ export const AdminDesign: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedItemId, selectedObject, updateSelected, handleItemRemove, handleUndo, handleRedo]);
+    }, [selectedItemId, selectedObject, updateSelected, handleItemRemove, handleUndo, handleRedo, handleDuplicate, handleCopy, handlePaste, handleSave]);
 
     const handleLoadTemplate = (bg: PresetBackground) => {
         setEditingBgId(bg.id);
@@ -283,6 +398,43 @@ export const AdminDesign: React.FC = () => {
         });
     }, []);
 
+    const handleUpdateTestForm = (fieldId: string, value: string) => {
+        setTestFormData(prev => ({ ...prev, [fieldId]: value }));
+        
+        let displayValue = value;
+        if (value && value.includes('-') && value.split('-').length === 3 && value.length === 10) {
+            const p = value.split('-');
+            displayValue = `${p[2]}/${p[1]}/${p[0]}`;
+        }
+
+        setConfig(prev => ({
+            ...prev,
+            customFormData: { ...(prev.customFormData || {}), [fieldId]: value },
+            texts: prev.texts.map(t => {
+                if (t.linkedFieldId === fieldId) {
+                    const field = (prev.formFields || []).find(f => f.id === fieldId);
+                    if (field?.type === 'color') return { ...t, color: value };
+                    return { ...t, content: displayValue || ' ' };
+                }
+                return t;
+            }),
+            shapes: (prev.shapes || []).map(s => {
+                if (s.linkedFieldId === fieldId) {
+                    const field = (prev.formFields || []).find(f => f.id === fieldId);
+                    if (field?.type === 'color') return { ...s, fillColor: value };
+                }
+                return s;
+            }),
+            draggableItems: (prev.draggableItems || []).map(item => {
+                if (item.linkedFieldId === fieldId) {
+                    const field = (prev.formFields || []).find(f => f.id === fieldId);
+                    if (field?.type === 'image' && value) return { ...item, partId: value };
+                }
+                return item;
+            })
+        }));
+    };
+
     const handleAddField = () => {
         const newField: FormField = { id: `field_${Date.now()}`, label: 'Trường mới', type: 'text', required: false };
         setConfig(prev => ({ ...prev, formFields: [...(prev.formFields || []), newField] }));
@@ -294,6 +446,76 @@ export const AdminDesign: React.FC = () => {
 
     const removeField = (id: string) => {
         setConfig(prev => ({ ...prev, formFields: (prev.formFields || []).filter(f => f.id !== id) }));
+    };
+
+    const isFieldLinked = (fieldId: string) => {
+        return config.texts.some(t => t.linkedFieldId === fieldId) || 
+               config.draggableItems.some(i => i.linkedFieldId === fieldId) ||
+               (config.shapes || []).some(s => s.linkedFieldId === fieldId);
+    };
+
+    const alignItem = (type: 'h-center' | 'v-center') => {
+        if (!selectedItemId) return;
+        const [itemType, ...rest] = selectedItemId.split('-');
+        const rawId = rest.join('-');
+        const id = parseInt(rawId);
+
+        setConfig(prev => {
+            const updates: any = {};
+            if (type === 'h-center') updates.x = 50;
+            if (type === 'v-center') updates.y = 50;
+
+            if (itemType === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
+            if (itemType === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
+            if (itemType === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            if (itemType === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
+            return prev;
+        });
+    };
+
+    const moveLayer = (direction: 'front' | 'back') => {
+        if (!selectedItemId) return;
+        const [itemType, ...rest] = selectedItemId.split('-');
+        const rawId = rest.join('-');
+        const id = parseInt(rawId);
+
+        setConfig(prev => {
+            if (itemType === 'text') {
+                const item = prev.texts.find(t => t.id === id);
+                if (!item) return prev;
+                const filtered = prev.texts.filter(t => t.id !== id);
+                return { ...prev, texts: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
+            }
+            if (itemType === 'item') {
+                const item = prev.draggableItems.find(i => i.id === id);
+                if (!item) return prev;
+                const filtered = prev.draggableItems.filter(i => i.id !== id);
+                return { ...prev, draggableItems: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
+            }
+            if (itemType === 'shape') {
+                const item = (prev.shapes || []).find(s => s.id === id);
+                if (!item) return prev;
+                const filtered = (prev.shapes || []).filter(s => s.id !== id);
+                return { ...prev, shapes: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
+            }
+            return prev;
+        });
+    };
+
+    const handleTestImageUpload = async (fieldId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setIsUploading(true);
+            try {
+                const url = await uploadToCloudinary(e.target.files[0]);
+                if (url) {
+                    handleUpdateTestForm(fieldId, url);
+                }
+            } catch (error) {
+                console.error("Error uploading test image:", error);
+            } finally {
+                setIsUploading(false);
+            }
+        }
     };
 
     const handleUploadSticker = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,20 +562,47 @@ export const AdminDesign: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* LIÊN KẾT FORM: HIỂN THỊ CHO TEXT VÀ STICKER */}
-                            {(selectedItemId?.startsWith('text-') || (selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm')) && (
-                                <div>
-                                    <label className="block text-[10px] font-black text-blue-600 uppercase mb-2 tracking-widest">🔗 Liên kết Form {selectedItemId?.startsWith('text-') ? '(Nội dung)' : '(Hình ảnh)'}</label>
+                            {/* LIÊN KẾT FORM: HIỂN THỊ CHO TEXT, STICKER VÀ CẢ HÌNH KHỐI */}
+                            {(selectedItemId?.startsWith('text-') || 
+                             selectedItemId?.startsWith('shape-') || 
+                             (selectedItemId?.startsWith('item-') && (selectedObject as DraggableItem).type === 'charm')) && (
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black text-blue-600 uppercase mb-1 tracking-widest">🔗 Liên kết Form</label>
+                                    <p className="text-[9px] text-gray-400 italic mb-2 leading-tight">
+                                        {selectedItemId?.startsWith('text-') 
+                                            ? 'Khi khách điền vào trường này, nội dung chữ sẽ tự động thay đổi.' 
+                                            : selectedItemId?.startsWith('shape-')
+                                            ? 'Khi khách chọn màu ở trường này, màu của khối hình sẽ thay đổi theo.'
+                                            : 'Khi khách upload ảnh vào trường này, ảnh trên thiết kế sẽ được thay thế bằng ảnh của khách.'}
+                                    </p>
                                     <select 
-                                        className="w-full p-2.5 border-2 border-blue-100 rounded-lg text-xs font-bold bg-blue-50 focus:border-blue-400 outline-none" 
+                                        className="w-full p-2.5 border-2 border-blue-100 rounded-lg text-xs font-bold bg-blue-50 focus:border-blue-400 outline-none transition-all" 
                                         value={(selectedObject as any).linkedFieldId || ''} 
                                         onChange={e => updateSelected({ linkedFieldId: e.target.value })}
                                     >
                                         <option value="">-- Không kết nối --</option>
                                         {(config.formFields || [])
-                                            .filter(f => selectedItemId?.startsWith('text-') ? f.type !== 'image' : f.type === 'image')
-                                            .map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                                            .filter(f => {
+                                                if (selectedItemId?.startsWith('text-')) return f.type !== 'image';
+                                                if (selectedItemId?.startsWith('shape-')) return f.type === 'color' || f.type === 'image';
+                                                return f.type === 'image';
+                                            })
+                                            .map(f => <option key={f.id} value={f.id}>{f.label} ({f.type === 'image' ? 'Ảnh' : f.type === 'color' ? 'Màu' : 'Chữ'})</option>)}
                                     </select>
+                                    {(!config.formFields || config.formFields.length === 0) ? (
+                                        <div className="mt-2 p-3 bg-red-50 border border-red-100 rounded-lg">
+                                            <p className="text-[10px] text-red-600 font-black uppercase mb-2">⚠️ Chưa có trường Form</p>
+                                            <p className="text-[9px] text-gray-500 mb-3 leading-tight">Bạn cần tạo các câu hỏi (như Nhập tên, Tải ảnh...) trước khi có thể liên kết chúng vào thiết kế.</p>
+                                            <button 
+                                                onClick={() => setActiveTool('form')}
+                                                className="w-full py-2 bg-red-500 text-white text-[10px] font-black rounded-md hover:bg-red-600 transition-colors uppercase"
+                                            >
+                                                Mở Tab Form để tạo ngay
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-[9px] text-gray-400 mt-1 italic">Mẹo: Bạn có thể liên kết hình khối với trường "Màu sắc" hoặc "Hình ảnh".</p>
+                                    )}
                                 </div>
                             )}
 
@@ -389,7 +638,41 @@ export const AdminDesign: React.FC = () => {
                                 </div>
                             )}
 
-                            <button onClick={() => handleItemRemove(selectedItemId!)} className="w-full py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold uppercase tracking-widest">🗑️ Xóa đối tượng</button>
+                            <div className="pt-4 border-t border-gray-100 space-y-3">
+                                <label className="text-[10px] font-black text-gray-400 uppercase block">Căn chỉnh & Lớp</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button 
+                                        onClick={() => alignItem('h-center')} 
+                                        className="flex items-center justify-center gap-1.5 p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase transition-all"
+                                        title="Căn giữa theo chiều ngang"
+                                    >
+                                        ↔️ Giữa ngang
+                                    </button>
+                                    <button 
+                                        onClick={() => alignItem('v-center')} 
+                                        className="flex items-center justify-center gap-1.5 p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase transition-all"
+                                        title="Căn giữa theo chiều dọc"
+                                    >
+                                        ↕️ Giữa dọc
+                                    </button>
+                                    <button 
+                                        onClick={() => moveLayer('front')} 
+                                        className="flex items-center justify-center gap-1.5 p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase transition-all"
+                                        title="Đưa lên lớp trên cùng"
+                                    >
+                                        🔝 Lên trên
+                                    </button>
+                                    <button 
+                                        onClick={() => moveLayer('back')} 
+                                        className="flex items-center justify-center gap-1.5 p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase transition-all"
+                                        title="Đưa xuống lớp dưới cùng"
+                                    >
+                                        bottom Xuống dưới
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button onClick={() => handleItemRemove(selectedItemId!)} className="w-full py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold uppercase tracking-widest mt-4">🗑️ Xóa đối tượng</button>
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -433,40 +716,153 @@ export const AdminDesign: React.FC = () => {
                                 </div>
                             )}
                             {activeTool === 'text' && (
-                                <button onClick={() => {
-                                    const id = Date.now();
-                                    setConfig(prev => ({ ...prev, texts: [...prev.texts, { id, content: 'Chữ mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 40 }] }));
-                                    setSelectedItemId(`text-${id}`);
-                                }} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-xs font-black text-gray-400 hover:bg-gray-50 transition-all uppercase">+ Thêm văn bản</button>
+                                <div className="space-y-4">
+                                    <button onClick={() => {
+                                        const id = Date.now();
+                                        setConfig(prev => ({ ...prev, texts: [...prev.texts, { id, content: 'Chữ mới', font: 'Montserrat', size: 14, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: false, textAlign: 'center', width: 40 }] }));
+                                        setSelectedItemId(`text-${id}`);
+                                    }} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-xs font-black text-gray-400 hover:bg-gray-50 transition-all uppercase">+ Thêm văn bản</button>
+                                    
+                                    <div className="pt-4 border-t">
+                                        <p className="text-[9px] text-gray-400 italic mb-2">Bạn muốn dùng font riêng của mình?</p>
+                                        <button 
+                                            onClick={() => window.location.href = '/admin?tab=config&configTab=fonts'} 
+                                            className="w-full py-2 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-bold uppercase hover:bg-gray-200 transition-all"
+                                        >
+                                            ⚙️ Quản lý Font tải lên
+                                        </button>
+                                    </div>
+                                </div>
                             )}
                             {activeTool === 'upload' && (
                                 <div className="space-y-4">
+                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 mb-2">
+                                        <p className="text-[10px] text-blue-700 font-bold leading-tight">
+                                            💡 Mẹo: Tải ảnh lên rồi chọn "Liên kết Form" để tạo ô cho khách tự thay ảnh của họ (ví dụ: ảnh chân dung, ảnh kỷ niệm).
+                                        </p>
+                                    </div>
                                     <div className="border-2 border-dashed border-gray-300 p-6 rounded-2xl text-center relative hover:bg-gray-50 transition-all">
                                         <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleUploadSticker} disabled={isUploading} />
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isUploading ? 'ĐANG TẢI...' : '+ TẢI STICKER'}</p>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isUploading ? 'ĐANG TẢI...' : '+ TẢI ẢNH / STICKER'}</p>
                                     </div>
                                 </div>
                             )}
                             {activeTool === 'form' && (
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Danh sách trường</h4>
-                                        <button onClick={handleAddField} className="text-blue-600 font-bold text-xs">+ Thêm</button>
-                                    </div>
-                                    {(config.formFields || []).map((f) => (
-                                        <div key={f.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group">
-                                            <button onClick={() => removeField(f.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
-                                            <input className="w-full p-1.5 border rounded text-xs font-bold" value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Tên trường..." />
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <select className="p-1.5 border rounded text-[10px]" value={f.type} onChange={e => updateField(f.id, { type: e.target.value as any })}>
-                                                    <option value="text">Chữ ngắn</option><option value="textarea">Chữ dài</option><option value="date">Ngày tháng</option><option value="image">Hình ảnh</option>
-                                                </select>
-                                                <label className="flex items-center gap-1 text-[10px] cursor-pointer font-bold text-gray-500 uppercase">
-                                                    <input type="checkbox" checked={f.required} onChange={e => updateField(f.id, { required: e.target.checked })} /> Cần nhập
-                                                </label>
-                                            </div>
+                                        <div className="flex flex-col">
+                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Danh sách trường</h4>
+                                            <p className="text-[9px] text-gray-400 italic">Thiết lập các ô nhập liệu cho khách</p>
                                         </div>
-                                    ))}
+                                        <button onClick={handleAddField} className="bg-blue-600 text-white px-3 py-1 rounded-lg font-bold text-[10px] uppercase shadow-sm hover:bg-blue-700 transition-all">+ Thêm</button>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-2 bg-blue-50 rounded-xl border border-blue-100 mb-4">
+                                        <span className="text-[10px] font-black text-blue-700 uppercase">Chế độ Test (Xem thử)</span>
+                                        <button 
+                                            onClick={() => setIsTestMode(!isTestMode)} 
+                                            className={`w-10 h-5 rounded-full p-1 transition-all ${isTestMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`w-3 h-3 bg-white rounded-full transition-transform ${isTestMode ? 'translate-x-5' : ''}`}></div>
+                                        </button>
+                                    </div>
+
+                                    {isTestMode ? (
+                                        <div className="space-y-3 animate-fade-in">
+                                            <p className="text-[9px] text-blue-600 font-bold bg-blue-50 p-2 rounded border border-blue-100 italic">💡 Nhập thử vào đây để xem thông tin thay đổi trên thiết kế như thế nào.</p>
+                                            {(config.formFields || []).map(f => (
+                                                <div key={f.id} className="space-y-1">
+                                                    <label className="text-[9px] font-black text-gray-500 uppercase ml-1">{f.label}</label>
+                                                    {f.type === 'color' ? (
+                                                        <input type="color" value={testFormData[f.id] || '#000000'} onChange={e => handleUpdateTestForm(f.id, e.target.value)} className="w-full h-8 rounded cursor-pointer" />
+                                                    ) : f.type === 'image' ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex gap-2">
+                                                                <input type="text" value={testFormData[f.id] || ''} onChange={e => handleUpdateTestForm(f.id, e.target.value)} className="flex-1 p-2 border rounded-lg text-xs" placeholder="Dán link hoặc tải ảnh..." />
+                                                                <div className="relative w-8 h-8 border rounded overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                                    {testFormData[f.id] ? (
+                                                                        <img src={testFormData[f.id]} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <span className="text-[8px] text-gray-400">Ảnh</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="relative">
+                                                                <input 
+                                                                    type="file" 
+                                                                    accept="image/*" 
+                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                                                    onChange={(e) => handleTestImageUpload(f.id, e)}
+                                                                    disabled={isUploading}
+                                                                />
+                                                                <button className={`w-full py-1.5 border-2 border-dashed border-blue-200 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${isUploading ? 'bg-gray-50 text-gray-400' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                                                                    {isUploading ? 'ĐANG TẢI...' : '↑ TẢI ẢNH TEST'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : f.type === 'textarea' ? (
+                                                        <textarea value={testFormData[f.id] || ''} onChange={e => handleUpdateTestForm(f.id, e.target.value)} className="w-full p-2 border rounded-lg text-xs" rows={2} placeholder={f.placeholder} />
+                                                    ) : (
+                                                        <input type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'} value={testFormData[f.id] || ''} onChange={e => handleUpdateTestForm(f.id, e.target.value)} className="w-full p-2 border rounded-lg text-xs" placeholder={f.placeholder} />
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {(!config.formFields || config.formFields.length === 0) && (
+                                                <p className="text-center py-4 text-xs text-gray-400 italic">Chưa có trường nào để test.</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3 animate-fade-in">
+                                            {(config.formFields || []).map((f) => (
+                                                <div key={f.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group hover:border-blue-300 transition-all">
+                                                    <button onClick={() => removeField(f.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">&times;</button>
+                                                    
+                                                    <div className="flex gap-2">
+                                                        <div className="flex-grow">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <label className="text-[8px] font-black text-gray-400 uppercase block">Tên nhãn (Label)</label>
+                                                                {isFieldLinked(f.id) && (
+                                                                    <span className="text-[7px] bg-green-500 text-white px-1 rounded font-black animate-pulse">LIVE</span>
+                                                                )}
+                                                            </div>
+                                                            <input className="w-full p-1.5 border rounded text-xs font-bold" value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Tên trường..." />
+                                                        </div>
+                                                        <div className="w-24">
+                                                            <label className="text-[8px] font-black text-gray-400 uppercase mb-0.5 block">Loại</label>
+                                                            <select className="w-full p-1.5 border rounded text-[10px] font-bold bg-white" value={f.type} onChange={e => updateField(f.id, { type: e.target.value as any })}>
+                                                                <option value="text">Chữ ngắn</option>
+                                                                <option value="textarea">Chữ dài</option>
+                                                                <option value="date">Ngày tháng</option>
+                                                                <option value="number">Số lượng</option>
+                                                                <option value="select">Lựa chọn</option>
+                                                                <option value="color">Màu sắc</option>
+                                                                <option value="image">Hình ảnh</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between pt-1">
+                                                        <label className="flex items-center gap-1 text-[9px] cursor-pointer font-bold text-gray-500 uppercase">
+                                                            <input type="checkbox" checked={f.required} onChange={e => updateField(f.id, { required: e.target.checked })} /> Cần nhập
+                                                        </label>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[8px] font-black text-gray-400 uppercase">ID:</span>
+                                                            <span className="text-[8px] font-mono text-gray-400 bg-gray-100 px-1 rounded">{f.id.slice(-6)}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {['text', 'textarea', 'number'].includes(f.type) && (
+                                                        <input 
+                                                            className="w-full p-1 border-b border-dashed bg-transparent text-[9px] outline-none italic text-gray-400" 
+                                                            value={f.placeholder || ''} 
+                                                            onChange={e => updateField(f.id, { placeholder: e.target.value })} 
+                                                            placeholder="Gợi ý nhập (Placeholder)..." 
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             {activeTool === 'layers' && (
@@ -518,25 +914,69 @@ export const AdminDesign: React.FC = () => {
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowSaveModal(false)}>
                     <div className="bg-white p-8 rounded-[2rem] w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-black mb-6 uppercase">Lưu thiết kế vào database</h3>
+                        <h3 className="text-xl font-black mb-6 uppercase">Lưu mẫu thiết kế</h3>
                         <div className="space-y-4">
-                            <input className="w-full p-3 border rounded-xl font-bold" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="Tên mẫu thiết kế..." />
-                            <select className="w-full p-3 border rounded-xl font-bold" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
-                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                            </select>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Tên mẫu thiết kế</label>
+                                <input className="w-full p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="Ví dụ: Nền hoa hồng, Nền sinh nhật..." />
+                            </div>
+                            
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Dịp / Chủ đề (Bộ lọc)</label>
+                                {!isNewCategory ? (
+                                    <div className="flex gap-2">
+                                        <select className="flex-grow p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
+                                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                        </select>
+                                        <button onClick={() => setIsNewCategory(true)} className="px-4 bg-gray-100 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all">Mới</button>
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <input className="flex-grow p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Nhập dịp mới..." autoFocus />
+                                        <button onClick={() => setIsNewCategory(false)} className="px-4 bg-gray-100 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all">Hủy</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Loại khung</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => setBgType('square')} className={`p-3 rounded-xl font-bold text-xs border transition-all ${bgType === 'square' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>Vuông (1:1)</button>
+                                    <button onClick={() => setBgType('rectangle')} className={`p-3 rounded-xl font-bold text-xs border transition-all ${bgType === 'rectangle' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>Chữ nhật (3:4)</button>
+                                </div>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
                             <button onClick={() => setShowSaveModal(false)} className="px-6 py-3 font-bold text-gray-400 uppercase text-xs">Hủy</button>
                             <button onClick={async () => {
                                 if (!bgName) return alert("Vui lòng nhập tên!");
+                                const finalCategory = isNewCategory ? newCategoryName.trim() : bgCategory;
+                                if (!finalCategory) return alert("Vui lòng chọn hoặc nhập dịp!");
+
                                 const backgroundData: PresetBackground = {
                                     id: editingBgId || `bg_${Date.now()}`,
-                                    name: bgName, category: bgCategory, type: bgType, url: config.background.value,
+                                    name: bgName, 
+                                    category: finalCategory, 
+                                    type: bgType, 
+                                    url: config.background.value,
                                     overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
                                     formFields: config.formFields || []
                                 };
-                                const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
-                                if (success) { alert("Đã lưu thiết kế thành công!"); setShowSaveModal(false); }
+                                
+                                try {
+                                    const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
+                                    if (success) { 
+                                        alert("Đã lưu thiết kế thành công!"); 
+                                        setShowSaveModal(false); 
+                                        setIsNewCategory(false);
+                                        setNewCategoryName('');
+                                    } else {
+                                        alert("Lỗi khi lưu vào database. Vui lòng thử lại!");
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                    alert("Đã xảy ra lỗi không xác định!");
+                                }
                             }} className="px-10 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs shadow-xl hover:bg-black transition-all">Xác nhận Lưu</button>
                         </div>
                     </div>

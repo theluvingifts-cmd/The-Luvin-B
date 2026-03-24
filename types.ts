@@ -76,6 +76,7 @@ export interface ShapeConfig {
   lockedPosition?: boolean;
   opacity?: number;
   isHidden?: boolean;
+  linkedFieldId?: string;
 }
 
 export interface TextConfig {
@@ -124,9 +125,14 @@ export interface BackgroundConfig {
 export interface FormField {
     id: string;
     label: string;
-    type: 'text' | 'textarea' | 'date' | 'image';
+    type: 'text' | 'textarea' | 'date' | 'image' | 'select' | 'color' | 'number';
     required: boolean;
     placeholder?: string;
+    options?: { label: string; value: string }[];
+    min?: number;
+    max?: number;
+    step?: number;
+    helpText?: string;
 }
 
 export interface FrameConfig {

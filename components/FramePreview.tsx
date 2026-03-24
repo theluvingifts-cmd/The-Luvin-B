@@ -620,41 +620,62 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                     </div>
                 )}
 
-                {(config.shapes || []).map(shape => (
-                    <Transformable
-                        key={`shape-${shape.id}`}
-                        id={`shape-${shape.id}`}
-                        initialTransform={{ x: shape.x, y: shape.y, rotation: shape.rotation, scale: 1, width: shape.width, height: shape.height }}
-                        onTransform={onItemTransform}
-                        parentRef={previewContainerRef}
-                        isSelected={selectedItemId === `shape-${shape.id}`}
-                        onSelect={setSelectedItemId}
-                        isDraggable={isInteractive}
-                        isResizable={isInteractive}
-                        isRotatable={isInteractive}
-                        isPositionLocked={shape.lockedPosition}
-                        zIndex={4}
-                        resizeMode="dimensions"
-                        containerSize={{ width: backgroundWidth, height: backgroundHeight }}
-                        style={{ 
-                            width: `${(shape.width) * backgroundWidth / 100}px`,
-                            height: `${(shape.height) * backgroundHeight / 100}px`,
-                            opacity: shape.opacity ?? 1,
-                            display: shape.isHidden ? 'none' : 'block'
-                        }}
-                    >
-                        <div style={{
-                            width: '100%',
-                            height: '100%',
-                            borderStyle: shape.strokeType || 'solid',
-                            borderWidth: `${shape.strokeWidth}px`,
-                            borderColor: shape.strokeColor,
-                            backgroundColor: shape.fillColor || 'transparent',
-                            borderRadius: `${shape.borderRadius}px`,
-                            boxSizing: 'border-box'
-                        }} />
-                    </Transformable>
-                ))}
+                {(config.shapes || []).map(shape => {
+                    // --- BỔ SUNG LOGIC ĐỔ ẢNH TỪ FORM CHO SHAPE ---
+                    let shapeImageUrl = null;
+                    if (shape.linkedFieldId && config.customFormData?.[shape.linkedFieldId]) {
+                        const field = (config.formFields || []).find(f => f.id === shape.linkedFieldId);
+                        if (field?.type === 'image') {
+                            shapeImageUrl = config.customFormData[shape.linkedFieldId];
+                        }
+                    }
+
+                    return (
+                        <Transformable
+                            key={`shape-${shape.id}`}
+                            id={`shape-${shape.id}`}
+                            initialTransform={{ x: shape.x, y: shape.y, rotation: shape.rotation, scale: 1, width: shape.width, height: shape.height }}
+                            onTransform={onItemTransform}
+                            parentRef={previewContainerRef}
+                            isSelected={selectedItemId === `shape-${shape.id}`}
+                            onSelect={setSelectedItemId}
+                            isDraggable={isInteractive}
+                            isResizable={isInteractive}
+                            isRotatable={isInteractive}
+                            isPositionLocked={shape.lockedPosition}
+                            zIndex={4}
+                            resizeMode="dimensions"
+                            containerSize={{ width: backgroundWidth, height: backgroundHeight }}
+                            style={{ 
+                                width: `${(shape.width) * backgroundWidth / 100}px`,
+                                height: `${(shape.height) * backgroundHeight / 100}px`,
+                                opacity: shape.opacity ?? 1,
+                                display: shape.isHidden ? 'none' : 'block'
+                            }}
+                        >
+                            <div style={{
+                                width: '100%',
+                                height: '100%',
+                                borderStyle: shape.strokeType || 'solid',
+                                borderWidth: `${shape.strokeWidth}px`,
+                                borderColor: shape.strokeColor,
+                                backgroundColor: shape.fillColor || 'transparent',
+                                borderRadius: `${shape.borderRadius}px`,
+                                boxSizing: 'border-box',
+                                overflow: 'hidden', // Quan trọng để ảnh không tràn ra ngoài bo góc
+                                position: 'relative'
+                            }}>
+                                {shapeImageUrl && (
+                                    <SafeImage 
+                                        src={shapeImageUrl} 
+                                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} 
+                                        alt="shape-image"
+                                    />
+                                )}
+                            </div>
+                        </Transformable>
+                    );
+                })}
 
                 {(config.characters || []).map(char => (
                     <Transformable 
