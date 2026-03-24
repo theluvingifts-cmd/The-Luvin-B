@@ -499,7 +499,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Dọn dẹp Firebase Storage</h3>
                             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800">
                                 <p className="font-bold mb-1">⚠️ Lưu ý quan trọng:</p>
-                                <p>Tính năng này sẽ quét toàn bộ ảnh trong thư mục <b>uploads/</b> và so sánh với dữ liệu trong Firestore. Những ảnh không được sử dụng trong bất kỳ đơn hàng, sản phẩm hay cấu hình nào sẽ được liệt kê để xóa.</p>
+                                <p>Tính năng này sẽ quét toàn bộ ảnh trong thư mục <b>uploads/</b> và so sánh với dữ liệu trong Firestore. Những ảnh không được sử dụng trong bất kỳ đơn hàng, sản phẩm hay cấu hình nào sẽ được liệt kê để xóa. <b>Ảnh sản phẩm và hình nền đang sử dụng sẽ KHÔNG bị xóa.</b></p>
                             </div>
 
                             <div className="flex gap-3">
@@ -525,7 +525,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <h3 className="text-lg font-bold mb-4 border-b pb-2">Dọn dẹp ảnh đơn hàng cũ</h3>
                                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 text-sm text-indigo-800 mb-4">
                                     <p className="font-bold mb-1">💡 Tự động dọn dẹp:</p>
-                                    <p>Hệ thống sẽ tìm các đơn hàng đã tạo hơn <b>30 ngày</b> trước và xóa vĩnh viễn các tệp ảnh đính kèm (ảnh preview, ảnh upload) để giải phóng dung lượng Storage.</p>
+                                    <p>Hệ thống sẽ tìm các đơn hàng đã tạo hơn <b>30 ngày</b> trước và xóa vĩnh viễn các tệp ảnh đính kèm (ảnh preview, ảnh upload, ảnh chuyển khoản). <b>Hệ thống đã được thiết lập để bảo vệ ảnh sản phẩm và hình nền mẫu, không bao giờ xóa chúng.</b></p>
                                 </div>
                                 <button 
                                     onClick={handleCleanupOldOrders}

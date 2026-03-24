@@ -100,12 +100,32 @@ const extractUrls = (obj: any, urls: Set<string>) => {
 
 /**
  * Finds and deletes images from orders older than 30 days.
+ * Only deletes images in the 'uploads/' folder and ensures they aren't used in products/backgrounds.
  */
 export const cleanupOldOrderImages = async (days: number = 30): Promise<{ ordersProcessed: number; filesDeleted: number }> => {
     try {
         const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
         
-        // 1. Find old orders that haven't been cleaned yet
+        // 1. Collect all "protected" URLs from other collections
+        const protectedUrls = new Set<string>();
+        const collectionsToProtect = [
+            'products',
+            'backgrounds',
+            'templates',
+            'feedbacks',
+            'frames',
+            'config',
+            'assets'
+        ];
+
+        for (const colName of collectionsToProtect) {
+            const querySnapshot = await getDocs(collection(db, colName));
+            querySnapshot.forEach((doc) => {
+                extractUrls(doc.data(), protectedUrls);
+            });
+        }
+
+        // 2. Find old orders that haven't been cleaned yet
         const q = query(
             collection(db, 'orders'),
             where('createdAt', '<', cutoff)
@@ -118,17 +138,30 @@ export const cleanupOldOrderImages = async (days: number = 30): Promise<{ orders
         for (const orderDoc of querySnapshot.docs) {
             const orderData = orderDoc.data() as Order;
             
-            // Skip if already cleaned or if it's a very new order (though query should handle it)
             if (orderData.imagesCleaned) continue;
 
-            const urlsToDelete = new Set<string>();
-            extractUrls(orderData, urlsToDelete);
+            const urlsInOrder = new Set<string>();
+            extractUrls(orderData, urlsInOrder);
 
-            // Delete files from Storage
-            for (const url of urlsToDelete) {
+            // 3. Filter URLs to delete: must be in 'uploads/' and NOT in protectedUrls
+            for (const url of urlsInOrder) {
+                // Only process Firebase Storage URLs in 'uploads/' folder
+                if (!url.includes('firebasestorage.googleapis.com') || !url.includes('uploads%2F')) {
+                    continue;
+                }
+
+                // Check if it's protected
+                let isProtected = false;
+                for (const protectedUrl of protectedUrls) {
+                    if (protectedUrl.includes(url) || url.includes(protectedUrl)) {
+                        isProtected = true;
+                        break;
+                    }
+                }
+
+                if (isProtected) continue;
+
                 try {
-                    // Extract path from Firebase Storage URL
-                    // Example: https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/uploads%2Ffilename?alt=media
                     const match = url.match(/\/o\/(.+)\?alt=media/);
                     if (match) {
                         const fullPath = decodeURIComponent(match[1]);
@@ -137,16 +170,13 @@ export const cleanupOldOrderImages = async (days: number = 30): Promise<{ orders
                         filesDeleted++;
                     }
                 } catch (error) {
-                    // File might already be deleted or not in our Storage
                     console.warn(`Could not delete file at ${url}:`, error);
                 }
             }
 
             // Update order to mark as cleaned
             await updateDoc(doc(db, 'orders', orderDoc.id), {
-                imagesCleaned: true,
-                // Optional: clear the actual URLs to save space in Firestore and avoid broken links
-                // But keeping them marked as cleaned is safer for record keeping
+                imagesCleaned: true
             });
 
             ordersProcessed++;
