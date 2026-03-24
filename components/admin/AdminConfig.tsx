@@ -643,70 +643,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         </div>
                     )}
 
-                    {activeTab === 'restore' && (
-                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Khôi phục ảnh đã mất</h3>
-                            
-                            <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-sm text-green-800">
-                                <p className="font-bold mb-1">💡 Hướng dẫn khôi phục nhanh:</p>
-                                <p>1. Chọn toàn bộ ảnh gốc (Tóc, Mặt, Nền...) từ máy tính của bạn.</p>
-                                <p>2. Hệ thống sẽ tự động so sánh tên file và cập nhật lại link ảnh vào Firestore.</p>
-                                <p className="mt-2 text-[10px] opacity-70 italic">* Lưu ý: Tên file nên giống với tên file cũ bạn đã upload trước đây.</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-green-400 transition-colors">
-                                    <input 
-                                        type="file" 
-                                        multiple 
-                                        accept="image/*"
-                                        onChange={(e) => setRestoreFiles(Array.from(e.target.files || []))}
-                                        className="hidden" 
-                                        id="restore-upload"
-                                    />
-                                    <label htmlFor="restore-upload" className="cursor-pointer space-y-2 block">
-                                        <div className="text-4xl">📁</div>
-                                        <p className="text-sm font-bold text-gray-700">
-                                            {restoreFiles.length > 0 ? `Đã chọn ${restoreFiles.length} tệp` : 'Nhấn để chọn ảnh khôi phục'}
-                                        </p>
-                                        <p className="text-xs text-gray-400">Hỗ trợ chọn nhiều file cùng lúc</p>
-                                    </label>
-                                </div>
-
-                                <button 
-                                    onClick={handleRestoreFiles}
-                                    disabled={isRestoring || restoreFiles.length === 0}
-                                    className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 shadow-lg shadow-green-100 transition-all"
-                                >
-                                    {isRestoring ? 'Đang khôi phục...' : '🚀 Bắt đầu khôi phục tự động'}
-                                </button>
-                            </div>
-
-                            {restoreLogs.length > 0 && (
-                                <div className="p-4 bg-gray-900 rounded-xl font-mono text-[11px] text-green-400 space-y-1 max-h-60 overflow-y-auto shadow-inner">
-                                    <div className="text-gray-500 border-b border-gray-800 pb-2 mb-2 uppercase flex justify-between items-center">
-                                        <span>Nhật ký khôi phục</span>
-                                        <button onClick={() => setRestoreLogs([])} className="text-[9px] hover:text-white">Xóa log</button>
-                                    </div>
-                                    {restoreLogs.map((log, i) => (
-                                        <div key={i} className="flex gap-2">
-                                            <span className="text-gray-600">[{log.time}]</span>
-                                            <span className={log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : 'text-blue-400'}>
-                                                {log.msg}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {restoreResult && (
-                                <div className="p-4 bg-green-100 text-green-800 rounded-xl border border-green-200 text-center">
-                                    <p className="font-bold">🎉 Khôi phục hoàn tất!</p>
-                                    <p className="text-sm">Đã cập nhật thành công {restoreResult.updatedCount} mục dữ liệu.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {activeTab === 'theme' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Màu sắc & Phông chữ</h3>
                             <div>
