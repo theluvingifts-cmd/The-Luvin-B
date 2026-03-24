@@ -23,7 +23,7 @@ export const findUnusedImages = async (): Promise<UnusedFile[]> => {
         // 1. Collect all used URLs from Firestore
         const collections = [
             'orders',
-            'products',
+            'lego_parts',
             'backgrounds',
             'templates',
             'feedbacks',
@@ -109,7 +109,7 @@ export const cleanupOldOrderImages = async (days: number = 30): Promise<{ orders
         // 1. Collect all "protected" URLs from other collections
         const protectedUrls = new Set<string>();
         const collectionsToProtect = [
-            'products',
+            'lego_parts',
             'backgrounds',
             'templates',
             'feedbacks',
@@ -119,10 +119,14 @@ export const cleanupOldOrderImages = async (days: number = 30): Promise<{ orders
         ];
 
         for (const colName of collectionsToProtect) {
-            const querySnapshot = await getDocs(collection(db, colName));
-            querySnapshot.forEach((doc) => {
-                extractUrls(doc.data(), protectedUrls);
-            });
+            try {
+                const querySnapshot = await getDocs(collection(db, colName));
+                querySnapshot.forEach((doc) => {
+                    extractUrls(doc.data(), protectedUrls);
+                });
+            } catch (error) {
+                console.warn(`Could not read collection ${colName} for protection, skipping:`, error);
+            }
         }
 
         // 2. Find old orders that haven't been cleaned yet
