@@ -380,6 +380,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 if (recover) {
                     setConfig(parsed);
                     setStep(3);
+                } else {
+                    setConfig(INITIAL_FRAME_CONFIG);
+                    localStorage.removeItem('active_design_draft');
                 }
             }
         } catch(e) {}
