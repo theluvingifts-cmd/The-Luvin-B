@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.46.0",
     "@types/nodemailer": "^7.0.4",
     "firebase": "^10.8.0",
     "nodemailer": "^7.0.10",

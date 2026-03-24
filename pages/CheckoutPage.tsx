@@ -31,6 +31,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
   const [notes, setNotes] = useState('');
+  const [demoContact, setDemoContact] = useState('');
   
   const [deliveryDate, setDeliveryDate] = useState('');
   
@@ -84,6 +85,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setStreet(initialOrder.customer.address); 
           setDeliveryDate(initialOrder.delivery.date);
           setNotes(initialOrder.delivery.notes);
+          setDemoContact(initialOrder.customer.demoContact || '');
           setShippingOption(initialOrder.shipping.method);
           setAddGiftBox(initialOrder.addGiftBox);
           setPaymentMethod(initialOrder.payment.method);
@@ -146,6 +148,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
 
   const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0), [cartItems, allParts]);
+  const totalQuantity = useMemo(() => cartItems.reduce((total, item) => total + (item.quantity || 1), 0), [cartItems]);
   
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
   const isFreeShippingEligible = subtotal >= FREE_SHIPPING_THRESHOLD;
@@ -155,8 +158,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
   
   const shippingFee = calculatedShippingFee;
-  // Gói quà chỉ tính tiền nếu còn hàng và khách chọn
-  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE : 0;
+  // Gói quà chỉ tính tiền nếu còn hàng và khách chọn, tính theo số lượng tranh
+  const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE * totalQuantity : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -286,7 +289,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     try {
         await onPlaceOrder({
           id: orderId,
-          customer: { name, phone, email, address: fullAddress },
+          customer: { name, phone, email, address: fullAddress, demoContact },
           delivery: { date: deliveryDate, notes: finalNotes },
           items: cartItems,
           addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
@@ -361,6 +364,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     </div>
                     <input type="text" placeholder="Họ và tên" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
                     <input type="email" placeholder="Email (Nhận thông báo đơn hàng)" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Thông tin liên hệ gửi demo (Zalo/SĐT người đặt)</label>
+                      <input 
+                        type="text" 
+                        placeholder="Zalo hoặc SĐT để shop gửi demo check trước khi in" 
+                        value={demoContact} 
+                        onChange={e => setDemoContact(e.target.value)} 
+                        className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" 
+                        required 
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 italic">* Dùng để shop gửi demo cho bạn duyệt trước khi in, nhất là khi bạn đặt tặng người khác.</p>
+                    </div>
                   </div>
               </div>
 
@@ -523,7 +538,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     <img src={storeConfig?.giftBoxImageUrl || GENERAL_ASSETS.giftbox} alt="Gói Quà" className="w-12 h-12 object-contain mr-4"/>
                     <div className="flex-grow">
                         <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-800">Thêm gói quà</span>
+                            <span className="font-semibold text-gray-800">Thêm gói quà ({totalQuantity} tranh)</span>
                             {isGiftBoxOutOfStock && (
                                 <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">Tạm hết</span>
                             )}

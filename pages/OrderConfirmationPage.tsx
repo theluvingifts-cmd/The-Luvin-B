@@ -48,6 +48,8 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
     
     if (!order) return null;
 
+    const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const giftBoxFee = order.addGiftBox ? 30000 * totalQuantity : 0;
     const amountRemaining = order.totalPrice - order.amountToPay;
     
     const getVietQR = (order: Order) => {
@@ -163,14 +165,14 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                     </div>
                                   </div>
                                   <div>
-                                    <p className="font-semibold">Khung tùy chỉnh x {order.items.length}</p>
+                                    <p className="font-semibold">Khung tùy chỉnh x {totalQuantity}</p>
                                   </div>
                                 </div>
-                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</p>
+                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - giftBoxFee)}</p>
                             </div>
 
                             <div className="text-sm space-y-2">
-                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - (order.addGiftBox ? 30000 : 0))}</span></div>
+                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - giftBoxFee)}</span></div>
                                 <div className="flex justify-between">
                                     <span>Phí vận chuyển:</span>
                                     {order.shipping.fee === 0 && order.shipping.method === 'standard' ? (
@@ -179,7 +181,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                         <span className="font-medium">{formatCurrency(order.shipping.fee)}</span>
                                     )}
                                 </div>
-                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà:</span><span className="font-medium">{formatCurrency(30000)}</span></div>}
+                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà ({totalQuantity} tranh):</span><span className="font-medium">{formatCurrency(giftBoxFee)}</span></div>}
                                 <div className="border-t my-2"></div>
                                 <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
                                 <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
@@ -190,6 +192,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                 <p><span className="font-semibold">Giao đến:</span> {order.customer.name}</p>
                                 <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}</p>
                                 <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
+                                {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">Liên hệ gửi demo:</span> {order.customer.demoContact}</p>}
                                 <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
                             </div>
                          </div>

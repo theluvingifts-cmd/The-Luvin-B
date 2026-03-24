@@ -166,7 +166,7 @@ export interface Order {
   id: string;
   createdAt: number;
   status: string;
-  customer: { name: string; phone: string; email: string; address: string; socialLink?: string; };
+  customer: { name: string; phone: string; email: string; address: string; socialLink?: string; demoContact?: string; };
   delivery: { date: string; notes: string; };
   items: FrameConfig[];
   addGiftBox: boolean;
