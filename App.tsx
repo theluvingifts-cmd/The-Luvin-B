@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
     LEGO_PARTS, 
@@ -89,7 +90,15 @@ const updateMetaTags = (config: StoreConfig) => {
 };
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determine currentPage from location for Header/Footer visibility
+  const currentPage = useMemo<Page>(() => {
+    const path = location.pathname.split('/')[1] || 'home';
+    const validPages: Page[] = ['home', 'builder', 'collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business'];
+    return validPages.includes(path as Page) ? (path as Page) : 'home';
+  }, [location]);
   
   const [config, setConfig] = useState<FrameConfig>(() => {
     try {
@@ -241,7 +250,10 @@ const App: React.FC = () => {
            setCartItems([]);
        } else return;
     }
-    setCurrentPage(page);
+    
+    if (page === 'home') navigate('/');
+    else navigate(`/${page}`);
+    
     window.scrollTo(0, 0);
   };
 
@@ -254,10 +266,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-      const checkHash = () => { if (window.location.hash === '#/admin') setCurrentPage('admin'); };
-      checkHash();
-      window.addEventListener('hashchange', checkHash);
-      return () => window.removeEventListener('hashchange', checkHash);
+      // No longer needed with react-router-dom
   }, []);
 
   const handleAddToCart = (newConfig: FrameConfig, openCart = true) => {
@@ -373,25 +382,29 @@ const App: React.FC = () => {
              />
         )}
         <main className="flex-grow">
-            {currentPage === 'home' && <HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />}
-            {currentPage === 'builder' && (
-                <BuilderPage 
-                    config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} 
-                    onUpdateCart={handleUpdateCartItem} showToast={showToast} legoParts={legoParts}
-                    backgrounds={backgrounds} frames={frames} editingCartIndex={editingCartIndex} 
-                    onCancelEdit={handleCancelEdit} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl}
-                    initialStep={builderInitialStep} isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
-                />
-            )}
-            {currentPage === 'collection' && <CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />}
-            {currentPage === 'cart' && <CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} />}
-            {currentPage === 'checkout' && <CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} />}
-            {currentPage === 'order-confirmation' && <OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />}
-            {currentPage === 'order-lookup' && <OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />}
-            {currentPage === 'admin' && <AdminPage />}
-            {currentPage === 'about' && <AboutPage config={storeConfig} />}
-            {currentPage === 'warranty' && <WarrantyPage config={storeConfig} />}
-            {currentPage === 'business' && <BusinessPage config={storeConfig} legoParts={legoParts} />}
+            <Routes>
+                <Route path="/" element={<HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />} />
+                <Route path="/home" element={<Navigate to="/" replace />} />
+                <Route path="/builder" element={
+                    <BuilderPage 
+                        config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} 
+                        onUpdateCart={handleUpdateCartItem} showToast={showToast} legoParts={legoParts}
+                        backgrounds={backgrounds} frames={frames} editingCartIndex={editingCartIndex} 
+                        onCancelEdit={handleCancelEdit} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl}
+                        initialStep={builderInitialStep} isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
+                    />
+                } />
+                <Route path="/collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />} />
+                <Route path="/cart" element={<CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} />} />
+                <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} />} />
+                <Route path="/order-confirmation" element={<OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />} />
+                <Route path="/order-lookup" element={<OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />} />
+                <Route path="/admin/*" element={<AdminPage />} />
+                <Route path="/about" element={<AboutPage config={storeConfig} />} />
+                <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />
+                <Route path="/business" element={<BusinessPage config={storeConfig} legoParts={legoParts} />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
         </main>
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
         <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} />

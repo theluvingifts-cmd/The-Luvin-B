@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { db, auth } from '../config/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
@@ -24,6 +25,8 @@ import { Logo } from '../components/shared/Logo';
 type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
 
 const AdminPage: React.FC = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isAuthChecking, setIsAuthChecking] = useState(true);
     const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
@@ -40,23 +43,18 @@ const AdminPage: React.FC = () => {
     // Hàm chuyển tab tập trung
     const handleTabChange = (tab: MainTab) => {
         setActiveTab(tab);
-        window.location.hash = `#/admin/${tab}`;
+        navigate(`/admin/${tab}`);
     };
 
-    // Sync activeTab với URL Hash khi load trang hoặc nhấn Back
-    const parseAdminHash = () => {
-        const hash = window.location.hash.replace(/^#\/?/, '');
-        const parts = hash.split('/');
-        if (parts[0] === 'admin' && parts[1]) {
-            setActiveTab(parts[1] as MainTab);
-        }
-    };
-
+    // Sync activeTab với URL khi load trang hoặc nhấn Back
     useEffect(() => {
-        parseAdminHash();
-        window.addEventListener('hashchange', parseAdminHash);
-        return () => window.removeEventListener('hashchange', parseAdminHash);
-    }, []);
+        const parts = location.pathname.split('/');
+        if (parts[1] === 'admin' && parts[2]) {
+            setActiveTab(parts[2] as MainTab);
+        } else if (parts[1] === 'admin' && !parts[2]) {
+            setActiveTab('dashboard');
+        }
+    }, [location]);
 
     useEffect(() => {
         const init = async () => {
