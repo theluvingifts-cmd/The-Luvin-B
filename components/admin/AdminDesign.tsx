@@ -5,7 +5,9 @@ import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG, LEGO_PARTS } from '../../constants
 import FramePreview from '../FramePreview';
 import { getAllFrames } from '../../services/frameService';
 import { addBackground, updateBackground, getAllBackgrounds } from '../../services/backgroundService'; 
+import { addTemplate, updateTemplate, getAllTemplates } from '../../services/templateService';
 import { uploadToCloudinary } from '../../services/uploadService';
+import html2canvas from 'html2canvas';
 import { getStoreConfig } from '../../services/configService';
 import { getAllParts } from '../../services/productService';
 
@@ -106,6 +108,7 @@ export const AdminDesign: React.FC = () => {
     const [bgName, setBgName] = useState('');
     const [bgCategory, setBgCategory] = useState('Tình yêu');
     const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
+    const [saveType, setSaveType] = useState<'background' | 'template'>('background');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [isNewCategory, setIsNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -917,8 +920,31 @@ export const AdminDesign: React.FC = () => {
                         <h3 className="text-xl font-black mb-6 uppercase">Lưu mẫu thiết kế</h3>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Tên mẫu thiết kế</label>
-                                <input className="w-full p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgName} onChange={e => setBgName(e.target.value)} placeholder="Ví dụ: Nền hoa hồng, Nền sinh nhật..." />
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-3 block">Lưu dưới dạng</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button 
+                                        onClick={() => setSaveType('background')} 
+                                        className={`p-3 rounded-xl font-bold text-[10px] border transition-all uppercase tracking-widest ${saveType === 'background' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-500 border-gray-200'}`}
+                                    >
+                                        🖼️ Nền thiết kế
+                                    </button>
+                                    <button 
+                                        onClick={() => setSaveType('template')} 
+                                        className={`p-3 rounded-xl font-bold text-[10px] border transition-all uppercase tracking-widest ${saveType === 'template' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-500 border-gray-200'}`}
+                                    >
+                                        🛍️ Mẫu sản phẩm
+                                    </button>
+                                </div>
+                                <p className="text-[9px] text-gray-400 mt-2 italic leading-tight">
+                                    {saveType === 'background' 
+                                        ? 'Nền sẽ xuất hiện ở Bước 2 trong Studio để khách chọn làm nền.' 
+                                        : 'Mẫu sẽ xuất hiện ở trang Bộ sưu tập, khách có thể mua ngay.'}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Tên {saveType === 'background' ? 'nền' : 'mẫu'}</label>
+                                <input className="w-full p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgName} onChange={e => setBgName(e.target.value)} placeholder={saveType === 'background' ? "Ví dụ: Nền hoa hồng..." : "Ví dụ: Mẫu kỷ niệm 1 năm..."} />
                             </div>
                             
                             <div>
@@ -953,31 +979,75 @@ export const AdminDesign: React.FC = () => {
                                 const finalCategory = isNewCategory ? newCategoryName.trim() : bgCategory;
                                 if (!finalCategory) return alert("Vui lòng chọn hoặc nhập dịp!");
 
-                                const backgroundData: PresetBackground = {
-                                    id: editingBgId || `bg_${Date.now()}`,
-                                    name: bgName, 
-                                    category: finalCategory, 
-                                    type: bgType, 
-                                    url: config.background.value,
-                                    overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
-                                    formFields: config.formFields || []
-                                };
-                                
+                                setIsUploading(true);
                                 try {
-                                    const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
-                                    if (success) { 
-                                        alert("Đã lưu thiết kế thành công!"); 
-                                        setShowSaveModal(false); 
-                                        setIsNewCategory(false);
-                                        setNewCategoryName('');
-                                    } else {
-                                        alert("Lỗi khi lưu vào database. Vui lòng thử lại!");
+                                    // Chụp ảnh preview nếu là template
+                                    let previewUrl = config.background.value;
+                                    if (saveType === 'template' && previewRef.current) {
+                                        try {
+                                            // Tạm thời bỏ outline và các handle để chụp ảnh sạch
+                                            setSelectedItemId(null);
+                                            // Đợi một chút để UI cập nhật
+                                            await new Promise(r => setTimeout(r, 100));
+                                            
+                                            const canvas = await html2canvas(previewRef.current, {
+                                                useCORS: true,
+                                                scale: 2,
+                                                backgroundColor: config.frameColor === 'black' ? '#1a1a1a' : '#ffffff',
+                                                logging: false
+                                            });
+                                            
+                                            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+                                            if (blob) {
+                                                const file = new File([blob], `preview_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                                                const uploadedUrl = await uploadToCloudinary(file);
+                                                if (uploadedUrl) previewUrl = uploadedUrl;
+                                            }
+                                        } catch (captureErr) {
+                                            console.error("Lỗi khi chụp ảnh preview:", captureErr);
+                                            // Fallback to background image if capture fails
+                                        }
+                                    } else if (!previewUrl.startsWith('http')) {
+                                        previewUrl = "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
                                     }
+
+                                    if (saveType === 'background') {
+                                        const backgroundData: PresetBackground = {
+                                            id: editingBgId || `bg_${Date.now()}`,
+                                            name: bgName, 
+                                            category: finalCategory, 
+                                            type: bgType, 
+                                            url: config.background.value,
+                                            overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
+                                            formFields: config.formFields || []
+                                        };
+                                        const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
+                                        if (success) alert("Đã lưu nền thành công!");
+                                    } else {
+                                        const templateData = {
+                                            id: editingBgId || `tpl_${Date.now()}`,
+                                            name: bgName,
+                                            imageUrl: previewUrl,
+                                            category: finalCategory,
+                                            config: { ...config, previewImageUrl: previewUrl },
+                                            purchaseCount: 0
+                                        };
+                                        const success = editingBgId ? await updateTemplate(editingBgId, templateData) : await addTemplate(templateData);
+                                        if (success) alert("Đã lưu mẫu sản phẩm thành công!");
+                                    }
+
+                                    setShowSaveModal(false); 
+                                    setIsNewCategory(false);
+                                    setNewCategoryName('');
                                 } catch (err) {
                                     console.error(err);
                                     alert("Đã xảy ra lỗi không xác định!");
+                                } finally {
+                                    setIsUploading(false);
                                 }
-                            }} className="px-10 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs shadow-xl hover:bg-black transition-all">Xác nhận Lưu</button>
+                            }} className="px-10 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs shadow-xl hover:bg-black transition-all disabled:opacity-50" disabled={isUploading}>
+                                {isUploading ? 'Đang xử lý...' : 'Xác nhận Lưu'}
+                            </button>
                         </div>
                     </div>
                 </div>
