@@ -113,7 +113,6 @@ const App: React.FC = () => {
     localStorage.setItem(CACHE_KEY_DESIGN, JSON.stringify(config));
   }, [config]);
 
-  const [builderInitialStep, setBuilderInitialStep] = useState(1);
   const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
       try {
           const savedCart = localStorage.getItem('shopping_cart');
@@ -243,7 +242,6 @@ const App: React.FC = () => {
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
   const navigateTo = (page: Page) => {
-    if (page === 'builder') setBuilderInitialStep(1);
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
        if (window.confirm("Bạn đang sửa đơn hàng. Rời đi sẽ hủy bỏ các thay đổi?")) {
            setEditingOrder(null);
@@ -252,6 +250,7 @@ const App: React.FC = () => {
     }
     
     if (page === 'home') navigate('/');
+    else if (page === 'builder') navigate('/builder/1');
     else navigate(`/${page}`);
     
     window.scrollTo(0, 0);
@@ -260,8 +259,7 @@ const App: React.FC = () => {
   const handleCustomizeTemplate = (template: CollectionTemplate) => {
       const newConfig = { ...template.config, templateId: template.id };
       setConfig(newConfig);
-      setBuilderInitialStep(3); 
-      navigate('/builder');
+      navigate('/builder/3');
       window.scrollTo(0, 0);
   };
 
@@ -289,8 +287,7 @@ const App: React.FC = () => {
       setConfig(cartItems[index]);
       setEditingCartIndex(index);
       setIsCartOpen(false);
-      setBuilderInitialStep(4); 
-      navigateTo('builder');
+      navigate('/builder/4');
   };
 
   const handleCancelEdit = () => {
@@ -385,13 +382,14 @@ const App: React.FC = () => {
             <Routes>
                 <Route path="/" element={<HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />} />
                 <Route path="/home" element={<Navigate to="/" replace />} />
-                <Route path="/builder" element={
+                <Route path="/builder" element={<Navigate to="/builder/1" replace />} />
+                <Route path="/builder/:stepId" element={
                     <BuilderPage 
                         config={config} setConfig={setConfig} navigateTo={navigateTo} onAddToCart={handleAddToCart} 
                         onUpdateCart={handleUpdateCartItem} showToast={showToast} legoParts={legoParts}
                         backgrounds={backgrounds} frames={frames} editingCartIndex={editingCartIndex} 
                         onCancelEdit={handleCancelEdit} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl}
-                        initialStep={builderInitialStep} isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
+                        isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
                     />
                 } />
                 <Route path="/collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />} />

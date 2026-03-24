@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Page, FrameConfig, LegoPart, TextConfig, FrameOption, CustomFont } from '../types';
 import { 
     LEGO_PARTS, 
@@ -309,13 +310,19 @@ interface BuilderPageProps {
     onCancelEdit: () => void; 
     onZoomImage: (url: string) => void; 
     logoUrl?: string; 
-    initialStep?: number; 
     isEditingOrder?: boolean;
     uploadedFonts: CustomFont[];
 }
 
-export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, initialStep, isEditingOrder, uploadedFonts }) => {
-  const [step, setStep] = useState(initialStep || 1); 
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, isEditingOrder, uploadedFonts }) => {
+  const { stepId } = useParams();
+  const navigate = useNavigate();
+  const step = parseInt(stepId || '1', 10) || 1;
+  
+  const setStep = (newStep: number) => {
+      navigate(`/builder/${newStep}`);
+  };
+
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const previewContainerParentRef = useRef<HTMLDivElement>(null);
   const frameCaptureRef = useRef<HTMLDivElement>(null);
@@ -975,8 +982,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         </div>
                       ) : (
                         <div className="w-full flex items-center gap-4">
-                           <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">&larr; Quay lại</button>
-                           <button onClick={() => setStep(s => Math.min(4, s + 1))} disabled={step === 4} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md">Tiếp theo</button>
+                           <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">&larr; Quay lại</button>
+                           <button onClick={() => setStep(Math.min(4, step + 1))} disabled={step === 4} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md">Tiếp theo</button>
                         </div>
                       )}
                   </div>
@@ -991,8 +998,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         </div>
                      ) : (
                          <div className="flex gap-3">
-                           <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm">Quay lại</button>
-                           <button onClick={() => setStep(s => Math.min(4, s + 1))} disabled={step === 4} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm">Tiếp theo</button>
+                           <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm">Quay lại</button>
+                           <button onClick={() => setStep(Math.min(4, step + 1))} disabled={step === 4} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm">Tiếp theo</button>
                          </div>
                      )}
                 </div>
