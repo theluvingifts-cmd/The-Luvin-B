@@ -4,6 +4,7 @@ import { FrameConfig, LegoPart, Page } from '../types';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 interface CartPageProps {
     cartItems: FrameConfig[]; 
@@ -17,13 +18,14 @@ interface CartPageProps {
 }
 
 export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder }) => {
+    const { t } = useLanguage();
     const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
-            <h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">{isEditingOrder ? 'Sửa chi tiết đơn hàng' : 'Giỏ hàng của bạn'}</h1>
+            <h1 className="text-5xl font-heading text-center text-luvin-pink mb-8">{isEditingOrder ? t('cart.edit_details') : t('cart.title')}</h1>
             {cartItems.length === 0 ? (
-                <p className="text-center text-gray-600 font-body text-lg">Giỏ hàng đang trống.</p>
+                <p className="text-center text-gray-600 font-body text-lg">{t('cart.empty')}.</p>
             ) : (
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
@@ -51,15 +53,15 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                             </div>
                                         </>
                                       ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
+                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">{t('checkout.no_image')}</div>
                                       )}
                                     </div>
                                     <div className="flex-grow text-center sm:text-left">
-                                        <h3 className="font-bold text-lg font-body text-luvin-pink">Khung tùy chỉnh</h3>
-                                        <p className="text-sm text-gray-600">Kích thước: {frame.name}</p>
-                                        <p className="text-sm text-gray-600">Số nhân vật: {item.characters.length}</p>
+                                        <h3 className="font-bold text-lg font-body text-luvin-pink">{t('order_lookup.frame_lego', { name: frame.name })}</h3>
+                                        <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
+                                        <p className="text-sm text-gray-600">{t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}</p>
                                         <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-                                            <span className="text-sm font-medium">Số lượng:</span>
+                                            <span className="text-sm font-medium">{t('common.quantity')}:</span>
                                             <div className="flex items-center border border-gray-300 rounded">
                                                 <button 
                                                     onClick={() => onUpdateQuantity(index, quantity - 1)}
@@ -76,10 +78,10 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                     </div>
                                     <div className="flex-shrink-0 text-center sm:text-right">
                                         <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
-                                        <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / cái)</p>
+                                        <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / {t('common.item')})</p>
                                         <div className="flex justify-center sm:justify-end gap-3 mt-2">
-                                            <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">Sửa</button>
-                                            <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline">Xóa</button>
+                                            <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">{t('cart.edit')}</button>
+                                            <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline">{t('cart.remove')}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -88,11 +90,11 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                     </div>
                     <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                         <div className="flex justify-between items-center text-2xl font-bold font-body text-luvin-pink">
-                            <span>Tổng cộng:</span>
+                            <span>{t('cart.summary')}:</span>
                             <span>{formatCurrency(totalCartPrice)}</span>
                         </div>
                         <button onClick={() => navigateTo('checkout')} className="mt-4 w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-lg hover:opacity-90 transition-colors">
-                            {isEditingOrder ? 'Tiếp tục (Nhập địa chỉ)' : 'Tiến hành thanh toán'}
+                            {isEditingOrder ? t('common.next') : t('cart.checkout')}
                         </button>
                     </div>
                 </div>

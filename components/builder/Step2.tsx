@@ -172,65 +172,128 @@ export const Step2BackgroundAndDecorations: React.FC<{
              config.shapes.some(s => s.linkedFieldId === fieldId);
   };
 
+  const toggleSimpleMode = () => {
+    const newIsSimpleMode = !config.isSimpleMode;
+    setConfig({
+        ...config,
+        isSimpleMode: newIsSimpleMode,
+        // If enabling simple mode, maybe clear characters to simplify
+        characters: newIsSimpleMode ? [] : config.characters
+    });
+    if (newIsSimpleMode) {
+        showToast("Đã chuyển sang chế độ Tự thiết kế (Chỉ up ảnh & chọn Charm)", "success");
+    } else {
+        showToast("Đã chuyển về chế độ Thiết kế đầy đủ", "success");
+    }
+  };
+
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      {/* SECTION 1: PRESET BACKGROUNDS */}
+      {/* SECTION 0: MODE SELECTION */}
+      <div className="bg-gradient-to-br from-luvin-pink/5 to-blue-500/5 p-4 border border-luvin-pink/20 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+                <h4 className="font-black text-gray-800 uppercase tracking-wider text-[11px] mb-1">CHẾ ĐỘ THIẾT KẾ</h4>
+                <p className="text-[9px] text-gray-500 font-medium leading-tight">
+                    {config.isSimpleMode 
+                        ? "Bạn chỉ cần up ảnh & chọn charm. Shop sẽ in & gắn giúp bạn." 
+                        : "Bạn có thể tự do sắp xếp nhân vật, phụ kiện & chữ."}
+                </p>
+            </div>
+            <button 
+                onClick={toggleSimpleMode}
+                className={`flex-shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all border-2 ${config.isSimpleMode ? 'bg-luvin-pink text-white border-luvin-pink shadow-lg shadow-pink-100' : 'bg-white text-gray-600 border-gray-200 hover:border-luvin-pink'}`}
+            >
+                {config.isSimpleMode ? '✨ CHẾ ĐỘ ĐƠN GIẢN' : '🛠️ CHẾ ĐỘ ĐẦY ĐỦ'}
+            </button>
+        </div>
+      </div>
+
+      {/* SECTION 1: DESIGN UPLOAD / BACKGROUND */}
       <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm">
         <div className="flex justify-between items-center mb-4">
-            <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px]">1. CHỌN MẪU NỀN</h4>
-            <span className="text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                {filteredBackgrounds.length} mẫu
-            </span>
+            <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px]">
+                {config.isSimpleMode ? '1. TẢI ẢNH THIẾT KẾ CỦA BẠN' : '1. CHỌN MẪU NỀN'}
+            </h4>
+            {!config.isSimpleMode && (
+                <span className="text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                    {filteredBackgrounds.length} mẫu
+                </span>
+            )}
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
-            {categories.map(category => (
-                <button 
-                    key={category} 
-                    onClick={() => setSelectedCategory(category)} 
-                    className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-black transition-all uppercase tracking-tight ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-md shadow-pink-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                >
-                    {category}
-                </button>
-            ))}
-        </div>
-        <div className="grid grid-cols-4 gap-2.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
-          {filteredBackgrounds.map(bg => (
-            <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} />
-          ))}
-        </div>
-        
-        <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
+
+        {config.isSimpleMode && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+                <span className="text-blue-500 text-xl">💡</span>
+                <div className="space-y-1">
+                    <p className="text-[10px] text-blue-800 leading-relaxed font-medium">
+                        Ở chế độ này, bạn chỉ cần tải lên <b>ảnh mẫu thiết kế</b> đã có sẵn. 
+                        Chúng mình sẽ in đúng mẫu này vào khung cho bạn!
+                    </p>
+                    <p className="text-[10px] text-red-600 leading-relaxed font-bold uppercase">
+                        ⚠️ Lưu ý: Sản phẩm in theo yêu cầu cần 10 - 15 ngày để hoàn thiện.
+                    </p>
+                </div>
+            </div>
+        )}
+
+        <div className="mb-4">
             <input type="file" ref={manualBgInputRef} className="hidden" accept="image/*" onChange={handleManualBgUpload} />
             <button 
                 onClick={() => manualBgInputRef.current?.click()}
                 disabled={isProcessingImage}
-                className={`w-full py-3.5 rounded-xl border-2 border-dashed transition-all flex items-center justify-center gap-2.5 ${config.background.type === 'upload' ? 'border-luvin-pink bg-pink-50 text-luvin-pink' : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
+                className={`w-full py-8 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-3 ${config.background.type === 'upload' ? 'border-luvin-pink bg-pink-50 text-luvin-pink' : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
             >
                 {isProcessingImage ? (
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-luvin-pink border-t-transparent rounded-full animate-spin"></div>
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-4 border-luvin-pink border-t-transparent rounded-full animate-spin"></div>
                         <span className="text-[11px] font-black uppercase">Đang xử lý ảnh...</span>
                     </div>
                 ) : (
                     <>
-                        <span className="text-xl">📸</span>
-                        <span className="text-[11px] font-black uppercase tracking-tight">
-                            {config.background.type === 'upload' ? 'Thay ảnh nền khác' : 'Tải ảnh nền của riêng bạn'}
-                        </span>
+                        <span className="text-4xl">📸</span>
+                        <div className="text-center">
+                            <span className="block text-[13px] font-black uppercase tracking-tight mb-1">
+                                {config.background.type === 'upload' ? 'Thay ảnh thiết kế khác' : 'Bấm để tải ảnh thiết kế'}
+                            </span>
+                            <span className="text-[10px] opacity-60 font-medium italic">Hỗ trợ JPG, PNG, HEIC...</span>
+                        </div>
                     </>
                 )}
             </button>
             {config.background.type === 'upload' && (
-                <div className="flex items-center justify-center gap-1.5 mt-2">
-                    <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></span>
-                    <p className="text-[9px] text-gray-400 italic font-medium">Bạn đang sử dụng ảnh nền tự tải lên</p>
+                <div className="flex items-center justify-center gap-1.5 mt-3">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Đã tải lên thành công!</p>
                 </div>
             )}
         </div>
+
+        {!config.isSimpleMode && (
+            <>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
+                    {categories.map(category => (
+                        <button 
+                            key={category} 
+                            onClick={() => setSelectedCategory(category)} 
+                            className={`flex-shrink-0 px-4 py-1.5 text-[10px] rounded-full font-black transition-all uppercase tracking-tight ${selectedCategory === category ? 'bg-luvin-pink text-white shadow-md shadow-pink-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        >
+                            {category}
+                        </button>
+                    ))}
+                </div>
+                <div className="grid grid-cols-4 gap-2.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+                  {filteredBackgrounds.map(bg => (
+                    <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} />
+                  ))}
+                </div>
+            </>
+        )}
       </div>
 
       {/* SECTION 2: PRINT INFO FORM */}
-      <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm relative overflow-hidden">
+      {!config.isSimpleMode && (
+        <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-20"></div>
         <div className="flex justify-between items-center mb-5">
             <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px] flex items-center gap-2">
@@ -395,6 +458,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
             </div>
         )}
       </div>
+      )}
     </div>
   );
 };

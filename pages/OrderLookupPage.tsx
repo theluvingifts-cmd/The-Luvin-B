@@ -6,11 +6,13 @@ import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS, FRAME_OPTIONS } from '../constants';
 import { formatCurrency } from '../utils/pricing';
 import { getAllFrames } from '../services/frameService';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 // Orders that can be edited by customer must not have these statuses
 const PACKED_STATUSES = ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'];
 
 export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEditOrder: (order: Order) => void}> = ({onZoomImage, onEditOrder}) => {
+    const { t } = useLanguage();
     const [orderCode, setOrderCode] = useState('');
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -119,12 +121,13 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
     };
 
     const StatusTracker: React.FC<{ currentStatus: string }> = ({ currentStatus }) => {
+        const { t } = useLanguage();
         const steps = [
-            { label: 'Thanh toán', icon: '💳' },
-            { label: 'Thiết kế', icon: '📐' },
-            { label: 'Đóng gói', icon: '🎁' },
-            { label: 'Đang giao', icon: '🚚' },
-            { label: 'Hoàn thành', icon: '❤️' }
+            { label: t('order_lookup.status_payment'), icon: '💳' },
+            { label: t('order_lookup.status_design'), icon: '📐' },
+            { label: t('order_lookup.status_packing'), icon: '🎁' },
+            { label: t('order_lookup.status_shipping'), icon: '🚚' },
+            { label: t('order_lookup.status_completed'), icon: '❤️' }
         ];
 
         const getStepIndex = (status: string) => {
@@ -152,7 +155,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
         if (currentStepIndex === -1) {
             return (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center text-red-700 font-bold mb-6">
-                    Đơn hàng đã bị huỷ
+                    {t('order_lookup.order_cancelled')}
                 </div>
             );
         }
@@ -213,10 +216,10 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                 </div>
                 <div className="relative z-10 container mx-auto px-4">
                     <h1 className="text-3xl md:text-5xl font-heading font-bold text-gray-900 mb-3 tracking-tight">
-                        Tra Cứu Đơn Hàng
+                        {t('order_lookup.title')}
                     </h1>
                     <p className="text-gray-500 max-w-lg mx-auto text-sm md:text-base">
-                        Nhập mã đơn hàng hoặc số điện thoại để theo dõi hành trình món quà của bạn.
+                        {t('order_lookup.subtitle')}
                     </p>
                 </div>
             </div>
@@ -232,7 +235,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                     type="text"
                                     value={orderCode}
                                     onChange={(e) => setOrderCode(e.target.value)}
-                                    placeholder="Mã đơn (#TLxxxxxx) hoặc SĐT"
+                                    placeholder={t('order_lookup.placeholder')}
                                     className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-luvin-pink focus:border-transparent text-base outline-none bg-gray-50 focus:bg-white transition-all font-medium placeholder-gray-400 uppercase"
                                 />
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -247,15 +250,15 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                 {isLoading ? (
                                     <div className="flex items-center gap-2">
                                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        <span>Đang tìm...</span>
+                                        <span>{t('order_lookup.searching')}</span>
                                     </div>
-                                ) : 'Tra cứu'}
+                                ) : t('order_lookup.search')}
                             </button>
                         </form>
                         
                         {savedOrders.length > 0 && !foundOrder && (
                             <div className="mt-6">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tìm kiếm gần đây</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('order_lookup.recent_searches')}</p>
                                 <div className="flex flex-wrap gap-2">
                                     {savedOrders.map((item, idx) => (
                                         <button 
@@ -276,8 +279,8 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                         <div className="bg-white border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm flex items-center gap-4 animate-fade-in">
                             <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center flex-shrink-0 text-2xl">🤔</div>
                             <div>
-                                <h3 className="font-bold text-gray-900">Không tìm thấy đơn hàng</h3>
-                                <p className="text-sm text-gray-500 mt-1">Vui lòng kiểm tra lại mã đơn hàng hoặc số điện thoại bạn đã nhập.</p>
+                                <h3 className="font-bold text-gray-900">{t('order_lookup.not_found_title')}</h3>
+                                <p className="text-sm text-gray-500 mt-1">{t('order_lookup.not_found_desc')}</p>
                             </div>
                         </div>
                     )}
@@ -286,9 +289,9 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                         <div className="bg-white border-l-4 border-yellow-500 p-6 rounded-r-xl shadow-sm flex items-center gap-4 animate-fade-in">
                             <div className="w-12 h-12 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center flex-shrink-0 text-2xl">🚧</div>
                             <div>
-                                <h3 className="font-bold text-gray-900">Hệ thống đang bảo trì</h3>
+                                <h3 className="font-bold text-gray-900">{t('order_lookup.maintenance_title')}</h3>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    Vui lòng liên hệ Hotline <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline">0964 393 115</a> để được hỗ trợ.
+                                    {t('order_lookup.maintenance_desc', { phone: '0964 393 115' })}
                                 </p>
                             </div>
                         </div>
@@ -328,15 +331,14 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                             <img src={getVietQR(foundOrder)} alt="QR" className="w-32 h-32 object-contain" />
                                         </div>
                                         <div className="flex-grow text-center sm:text-left">
-                                            <h3 className="font-bold text-gray-900 mb-2">Đơn hàng chưa được thanh toán</h3>
+                                            <h3 className="font-bold text-gray-900 mb-2">{t('order_lookup.unpaid_title')}</h3>
                                             <p className="text-sm text-gray-600 mb-4">
-                                                Quét mã QR để thanh toán <strong>{formatCurrency(foundOrder.amountToPay)}</strong>.
-                                                <br/>Nội dung CK: <span className="font-mono font-bold text-red-500">{foundOrder.id}</span>
+                                                {t('order_lookup.unpaid_desc', { amount: formatCurrency(foundOrder.amountToPay), id: foundOrder.id })}
                                             </p>
                                             
                                             {foundOrder.paymentProofUrl ? (
                                                 <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold">
-                                                    <span>✓</span> Đã gửi ảnh xác nhận
+                                                    <span>✓</span> {t('order_lookup.proof_uploaded')}
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-col sm:flex-row gap-3 items-center justify-center sm:justify-start">
@@ -347,9 +349,9 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                                     >
                                                         {/* Fix: Removed duplicate stroke attribute */}
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                                        {isUploading ? 'Đang tải...' : 'Gửi ảnh biên lai'}
+                                                        {isUploading ? t('order_lookup.uploading') : t('order_lookup.upload_proof')}
                                                     </button>
-                                                    <span className="text-xs text-gray-500 italic">Giúp đơn hàng được xử lý nhanh hơn</span>
+                                                    <span className="text-xs text-gray-500 italic">{t('order_lookup.upload_tip')}</span>
                                                 </div>
                                             )}
                                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
@@ -361,7 +363,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                     {/* Column 1: Info */}
                                     <div className="space-y-6">
                                         <div>
-                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">Người nhận</h4>
+                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">{t('order_lookup.recipient')}</h4>
                                             <div className="space-y-2 text-sm text-gray-700">
                                                 <p className="font-bold text-base text-gray-900">{foundOrder.customer.name}</p>
                                                 <p className="flex items-center gap-2 text-gray-600"><span className="text-gray-400 w-4 text-center">📞</span> {foundOrder.customer.phone}</p>
@@ -370,17 +372,17 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         </div>
                                         
                                         <div>
-                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">Vận chuyển & Ghi chú</h4>
+                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">{t('order_lookup.shipping_notes')}</h4>
                                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2 text-sm">
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-500">Hình thức:</span> 
-                                                    <span className="font-medium text-gray-800">{foundOrder.shipping.method === 'standard' ? 'Tiêu chuẩn' : foundOrder.shipping.method === 'express' ? 'Hỏa tốc' : 'Tự đặt ship'}</span>
+                                                    <span className="text-gray-500">{t('order_lookup.shipping_method')}</span> 
+                                                    <span className="font-medium text-gray-800">{foundOrder.shipping.method === 'standard' ? t('checkout.shipping_standard') : foundOrder.shipping.method === 'express' ? t('checkout.shipping_express') : t('checkout.shipping_bookship')}</span>
                                                 </div>
-                                                {foundOrder.trackingCode && <div className="flex justify-between"><span className="text-gray-500">Mã vận đơn:</span> <span className="font-mono font-bold text-blue-600 bg-white border px-1.5 rounded">{foundOrder.trackingCode}</span></div>}
+                                                {foundOrder.trackingCode && <div className="flex justify-between"><span className="text-gray-500">{t('order_lookup.tracking_code')}</span> <span className="font-mono font-bold text-blue-600 bg-white border px-1.5 rounded">{foundOrder.trackingCode}</span></div>}
                                                 <div className="border-t border-gray-200 pt-2 mt-2">
-                                                    <span className="text-gray-500 block text-xs mb-1 font-bold">Ghi chú của bạn:</span>
+                                                    <span className="text-gray-500 block text-xs mb-1 font-bold">{t('order_lookup.your_notes')}</span>
                                                     <p className="italic text-gray-600 text-sm whitespace-pre-wrap break-words leading-relaxed">
-                                                        {foundOrder.delivery.notes || 'Không có ghi chú'}
+                                                        {foundOrder.delivery.notes || t('order_lookup.no_notes')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -389,7 +391,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
                                     {/* Column 2: Items & Total */}
                                     <div>
-                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">Sản phẩm ({foundOrder.items.length})</h4>
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1">{t('order_lookup.products', { count: foundOrder.items.length })}</h4>
                                         <div className="space-y-3 mb-6">
                                             {foundOrder.items.map((item, idx) => {
                                                 const frameObj = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
@@ -397,11 +399,11 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                                 return (
                                                     <div key={idx} className="flex gap-4 border border-gray-100 p-3 rounded-xl hover:bg-gray-50 transition-colors bg-white">
                                                         <div className="w-16 h-16 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0 cursor-pointer" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                                                            {item.previewImageUrl ? <img src={item.previewImageUrl} className="w-full h-full object-contain" /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">No Img</div>}
+                                                            {item.previewImageUrl ? <img src={item.previewImageUrl} className="w-full h-full object-contain" /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">{t('checkout.no_image')}</div>}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-sm">Khung LEGO {frameName}</p>
-                                                            <p className="text-xs text-gray-500 mt-1">{item.characters.length} nhân vật • {item.background.type === 'color' ? 'Nền màu' : 'Nền ảnh'}</p>
+                                                            <p className="font-bold text-gray-800 text-sm">{t('order_lookup.frame_lego', { name: frameName })}</p>
+                                                            <p className="text-xs text-gray-500 mt-1">{t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}</p>
                                                             {item.quantity && item.quantity > 1 && <p className="text-xs font-bold text-luvin-pink mt-1">x{item.quantity}</p>}
                                                         </div>
                                                     </div>
@@ -411,32 +413,32 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
 
                                         <div className="bg-gray-50 rounded-xl p-5 space-y-3 text-sm">
                                             <div className="flex justify-between text-gray-600">
-                                                <span>Tổng tiền hàng</span>
+                                                <span>{t('order_lookup.subtotal')}</span>
                                                 <span>{formatCurrency(foundOrder.totalPrice - foundOrder.shipping.fee - (foundOrder.addGiftBox ? 30000 : 0))}</span>
                                             </div>
                                             <div className="flex justify-between text-gray-600">
-                                                <span>Phí vận chuyển</span>
-                                                <span>{foundOrder.shipping.fee > 0 ? formatCurrency(foundOrder.shipping.fee) : 'Miễn phí'}</span>
+                                                <span>{t('order_lookup.shipping_fee')}</span>
+                                                <span>{foundOrder.shipping.fee > 0 ? formatCurrency(foundOrder.shipping.fee) : t('checkout.free')}</span>
                                             </div>
                                             {foundOrder.addGiftBox && (
                                                 <div className="flex justify-between text-gray-600">
-                                                    <span>Hộp quà cao cấp</span>
+                                                    <span>{t('order_lookup.premium_gift_box')}</span>
                                                     <span>{formatCurrency(30000)}</span>
                                                 </div>
                                             )}
                                             {foundOrder.discountAmount && foundOrder.discountAmount > 0 && (
                                                 <div className="flex justify-between text-green-600 font-medium">
-                                                    <span>Giảm giá</span>
+                                                    <span>{t('order_lookup.discount')}</span>
                                                     <span>-{formatCurrency(foundOrder.discountAmount)}</span>
                                                 </div>
                                             )}
                                             <div className="border-t border-gray-200 pt-3 mt-1 flex justify-between items-center">
-                                                <span className="font-bold text-gray-900 text-base">Tổng thanh toán</span>
+                                                <span className="font-bold text-gray-900 text-base">{t('order_lookup.total_payment')}</span>
                                                 <span className="font-heading font-bold text-xl text-luvin-pink">{formatCurrency(foundOrder.totalPrice)}</span>
                                             </div>
                                             {foundOrder.payment.method === 'deposit' && (
                                                 <div className="flex justify-between text-xs text-gray-500 pt-1">
-                                                    <span>Cần cọc trước (70%)</span>
+                                                    <span>{t('order_lookup.deposit_required')}</span>
                                                     <span className="font-bold">{formatCurrency(foundOrder.amountToPay)}</span>
                                                 </div>
                                             )}

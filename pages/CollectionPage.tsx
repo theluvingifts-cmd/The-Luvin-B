@@ -4,6 +4,7 @@ import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page } from '..
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
 import { SmartImage } from '../components/shared/SmartImage';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 interface CollectionPageProps {
     navigateTo: (page: Page) => void, 
@@ -16,10 +17,11 @@ interface CollectionPageProps {
 }
 
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates, onZoomImage, allParts, frames }) => {
+    const { t } = useLanguage();
     const displayTemplates: CollectionTemplate[] = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeCategory, setActiveCategory] = useState('Tất cả');
+    const [activeCategory, setActiveCategory] = useState(t('common.all'));
     const [selectedTemplate, setSelectedTemplate] = useState<CollectionTemplate | null>(null);
     const [customConfig, setCustomConfig] = useState<FrameConfig | null>(null);
     const [orderNote, setOrderNote] = useState('');
@@ -31,16 +33,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 dynamicCats.add(t.category.trim());
             }
         });
-        return ['Tất cả', ...Array.from(dynamicCats).sort()];
-    }, [displayTemplates]);
+        return [t('common.all'), ...Array.from(dynamicCats).sort()];
+    }, [displayTemplates, t]);
 
     const filteredTemplates = useMemo(() => {
         return displayTemplates.filter(template => {
             const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = activeCategory === 'Tất cả' || template.category === activeCategory;
+            const matchesCategory = activeCategory === t('common.all') || template.category === activeCategory;
             return matchesSearch && matchesCategory;
         });
-    }, [displayTemplates, searchTerm, activeCategory]);
+    }, [displayTemplates, searchTerm, activeCategory, t]);
 
     const handleSelectTemplate = (template: CollectionTemplate) => {
         setSelectedTemplate(template);
@@ -106,7 +108,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Tùy chỉnh nhanh mẫu thiết kế</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('collection.quick_customize_title')}</p>
                         </div>
                         <button onClick={() => setSelectedTemplate(null)} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -130,7 +132,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        Chọn Charm Trang Trí
+                                        {t('collection.select_charms')}
                                     </h3>
                                     <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                         {customConfig.draggableItems.filter(i => i.type === 'charm').length} / {availableCharms.length}
@@ -167,12 +169,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         <div className="space-y-3">
                             <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                Ghi chú đơn hàng
+                                {t('common.order_note')}
                             </h3>
                             <textarea 
                                 value={orderNote}
                                 onChange={e => setOrderNote(e.target.value)}
-                                placeholder="Ví dụ: Thay đổi tên thành 'Luvin', đổi màu tóc nhân vật nữ sang nâu..."
+                                placeholder={t('common.order_note_placeholder')}
                                 rows={3}
                                 className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none"
                             />
@@ -183,14 +185,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <div className="p-6 border-t border-gray-100 bg-white space-y-4 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
                         <div className="flex justify-between items-end">
                             <div>
-                                <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Tổng cộng</span>
+                                <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('common.total')}</span>
                                 <span className="text-2xl font-black text-gray-900">{formatCurrency(currentPrice)}</span>
                             </div>
                             <button 
                                 onClick={() => onCustomize(selectedTemplate)}
                                 className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1"
                             >
-                                Tùy chỉnh chi tiết 
+                                {t('common.customize')} 
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                             </button>
                         </div>
@@ -198,7 +200,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             onClick={handleQuickAddToCart}
                             className="w-full py-4 bg-gray-900 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                         >
-                            🛒 Thêm vào giỏ hàng
+                            🛒 {t('common.add_to_cart')}
                         </button>
                     </div>
                 </div>
@@ -209,14 +211,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         <div className="bg-white border-b border-gray-100 pt-16 pb-8 px-4">
             <div className="container mx-auto text-center">
                 <h1 className="text-3xl md:text-5xl font-heading font-bold mb-4 text-gray-900 leading-tight">
-                    Bộ sưu tập <span className="text-primary italic">Luvin</span>
+                    {t('collection.title')} <span className="text-primary italic">{t('collection.subtitle')}</span>
                 </h1>
                 
                 {/* Search Bar */}
                 <div className="max-w-md mx-auto relative px-2 mt-6">
                     <input 
                         type="text" 
-                        placeholder="Tìm kiếm mẫu thiết kế..." 
+                        placeholder={t('collection.search_placeholder')} 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-6 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm transition-all outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary"
@@ -267,7 +269,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="absolute top-2 left-2 right-2 flex flex-col gap-1.5 pointer-events-none">
                                     <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-black text-primary uppercase tracking-tight shadow-sm border border-primary/10 w-fit">
-                                        ✨ 100% Tùy chỉnh
+                                        ✨ {t('collection.customizable')}
                                     </div>
                                     {template.category && (
                                         <div className="bg-gray-900/80 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-bold text-white uppercase tracking-tight shadow-sm w-fit">
@@ -286,21 +288,21 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex items-center gap-1.5 mb-4">
                                     <div className="flex items-center gap-1 bg-blue-50/80 px-1.5 py-1 rounded-lg">
                                         <span className="text-[10px]">⭐</span>
-                                        <span className="text-[8px] sm:text-[9px] text-blue-700 font-black uppercase">Tin dùng</span>
+                                        <span className="text-[8px] sm:text-[9px] text-blue-700 font-black uppercase">{t('collection.trusted')}</span>
                                     </div>
                                     <div className="text-[8px] sm:text-[9px] text-gray-400 font-bold leading-tight">
-                                        {purchaseCount > 0 ? `${purchaseCount} lượt đặt hàng` : 'Đang hot'}
+                                        {purchaseCount > 0 ? `${purchaseCount} ${t('collection.orders')}` : t('collection.hot')}
                                     </div>
                                 </div>
 
                                 <div className="mt-auto space-y-3">
                                     <div className="flex justify-between items-end">
                                         <div>
-                                            <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">Giá cơ bản từ</span>
+                                            <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">{t('collection.base_price')}</span>
                                             <span className="text-sm sm:text-lg font-black text-gray-900 leading-none">{formatCurrency(totalPrice)}</span>
                                         </div>
                                         <div className="bg-gray-100 px-1.5 py-0.5 rounded text-[8px] font-bold text-gray-500 mb-0.5">
-                                            {template.config.characters.length} NV Lego
+                                            {template.config.characters.length} {t('collection.characters_count')}
                                         </div>
                                     </div>
                                     
@@ -308,7 +310,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         onClick={() => handleSelectTemplate(template)} 
                                         className="w-full py-2.5 bg-gray-900 text-white rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-primary transition-all active:scale-95 group/btn"
                                     >
-                                        Chọn mẫu này
+                                        {t('collection.select_template')}
                                         <svg className="w-3.5 h-3.5 transform group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                     </button>
                                 </div>
@@ -320,8 +322,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             ) : (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
                     <div className="text-5xl mb-4 opacity-50">🔍</div>
-                    <h3 className="text-lg font-bold text-gray-800">Không tìm thấy mẫu nào</h3>
-                    <button onClick={() => {setSearchTerm(''); setActiveCategory('Tất cả')}} className="mt-4 text-primary font-bold hover:underline">Xem tất cả</button>
+                    <h3 className="text-lg font-bold text-gray-800">{t('collection.no_results')}</h3>
+                    <button onClick={() => {setSearchTerm(''); setActiveCategory(t('common.all'))}} className="mt-4 text-primary font-bold hover:underline">{t('collection.view_all')}</button>
                 </div>
             )}
         </div>

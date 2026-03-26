@@ -64,6 +64,7 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
   texts: [],
   draggableItems: [],
   shapes: [], // Initialize shapes array
+  isSimpleMode: false,
 };
 
 /**

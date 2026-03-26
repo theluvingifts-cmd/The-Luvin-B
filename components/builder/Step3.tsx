@@ -446,98 +446,125 @@ export const Step3Characters: React.FC<{
                 </div>
               </div>
             )}
-            <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">QUẢN LÝ NHÂN VẬT</h4>
-                    {activeCharacter && (
-                        <button 
-                            onClick={handleRandomizeOutfit}
-                            className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
-                            title="Chọn ngẫu nhiên trang phục"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                            Ngẫu nhiên
-                        </button>
-                    )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {config.characters.map((char, index) => (
-                        <div key={char.id} className="relative">
-                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
-                                NV {index + 1}
-                            </button>
-                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">
-                                &times;
-                            </button>
-                        </div>
-                    ))}
-                    <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
-                </div>
-                {activeCharacter && 
-                  <div className="mt-4 pt-4 border-t flex items-center justify-start">
-                    <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
-                      {activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}
-                    </button>
-                  </div>
-                }
-            </div>
 
-            {activeCharacter && (
-                <div className="p-4 border border-gray-200 rounded-lg relative">
-                    <div className="flex flex-col mb-4 border-b border-gray-200 pb-4">
-                        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1 mb-2">
-                            {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
-                                    {pt.label}
+            {!config.isSimpleMode && (
+                <>
+                    <div className="p-4 border border-gray-200 rounded-lg">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">QUẢN LÝ NHÂN VẬT</h4>
+                            {activeCharacter && (
+                                <button 
+                                    onClick={handleRandomizeOutfit}
+                                    className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
+                                    title="Chọn ngẫu nhiên trang phục"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    Ngẫu nhiên
                                 </button>
-                            ))}
+                            )}
                         </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {config.characters.map((char, index) => (
+                                <div key={char.id} className="relative">
+                                    <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
+                                        NV {index + 1}
+                                    </button>
+                                    <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">
+                                        &times;
+                                    </button>
+                                </div>
+                            ))}
+                            <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
+                        </div>
+                        {activeCharacter && 
+                          <div className="mt-4 pt-4 border-t flex items-center justify-start">
+                            <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
+                              {activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}
+                            </button>
+                          </div>
+                        }
                     </div>
-                     <div className="grid grid-cols-4 gap-2">
-                         {(activePartType === 'hair') && (
-                             <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
-                               <span className="text-2xl font-bold">&times;</span>
-                               <span className="text-[11px] font-semibold">Không chọn</span>
-                             </button>
-                         )}
-                        {currentPartList.length > 0 ? currentPartList.map((part, index) => {
-                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
-                            let effectiveBasePrice = getEffectivePrice(part);
-                            let originalBasePrice = part.price;
-                            let priceToDisplay = effectiveBasePrice;
-                            let originalPriceToDisplay = originalBasePrice;
-                            if (isSelected) {
-                                let surcharge = 0;
-                                if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
-                                else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
-                                else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
-                                priceToDisplay += surcharge;
-                                originalPriceToDisplay += surcharge;
-                            }
-                            return (
-                                <PartButton 
-                                    key={part.id} 
-                                    part={part}
-                                    isSelected={isSelected}
-                                    onClick={() => handlePartSelect(part)}
-                                    priceToDisplay={priceToDisplay}
-                                    originalPrice={originalPriceToDisplay}
-                                    priority={index < 8} 
-                                    disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
-                                />
-                            );
-                        }) : (
-                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
-                                {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
+
+                    {activeCharacter && (
+                        <div className="p-4 border border-gray-200 rounded-lg relative">
+                            <div className="flex flex-col mb-4 border-b border-gray-200 pb-4">
+                                <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1 mb-2">
+                                    {partTypes.map(pt => (
+                                        <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
+                                            {pt.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        )}
-                    </div>
-                </div>
+                             <div className="grid grid-cols-4 gap-2">
+                                 {(activePartType === 'hair') && (
+                                     <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
+                                       <span className="text-2xl font-bold">&times;</span>
+                                       <span className="text-[11px] font-semibold">Không chọn</span>
+                                     </button>
+                                 )}
+                                {currentPartList.length > 0 ? currentPartList.map((part, index) => {
+                                    const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
+                                    let effectiveBasePrice = getEffectivePrice(part);
+                                    let originalBasePrice = part.price;
+                                    let priceToDisplay = effectiveBasePrice;
+                                    let originalPriceToDisplay = originalBasePrice;
+                                    if (isSelected) {
+                                        let surcharge = 0;
+                                        if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
+                                        else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
+                                        else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
+                                        priceToDisplay += surcharge;
+                                        originalPriceToDisplay += surcharge;
+                                    }
+                                    return (
+                                        <PartButton 
+                                            key={part.id} 
+                                            part={part}
+                                            isSelected={isSelected}
+                                            onClick={() => handlePartSelect(part)}
+                                            priceToDisplay={priceToDisplay}
+                                            originalPrice={originalPriceToDisplay}
+                                            priority={index < 8} 
+                                            disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
+                                        />
+                                    );
+                                }) : (
+                                    <div className="col-span-4 text-center text-sm text-gray-400 py-4">
+                                        {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
             
-            <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                <div className="flex flex-col gap-4 mb-4">
-                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">THÊM PHỤ KIỆN</h4>
+            <div className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm relative overflow-hidden">
+                {config.isSimpleMode && (
+                    <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-luvin-pink opacity-5 rounded-full blur-2xl"></div>
+                )}
+                
+                <div className="flex flex-col gap-4 mb-6">
+                    <div className="flex justify-between items-end">
+                        <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-xl flex items-center gap-2">
+                            {config.isSimpleMode ? '✨ CHỌN CHARM TRANG TRÍ' : 'THÊM PHỤ KIỆN'}
+                            {config.isSimpleMode && <span className="text-xs bg-luvin-pink text-white px-2 py-0.5 rounded-full animate-pulse">HOT</span>}
+                        </h4>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                            {filteredAccessories.length} mẫu có sẵn
+                        </span>
+                    </div>
+
+                    {config.isSimpleMode && (
+                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3 mb-2">
+                            <span className="text-amber-500 text-xl">🎨</span>
+                            <p className="text-[10px] text-amber-800 leading-relaxed font-medium">
+                                Bạn có thể chọn các <b>Charm (phụ kiện)</b> dưới đây để trang trí thêm cho khung hình của mình. 
+                                Bấm vào charm để thêm vào thiết kế nhé!
+                            </p>
+                        </div>
+                    )}
                     
                     {/* Search bar for accessories */}
                     <div className="relative group">
@@ -546,7 +573,7 @@ export const Step3Characters: React.FC<{
                             placeholder="Tìm charm (hoa, túi, bóng bay...)" 
                             value={accessorySearch}
                             onChange={(e) => setAccessorySearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-luvin-pink focus:border-transparent transition-all"
+                            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-luvin-pink focus:border-transparent transition-all shadow-sm"
                         />
                         <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-luvin-pink transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -591,7 +618,49 @@ export const Step3Characters: React.FC<{
                         </div>
                     </div>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+
+                {config.isSimpleMode && (
+                    <div className="mb-6 pb-6 border-b border-dashed border-gray-100">
+                        <input 
+                            type="file" 
+                            id="custom-charm-upload" 
+                            className="hidden" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                        if (typeof reader.result === 'string') {
+                                            const newItem: DraggableItem = {
+                                                id: Date.now(),
+                                                partId: reader.result,
+                                                type: 'charm',
+                                                x: 50 + (Math.random() - 0.5) * 10,
+                                                y: 50 + (Math.random() - 0.5) * 10,
+                                                rotation: 0,
+                                                scale: 1,
+                                                isFlipped: false,
+                                            };
+                                            setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
+                                            if (showToast) showToast('Đã thêm charm của bạn!', 'success');
+                                        }
+                                    };
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                        <button 
+                            onClick={() => document.getElementById('custom-charm-upload')?.click()}
+                            className="w-full py-4 rounded-xl border-2 border-dashed border-luvin-pink/30 bg-pink-50/30 text-luvin-pink hover:bg-pink-50 hover:border-luvin-pink transition-all flex items-center justify-center gap-2.5 group"
+                        >
+                            <span className="text-xl group-hover:scale-110 transition-transform">📸</span>
+                            <span className="text-[11px] font-black uppercase tracking-tight">Tải ảnh Charm của riêng bạn</span>
+                        </button>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-4 gap-2.5">
                     {filteredAccessories.length > 0 ? filteredAccessories.map((part, index) => (
                         <PartButton 
                             key={part.id} 

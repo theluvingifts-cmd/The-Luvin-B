@@ -147,6 +147,7 @@ export interface FrameConfig {
   previewImageUrl?: string;
   quantity?: number;
   templateId?: string;
+  isSimpleMode?: boolean;
   customFormData?: Record<string, string>; 
   formFields?: FormField[]; 
 }

@@ -5,6 +5,7 @@ import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
 import { StoreConfig, getCachedConfig } from '../services/configService';
 import { formatCurrency } from '../utils/pricing';
 import { getTotalOrderCount } from '../services/orderService';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 interface HomePageProps {
     navigateTo: (page: Page) => void;
@@ -34,6 +35,7 @@ const TextSkeleton: React.FC<{ className: string }> = ({ className }) => (
 );
 
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConfig, feedbacks, templates }) => {
+  const { t } = useLanguage();
   // 1. Initialize from Cache immediately for instant render
   const [localConfig, setLocalConfig] = useState<StoreConfig | null>(() => getCachedConfig());
 
@@ -132,11 +134,11 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                     )}
                 </h1>
                 <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-md">
-                    Tạo nên món quà độc bản từ những mảnh ghép LEGO. Lưu giữ kỷ niệm theo cách riêng của bạn, tinh tế và đầy cảm xúc.
+                    {t('home.cta_desc')}
                 </p>
                 <div className="pt-4 flex gap-4">
-                    <button onClick={() => navigateTo('builder')} className="bg-gray-900 text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-luvin-pink transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1 duration-300">Bắt đầu thiết kế</button>
-                    <button onClick={() => navigateTo('collection')} className="px-8 py-4 rounded-full font-bold text-sm tracking-wide text-gray-900 border border-gray-300 hover:border-gray-900 transition-colors">Xem mẫu</button>
+                    <button onClick={() => navigateTo('builder')} className="bg-gray-900 text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-luvin-pink transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1 duration-300">{t('home.start_design')}</button>
+                    <button onClick={() => navigateTo('collection')} className="px-8 py-4 rounded-full font-bold text-sm tracking-wide text-gray-900 border border-gray-300 hover:border-gray-900 transition-colors">{t('home.view_templates')}</button>
                 </div>
             </div>
         </div>
@@ -157,10 +159,10 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
           <div className="container mx-auto px-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4">
                   {[
-                      { icon: '⚡', title: 'Xử lý trong 24h', desc: 'Chuẩn bị hàng & gửi đơn nhanh chóng' },
-                      { icon: '🎨', title: 'Thiết kế riêng', desc: 'Designer hỗ trợ căn chỉnh 1-1' },
-                      { icon: '🎁', title: 'Quà tặng tinh tế', desc: 'Hộp quà & thiệp viết tay cao cấp' },
-                      { icon: '🛡️', title: 'Bảo hành 1-1', desc: 'Lỗi 1 đổi 1, bảo hành keo trọn đời' }
+                      { icon: '⚡', title: t('home.features.f1_title'), desc: t('home.features.f1_desc') },
+                      { icon: '🎨', title: t('home.features.f2_title'), desc: t('home.features.f2_desc') },
+                      { icon: '🎁', title: t('home.features.f3_title'), desc: t('home.features.f3_desc') },
+                      { icon: '🛡️', title: t('home.features.f4_title'), desc: t('home.features.f4_desc') }
                   ].map((feature, i) => (
                       <div key={i} className="flex flex-col items-center text-center p-4 group hover:bg-gray-50 rounded-2xl transition-colors duration-300">
                           <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">{feature.icon}</span>
@@ -205,7 +207,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                               </div>
                           )}
                       </div>
-                      <button onClick={() => navigateTo('about')} className="text-gray-900 font-bold border-b-2 border-gray-900 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-colors">Đọc thêm về chúng tôi</button>
+                      <button onClick={() => navigateTo('about')} className="text-gray-900 font-bold border-b-2 border-gray-900 pb-1 hover:text-luvin-pink hover:border-luvin-pink transition-colors">{t('home.read_more')}</button>
                   </div>
               </div>
           </div>
@@ -215,8 +217,8 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
       <section className="py-24 bg-gray-50">
           <div className="container mx-auto px-6">
               <div className="text-center mb-16">
-                  <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">Bộ sưu tập nổi bật</h2>
-                  <p className="text-gray-500">Đã có hơn {totalOrders || '1.500'} lượt đặt hàng trên toàn hệ thống</p>
+                  <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">{t('home.featured_collection')}</h2>
+                  <p className="text-gray-500">{t('home.orders_count').replace('{count}', (totalOrders || '1.500').toString())}</p>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -224,7 +226,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                       <div key={item.id || index} className="group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 cursor-pointer" onClick={() => navigateTo('collection')}>
                           <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
                               <FadeInImage src={item.imageUrl} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[8px] font-black text-primary uppercase shadow-sm">✨ Tùy chỉnh</div>
+                              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[8px] font-black text-primary uppercase shadow-sm">✨ {t('common.customize')}</div>
                           </div>
                           <div className="p-4 flex flex-col flex-grow text-center">
                               <h3 className="font-bold text-sm text-gray-800 group-hover:text-primary transition-colors line-clamp-1 mb-2">{item.name}</h3>
@@ -235,7 +237,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
               </div>
 
               <div className="text-center mt-16">
-                  <button onClick={() => navigateTo('collection')} className="px-12 py-4 border-2 border-gray-900 rounded-full text-xs font-black uppercase tracking-widest text-gray-900 hover:bg-gray-900 hover:text-white transition-all shadow-md">Xem tất cả bộ sưu tập</button>
+                  <button onClick={() => navigateTo('collection')} className="px-12 py-4 border-2 border-gray-900 rounded-full text-xs font-black uppercase tracking-widest text-gray-900 hover:bg-gray-900 hover:text-white transition-all shadow-md">{t('home.view_all_collection')}</button>
               </div>
           </div>
       </section>
@@ -262,9 +264,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
       {/* Footer CTA */}
       <section className="py-20 bg-luvin-pink/10">
           <div className="container mx-auto px-6 text-center">
-              <h2 className="font-heading text-3xl md:text-5xl font-bold text-gray-900 mb-6">Sẵn sàng tạo nên món quà đặc biệt?</h2>
-              <p className="text-gray-600 mb-10 max-w-2xl mx-auto">Chỉ mất 5 phút để thiết kế một khung tranh LEGO độc đáo. Gửi gắm thông điệp của bạn ngay hôm nay.</p>
-              <button onClick={() => navigateTo('builder')} className="bg-gray-900 text-white px-10 py-4 rounded-full font-bold text-base shadow-xl hover:bg-luvin-pink transition-all transform hover:-translate-y-1">Thiết kế ngay</button>
+              <h2 className="font-heading text-3xl md:text-5xl font-bold text-gray-900 mb-6">{t('home.ready_to_create')}</h2>
+              <p className="text-gray-600 mb-10 max-w-2xl mx-auto">{t('home.cta_desc')}</p>
+              <button onClick={() => navigateTo('builder')} className="bg-gray-900 text-white px-10 py-4 rounded-full font-bold text-base shadow-xl hover:bg-luvin-pink transition-all transform hover:-translate-y-1">{t('home.design_now')}</button>
           </div>
       </section>
     </div>

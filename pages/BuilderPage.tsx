@@ -24,8 +24,10 @@ declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
-  const steps = ['Chọn khung', 'Nội dung', 'Nhân vật', 'Hoàn tất'];
+const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void; isSimpleMode?: boolean }> = ({ currentStep, setStep, isSimpleMode }) => {
+  const steps = isSimpleMode 
+    ? ['Chọn khung', 'Up ảnh thiết kế', 'Chọn Charm', 'Hoàn tất']
+    : ['Chọn khung', 'Nội dung', 'Nhân vật', 'Hoàn tất'];
 
   return (
     <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
@@ -894,7 +896,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
-        <StepIndicator currentStep={step} setStep={setStep} />
+        <StepIndicator currentStep={step} setStep={setStep} isSimpleMode={config.isSimpleMode} />
         
         {/* NÂNG CẤP: Grid Layout với tính năng Sticky Preview cho PC */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">

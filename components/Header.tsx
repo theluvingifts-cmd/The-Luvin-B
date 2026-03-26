@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import type { Page } from '../types';
 import { StoreConfig } from '../services/configService';
 import { Logo } from './shared/Logo';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 interface HeaderProps {
     navigateTo: (page: Page) => void;
@@ -16,6 +17,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartClick, logoUrl, isCartShaking, config, currentPage }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   // Dynamic Styles from Config
   const headerStyle = {
@@ -35,9 +37,9 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
   }, [isMenuOpen]);
   
   const navItems: { label: string; page: Page }[] = [
-    { label: 'Trang chủ', page: 'home' }, 
-    { label: 'Thiết kế', page: 'builder' }, 
-    { label: 'Bộ sưu tập', page: 'collection' }, 
+    { label: t('nav.home'), page: 'home' }, 
+    { label: t('nav.studio'), page: 'builder' }, 
+    { label: t('nav.collection'), page: 'collection' }, 
     { label: 'Doanh nghiệp', page: 'business' },
     { label: 'Tra cứu', page: 'order-lookup' },
   ];
@@ -70,6 +72,24 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
                 </button>
               );
             })}
+
+            {/* Language Switcher */}
+            <div className="flex items-center gap-2 border-l border-gray-200 pl-4 ml-2">
+                <button 
+                    onClick={() => setLanguage('vi')} 
+                    className={`text-[10px] font-black uppercase tracking-widest transition-all ${language === 'vi' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                    VI
+                </button>
+                <span className="text-gray-300 text-[10px]">|</span>
+                <button 
+                    onClick={() => setLanguage('en')} 
+                    className={`text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                    EN
+                </button>
+            </div>
+
             <button 
                 id="cart-icon-desktop" 
                 onClick={onCartClick} 
@@ -87,6 +107,12 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
             </button>
           </div>
           <div className="md:hidden flex items-center gap-3">
+            {/* Language Switcher Mobile */}
+            <div className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2 py-1">
+                <button onClick={() => setLanguage('vi')} className={`text-[8px] font-black ${language === 'vi' ? 'text-primary' : 'text-gray-400'}`}>VI</button>
+                <button onClick={() => setLanguage('en')} className={`text-[8px] font-black ${language === 'en' ? 'text-primary' : 'text-gray-400'}`}>EN</button>
+            </div>
+
             <button 
                 id="cart-icon-mobile" 
                 onClick={onCartClick} 
