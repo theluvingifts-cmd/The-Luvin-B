@@ -143,6 +143,7 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [frames, setFrames] = useState<FrameOption[]>([]); 
+  const [isLoadingParts, setIsLoadingParts] = useState(true);
 
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
       try {
@@ -217,8 +218,10 @@ const App: React.FC = () => {
                     loadUploadedFonts(fetchedConfig.uploadedFonts);
                 }
             }
+            setIsLoadingParts(false);
           } catch (error) {
               console.error("Initial fetch error:", error);
+              setIsLoadingParts(false);
           }
       };
       fetchData();
@@ -390,6 +393,7 @@ const App: React.FC = () => {
                         backgrounds={backgrounds} frames={frames} editingCartIndex={editingCartIndex} 
                         onCancelEdit={handleCancelEdit} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl}
                         isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
+                        isLoadingParts={isLoadingParts}
                     />
                 } />
                 <Route path="/collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} />} />

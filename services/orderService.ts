@@ -159,6 +159,21 @@ export const getAllOrders = async (): Promise<Order[]> => {
     }
 };
 
+// 3b. Hàm lấy danh sách đơn hàng gần đây (giới hạn số lượng)
+export const getRecentOrders = async (limitCount: number = 50): Promise<Order[]> => {
+    try {
+        const { limit } = await import('firebase/firestore');
+        const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(limitCount));
+        const querySnapshot = await getDocs(q);
+        const orders: Order[] = [];
+        querySnapshot.forEach((doc) => { orders.push(doc.data() as Order); });
+        return orders;
+    } catch (error: any) {
+        console.error("Lỗi lấy danh sách đơn hàng gần đây:", error);
+        return [];
+    }
+};
+
 // 4. Lấy tổng số lượng đơn hàng thực tế
 export const getTotalOrderCount = async (): Promise<number> => {
     try {

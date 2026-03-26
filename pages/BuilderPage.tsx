@@ -10,7 +10,7 @@ import FramePreview from '../components/FramePreview';
 import { uploadToCloudinary } from '../services/uploadService';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
-import { getAllOrders } from '../services/orderService';
+import { getRecentOrders } from '../services/orderService';
 import { trackFunnelStep } from '../services/analyticsService'; 
 import { dataURLToBlob, preloadImage } from '../utils/helpers';
 
@@ -24,10 +24,8 @@ declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
-const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void; isSimpleMode?: boolean }> = ({ currentStep, setStep, isSimpleMode }) => {
-  const steps = isSimpleMode 
-    ? ['Chọn khung', 'Up ảnh thiết kế', 'Chọn Charm', 'Hoàn tất']
-    : ['Chọn khung', 'Nội dung', 'Nhân vật', 'Hoàn tất'];
+const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
+  const steps = ['Chọn khung', 'Nội dung', 'Nhân vật', 'Hoàn tất'];
 
   return (
     <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
@@ -314,9 +312,10 @@ interface BuilderPageProps {
     logoUrl?: string; 
     isEditingOrder?: boolean;
     uploadedFonts: CustomFont[];
+    isLoadingParts?: boolean;
 }
 
-export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, isEditingOrder, uploadedFonts }) => {
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, isEditingOrder, uploadedFonts, isLoadingParts }) => {
   const { stepId } = useParams();
   const navigate = useNavigate();
   const step = parseInt(stepId || '1', 10) || 1;
@@ -439,7 +438,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   useEffect(() => {
     const fetchHotTrends = async () => {
         try {
-            const orders = await getAllOrders();
+            const orders = await getRecentOrders(50);
             const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
             const recentOrders = orders.filter(o => (o.createdAt || 0) > sevenDaysAgo);
             
@@ -878,7 +877,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     switch (step) {
       case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
-      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} />;
+      case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} isLoadingParts={isLoadingParts} />;
       case 4: return <Step4Summary totalPrice={totalPrice} priceBreakdown={priceBreakdown} frameName={frames.find(f => f.id === config.frameId)?.name || ''} charCount={config.characters.length} onAddToCart={() => handleAddToCartWrapper(false)} onBuyNow={() => handleAddToCartWrapper(true)} isSaving={isSaving} isEditingOrder={isEditingOrder} urgencyTimeLeft={urgencyTimeLeft} />;
       default: return null;
     }
@@ -896,7 +895,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
         </h1>
         
-        <StepIndicator currentStep={step} setStep={setStep} isSimpleMode={config.isSimpleMode} />
+        <StepIndicator currentStep={step} setStep={setStep} />
         
         {/* NÂNG CẤP: Grid Layout với tính năng Sticky Preview cho PC */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-start">

@@ -36,14 +36,8 @@ export const LEGO_PARTS: {
   shirt: [],
   pants: [],
   hat: [],
-  accessory: [
-      { id: 'acc1', name: 'Hoa', price: 10000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/346/346167.png', type: 'accessory', widthCm: 1, heightCm: 1, isHot: true },
-      { id: 'acc2', name: 'Túi', price: 15000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/2855/2855589.png', type: 'accessory', widthCm: 1, heightCm: 1 },
-      { id: 'acc3', name: 'Bóng bay', price: 12000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/2412/2412845.png', type: 'accessory', widthCm: 1.2, heightCm: 1.5, isHot: true }
-  ],
-  pet: [
-      { id: 'pet1', name: 'Corgi', price: 20000, imageUrl: 'https://cdn-icons-png.flaticon.com/512/616/616408.png', type: 'pet', widthCm: 1.5, heightCm: 1.5, isHot: true }
-  ],
+  accessory: [],
+  pet: [],
   set: [], 
 };
 
@@ -64,7 +58,6 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
   texts: [],
   draggableItems: [],
   shapes: [], // Initialize shapes array
-  isSimpleMode: false,
 };
 
 /**
