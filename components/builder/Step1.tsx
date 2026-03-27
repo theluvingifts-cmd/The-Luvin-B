@@ -2,8 +2,10 @@
 import React, { useEffect } from 'react';
 import type { FrameConfig, FrameOption } from '../../types';
 import { getEffectivePrice, formatCurrency } from '../../utils/pricing';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 
 export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => void; frames: FrameOption[] }> = ({ config, setConfig, frames }) => {
+  const { t } = useLanguage();
   const selectedFrame = frames.find(f => f.id === config.frameId) || frames[0];
   
   useEffect(() => {
@@ -17,7 +19,7 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
   return (
     <div className="space-y-4">
       <div className="p-4 border border-gray-200 rounded-lg text-left">
-        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">CHỌN KÍCH THƯỚC</h4>
+        <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">{t('studio.select_size')}</h4>
         <div className="grid grid-cols-3 gap-3">
           {frames.map(frame => {
             const effectivePrice = getEffectivePrice(frame);
@@ -46,9 +48,9 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
                     <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold whitespace-nowrap z-10">SALE</span>
                 )}
                 {frame.id === 'lg' && !isSale && (
-                    <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-[9px] px-1.5 py-0.5 rounded shadow-sm text-yellow-900 font-bold whitespace-nowrap z-10">Phổ biến nhất</span>
+                    <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-[9px] px-1.5 py-0.5 rounded shadow-sm text-yellow-900 font-bold whitespace-nowrap z-10">{t('studio.most_popular')}</span>
                 )}
-                {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">Hết hàng</span>}
+                {frame.stock === 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 rounded-bl">{t('studio.out_of_stock')}</span>}
                 </button>
             );
           })}
@@ -56,15 +58,15 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
 
         {selectedFrame && selectedFrame.colors && selectedFrame.colors.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100">
-                <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">MÀU KHUNG</h4>
+                <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">{t('studio.frame_color')}</h4>
                 <div className="flex gap-3 flex-wrap">
                     {selectedFrame.colors.map(color => {
                         const getColorStyle = (c: string) => {
-                            if (c === 'white') return { bg: '#fff', border: '#ddd' };
-                            if (c === 'black') return { bg: '#000', border: '#000' };
-                            if (c === 'wood') return { bg: '#d2b48c', border: '#c1a075' };
-                            if (c === 'gold') return { bg: '#ffd700', border: '#e6c200' };
-                            return { bg: c, border: c };
+                            if (c === 'white') return { bg: '#fff', border: '#ddd', label: t('studio.color_white') };
+                            if (c === 'black') return { bg: '#000', border: '#000', label: t('studio.color_black') };
+                            if (c === 'wood') return { bg: '#d2b48c', border: '#c1a075', label: t('studio.color_wood') };
+                            if (c === 'gold') return { bg: '#ffd700', border: '#e6c200', label: t('studio.color_gold') };
+                            return { bg: c, border: c, label: c };
                         };
                         const style = getColorStyle(color);
                         const isSelected = config.frameColor === color;
@@ -79,7 +81,7 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
                                     className="w-4 h-4 rounded-full shadow-sm border" 
                                     style={{ backgroundColor: style.bg, borderColor: style.border }}
                                 ></div>
-                                <span className="text-sm font-medium text-gray-700">{color === 'white' ? 'Trắng' : color === 'black' ? 'Đen' : color}</span>
+                                <span className="text-sm font-medium text-gray-700">{style.label}</span>
                             </button>
                         );
                     })}
@@ -89,14 +91,14 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
       </div>
        {selectedFrame && (
         <div className="p-4 border border-gray-200 rounded-lg text-left">
-            <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">GIÁ CƠ BẢN BAO GỒM</h4>
+            <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">{t('studio.base_price_includes')}</h4>
             <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
-                <li>1 Khung ảnh {selectedFrame.name} ({selectedFrame.description}).</li>
-                <li>1 Nền tùy chọn (mẫu có sẵn hoặc ảnh của bạn).</li>
-                <li>Miễn phí thêm chữ & ảnh nhỏ trang trí.</li>
-                <li>Hộp quà & thiệp viết tay theo yêu cầu.</li>
+                <li>{t('studio.include_frame')}</li>
+                <li>{t('studio.include_bg')}</li>
+                <li>{t('studio.include_chars')}</li>
+                <li>{t('studio.include_box')}</li>
+                <li>{t('studio.include_card')}</li>
             </ul>
-            <p className="text-xs text-gray-500 mt-2 italic">Lưu ý: Giá chưa bao gồm nhân vật LEGO và phụ kiện.</p>
         </div>
       )}
     </div>

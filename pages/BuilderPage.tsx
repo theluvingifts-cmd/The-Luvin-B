@@ -19,13 +19,15 @@ import { Step1Frame } from '../components/builder/Step1';
 import { Step2BackgroundAndDecorations } from '../components/builder/Step2';
 import { Step3Characters } from '../components/builder/Step3';
 import { Step4Summary } from '../components/builder/Step4';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 declare var html2canvas: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
 const StepIndicator: React.FC<{ currentStep: number; setStep: (step: number) => void }> = ({ currentStep, setStep }) => {
-  const steps = ['Chọn khung', 'Nội dung', 'Nhân vật', 'Hoàn tất'];
+  const { t } = useLanguage();
+  const steps = [t('studio.select_frame'), t('studio.content'), t('studio.characters'), t('studio.complete')];
 
   return (
     <div id="builder-step-indicator" className="w-full max-w-3xl mx-auto md:mx-0 my-6 px-2 scroll-mt-24">
@@ -115,10 +117,11 @@ const FontSelector: React.FC<{
         if (!isOpen) setSearchTerm('');
     }, [isOpen]);
 
+    const { t } = useLanguage();
     const groups = useMemo(() => [
-        { label: 'Cơ bản', fonts: DEFAULT_FONTS },
-        { label: 'Tải lên', fonts: uploadedFonts.map(f => f.name) }
-    ], [uploadedFonts]);
+        { label: t('studio.basic_fonts'), fonts: DEFAULT_FONTS },
+        { label: t('studio.uploaded_fonts'), fonts: uploadedFonts.map(f => f.name) }
+    ], [uploadedFonts, t]);
 
     const filteredGroups = useMemo(() => {
         const query = searchTerm.toLowerCase().trim();
@@ -157,7 +160,7 @@ const FontSelector: React.FC<{
                             <input 
                                 ref={searchInputRef}
                                 type="text" 
-                                placeholder="Tìm font..." 
+                                placeholder={t('studio.search_font')} 
                                 className="w-full p-1.5 pl-7 text-[10px] border border-gray-200 rounded-lg outline-none focus:border-luvin-pink transition-colors bg-white"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -184,7 +187,7 @@ const FontSelector: React.FC<{
                             </div>
                         )) : (
                             <div className="px-3 py-4 text-center text-[10px] text-gray-400 italic select-none">
-                                Không tìm thấy font nào
+                                {t('studio.no_font_found')}
                             </div>
                         )}
                     </div>
@@ -205,6 +208,7 @@ const TextEditor: React.FC<{
     setPreviewFont: (font: string | null) => void; 
 }> = ({ activeText, setConfig, config, selectedTextId, deselect, onAddText, uploadedFonts, setPreviewFont }) => {
     
+    const { t } = useLanguage();
     const updateActiveText = (updates: Partial<TextConfig>) => {
         setConfig((prev: FrameConfig) => ({
             ...prev,
@@ -223,24 +227,24 @@ const TextEditor: React.FC<{
                 >
                     <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                        🔒 Nội dung đã bị khóa bởi Admin
+                        🔒 {t('studio.locked_by_admin')}
                     </span>
                 </div>
             )}
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight text-sm">CHỈNH SỬA CHỮ</h3>
+                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight text-sm">{t('studio.edit_text')}</h3>
                 <div className="flex gap-2 relative z-30">
                     <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
-                        + Thêm chữ
+                        + {t('studio.add_text')}
                     </button>
                     <button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
-                        Xong
+                        {t('studio.done')}
                     </button>
                 </div>
             </div>
             <div className="space-y-4">
                 <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Nội dung</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('studio.text_content')}</label>
                     <textarea
                         value={activeText.content}
                         onChange={e => updateActiveText({ content: e.target.value })}
@@ -248,11 +252,11 @@ const TextEditor: React.FC<{
                         readOnly={isLocked}
                         rows={3}
                         className={`w-full p-3 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
-                        placeholder="Nhập nội dung văn bản..."
+                        placeholder={t('studio.enter_text_placeholder')}
                     />
                 </div>
                 <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Font Chữ</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('studio.font_family')}</label>
                     <FontSelector 
                         value={activeText.font} 
                         onChange={(font) => updateActiveText({ font })}
@@ -261,7 +265,7 @@ const TextEditor: React.FC<{
                     />
                 </div>
                 <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Cỡ chữ</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('studio.font_size')}</label>
                     <input 
                       type="number" 
                       min="8" 
@@ -279,7 +283,7 @@ const TextEditor: React.FC<{
                         disabled={isLocked}
                         className={`text-sm px-3 py-2 rounded-lg flex-1 font-bold ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} transition-all`}
                     >
-                      {activeText.background ? 'Bỏ nền mờ' : 'Thêm nền mờ'}
+                      {activeText.background ? t('studio.remove_blur') : t('studio.add_blur')}
                     </button>
                     <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                         {(['left', 'center', 'right'] as const).map(align => (
@@ -316,6 +320,7 @@ interface BuilderPageProps {
 }
 
 export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, isEditingOrder, uploadedFonts, isLoadingParts }) => {
+  const { t } = useLanguage();
   const { stepId } = useParams();
   const navigate = useNavigate();
   const step = parseInt(stepId || '1', 10) || 1;
@@ -384,7 +389,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         try {
             const parsed = JSON.parse(savedDraft);
             if (parsed.characters.length > 0 || parsed.background.value !== INITIAL_FRAME_CONFIG.background.value) {
-                const recover = confirm("The Luvin tìm thấy một thiết kế bạn đang làm dở. Bạn có muốn tiếp tục không?");
+                const recover = confirm(t('studio.recover_draft_confirm'));
                 if (recover) {
                     setConfig(parsed);
                     setStep(3);
@@ -501,12 +506,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   };
 
   const handleReset = () => {
-    if (confirm("Bạn có chắc chắn muốn xóa toàn bộ thiết kế hiện tại và bắt đầu lại từ đầu?")) {
+    if (confirm(t('studio.reset_confirm'))) {
         setConfig(INITIAL_FRAME_CONFIG);
         setHistory([JSON.stringify(INITIAL_FRAME_CONFIG)]);
         setHistoryIndex(0);
         localStorage.removeItem('active_design_draft');
-        showToast("Đã làm mới thiết kế!", 'success');
+        showToast(t('studio.reset_success'), 'success');
     }
   };
 
@@ -523,8 +528,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               if (!blob) throw new Error("Conversion failed");
               const file = new File([blob], "the-luvin-design.png", { type: blob.type });
               await navigator.share({
-                  title: 'My LEGO Frame Design',
-                  text: 'Check out my custom LEGO frame design from The Luvin!',
+                  title: t('studio.share_title'),
+                  text: t('studio.share_text'),
                   files: [file]
                 });
           } catch (e) {
@@ -729,7 +734,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   
   const addText = () => {
       const newId = Date.now();
-      const newText: TextConfig = { id: newId, content: 'Nhập chữ...', font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
+      const newText: TextConfig = { id: newId, content: t('studio.enter_text'), font: 'Montserrat', size: 12, color: '#333333', x: 50, y: 50, rotation: 0, scale: 1, background: true, textAlign: 'center', width: 30 };
       setConfig((prev: FrameConfig) => ({...prev, texts: [...prev.texts, newText]}));
       setSelectedItemId(`text-${newId}`);
   };
@@ -806,21 +811,21 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     try {
         const base64Image = await captureFrameAsImage();
         if (!base64Image) {
-            showToast('Lỗi tạo ảnh. Có thể do lỗi CORS.', 'error');
+            showToast(t('studio.error_generating_image'), 'error');
             setIsSaving(false);
             return;
         }
         animateAddToCart(base64Image);
         const imageBlob = dataURLToBlob(base64Image);
         if (!imageBlob) {
-            showToast('Lỗi xử lý ảnh.', 'error');
+            showToast(t('studio.error_processing_image'), 'error');
             setIsSaving(false);
             return;
         }
         const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
         const cloudUrl = await uploadToCloudinary(imageFile);
         if (!cloudUrl) {
-             showToast('Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.', 'error');
+             showToast(t('studio.error_saving_image'), 'error');
              setIsSaving(false);
              return;
         }
@@ -832,7 +837,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         }
         if (andCheckout) navigateTo('checkout');
     } catch (e) {
-        showToast('Đã có lỗi xảy ra.', 'error');
+        showToast(t('studio.error_occurred'), 'error');
     } finally {
         setIsSaving(false);
     }
@@ -888,11 +893,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-2">
             <div className="text-sm text-gray-400">
-                <button onClick={() => navigateTo('home')} className="hover:underline">Home</button> / Thiết kế
+                <button onClick={() => navigateTo('home')} className="hover:underline">{t('nav.home')}</button> / {t('studio.design')}
             </div>
         </div>
         <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">
-            {isEditingOrder ? 'Chỉnh sửa đơn hàng' : 'Thiết kế & Mua hàng'}
+            {isEditingOrder ? t('studio.edit_order') : t('studio.design_and_buy')}
         </h1>
         
         <StepIndicator currentStep={step} setStep={setStep} />
@@ -904,14 +909,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           <div className="lg:col-span-7 lg:sticky lg:top-24 lg:self-start z-10" ref={previewContainerParentRef}>
             <div>
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight text-left">ẢNH XEM TRƯỚC</h3>
+                    <h3 className="font-bold text-gray-800 text-xs sm:text-base uppercase tracking-tight text-left">{t('studio.design_preview')}</h3>
                     <div className="flex items-center gap-1.5 sm:gap-2">
                         <div className="flex gap-1 pr-2 mr-2 border-r border-gray-200">
-                            <button onClick={addText} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title="Thêm chữ nhanh">
-                                <span className="text-sm font-black">T+</span><span className="text-[10px] font-bold hidden sm:inline">Chữ</span>
+                            <button onClick={addText} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title={t('studio.add_text_quick')}>
+                                <span className="text-sm font-black">T+</span><span className="text-[10px] font-bold hidden sm:inline">{t('studio.add_text')}</span>
                             </button>
-                            <button onClick={() => topCharmUploadRef.current?.click()} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title="Tải ảnh nhỏ nhanh">
-                                <span className="text-sm">🖼️</span><span className="text-[10px] font-bold hidden sm:inline">Ảnh</span>
+                            <button onClick={() => topCharmUploadRef.current?.click()} className="h-8 px-3 rounded-lg border border-gray-300 bg-white text-gray-700 flex items-center gap-1 hover:bg-gray-50 active:scale-95 transition-all shadow-sm" title={t('studio.add_image_quick')}>
+                                <span className="text-sm">🖼️</span><span className="text-[10px] font-bold hidden sm:inline">{t('studio.image')}</span>
                             </button>
                             <input type="file" id="top-charm-upload" ref={topCharmUploadRef} accept="image/*" onChange={handleTopCharmUpload} className="hidden" />
                         </div>
@@ -919,7 +924,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                             onClick={handleUndo} 
                             disabled={historyIndex <= 0}
                             className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
-                            title="Hoàn tác (Undo)"
+                            title={t('studio.undo')}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
                         </button>
@@ -927,14 +932,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                             onClick={handleRedo} 
                             disabled={historyIndex >= history.length - 1}
                             className="w-8 h-8 rounded border bg-white flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 active:scale-95 transition-all"
-                            title="Làm lại (Redo)"
+                            title={t('studio.redo')}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
                         </button>
-                        <button onClick={handleReset} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all shadow-sm" title="Làm mới thiết kế">
+                        <button onClick={handleReset} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all shadow-sm" title={t('studio.reset_design')}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
-                        <button onClick={handleShare} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm" title="Chia sẻ thiết kế">
+                        <button onClick={handleShare} className="w-8 h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm" title={t('studio.share_design')}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     </div>
@@ -951,7 +956,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                 </div>
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex text-left">
                     <span className="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg></span>
-                    <div className="text-xs text-amber-900 leading-relaxed"><p className="font-bold mb-1">Lưu ý quan trọng:</p><p>Đây là bản xem trước mô phỏng. Sau khi đặt hàng, <b>Designer sẽ thiết kế lại bố cục & màu sắc</b> đẹp nhất và gửi bạn duyệt trước khi in ấn.</p></div>
+                    <div className="text-xs text-amber-900 leading-relaxed"><p className="font-bold mb-1">{t('studio.important_note')}</p><p>{t('studio.preview_disclaimer')}</p></div>
                 </div>
             </div>
           </div>
@@ -961,7 +966,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               {(step === 2 || step === 3) && (
                   <div className="mb-3 px-1 animate-fade-in text-left">
                       <div className="flex justify-between items-center text-[10px] mb-1">
-                          <span className="text-gray-500 font-medium">{remainingForFreeShip > 0 ? (<>Thêm <b className="text-luvin-pink">{formatCurrency(remainingForFreeShip)}</b> để Freeship</>) : (<b className="text-green-600 flex items-center gap-1">✨ Đã được Freeship</b>)}</span>
+                          <span className="text-gray-500 font-medium">{remainingForFreeShip > 0 ? (t('studio.add_more_for_freeship', { amount: formatCurrency(remainingForFreeShip) })) : (<b className="text-green-600 flex items-center gap-1">{t('studio.already_freeship')}</b>)}</span>
                           <span className="text-gray-400 font-bold">{Math.round(freeShipPercent)}%</span>
                       </div>
                       <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-300 to-luvin-pink transition-all duration-500 ease-out rounded-full shadow-[0_0_8px_rgba(239,163,181,0.6)]" style={{ width: `${freeShipPercent}%` }}></div></div>
@@ -972,35 +977,35 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               </div>
               {!selectedText && (
                 <>
-                  <div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">Giá tạm tính: <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span></div>
+                  <div className="mt-4 text-right font-bold text-lg text-gray-800 hidden lg:block">{t('studio.subtotal_label')} <span className="text-luvin-pink">{formatCurrency(totalPrice)}</span></div>
                   <div className="mt-2 hidden lg:flex items-center gap-4">
                       {editingCartIndex !== null && step === 4 ? (
                         <div className="w-full flex flex-col gap-2">
-                           <button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">Hủy sửa</button>
+                           <button onClick={onCancelEdit} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">{t('studio.cancel_edit')}</button>
                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors disabled:opacity-50">
-                              {isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn hàng' : 'Cập nhật giỏ hàng')}
+                              {isSaving ? '...' : (isEditingOrder ? t('studio.save_to_order') : t('studio.update_cart_label'))}
                            </button>
                         </div>
                       ) : (
                         <div className="w-full flex items-center gap-4">
-                           <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">&larr; Quay lại</button>
-                           <button onClick={() => setStep(Math.min(4, step + 1))} disabled={step === 4} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md">Tiếp theo</button>
+                           <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="w-full bg-white border border-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">&larr; {t('studio.back')}</button>
+                           <button onClick={() => setStep(Math.min(4, step + 1))} disabled={step === 4} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 px-8 rounded-lg disabled:opacity-50 hover:opacity-90 transition-colors shadow-md">{t('studio.next')}</button>
                         </div>
                       )}
                   </div>
                 </>
               )}
                <div className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-50 transition-transform duration-300 ease-in-out safe-bottom ${isBottomBarVisible ? 'translate-y-0' : 'translate-y-full'}`}>
-                     <div className="flex justify-between items-center mb-3"><span className="text-xs font-medium text-gray-500">Tạm tính:</span><span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span></div>
+                     <div className="flex justify-between items-center mb-3"><span className="text-xs font-medium text-gray-500">{t('studio.subtotal_label')}</span><span className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice)}</span></div>
                      {editingCartIndex !== null && step === 4 ? (
                         <div className="flex gap-2">
-                            <button onClick={onCancelEdit} className="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors text-sm">Hủy</button>
-                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">{isSaving ? '...' : (isEditingOrder ? 'Lưu vào đơn' : 'Cập nhật')}</button>
+                            <button onClick={onCancelEdit} className="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors text-sm">{t('studio.cancel_edit')}</button>
+                            <button onClick={() => handleAddToCartWrapper(false)} disabled={isSaving} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-sm hover:opacity-90 transition-colors disabled:opacity-50">{isSaving ? '...' : (isEditingOrder ? t('studio.save_to_order') : t('studio.update_cart_label'))}</button>
                         </div>
                      ) : (
                          <div className="flex gap-3">
-                           <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm">Quay lại</button>
-                           <button onClick={() => setStep(Math.min(4, step + 1))} disabled={step === 4} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm">Tiếp theo</button>
+                           <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 text-sm">{t('studio.back')}</button>
+                           <button onClick={() => setStep(Math.min(4, step + 1))} disabled={step === 4} className="flex-[2] bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg disabled:opacity-50 shadow-md text-sm">{t('studio.next')}</button>
                          </div>
                      )}
                 </div>

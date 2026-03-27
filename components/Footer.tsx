@@ -57,7 +57,7 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
                     <p className="opacity-80 mb-1">
                         Hotline/Zalo: <a href="https://zalo.me/0964393115" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">0964 393 115</a>
                     </p>
-                    <p className="opacity-80">Email: theluvin.gifts@gmail.com</p>
+                    <p className="opacity-80">Email: contact@theluvin.vn</p>
                 </div>
                 <div>
                     <h3 className="font-bold text-base mb-3 uppercase tracking-wider">CHÍNH SÁCH & HỖ TRỢ</h3>
@@ -71,18 +71,18 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
                 <div>
                     <h3 className="font-bold text-base mb-3 uppercase tracking-wider">KẾT NỐI VỚI CHÚNG TÔI</h3>
                     <div className="flex space-x-4">
-                        <a href="https://www.instagram.com/the_luvin/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 hover:bg-primary hover:text-white transition-all shadow-sm"><InstagramIcon /></a>
-                        <a href="https://www.facebook.com/theluvin" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 hover:bg-blue-600 hover:text-white transition-all shadow-sm"><FacebookIcon /></a>
-                        <a href="https://www.tiktok.com/@the_luvin" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 hover:bg-black hover:text-white transition-all shadow-sm"><TikTokIcon /></a>
+                        <a href="https://www.instagram.com/theluvin.vn/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 hover:bg-primary hover:text-white transition-all shadow-sm" title="Instagram"><InstagramIcon /></a>
+                        <a href="https://www.facebook.com/theluvin.vn" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Facebook"><FacebookIcon /></a>
+                        <a href="https://www.tiktok.com/@theluvin.vn" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 hover:bg-black hover:text-white transition-all shadow-sm" title="TikTok"><TikTokIcon /></a>
                     </div>
                 </div>
             </div>
         </div>
         <div className="border-t border-gray-100">
             <div className="container mx-auto px-6 py-4 flex flex-col items-center justify-center text-xs opacity-60 relative">
-                <p className="mb-2">Copyright © {new Date().getFullYear()} The Luvin. All Rights Reserved.</p>
+                <p className="mb-2">Bản quyền © {new Date().getFullYear()} The Luvin. Bảo lưu mọi quyền.</p>
                 <a href="https://www.facebook.com/ngojinbtrongduong/" target="_blank" rel="noopener noreferrer" className="text-[11px] hover:text-primary transition-colors font-medium">
-                   Designed & Developed by <strong>Trong Duong</strong>
+                   Thiết kế & Phát triển bởi <strong>Trong Duong</strong>
                 </a>
             </div>
         </div>

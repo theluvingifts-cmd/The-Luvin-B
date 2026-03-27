@@ -4,6 +4,7 @@ import type { FrameConfig, PresetBackground, FrameOption, FormField } from '../.
 import { ZoomIcon } from '../ZoomIcon';
 import { resizeImage } from '../../utils/helpers';
 import { SmartImage } from '../shared/SmartImage';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 
 const PresetBackgroundButton: React.FC<{
     bg: PresetBackground;
@@ -33,12 +34,13 @@ export const Step2BackgroundAndDecorations: React.FC<{
   showToast: (message: string, type: 'success' | 'error') => void;
   preferredSquareFrameId: string;
 }> = ({ config, setConfig, backgrounds, frames, onZoomImage, showToast, preferredSquareFrameId }) => {
-  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
+  const { t } = useLanguage();
+  const [selectedCategory, setSelectedCategory] = useState(t('studio.all'));
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const manualBgInputRef = useRef<HTMLInputElement>(null);
 
-  const categories = useMemo(() => ['Tất cả', ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds]);
-  const filteredBackgrounds = useMemo(() => selectedCategory === 'Tất cả' ? backgrounds : backgrounds.filter(bg => bg.category === selectedCategory), [selectedCategory, backgrounds]);
+  const categories = useMemo(() => [t('studio.all'), ...Array.from(new Set(backgrounds.map(bg => bg.category)))], [backgrounds, t]);
+  const filteredBackgrounds = useMemo(() => selectedCategory === t('studio.all') ? backgrounds : backgrounds.filter(bg => bg.category === selectedCategory), [selectedCategory, backgrounds, t]);
   
   const currentBg = backgrounds.find(bg => bg.url === config.background.value);
 
@@ -157,9 +159,9 @@ export const Step2BackgroundAndDecorations: React.FC<{
                 draggableItems: [],
                 shapes: []
             });
-            showToast("Đã tải ảnh nền của bạn!", "success");
+            showToast(t("studio.background_uploaded"), "success");
         } catch (error) {
-            showToast("Lỗi xử lý ảnh", "error");
+            showToast(t("studio.image_processing_error"), "error");
         } finally {
             setIsProcessingImage(false);
         }
@@ -177,9 +179,9 @@ export const Step2BackgroundAndDecorations: React.FC<{
       {/* SECTION 1: PRESET BACKGROUNDS */}
       <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm">
         <div className="flex justify-between items-center mb-4">
-            <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px]">1. CHỌN MẪU NỀN</h4>
+            <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px]">{t('studio.select_background')}</h4>
             <span className="text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                {filteredBackgrounds.length} mẫu
+                {t('studio.templates_count', { count: filteredBackgrounds.length })}
             </span>
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1">
@@ -209,13 +211,13 @@ export const Step2BackgroundAndDecorations: React.FC<{
                 {isProcessingImage ? (
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-luvin-pink border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-[11px] font-black uppercase">Đang xử lý ảnh...</span>
+                        <span className="text-[11px] font-black uppercase">{t('studio.processing_image')}</span>
                     </div>
                 ) : (
                     <>
                         <span className="text-xl">📸</span>
                         <span className="text-[11px] font-black uppercase tracking-tight">
-                            {config.background.type === 'upload' ? 'Thay ảnh nền khác' : 'Tải ảnh nền của riêng bạn'}
+                            {config.background.type === 'upload' ? t('studio.change_background') : t('studio.upload_own_background')}
                         </span>
                     </>
                 )}
@@ -223,7 +225,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
             {config.background.type === 'upload' && (
                 <div className="flex items-center justify-center gap-1.5 mt-2">
                     <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></span>
-                    <p className="text-[9px] text-gray-400 italic font-medium">Bạn đang sử dụng ảnh nền tự tải lên</p>
+                    <p className="text-[9px] text-gray-400 italic font-medium">{t('studio.using_uploaded_bg')}</p>
                 </div>
             )}
         </div>
@@ -235,14 +237,14 @@ export const Step2BackgroundAndDecorations: React.FC<{
         <div className="flex justify-between items-center mb-5">
             <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[11px] flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span> 
-                2. NHẬP THÔNG TIN IN ẤN
+                {t('studio.enter_print_info')}
             </h4>
             {activeFields.length > 0 && (
                 <button 
                     onClick={() => setConfig({ ...config, customFormData: {} })}
                     className="text-[9px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-tighter transition-colors"
                 >
-                    Xóa tất cả
+                    {t('studio.clear_all')}
                 </button>
             )}
         </div>
@@ -272,7 +274,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                             {field.type === 'text' && (
                                 <input 
                                     type="text" 
-                                    placeholder={field.placeholder || `Nhập ${field.label.toLowerCase()}...`} 
+                                    placeholder={field.placeholder || t('studio.enter_field', { field: field.label.toLowerCase() })} 
                                     value={config.customFormData?.[field.id] || ''} 
                                     onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
@@ -280,7 +282,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                             )}
                             {field.type === 'textarea' && (
                                 <textarea 
-                                    placeholder={field.placeholder || `Nhập ${field.label.toLowerCase()}...`} 
+                                    placeholder={field.placeholder || t('studio.enter_field', { field: field.label.toLowerCase() })} 
                                     rows={2} 
                                     value={config.customFormData?.[field.id] || ''} 
                                     onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
@@ -313,7 +315,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                                     onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">-- Chọn {field.label.toLowerCase()} --</option>
+                                    <option value="">{t('studio.select_field', { field: field.label.toLowerCase() })}</option>
                                     {field.options?.map(opt => (
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                     ))}
@@ -351,7 +353,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                                     >
                                         <span className="text-lg">🖼️</span>
                                         <span className="text-xs font-bold text-gray-600">
-                                            {config.customFormData?.[field.id] ? 'Thay đổi ảnh' : 'Chọn ảnh tải lên'}
+                                            {config.customFormData?.[field.id] ? t('studio.change_image') : t('studio.select_upload_image')}
                                         </span>
                                     </label>
                                     {config.customFormData?.[field.id] && (
@@ -380,8 +382,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
                     <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
                         <span className="text-xl">📝</span>
                     </div>
-                    <p className="text-[11px] text-gray-400 italic font-bold uppercase tracking-tight">Mẫu này không có ô nhập liệu tùy chỉnh.</p>
-                    <p className="text-[9px] text-gray-300 mt-1">Bạn có thể thêm chữ trực tiếp trên ảnh xem trước.</p>
+                    <p className="text-[11px] text-gray-400 italic font-bold uppercase tracking-tight">{t('studio.no_custom_fields')}</p>
+                    <p className="text-[9px] text-gray-300 mt-1">{t('studio.add_text_directly')}</p>
                 </div>
             )}
         </div>

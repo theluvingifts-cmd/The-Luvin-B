@@ -188,7 +188,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                       </div>
                   </div>
                   <div className="w-full md:w-1/2 text-center md:text-left">
-                      <span className="text-luvin-pink font-bold tracking-widest text-xs uppercase mb-2 block">Our Story</span>
+                      <span className="text-luvin-pink font-bold tracking-widest text-xs uppercase mb-2 block">{t('about.our_story')}</span>
                       <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-6">
                           {localConfig?.homeStoryTitle ? (
                               <span dangerouslySetInnerHTML={{ __html: localConfig.homeStoryTitle }}></span>
@@ -230,7 +230,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                           </div>
                           <div className="p-4 flex flex-col flex-grow text-center">
                               <h3 className="font-bold text-sm text-gray-800 group-hover:text-primary transition-colors line-clamp-1 mb-2">{item.name}</h3>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-auto">Thiết kế độc bản</p>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-auto">{t('home.unique_design')}</p>
                           </div>
                       </div>
                   ))}
@@ -245,8 +245,8 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
       {/* Feedbacks Section */}
       <section className="py-24 bg-white border-t border-gray-100 overflow-hidden">
           <div className="container mx-auto px-6 mb-12 text-center">
-              <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-3">Our feedbacks</h2>
-              <p className="text-sm text-gray-500 tracking-wide uppercase">Khách hàng nói gì về The Luvin</p>
+              <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-3">{t('home.our_feedbacks')}</h2>
+              <p className="text-sm text-gray-500 tracking-wide uppercase">{t('home.what_customers_say')}</p>
           </div>
           <div className="w-full overflow-hidden py-10" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
               <div ref={carouselRef} className="flex gap-8 overflow-x-auto no-scrollbar w-full px-[50vw] snap-x snap-mandatory" style={{ whiteSpace: 'nowrap' }}>

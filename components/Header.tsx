@@ -40,8 +40,8 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
     { label: t('nav.home'), page: 'home' }, 
     { label: t('nav.studio'), page: 'builder' }, 
     { label: t('nav.collection'), page: 'collection' }, 
-    { label: 'Doanh nghiệp', page: 'business' },
-    { label: 'Tra cứu', page: 'order-lookup' },
+    { label: t('nav.business'), page: 'business' },
+    { label: t('nav.lookup'), page: 'order-lookup' },
   ];
   
   const handleNav = (page: Page) => { navigateTo(page); setIsMenuOpen(false); }

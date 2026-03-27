@@ -4,6 +4,7 @@ import { FrameConfig, LegoPart, Page } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from './ZoomIcon';
+import { useLanguage } from '../src/contexts/LanguageContext';
 
 interface CartPanelProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface CartPanelProps {
 }
 
 export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+  const { t } = useLanguage();
   const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
@@ -38,7 +40,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
         className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-bold">Giỏ hàng</h2>
+          <h2 className="text-lg font-bold">{t('cart.title')}</h2>
           <button onClick={onClose} className="p-1">&times;</button>
         </div>
 
@@ -46,23 +48,21 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
                  {remaining > 0 ? (
                     <div className="space-y-1">
-                        <p className="text-xs text-gray-600">
-                            Thêm <span className="font-bold text-gray-900">{formatCurrency(remaining)}</span> để được <span className="font-bold text-green-600">Free Ship</span>
-                        </p>
+                        <p className="text-xs text-gray-600" dangerouslySetInnerHTML={{ __html: t('cart.add_more_for_freeship').replace('{amount}', formatCurrency(remaining)) }} />
                         <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div className="h-full bg-green-500 transition-all duration-500" style={{width: `${percentage}%`}}></div>
                         </div>
                     </div>
                 ) : (
                     <p className="text-xs text-green-600 font-bold flex items-center gap-1">
-                        <span>✨</span> Bạn đã được Miễn phí vận chuyển!
+                        {t('cart.freeship_reached')}
                     </p>
                 )}
             </div>
         )}
 
         {cartItems.length === 0 ? (
-          <p className="flex-grow flex items-center justify-center text-gray-500">Giỏ hàng trống.</p>
+          <p className="flex-grow flex items-center justify-center text-gray-500">{t('cart.empty')}</p>
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {cartItems.map((item, index) => {
@@ -93,7 +93,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                       )}
                   </div>
                   <div className="flex-grow">
-                    <h3 className="text-sm font-semibold">Khung LEGO tùy chỉnh</h3>
+                    <h3 className="text-sm font-semibold">{t('cart.custom_lego_frame')}</h3>
                     <p className="text-xs text-gray-500">{frame.name}</p>
                     <div className="flex justify-between items-end mt-1">
                         <p className="text-sm font-bold">{formatCurrency(totalPrice * quantity)}</p>
@@ -113,7 +113,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                   </div>
                   <div className="flex flex-col gap-2">
                       <button onClick={() => onRemoveItem(index)} className="text-red-500 self-start p-1 text-lg leading-none">&times;</button>
-                      <button onClick={() => onEditItem(index)} className="text-blue-600 text-xs font-bold hover:underline">Sửa</button>
+                      <button onClick={() => onEditItem(index)} className="text-blue-600 text-xs font-bold hover:underline">{t('cart.edit')}</button>
                   </div>
                 </div>
               );
@@ -122,12 +122,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
         )}
         <div className="p-4 border-t space-y-4">
           <div className="flex justify-between font-bold text-lg">
-            <span>Subtotal:</span>
+            <span>{t('cart.subtotal')}:</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={handleViewCart} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded hover:bg-gray-300">View cart</button>
-            <button onClick={handleCheckout} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded hover:opacity-90">Checkout</button>
+            <button onClick={handleViewCart} className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded hover:bg-gray-300">{t('cart.view_cart')}</button>
+            <button onClick={handleCheckout} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded hover:opacity-90">{t('cart.checkout')}</button>
           </div>
         </div>
       </div>

@@ -305,9 +305,9 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                 <div>
                                     <div className="flex items-center gap-3">
                                         <h2 className="font-heading font-bold text-2xl text-gray-900">{foundOrder.id}</h2>
-                                        {foundOrder.isUrgent && <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">🔥 Đơn gấp</span>}
+                                        {foundOrder.isUrgent && <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">{t('order_lookup.urgent_order')}</span>}
                                     </div>
-                                    <p className="text-sm text-gray-500 mt-1">Đặt ngày: {foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---'}</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('order_lookup.order_date', { date: foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString() : '---' })}</p>
                                 </div>
                                 
                                 {!PACKED_STATUSES.includes(foundOrder.status) && (
@@ -316,7 +316,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         className="group bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl text-sm font-bold hover:border-luvin-pink hover:text-luvin-pink hover:shadow-md transition-all flex items-center gap-2"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        Sửa đơn hàng
+                                        {t('order_lookup.edit_order')}
                                     </button>
                                 )}
                             </div>

@@ -4,13 +4,14 @@ import type { FrameConfig, LegoPart, LegoCharacterConfig, DraggableItem, OutfitC
 import { LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../../constants';
 import { getEffectivePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../../utils/pricing';
 import { SmartImage } from '../shared/SmartImage';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 
 const isNeckAccessory = (part?: LegoPart) => {
     if (!part || part.type !== 'accessory') return false;
     const cat = (part.category || '').toLowerCase();
     const name = (part.name || '').toLowerCase();
-    return cat.includes('khăn') || cat.includes('vòng cổ') || cat.includes('huy chương') || 
-           name.includes('khăn') || name.includes('vòng cổ') || name.includes('huy chương');
+    const keywords = ['khăn', 'vòng cổ', 'huy chương', 'scarf', 'necklace', 'medal'];
+    return keywords.some(k => cat.includes(k) || name.includes(k));
 };
 
 const PartButton = React.memo<{
@@ -144,13 +145,14 @@ export const Step3Characters: React.FC<{
     allParts: Record<string, LegoPart>; 
     isLoadingParts?: boolean;
 }> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts, isLoadingParts }) => {
+    const { t } = useLanguage();
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
     const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
     
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('default');
-    const [accessoryCategory, setAccessoryCategory] = useState<string>('Tất cả');
+    const [accessoryCategory, setAccessoryCategory] = useState<string>(t('studio.all'));
     const [accessorySearch, setAccessorySearch] = useState<string>('');
 
     const getAvailableParts = (list: LegoPart[]) => {
@@ -210,7 +212,7 @@ export const Step3Characters: React.FC<{
         if (activeCharacter) {
             const isNeck = isNeckAccessory(part);
             if (isNeck && activeCharacter.hair?.preventScarf) {
-                if (showToast) showToast('Kiểu tóc này che cổ, không thể đeo thêm khăn/vòng cổ!', 'error');
+                if (showToast) showToast(t('studio.scarf_conflict_error'), 'error');
                 return;
             }
         }
@@ -297,7 +299,7 @@ export const Step3Characters: React.FC<{
                     );
 
                     if (conflictingItems.length > 0) {
-                        if (showToast) showToast("Đã tháo phụ kiện ở cổ để phù hợp với kiểu tóc mới", 'error');
+                        if (showToast) showToast(t('studio.scarf_removed_notice'), 'error');
                         return {
                             ...prev,
                             draggableItems: prev.draggableItems.filter(item => !conflictingItems.includes(item))
@@ -392,12 +394,12 @@ export const Step3Characters: React.FC<{
     };
     
     const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set', label: string }[] = [
-        { key: 'shirt', label: 'Áo' },
-        { key: 'pants', label: 'Quần' },
-        { key: 'set', label: 'Theo bộ' },
-        { key: 'face', label: 'Mặt' },
-        { key: 'hair', label: 'Tóc' },
-        { key: 'hat', label: 'Mũ' },
+        { key: 'shirt', label: t('studio.shirt') },
+        { key: 'pants', label: t('studio.pants') },
+        { key: 'set', label: t('studio.set') },
+        { key: 'face', label: t('studio.face') },
+        { key: 'hair', label: t('studio.hair') },
+        { key: 'hat', label: t('studio.hat') },
     ];
 
     const currentPartList = useMemo(() => {
@@ -410,13 +412,13 @@ export const Step3Characters: React.FC<{
         legoParts.accessory.forEach(p => {
             if (p.category) cats.add(p.category);
         });
-        return ['Tất cả', ...Array.from(cats).sort()];
-    }, [legoParts.accessory]);
+        return [t('studio.all'), ...Array.from(cats).sort()];
+    }, [legoParts.accessory, t]);
 
     const filteredAccessories = useMemo(() => {
         let list = getAvailableParts(legoParts.accessory || []);
         
-        if (accessoryCategory !== 'Tất cả') {
+        if (accessoryCategory !== t('studio.all')) {
             list = list.filter(p => p.category === accessoryCategory);
         }
 
@@ -442,30 +444,30 @@ export const Step3Characters: React.FC<{
             {printDialogCharId && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
-                  <h3 className="font-bold text-lg mb-2">Chọn chất lượng in</h3>
-                  <p className="text-sm text-gray-600 mb-4">In theo yêu cầu sẽ có chi phí cao hơn. Vui lòng chọn chất lượng mong muốn cho nhân vật này.</p>
+                  <h3 className="font-bold text-lg mb-2">{t('studio.select_print_quality')}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{t('studio.print_quality_desc')}</p>
                   <div className="space-y-2">
-                    <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">In thường - {formatCurrency(150000)}</button>
-                    <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">In cao cấp - {formatCurrency(300000)}</button>
+                    <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">{t('studio.standard_print')} - {formatCurrency(150000)}</button>
+                    <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">{t('studio.premium_print')} - {formatCurrency(300000)}</button>
                     {config.characters.find(c => c.id === printDialogCharId)?.customPrintPrice && 
-                      <button onClick={() => handleCustomPrintSelect(0)} className="w-full bg-red-100 text-red-700 font-semibold py-2 rounded-lg hover:bg-red-200">Bỏ in yêu cầu</button>
+                      <button onClick={() => handleCustomPrintSelect(0)} className="w-full bg-red-100 text-red-700 font-semibold py-2 rounded-lg hover:bg-red-200">{t('studio.remove_custom_print')}</button>
                     }
                   </div>
-                  <button onClick={() => setPrintDialogCharId(null)} className="text-xs text-gray-500 mt-4 hover:underline">Hủy</button>
+                  <button onClick={() => setPrintDialogCharId(null)} className="text-xs text-gray-500 mt-4 hover:underline">{t('studio.cancel')}</button>
                 </div>
               </div>
             )}
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">QUẢN LÝ NHÂN VẬT</h4>
+                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">{t('studio.character_management')}</h4>
                     {activeCharacter && (
                         <button 
                             onClick={handleRandomizeOutfit}
                             className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
-                            title="Chọn ngẫu nhiên trang phục"
+                            title={t('studio.randomize_outfit')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                            Ngẫu nhiên
+                            {t('studio.random')}
                         </button>
                     )}
                 </div>
@@ -473,19 +475,19 @@ export const Step3Characters: React.FC<{
                     {config.characters.map((char, index) => (
                         <div key={char.id} className="relative">
                             <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
-                                NV {index + 1}
+                                {t('studio.character_index', { index: index + 1 })}
                             </button>
                             <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">
                                 &times;
                             </button>
                         </div>
                     ))}
-                    <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">+ Thêm ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
+                    <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">{t('studio.add_char')} ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
                 </div>
                 {activeCharacter && 
                   <div className="mt-4 pt-4 border-t flex items-center justify-start">
                     <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
-                      {activeCharacter.customPrintPrice ? `In yêu cầu (${formatCurrency(activeCharacter.customPrintPrice)})` : 'Thêm in yêu cầu?'}
+                      {activeCharacter.customPrintPrice ? `${t('studio.custom_print')} (${formatCurrency(activeCharacter.customPrintPrice)})` : t('studio.add_custom_print')}
                     </button>
                   </div>
                 }
@@ -506,7 +508,7 @@ export const Step3Characters: React.FC<{
                          {(activePartType === 'hair') && (
                              <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
                                <span className="text-2xl font-bold">&times;</span>
-                               <span className="text-[11px] font-semibold">Không chọn</span>
+                               <span className="text-[11px] font-semibold">{t('studio.none')}</span>
                              </button>
                          )}
                         {isLoadingParts ? (
@@ -539,7 +541,7 @@ export const Step3Characters: React.FC<{
                             );
                         }) : (
                             <div className="col-span-4 text-center text-sm text-gray-400 py-4">
-                                {legoParts[activePartType].length > 0 ? "Các sản phẩm này đang hết hàng." : "Đang tải hoặc chưa có dữ liệu..."}
+                                {legoParts[activePartType].length > 0 ? t('studio.out_of_stock_parts') : t('studio.loading_parts')}
                             </div>
                         )}
                     </div>
@@ -548,13 +550,13 @@ export const Step3Characters: React.FC<{
             
             <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
                 <div className="flex flex-col gap-4 mb-4">
-                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">THÊM PHỤ KIỆN & CHARM</h4>
+                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">{t('studio.add_accessories_charms')}</h4>
                     
                     {/* Search bar for accessories */}
                     <div className="relative group">
                         <input 
                             type="text" 
-                            placeholder="Tìm charm (hoa, túi, bóng bay...)" 
+                            placeholder={t('studio.search_charms_placeholder')} 
                             value={accessorySearch}
                             onChange={(e) => setAccessorySearch(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-luvin-pink focus:border-transparent transition-all"
@@ -595,9 +597,9 @@ export const Step3Characters: React.FC<{
                                 className="w-full sm:w-auto p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white focus:ring-1 focus:ring-gray-900 outline-none appearance-none pr-8 relative"
                                 style={{backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.2em' }}
                             >
-                                <option value="default">Mặc định</option>
-                                <option value="price_asc">Giá: Thấp đến Cao</option>
-                                <option value="price_desc">Giá: Cao đến Thấp</option>
+                                <option value="default">{t('studio.sort_default')}</option>
+                                <option value="price_asc">{t('studio.sort_price_asc')}</option>
+                                <option value="price_desc">{t('studio.sort_price_desc')}</option>
                             </select>
                         </div>
                     </div>
@@ -618,14 +620,14 @@ export const Step3Characters: React.FC<{
                         />
                     )) : (
                         <div className="col-span-4 text-center py-10 border-2 border-dashed border-gray-100 rounded-xl">
-                            <p className="text-xs text-gray-400 italic">Không tìm thấy phụ kiện phù hợp.</p>
+                            <p className="text-xs text-gray-400 italic">{t('studio.no_accessories_found')}</p>
                         </div>
                     )}
                 </div>
 
-                {availablePets.length > 0 && accessoryCategory === 'Tất cả' && (
+                {availablePets.length > 0 && accessoryCategory === t('studio.all') && (
                     <div className="mt-8 border-t border-gray-100 pt-6">
-                        <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm mb-4">THÊM THÚ CƯNG</h4>
+                        <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm mb-4">{t('studio.add_pets')}</h4>
                         <div className="grid grid-cols-4 gap-2">
                             {availablePets.map((part, index) => (
                                 <PartButton 
