@@ -52,6 +52,16 @@ export const translations: any = {
             selected_count: "đã chọn"
         },
         studio: {
+            tools: {
+                templates: "Mẫu",
+                background: "Nền",
+                museum: "Museum",
+                shape: "Khối",
+                text: "Chữ",
+                upload: "Sticker/Ảnh",
+                form: "Form",
+                layers: "Lớp",
+            },
             step1: "Chọn khung",
             step2: "Chọn nền",
             step3: "Tùy chỉnh",
@@ -207,6 +217,21 @@ export const translations: any = {
             error_occurred: "Đã có lỗi xảy ra.",
             share_title: "Mẫu thiết kế LEGO của tôi",
             share_text: "Hãy xem mẫu thiết kế khung tranh LEGO cá nhân hóa của tôi từ The Luvin!",
+            museum: {
+                title: "CHẾ ĐỘ MUSEUM",
+                desc: "Tạo không gian triển lãm nghệ thuật với khung vàng và nền nhung.",
+                select_velvet: "1. Chọn nền nhung (Velvet)",
+                add_gold_frames: "2. Thêm khung vàng (Gold Frames)",
+                tip_layers: "Mẹo: Dùng công cụ 'Lớp' để đưa ảnh xuống dưới khung vàng.",
+                create_upload_field: "Tạo ô Upload ảnh cho khách",
+                toggle_3d: "Chế độ 3D (Museum)",
+                toggle_3d_desc: "Bật hiệu ứng chiều sâu và xoay 3D cho khung bảo tàng",
+                gold_rect: "Khung Chữ Nhật",
+                gold_oval: "Khung Oval",
+                gold_heart: "Khung Trái Tim",
+                gold_square: "Khung Vuông",
+                spotlight: "Đèn Spotlight",
+            }
         },
         about: {
             our_story: "Câu chuyện của chúng tôi",
@@ -462,6 +487,16 @@ export const translations: any = {
             selected_count: "selected"
         },
         studio: {
+            tools: {
+                templates: "Templates",
+                background: "Background",
+                museum: "Museum",
+                shape: "Shape",
+                text: "Text",
+                upload: "Sticker/Image",
+                form: "Form",
+                layers: "Layers",
+            },
             step1: "Select Frame",
             step2: "Select Background",
             step3: "Customize",
@@ -617,6 +652,21 @@ export const translations: any = {
             error_occurred: "An error occurred.",
             share_title: "My LEGO Frame Design",
             share_text: "Check out my custom LEGO frame design from The Luvin!",
+            museum: {
+                title: "MUSEUM MODE",
+                desc: "Create an art exhibition space with gold frames and velvet backgrounds.",
+                select_velvet: "1. Select Velvet Background",
+                add_gold_frames: "2. Add Gold Frames",
+                tip_layers: "Tip: Use 'Layers' to move the photo behind the gold frame.",
+                create_upload_field: "Create Photo Upload Field",
+                toggle_3d: "3D Mode (Museum)",
+                toggle_3d_desc: "Enable depth effect and 3D rotation for museum frames",
+                gold_rect: "Gold Rectangle",
+                gold_oval: "Gold Oval",
+                gold_heart: "Gold Heart",
+                gold_square: "Gold Square",
+                spotlight: "Spotlight",
+            }
         },
         about: {
             our_story: "Our Story",

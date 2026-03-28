@@ -146,8 +146,10 @@ export interface FrameConfig {
   draggableItems: DraggableItem[];
   previewImageUrl?: string;
   quantity?: number;
+  price?: number;
   templateId?: string;
   isSimpleMode?: boolean;
+  isMuseumStyle?: boolean;
   customFormData?: Record<string, string>; 
   formFields?: FormField[]; 
 }
@@ -173,7 +175,18 @@ export interface Order {
   id: string;
   createdAt: number;
   status: string;
-  customer: { name: string; phone: string; email: string; address: string; socialLink?: string; demoContact?: string; };
+  customer: { 
+    name: string; 
+    phone: string; 
+    email: string; 
+    address: string; 
+    province?: string;
+    district?: string;
+    ward?: string;
+    note?: string;
+    socialLink?: string; 
+    demoContact?: string; 
+  };
   delivery: { date: string; notes: string; };
   items: FrameConfig[];
   addGiftBox: boolean;

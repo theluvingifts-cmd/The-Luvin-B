@@ -291,7 +291,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                             <div>
                                 <h3 className="font-bold text-gray-900">{t('order_lookup.maintenance_title')}</h3>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    {t('order_lookup.maintenance_desc', { phone: '0964 393 115' })}
+                                    {t('order_lookup.maintenance_desc', { phone: '0964 393 115 - 0345 126 019' })}
                                 </p>
                             </div>
                         </div>

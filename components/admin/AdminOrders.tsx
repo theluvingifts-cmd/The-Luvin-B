@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
+import { uploadToCloudinary } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
 import { calculatePrice, formatCurrency } from '../../utils/pricing';
 import { StatusDropdown } from './shared/StatusDropdown';
@@ -406,7 +407,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 </style>
             </head>
             <body>
-                <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0964 393 115 - Facebook: The Luvin</p></div>
+                <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0964 393 115 - 0345 126 019 - Facebook: The Luvin</p></div>
                 <div class="info-grid">
                     <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${selectedOrder.customer.address}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p></div>
                     <div class="box"><span class="box-title">Thông tin đơn hàng</span><p>Mã đơn: <strong>${selectedOrder.id}</strong></p><p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p><p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p><p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}</div>
@@ -530,9 +531,13 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         setEditForm(prev => {
             if (!prev) return null;
             let newOrder = { ...prev };
-            if (itemIndex !== undefined && nestedField === 'frameId') {
+            if (itemIndex !== undefined) {
                  const newItems = [...newOrder.items];
-                 newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
+                 if (field === 'background') {
+                     newItems[itemIndex] = { ...newItems[itemIndex], background: value };
+                 } else if (nestedField === 'frameId') {
+                     newItems[itemIndex] = { ...newItems[itemIndex], frameId: value };
+                 }
                  newOrder.items = newItems;
                  newOrder = updateEditFormWithPrice(newOrder); 
             } else if (nestedField && field === 'customer') {
@@ -909,11 +914,71 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                     <div className="mb-3 pb-3 border-b border-gray-100 flex justify-between items-start">
                                                         <div>
                                                             {isEditingOrder && editForm ? (
-                                                                <div className="flex gap-2 items-center mb-1"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map(f => (<option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
+                                                                <div className="flex flex-col gap-2 mb-3">
+                                                                    <div className="flex gap-2 items-center"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map(f => (<option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
+                                                                    
+                                                                    <div className="p-2 bg-gray-50 rounded border border-dashed border-gray-300">
+                                                                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Thay đổi nền</p>
+                                                                        <div className="flex gap-2 items-center">
+                                                                            <select 
+                                                                                className="text-xs border rounded p-1"
+                                                                                value={item.background.type}
+                                                                                onChange={(e) => handleEditFormChange('background', { ...item.background, type: e.target.value as any }, undefined, idx)}
+                                                                            >
+                                                                                <option value="color">Màu sắc</option>
+                                                                                <option value="image">Hình ảnh (URL)</option>
+                                                                                <option value="upload">Ảnh tải lên</option>
+                                                                            </select>
+                                                                            {item.background.type === 'color' ? (
+                                                                                <input 
+                                                                                    type="color"
+                                                                                    className="w-8 h-8 p-0 border-0 rounded cursor-pointer"
+                                                                                    value={item.background.value.startsWith('#') ? item.background.value : '#ffffff'}
+                                                                                    onChange={(e) => handleEditFormChange('background', { ...item.background, value: e.target.value }, undefined, idx)}
+                                                                                />
+                                                                            ) : (
+                                                                                <input 
+                                                                                    type="text"
+                                                                                    className="flex-grow text-xs border rounded p-1"
+                                                                                    placeholder="Nhập URL hình ảnh..."
+                                                                                    value={item.background.value}
+                                                                                    onChange={(e) => handleEditFormChange('background', { ...item.background, value: e.target.value }, undefined, idx)}
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                        {item.background.type === 'upload' && (
+                                                                            <div className="mt-2">
+                                                                                <input 
+                                                                                    type="file" 
+                                                                                    accept="image/*"
+                                                                                    className="text-[10px]"
+                                                                                    onChange={async (e) => {
+                                                                                        const file = e.target.files?.[0];
+                                                                                        if (file) {
+                                                                                            try {
+                                                                                                setIsLoading(true);
+                                                                                                const url = await uploadToCloudinary(file);
+                                                                                                if (url) {
+                                                                                                    handleEditFormChange('background', { ...item.background, value: url }, undefined, idx);
+                                                                                                }
+                                                                                            } catch (error) {
+                                                                                                alert("Lỗi tải ảnh lên!");
+                                                                                            } finally {
+                                                                                                setIsLoading(false);
+                                                                                            }
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             ) : (
-                                                                <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
+                                                                <>
+                                                                    <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
+                                                                    <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
+                                                                </>
                                                             )}
-                                                            <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
                                                         </div>
                                                         <div className="text-right text-xs">
                                                             {priceBreakdown.map((pb, pbIdx) => (

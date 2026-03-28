@@ -91,7 +91,7 @@ export const BusinessPage: React.FC<BusinessPageProps> = ({ config: propConfig, 
     }, [selectedFrame, charCount, orderQty, charmPackage, charmsPerFrame, storeConfig]);
 
     const handleContact = () => {
-        const hotline = storeConfig?.hotline?.replace(/\s/g, '') || '0964393115';
+        const hotline = storeConfig?.hotline?.replace(/\s/g, '') || '0964393115'; // Primary Zalo number
         const charmInfo = charmsPerFrame === 0 ? "Basic (không charm)" : `${charmsPerFrame} món (${charmPackage.toUpperCase()})`;
         const message = `Chào The Luvin, tôi cần báo giá B2B: ${charCount}NV/bộ, Khung ${selectedFrame?.name}, ${charmInfo}, SL ${orderQty} bộ.`;
         window.open(`https://zalo.me/${hotline}?text=${encodeURIComponent(message)}`, '_blank');

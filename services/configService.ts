@@ -22,6 +22,7 @@ export interface StoreConfig {
     // Contact Info
     address?: string;
     hotline?: string;
+    hotline2?: string;
     email?: string;
     facebookUrl?: string;
     instagramUrl?: string;
@@ -47,6 +48,11 @@ export interface StoreConfig {
     
     // B2B Config
     b2bDiscountPercent?: number;
+
+    // Pancake POS Config
+    pancakeShopId?: string;
+    pancakeAccessToken?: string;
+    enablePancakePush?: boolean;
 
     // NEW: Telegram Notification Config
     telegramBotToken?: string;

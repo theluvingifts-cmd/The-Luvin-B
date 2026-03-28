@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { FrameConfig, TextConfig, DraggableItem, PresetBackground, FrameOption, CustomFont, SavedAsset, ShapeConfig, FormField, LegoPart, LegoCharacterConfig, OutfitColor } from '../../types';
 import { FRAME_OPTIONS, INITIAL_FRAME_CONFIG, LEGO_PARTS } from '../../constants';
 import FramePreview from '../FramePreview';
+import { useLanguage } from '../../src/contexts/LanguageContext';
 import { getAllFrames } from '../../services/frameService';
 import { addBackground, updateBackground, getAllBackgrounds } from '../../services/backgroundService'; 
 import { addTemplate, updateTemplate, getAllTemplates } from '../../services/templateService';
@@ -11,14 +12,20 @@ import html2canvas from 'html2canvas';
 import { getStoreConfig } from '../../services/configService';
 import { getAllParts } from '../../services/productService';
 
-const TOOLS = [
-    { id: 'templates', icon: '📂', label: 'Mẫu' }, 
-    { id: 'background', icon: '🎨', label: 'Nền' },
-    { id: 'shape', icon: '🟥', label: 'Khối' },
-    { id: 'text', icon: 'abc', label: 'Chữ' },
-    { id: 'upload', icon: '🖼️', label: 'Sticker/Ảnh' },
-    { id: 'form', icon: '📝', label: 'Form' }, 
-    { id: 'layers', icon: '📚', label: 'Lớp' },
+const MUSEUM_FRAMES = [
+    { id: 'gold_rect', nameKey: 'studio.museum.gold_rect', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_rect.png' },
+    { id: 'gold_oval', nameKey: 'studio.museum.gold_oval', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_oval.png' },
+    { id: 'gold_heart', nameKey: 'studio.museum.gold_heart', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_heart.png' },
+    { id: 'gold_square', nameKey: 'studio.museum.gold_square', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_square.png' },
+    { id: 'spotlight', nameKey: 'studio.museum.spotlight', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/spotlight.png' },
+];
+
+const VELVET_COLORS = [
+    { name: 'Đỏ Đô', hex: '#800000' },
+    { name: 'Xanh Emerald', hex: '#046307' },
+    { name: 'Đen Tuyến', hex: '#0a0a0a' },
+    { name: 'Tím Hoàng Gia', hex: '#4b0082' },
+    { name: 'Xanh Navy', hex: '#000080' },
 ];
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Poppins', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
@@ -95,6 +102,19 @@ const FontSelector: React.FC<{
 };
 
 export const AdminDesign: React.FC = () => {
+    const { t } = useLanguage();
+
+    const TOOLS = [
+        { id: 'templates', icon: '📂', label: t('studio.tools.templates') }, 
+        { id: 'background', icon: '🎨', label: t('studio.tools.background') },
+        { id: 'museum', icon: '🏛️', label: t('studio.tools.museum') },
+        { id: 'shape', icon: '🟥', label: t('studio.tools.shape') },
+        { id: 'text', icon: 'abc', label: t('studio.tools.text') },
+        { id: 'upload', icon: '🖼️', label: t('studio.tools.upload') },
+        { id: 'form', icon: '📝', label: t('studio.tools.form') }, 
+        { id: 'layers', icon: '📚', label: t('studio.tools.layers') },
+    ];
+
     const [activeTool, setActiveTool] = useState('templates');
     const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
@@ -679,6 +699,96 @@ export const AdminDesign: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-4">
+                            {activeTool === 'museum' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                                        <p className="text-[10px] text-amber-800 font-bold leading-tight uppercase">
+                                            🏛️ {t('studio.museum.title')}
+                                        </p>
+                                        <p className="text-[9px] text-amber-700 mt-1">
+                                            {t('studio.museum.desc')}
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-amber-100/50 p-4 rounded-xl border border-amber-200/50">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-[11px] font-bold text-amber-900 uppercase">{t('studio.museum.toggle_3d')}</h4>
+                                                <p className="text-[9px] text-amber-800 opacity-80">{t('studio.museum.toggle_3d_desc')}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setConfig(prev => ({ ...prev, isMuseumStyle: !prev.isMuseumStyle }))}
+                                                className={`w-10 h-5 rounded-full transition-colors relative ${config.isMuseumStyle ? 'bg-amber-600' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${config.isMuseumStyle ? 'left-6' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">{t('studio.museum.select_velvet')}</label>
+                                        <div className="grid grid-cols-5 gap-2">
+                                            {VELVET_COLORS.map(color => (
+                                                <button 
+                                                    key={color.hex}
+                                                    onClick={() => setConfig(prev => ({...prev, background: { type: 'color', value: color.hex }}))}
+                                                    className={`w-full aspect-square rounded-lg border-2 transition-all ${config.background.value === color.hex ? 'border-amber-500 scale-110 shadow-md' : 'border-transparent'}`}
+                                                    style={{ backgroundColor: color.hex }}
+                                                    title={color.name}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">{t('studio.museum.add_gold_frames')}</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {MUSEUM_FRAMES.map(frame => (
+                                                <button 
+                                                    key={frame.id}
+                                                    onClick={() => {
+                                                        const id = Date.now();
+                                                        setConfig(prev => ({
+                                                            ...prev,
+                                                            draggableItems: [...prev.draggableItems, { 
+                                                                id, 
+                                                                partId: frame.url, 
+                                                                type: 'charm', 
+                                                                x: 50, 
+                                                                y: 50, 
+                                                                rotation: 0, 
+                                                                scale: frame.id === 'spotlight' ? 0.8 : 0.4,
+                                                                maskShape: frame.id === 'gold_oval' ? 'circle' : frame.id === 'gold_heart' ? 'heart' : 'none'
+                                                            }]
+                                                        }));
+                                                        setSelectedItemId(`item-${id}`);
+                                                    }}
+                                                    className="p-2 border rounded-xl flex flex-col items-center gap-2 hover:bg-amber-50 hover:border-amber-200 transition-all group"
+                                                >
+                                                    <div className="w-12 h-12 flex items-center justify-center">
+                                                        <img src={frame.url} className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform" alt={t(frame.nameKey)} referrerPolicy="no-referrer" />
+                                                    </div>
+                                                    <span className="text-[9px] font-black uppercase text-gray-500">{t(frame.nameKey)}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                        <p className="text-[9px] text-blue-700 leading-snug italic">
+                                            💡 {t('studio.museum.tip_layers')}
+                                        </p>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setActiveTool('form')}
+                                        className="w-full py-2.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-200 hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        ➕ {t('studio.museum.create_upload_field')}
+                                    </button>
+                                </div>
+                            )}
+
                             {activeTool === 'templates' && (
                                 <div className="grid grid-cols-1 gap-2">
                                     {existingBackgrounds.map(bg => (

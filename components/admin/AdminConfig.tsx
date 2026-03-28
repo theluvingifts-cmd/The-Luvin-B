@@ -112,6 +112,11 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     // B2B Config
     const [b2bDiscount, setB2bDiscount] = useState(storeConfig.b2bDiscountPercent || 5);
 
+    // Pancake POS Config
+    const [pancakeShopId, setPancakeShopId] = useState(storeConfig.pancakeShopId || '');
+    const [pancakeAccessToken, setPancakeAccessToken] = useState(storeConfig.pancakeAccessToken || '');
+    const [enablePancakePush, setEnablePancakePush] = useState(storeConfig.enablePancakePush || false);
+
     // Refs for scrolling to inputs
     const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -194,6 +199,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             theme: themeConfig,
             telegramBotToken: telegramToken,
             telegramChatId: telegramChatId,
+            pancakeShopId,
+            pancakeAccessToken,
+            enablePancakePush,
             b2bDiscountPercent: b2bDiscount
         });
         if (success) {
@@ -202,6 +210,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 theme: themeConfig, 
                 telegramBotToken: telegramToken, 
                 telegramChatId: telegramChatId,
+                pancakeShopId,
+                pancakeAccessToken,
+                enablePancakePush,
                 b2bDiscountPercent: b2bDiscount
             }));
             alert("Đã lưu cấu hình thành công!");
@@ -450,13 +461,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
             <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
-                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'seo', 'cleanup', 'restore'].map((tab) => (
+                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'pancake', 'seo', 'cleanup', 'restore'].map((tab) => (
                         <button 
                             key={tab}
                             onClick={() => setActiveTab(tab as ConfigTab)} 
                             className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : 'Khôi phục ảnh'}
+                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'pancake' ? 'Kết nối POS' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : 'Khôi phục ảnh'}
                             {tab === 'cleanup' && (isScanning || isDeleting || isCleaningOldOrders) && (
                                 <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                             )}
@@ -724,9 +735,74 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
                             <h3 className="text-lg font-bold mb-4 border-b pb-2">Nội dung Website</h3>
                             <div className="space-y-4">
-                                <div><label className="block text-xs font-bold mb-1">Hotline</label><input className="w-full p-2 border rounded text-sm" value={storeConfig.hotline} onChange={(e) => setStoreConfig({...storeConfig, hotline: e.target.value})} /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="block text-xs font-bold mb-1">Hotline 1</label><input className="w-full p-2 border rounded text-sm" value={storeConfig.hotline} onChange={(e) => setStoreConfig({...storeConfig, hotline: e.target.value})} /></div>
+                                    <div><label className="block text-xs font-bold mb-1">Hotline 2</label><input className="w-full p-2 border rounded text-sm" value={storeConfig.hotline2 || ''} onChange={(e) => setStoreConfig({...storeConfig, hotline2: e.target.value})} /></div>
+                                </div>
+                                <div><label className="block text-xs font-bold mb-1">Email Liên hệ</label><input className="w-full p-2 border rounded text-sm" value={storeConfig.email || ''} onChange={(e) => setStoreConfig({...storeConfig, email: e.target.value})} /></div>
                                 <div><label className="block text-xs font-bold mb-1">Tiêu đề Hero</label><input className="w-full p-2 border rounded text-sm" value={storeConfig.heroTitle} onChange={(e) => setStoreConfig({...storeConfig, heroTitle: e.target.value})} /></div>
                                 <div><label className="block text-xs font-bold mb-1">Phụ đề Hero</label><input className="w-full p-2 border rounded text-sm" value={storeConfig.heroSubtitle} onChange={(e) => setStoreConfig({...storeConfig, heroSubtitle: e.target.value})} /></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'pancake' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <div className="flex items-center justify-between border-b pb-4">
+                                <div>
+                                    <h3 className="text-lg font-bold">Kết nối Pancake POS</h3>
+                                    <p className="text-xs text-gray-500">Đẩy đơn hàng tự động sang hệ thống Pancake POS</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-600">Kích hoạt</span>
+                                    <button 
+                                        onClick={() => setEnablePancakePush(!enablePancakePush)}
+                                        className={`w-10 h-5 rounded-full transition-colors relative ${enablePancakePush ? 'bg-green-500' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${enablePancakePush ? 'left-6' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Shop ID</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                            placeholder="Ví dụ: 1328233541"
+                                            value={pancakeShopId}
+                                            onChange={(e) => setPancakeShopId(e.target.value)}
+                                        />
+                                        <p className="text-[10px] text-gray-400 mt-1 italic">Lấy từ thanh địa chỉ trình duyệt khi vào Pancake POS</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Access Token</label>
+                                        <input 
+                                            type="password" 
+                                            className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                            placeholder="Nhập Access Token từ Pancake"
+                                            value={pancakeAccessToken}
+                                            onChange={(e) => setPancakeAccessToken(e.target.value)}
+                                        />
+                                        <p className="text-[10px] text-gray-400 mt-1 italic">Lấy từ phần Cấu hình &gt; Kết nối bên thứ 3 &gt; Webhook/API</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center">
+                                    <h4 className="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                        Hướng dẫn kết nối
+                                    </h4>
+                                    <ul className="text-xs text-blue-700 space-y-2 list-disc pl-4">
+                                        <li>Truy cập <b>pos.pancake.vn</b></li>
+                                        <li>Vào <b>Cấu hình</b> {'>'} <b>Nâng cao</b> {'>'} <b>Kết nối bên thứ 3</b></li>
+                                        <li>Chọn <b>Webhook/API</b> và nhấn <b>Chi tiết</b></li>
+                                        <li>Copy <b>Access Token</b> và dán vào ô bên trái</li>
+                                        <li>Nhấn <b>Lưu cấu hình</b> để hoàn tất</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     )}

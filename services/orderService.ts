@@ -7,6 +7,8 @@ import type { Order, FrameConfig } from '../types';
 import { uploadToCloudinary } from './uploadService';
 import { adjustStock } from './productService';
 import { incrementTemplatePurchaseCount } from './templateService';
+import { getStoreConfig } from './configService';
+import { pushOrderToPancake, PancakeOrderData } from './pancakeService';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
@@ -112,6 +114,37 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             stockAdjustments[partId] = -qty;
         }
         adjustStock(stockAdjustments);
+
+        // ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH
+        try {
+            const config = await getStoreConfig();
+            if (config && config.enablePancakePush) {
+                const pancakeData: PancakeOrderData = {
+                    customer_name: finalOrder.customer.name,
+                    customer_phone: finalOrder.customer.phone,
+                    customer_address: `${finalOrder.customer.address}, ${finalOrder.customer.ward}, ${finalOrder.customer.district}, ${finalOrder.customer.province}`,
+                    customer_province: finalOrder.customer.province,
+                    customer_district: finalOrder.customer.district,
+                    customer_ward: finalOrder.customer.ward,
+                    note: `Đơn hàng từ Website: ${finalOrder.id}. ${finalOrder.customer.note || ''}`,
+                    products: finalOrder.items.map(item => ({
+                        name: `Khung LEGO: ${item.characters.length} nhân vật`,
+                        quantity: item.quantity || 1,
+                        price: item.price || 0,
+                        sku: item.templateId || 'LEGO_FRAME',
+                        variation_info: `Nhân vật: ${item.characters.length}, Phụ kiện: ${item.draggableItems.length}`
+                    })),
+                    total_price: finalOrder.totalPrice,
+                    discount_amount: finalOrder.discountAmount || 0,
+                    shipping_fee: finalOrder.shipping.fee || 0
+                };
+                await pushOrderToPancake(config, pancakeData);
+            }
+        } catch (pancakeError) {
+            console.error("Lỗi khi đẩy đơn sang Pancake:", pancakeError);
+            // Không chặn quy trình tạo đơn nếu Pancake lỗi
+        }
+
         return { success: true, data: finalOrder };
     } catch (error: any) {
         console.error("Lỗi tạo đơn hàng:", error);

@@ -289,11 +289,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     const finalNotes = autoTags + notes;
 
     try {
+        const provinceVal = provinces.find(p => p.code === parseInt(selectedProvince))?.name || (isApiError ? selectedProvince : '');
+        const districtVal = districts.find(d => d.code === parseInt(selectedDistrict))?.name || (isApiError ? selectedDistrict : '');
+        const wardVal = wards.find(w => w.code === parseInt(selectedWard))?.name || (isApiError ? selectedWard : '');
+
         await onPlaceOrder({
           id: orderId,
-          customer: { name, phone, email, address: fullAddress, demoContact },
+          customer: { 
+            name, 
+            phone, 
+            email, 
+            address: street, 
+            province: provinceVal,
+            district: districtVal,
+            ward: wardVal,
+            note: notes,
+            demoContact 
+          },
           delivery: { date: deliveryDate, notes: finalNotes },
-          items: cartItems,
+          items: cartItems.map(item => {
+            const { totalPrice: itemPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+            return { ...item, price: itemPrice };
+          }),
           addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },

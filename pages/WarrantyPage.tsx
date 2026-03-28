@@ -81,15 +81,18 @@ export const WarrantyPage: React.FC<{ config?: StoreConfig }> = ({ config }) => 
                 <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-8 text-center text-white shadow-lg">
                     <h3 className="text-2xl font-bold mb-2">{t('warranty.need_help')}</h3>
                     <p className="text-gray-300 mb-6 text-sm">{t('warranty.need_help_desc')}</p>
-                    <div className="flex justify-center gap-4">
+                    <div className="flex justify-center flex-wrap gap-4">
                         <a href={`https://zalo.me/${config?.hotline?.replace(/\s/g, '') || '0964393115'}`} target="_blank" rel="noopener noreferrer" className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2">
-                            {t('warranty.chat_zalo')}
+                            {t('warranty.chat_zalo')} 1
+                        </a>
+                        <a href={`https://zalo.me/${config?.hotline2?.replace(/\s/g, '') || '0345126019'}`} target="_blank" rel="noopener noreferrer" className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2">
+                            {t('warranty.chat_zalo')} 2
                         </a>
                         <a href="https://m.me/theluvin.vn" target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2">
                             {t('warranty.messenger')}
                         </a>
                     </div>
-                    <p className="mt-4 text-xs text-gray-400">{t('warranty.hotline')}: {config?.hotline || '0964 393 115'}</p>
+                    <p className="mt-4 text-xs text-gray-400">{t('warranty.hotline')}: {config?.hotline || '0964 393 115'} - {config?.hotline2 || '0345 126 019'}</p>
                 </div>
             </div>
         </div>
