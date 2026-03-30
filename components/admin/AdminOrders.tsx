@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField, PresetBackground } from '../../types';
+import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField, PresetBackground, CollectionTemplate } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
@@ -167,6 +167,7 @@ interface AdminOrdersProps {
     products: LegoPart[];
     frames: FrameOption[];
     backgrounds: PresetBackground[];
+    templates: CollectionTemplate[];
     currentUser: any;
     role: 'admin' | 'warehouse' | null;
     onRefreshProducts: () => void;
@@ -174,7 +175,7 @@ interface AdminOrdersProps {
 
 type OrderTab = 'active' | 'history';
 
-export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, backgrounds, currentUser, role, onRefreshProducts }) => {
+export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, backgrounds, templates, currentUser, role, onRefreshProducts }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -511,7 +512,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         let subtotal = 0;
         const partLookup = allKnownParts;
         orderItems.forEach(item => {
-            const { totalPrice } = calculatePrice(item, partLookup, frames);
+            const { totalPrice } = calculatePrice(item, partLookup, frames, templates);
             subtotal += totalPrice * (item.quantity || 1);
         });
         return subtotal;

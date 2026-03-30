@@ -1,5 +1,5 @@
 
-import { FrameConfig, FrameOption, LegoPart, Order } from '../types';
+import { FrameConfig, FrameOption, LegoPart, Order, CollectionTemplate } from '../types';
 import { FRAME_OPTIONS } from '../constants';
 
 export const CHARACTER_BASE_PRICE = 10000;
@@ -49,21 +49,42 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
-export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
+export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[]) => {
     const breakdown: PriceBreakdownItem[] = [];
     let total = 0;
 
-    // 1. FRAME PRICE
-    const frame = frames.find(f => f.id === config.frameId) || frames[0] || FRAME_OPTIONS[0];
-    const frameEffective = getEffectivePrice(frame);
-    total += frameEffective;
+    // 1. FRAME / TEMPLATE PRICE
+    let baseItem: { name: string, price: number, salePrice?: number, saleEndDate?: string, description?: string } | undefined;
+    
+    // Check frames first
+    baseItem = frames.find(f => f.id === config.frameId);
+    
+    // If not found in frames, check templates (for simple templates)
+    if (!baseItem && templates) {
+        const template = templates.find(t => t.id === config.frameId);
+        if (template && template.isSimple) {
+            baseItem = {
+                name: template.name,
+                price: template.price || 0,
+                salePrice: template.salePrice,
+                saleEndDate: template.saleEndDate,
+                description: 'Mẫu đơn giản'
+            };
+        }
+    }
+
+    // Default to first frame if still not found
+    if (!baseItem) baseItem = frames[0] || FRAME_OPTIONS[0];
+
+    const baseEffective = getEffectivePrice(baseItem as any);
+    total += baseEffective;
     
     breakdown.push({ 
-        label: `Khung ${frame.name}`, 
-        value: frameEffective,
-        originalValue: frame.price > frameEffective ? frame.price : undefined,
+        label: baseItem.name, 
+        value: baseEffective,
+        originalValue: baseItem.price > baseEffective ? baseItem.price : undefined,
         isBase: true,
-        details: frame.description
+        details: baseItem.description
     });
 
     // 2. CHARACTER BASE FEE
@@ -154,10 +175,10 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     return { totalPrice: total, priceBreakdown: breakdown };
 };
 
-export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoPart>, frames: FrameOption[]) => {
+export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[]) => {
     let subtotal = 0;
     order.items.forEach(item => {
-        const { totalPrice } = calculatePrice(item, allParts, frames);
+        const { totalPrice } = calculatePrice(item, allParts, frames, templates);
         subtotal += totalPrice * (item.quantity || 1);
     });
     const giftBoxFee = order.addGiftBox ? 30000 : 0;

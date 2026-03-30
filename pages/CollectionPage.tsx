@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig } from '../types';
 import { COLLECTION_TEMPLATES } from '../constants';
-import { calculatePrice, formatCurrency } from '../utils/pricing';
+import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../utils/pricing';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
 
@@ -21,7 +21,7 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
     const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
     const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
     const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
-    const hatImageUrl = hat?.imageUrl;
+    const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
 
     const partStyle: React.CSSProperties = {
         position: 'absolute',
@@ -55,6 +55,18 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [selectedTemplate, setSelectedTemplate] = useState<CollectionTemplate | null>(null);
     const [customConfig, setCustomConfig] = useState<FrameConfig | null>(null);
     const [orderNote, setOrderNote] = useState('');
+    const [charmSearch, setCharmSearch] = useState('');
+    const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
+
+    const partsByType = useMemo(() => {
+        const result: Record<string, LegoPart[]> = {
+            hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
+        };
+        (Object.values(allParts) as LegoPart[]).forEach(p => {
+            if (result[p.type]) result[p.type].push(p);
+        });
+        return result;
+    }, [allParts]);
 
     const categories = useMemo(() => {
         const dynamicCats = new Set<string>();
@@ -119,11 +131,32 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const addDefaultCharacter = () => {
         if (!customConfig) return;
         const firstChar = customConfig.characters[0];
+        
+        // Default parts if no characters exist
+        const defaultParts = {
+            shirt: partsByType.shirt[0],
+            pants: partsByType.pants[0],
+            face: partsByType.face[0],
+            hair: partsByType.hair[0],
+            hat: partsByType.hat?.[0],
+        };
+
         const newChar: LegoCharacterConfig = firstChar 
             ? { ...firstChar, id: Date.now(), x: 50, y: 50 }
-            : { id: Date.now(), x: 50, y: 50, rotation: 0, scale: 1 };
+            : { 
+                id: Date.now(), 
+                x: 50, y: 50, 
+                rotation: 0, 
+                scale: 1,
+                ...defaultParts,
+                selectedShirtColor: defaultParts.shirt?.colors?.[0],
+                selectedPantsColor: defaultParts.pants?.colors?.[0],
+                selectedHairColor: defaultParts.hair?.colors?.[0],
+                selectedHatColor: defaultParts.hat?.colors?.[0],
+            };
         
         setCustomConfig({ ...customConfig, characters: [...customConfig.characters, newChar] });
+        setEditingCharacterId(newChar.id);
     };
 
     const updateCharmQuantity = (partId: string, delta: number) => {
@@ -155,6 +188,31 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         setCustomConfig({ ...customConfig, draggableItems: newDraggableItems });
     };
 
+    const removeSpecificCharacter = (charId: number) => {
+        if (!customConfig) return;
+        if (customConfig.characters.length <= 1) return;
+        setCustomConfig({
+            ...customConfig,
+            characters: customConfig.characters.filter(c => c.id !== charId)
+        });
+        if (editingCharacterId === charId) setEditingCharacterId(null);
+    };
+
+    const handleBuyNow = () => {
+        if (!customConfig) return;
+        const finalConfig = {
+            ...customConfig,
+            customFormData: {
+                ...(customConfig.customFormData || {}),
+                order_note: orderNote
+            }
+        };
+        onAddToCart(finalConfig, false);
+        navigateTo('checkout');
+        setSelectedTemplate(null);
+        setEditingCharacterId(null);
+    };
+
     const handleQuickAddToCart = () => {
         if (!customConfig) return;
         const finalConfig = {
@@ -166,19 +224,43 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         };
         onAddToCart(finalConfig, true);
         setSelectedTemplate(null);
+        setEditingCharacterId(null);
     };
 
     const currentPrice = useMemo(() => {
         if (!customConfig || !selectedTemplate) return 0;
         
-        // If simple, use template price as base and add extra charms
+        // If simple, use template price as base and add extra charms + characters
         if (selectedTemplate.isSimple) {
             const basePrice = selectedTemplate.price || 0;
+            
+            // Calculate characters price
+            const charactersPrice = customConfig.characters.reduce((sum, char) => {
+                let charSum = CHARACTER_BASE_PRICE; // Base fee per character
+                if (char.customPrintPrice) charSum += char.customPrintPrice;
+                
+                const addPartCost = (part: LegoPart | undefined) => {
+                    if (part) charSum += (part.price || 0);
+                };
+                addPartCost(char.hair);
+                addPartCost(char.face);
+                addPartCost(char.shirt);
+                addPartCost(char.pants);
+                addPartCost(char.hat);
+                
+                if (char.selectedShirtColor?.price) charSum += char.selectedShirtColor.price;
+                if (char.selectedPantsColor?.price) charSum += char.selectedPantsColor.price;
+                if (char.selectedHairColor?.price) charSum += char.selectedHairColor.price;
+                
+                return sum + charSum;
+            }, 0);
+
             const extraCharmsPrice = customConfig.draggableItems.reduce((sum, item) => {
                 const part = allParts[item.partId];
                 return sum + (part?.price || 0);
             }, 0);
-            return basePrice + extraCharmsPrice;
+            
+            return basePrice + charactersPrice + extraCharmsPrice;
         }
 
         const { totalPrice } = calculatePrice(customConfig, allParts, frames);
@@ -240,6 +322,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             !templatePartIds.has(p.id)
         );
     }, [allParts, selectedTemplate]);
+
+    const filteredExtraCharms = useMemo(() => {
+        if (!charmSearch) return extraCharms;
+        const search = charmSearch.toLowerCase();
+        return extraCharms.filter(p => p.name.toLowerCase().includes(search));
+    }, [extraCharms, charmSearch]);
 
     const addExtraCharm = (part: LegoPart) => {
         if (!customConfig) return;
@@ -323,11 +411,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         {selectedTemplate && customConfig && (
             <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" onClick={() => setSelectedTemplate(null)}>
                 <div 
-                    className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col max-h-[90vh]"
+                    className="bg-white w-full max-w-2xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col max-h-[95vh] sm:max-h-[90vh]"
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <div className="px-4 py-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('collection.quick_customize_title')}</p>
@@ -337,19 +425,46 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </button>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                    <div className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar">
                         {/* Preview Image */}
-                        <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group">
-                            <img 
-                                src={selectedTemplate.imageUrl} 
-                                alt={selectedTemplate.name} 
-                                className="w-full h-full object-cover" 
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                        <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center">
+                            {selectedTemplate.isSimple ? (
+                                <div className="relative w-full h-full p-4 sm:p-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 content-center">
+                                    {customConfig.characters.length === 0 && customConfig.draggableItems.length === 0 && (
+                                        <div className="text-center">
+                                            <img 
+                                                src={selectedTemplate.imageUrl} 
+                                                alt={selectedTemplate.name} 
+                                                className="max-h-48 mx-auto object-contain rounded-xl opacity-50 grayscale" 
+                                            />
+                                            <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vui lòng chọn nhân vật & charm</p>
+                                        </div>
+                                    )}
+                                    {customConfig.characters.map((char) => (
+                                        <div key={char.id} className="transform scale-125">
+                                            <CharacterPreview character={char} />
+                                        </div>
+                                    ))}
+                                    {customConfig.draggableItems.map((item) => (
+                                        <div key={item.id} className="w-12 h-12 bg-white rounded-xl shadow-sm border border-pink-50 p-1 flex items-center justify-center">
+                                            <img src={allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <>
+                                    <img 
+                                        src={selectedTemplate.imageUrl} 
+                                        alt={selectedTemplate.name} 
+                                        className="w-full h-full object-cover" 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                                </>
+                            )}
                         </div>
 
                         {/* Characters Section */}
-                        {!selectedTemplate.isSimple && groupedCharacters.length > 0 && (
+                        {(selectedTemplate.isSimple || groupedCharacters.length > 0) && (
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -364,28 +479,122 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 gap-3">
-                                    {groupedCharacters.map((group, idx) => (
-                                        <div key={idx} className="flex items-center gap-4 p-3 rounded-2xl border-2 border-primary/10 bg-white shadow-sm">
-                                            <CharacterPreview character={group.char} />
-                                            <div className="flex-grow">
-                                                <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Nhân vật {idx + 1}</p>
-                                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Tùy chỉnh trong phần thiết kế</p>
+                                    {customConfig.characters.map((char, idx) => (
+                                        <div 
+                                            key={char.id} 
+                                            className={`flex flex-col rounded-2xl border-2 transition-all cursor-pointer ${editingCharacterId === char.id ? 'border-primary bg-primary/5' : 'border-primary/10 bg-white shadow-sm hover:border-primary/30'}`}
+                                            onClick={() => setEditingCharacterId(editingCharacterId === char.id ? null : char.id)}
+                                        >
+                                            <div className="flex items-center gap-4 p-3">
+                                                <CharacterPreview character={char} />
+                                                <div className="flex-grow">
+                                                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Nhân vật {idx + 1}</p>
+                                                    <p className="text-[9px] text-primary font-black uppercase tracking-tighter">
+                                                        {editingCharacterId === char.id ? 'Đang chỉnh sửa' : 'Nhấn để tùy chỉnh'}
+                                                    </p>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-3 bg-gray-50 rounded-xl border border-gray-100 p-1" onClick={(e) => e.stopPropagation()}>
+                                                    <button 
+                                                        onClick={() => removeSpecificCharacter(char.id)}
+                                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-all shadow-sm"
+                                                        title="Xóa nhân vật"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl border border-gray-100 p-1">
-                                                <button 
-                                                    onClick={() => updateCharacterQuantity(group.ids[0], -1)}
-                                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:bg-white hover:text-primary transition-all shadow-sm"
-                                                >
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
-                                                </button>
-                                                <span className="text-xs font-black text-gray-900 min-w-[12px] text-center">{group.count}</span>
-                                                <button 
-                                                    onClick={() => updateCharacterQuantity(group.ids[0], 1)}
-                                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:bg-white hover:text-primary transition-all shadow-sm"
-                                                >
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                                </button>
-                                            </div>
+
+                                            {/* Part Selector */}
+                                            {editingCharacterId === char.id && (
+                                                <div className="p-4 border-t border-primary/10 space-y-5 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
+                                                    {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => (
+                                                        <div key={type} className="space-y-2.5">
+                                                            <div className="flex justify-between items-center">
+                                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</label>
+                                                                {char[type] && (
+                                                                    <span className="text-[8px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase">{char[type].name}</span>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const newChars = customConfig.characters.map(c => c.id === char.id ? { ...c, [type]: undefined } : c);
+                                                                        setCustomConfig({ ...customConfig, characters: newChars });
+                                                                    }}
+                                                                    className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${!char[type] ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
+                                                                >
+                                                                    NONE
+                                                                </button>
+                                                                {partsByType[type].map(part => (
+                                                                    <button 
+                                                                        key={part.id}
+                                                                        onClick={() => {
+                                                                            const newChars = customConfig.characters.map(c => {
+                                                                                if (c.id === char.id) {
+                                                                                    const updated = { ...c, [type]: part };
+                                                                                    if (type === 'shirt') updated.selectedShirtColor = part.colors?.[0];
+                                                                                    if (type === 'pants') updated.selectedPantsColor = part.colors?.[0];
+                                                                                    if (type === 'hair') updated.selectedHairColor = part.colors?.[0];
+                                                                                    return updated;
+                                                                                }
+                                                                                return c;
+                                                                            });
+                                                                            setCustomConfig({ ...customConfig, characters: newChars });
+                                                                        }}
+                                                                        className={`w-10 h-10 rounded-lg border-2 flex-shrink-0 p-1 transition-all ${char[type]?.id === part.id ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+                                                                    >
+                                                                        <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+
+                                                            {/* Color selection for the part */}
+                                                            {char[type]?.colors && char[type].colors.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 pt-1">
+                                                                    {char[type].colors.map(color => (
+                                                                        <button
+                                                                            key={color.hex}
+                                                                            onClick={() => {
+                                                                                const newChars = customConfig.characters.map(c => {
+                                                                                    if (c.id === char.id) {
+                                                                                        const updated = { ...c };
+                                                                                        if (type === 'shirt') updated.selectedShirtColor = color;
+                                                                                        if (type === 'pants') updated.selectedPantsColor = color;
+                                                                                        if (type === 'hair') updated.selectedHairColor = color;
+                                                                                        if (type === 'hat') updated.selectedHatColor = color;
+                                                                                        return updated;
+                                                                                    }
+                                                                                    return c;
+                                                                                });
+                                                                                setCustomConfig({ ...customConfig, characters: newChars });
+                                                                            }}
+                                                                            className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
+                                                                                (type === 'shirt' ? char.selectedShirtColor?.hex : 
+                                                                                 type === 'pants' ? char.selectedPantsColor?.hex : 
+                                                                                 type === 'hair' ? char.selectedHairColor?.hex :
+                                                                                 char.selectedHatColor?.hex) === color.hex 
+                                                                                ? 'border-primary scale-110 shadow-md' 
+                                                                                : 'border-gray-100'
+                                                                            }`}
+                                                                            style={{ backgroundColor: color.hex }}
+                                                                            title={color.name}
+                                                                        >
+                                                                            {(type === 'shirt' ? char.selectedShirtColor?.hex : 
+                                                                              type === 'pants' ? char.selectedPantsColor?.hex : 
+                                                                              type === 'hair' ? char.selectedHairColor?.hex :
+                                                                              char.selectedHatColor?.hex) === color.hex && (
+                                                                                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
+                                                                            )}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -453,14 +662,26 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         )}
 
                         {/* Extra Charms Section */}
-                        {!selectedTemplate.isSimple && extraCharms.length > 0 && (
+                        {(selectedTemplate.isSimple || extraCharms.length > 0) && (
                             <div className="space-y-4">
-                                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                    Thêm phụ kiện khác
-                                </h3>
-                                <div className="grid grid-cols-4 gap-3">
-                                    {extraCharms.slice(0, 11).map((part) => (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        {selectedTemplate.isSimple ? 'Chọn thêm Charm (Phụ kiện)' : 'Thêm phụ kiện khác'}
+                                    </h3>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            placeholder="Tìm kiếm charm..."
+                                            value={charmSearch}
+                                            onChange={(e) => setCharmSearch(e.target.value)}
+                                            className="w-full sm:w-48 pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full text-[10px] focus:outline-none focus:border-primary/30 transition-all"
+                                        />
+                                        <svg className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {filteredExtraCharms.map((part) => (
                                         <button
                                             key={part.id}
                                             onClick={() => addExtraCharm(part)}
@@ -477,13 +698,20 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             </div>
                                         </button>
                                     ))}
-                                    <button 
-                                        onClick={() => onCustomize(selectedTemplate)}
-                                        className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all bg-gray-50/50"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                        <span className="text-[8px] font-black uppercase tracking-tighter mt-1">Xem thêm</span>
-                                    </button>
+                                    {filteredExtraCharms.length === 0 && (
+                                        <div className="col-span-full py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                            Không tìm thấy charm phù hợp
+                                        </div>
+                                    )}
+                                    {!selectedTemplate.isSimple && (
+                                        <button 
+                                            onClick={() => onCustomize(selectedTemplate)}
+                                            className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all bg-gray-50/50"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                            <span className="text-[8px] font-black uppercase tracking-tighter mt-1">Xem thêm</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -543,39 +771,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none"
                             />
                         </div>
-
-                        {/* Simple Template Charm Selector (Under Note) */}
-                        {selectedTemplate.isSimple && (
-                            <div className="space-y-4 pt-4 border-t border-gray-100">
-                                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                    Chọn thêm Charm (Phụ kiện)
-                                </h3>
-                                <div className="grid grid-cols-4 gap-3">
-                                    {extraCharms.slice(0, 12).map((part) => (
-                                        <button
-                                            key={part.id}
-                                            onClick={() => addExtraCharm(part)}
-                                            className="relative aspect-square rounded-2xl border-2 border-gray-100 hover:border-primary transition-all p-1 bg-white group"
-                                        >
-                                            <img 
-                                                src={part.imageUrl} 
-                                                alt={part.name} 
-                                                className="w-full h-full object-contain group-hover:scale-110 transition-transform"
-                                                referrerPolicy="no-referrer"
-                                            />
-                                            <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black">
-                                                +{formatCurrency(part.price).replace('₫', '')}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-6 border-t border-gray-100 bg-white space-y-4 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+                    <div className="px-4 py-6 sm:p-6 border-t border-gray-100 bg-white space-y-4 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
                         <div className="flex justify-between items-end">
                             <div>
                                 <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('common.total')}</span>
@@ -589,12 +788,20 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                             </button>
                         </div>
-                        <button 
-                            onClick={handleQuickAddToCart}
-                            className="w-full py-4 bg-gray-900 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                        >
-                            🛒 {t('common.add_to_cart')}
-                        </button>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={handleQuickAddToCart}
+                                className="flex-1 py-4 bg-gray-100 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                            >
+                                🛒 {t('common.add_to_cart')}
+                            </button>
+                            <button 
+                                onClick={handleBuyNow}
+                                className="flex-[1.5] py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                            >
+                                ⚡ Mua ngay
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

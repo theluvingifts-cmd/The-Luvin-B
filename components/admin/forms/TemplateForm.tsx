@@ -112,6 +112,7 @@ export const TemplateForm: React.FC<{
             characters: prev.characters.map(c => {
                 if (c.id === id) {
                     const updated = { ...c, [field]: part };
+                    // Reset colors when part changes
                     if (field === 'shirt') updated.selectedShirtColor = part?.colors?.[0];
                     if (field === 'pants') updated.selectedPantsColor = part?.colors?.[0];
                     if (field === 'hair') updated.selectedHairColor = part?.colors?.[0];
@@ -119,6 +120,20 @@ export const TemplateForm: React.FC<{
                 }
                 return c;
             })
+        }));
+    };
+
+    const handleUpdateCharColor = (charId: number, field: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor', color: any) => {
+        setConfig(prev => ({
+            ...prev,
+            characters: prev.characters.map(c => c.id === charId ? { ...c, [field]: color } : c)
+        }));
+    };
+
+    const handleUpdateCharmColor = (charmId: number, color: any) => {
+        setConfig(prev => ({
+            ...prev,
+            draggableItems: prev.draggableItems.map(item => item.id === charmId ? { ...item, selectedColor: color } : item)
         }));
     };
 
@@ -141,13 +156,11 @@ export const TemplateForm: React.FC<{
 
     const handleSave = () => {
         try {
-            // If isSimple is true, we use INITIAL_FRAME_CONFIG
-            // If isSimple is false, we use the visual 'config' state
-            const finalConfig = formData.isSimple ? INITIAL_FRAME_CONFIG : config;
-            
+            // Always use the visual 'config' state, even for simple templates
+            // isSimple just determines how it's displayed to the customer
             onSave({ 
                 ...formData, 
-                config: finalConfig 
+                config: config 
             });
         } catch (e) {
             console.error(e);
@@ -208,16 +221,39 @@ export const TemplateForm: React.FC<{
                             placeholder="VD: 350000" 
                         />
                     </div>
-                    <div className="flex items-center gap-2 pt-6">
-                        <input 
-                            type="checkbox"
-                            id="isSimple"
-                            checked={formData.isSimple || false}
-                            onChange={(e) => setFormData(prev => ({ ...prev, isSimple: e.target.checked }))}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <label htmlFor="isSimple" className="text-sm font-bold text-gray-700 cursor-pointer">Mẫu đơn giản (Chỉ cần ảnh & giá)</label>
+                {/* Mode Selection */}
+                <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Chế độ hiển thị</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chọn cách khách hàng nhìn thấy mẫu này</p>
+                        </div>
+                        <div className="flex bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({ ...formData, isSimple: false })}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!formData.isSimple ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Thiết kế (Canvas)
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({ ...formData, isSimple: true })}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${formData.isSimple ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Đơn giản (Ảnh mẫu)
+                            </button>
+                        </div>
                     </div>
+                    
+                    <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                        <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
+                            {formData.isSimple 
+                                ? "💡 Chế độ Đơn giản: Khách hàng sẽ thấy ảnh mẫu bạn tải lên. Các nhân vật & charm bạn thêm bên dưới sẽ được liệt kê như danh sách phụ kiện đi kèm."
+                                : "💡 Chế độ Thiết kế: Khách hàng có thể tự do di chuyển, thay đổi vị trí nhân vật & charm trên khung hình trực tuyến."}
+                        </p>
+                    </div>
+                </div>
                 </div>
                 
                 <div>
@@ -354,94 +390,170 @@ export const TemplateForm: React.FC<{
                                     </div>
 
                                     {/* Right: Part Selection */}
-                                    <div className="flex-grow space-y-4">
-                                        {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => (
-                                            <div key={type} className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</label>
-                                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                                    <button 
-                                                        onClick={() => handleUpdateChar(activeCharacter.id, type, '')}
-                                                        className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${!activeCharacter[type] ? 'border-primary bg-primary/5' : 'border-gray-200'}`}
-                                                    >
-                                                        NONE
-                                                    </button>
-                                                    {partsByType[type].map(part => (
+                                    <div className="flex-grow space-y-6">
+                                        {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => {
+                                            const selectedPart = activeCharacter[type];
+                                            const colorField = type === 'shirt' ? 'selectedShirtColor' : type === 'pants' ? 'selectedPantsColor' : type === 'hair' ? 'selectedHairColor' : null;
+
+                                            return (
+                                                <div key={type} className="space-y-3">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex justify-between">
+                                                        <span>{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</span>
+                                                        {selectedPart && <span className="text-primary normal-case">{selectedPart.name}</span>}
+                                                    </label>
+                                                    
+                                                    <div className="flex flex-wrap gap-2">
                                                         <button 
-                                                            key={part.id}
-                                                            onClick={() => handleUpdateChar(activeCharacter.id, type, part.id)}
-                                                            className={`w-10 h-10 rounded-lg border-2 flex-shrink-0 p-1 transition-all ${activeCharacter[type]?.id === part.id ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}`}
-                                                            title={part.name}
+                                                            onClick={() => handleUpdateChar(activeCharacter.id, type, '')}
+                                                            className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 transition-all ${!selectedPart ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-gray-300 hover:border-gray-200'}`}
                                                         >
-                                                            <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                            TRỐNG
                                                         </button>
-                                                    ))}
+                                                        {partsByType[type].map(part => (
+                                                            <button 
+                                                                key={part.id}
+                                                                onClick={() => handleUpdateChar(activeCharacter.id, type, part.id)}
+                                                                className={`w-12 h-12 rounded-xl border-2 flex-shrink-0 p-1 transition-all ${selectedPart?.id === part.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
+                                                                title={part.name}
+                                                            >
+                                                                <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Color Selection for Part */}
+                                                    {selectedPart && selectedPart.colors && selectedPart.colors.length > 0 && colorField && (
+                                                        <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-lg border border-gray-100">
+                                                            {selectedPart.colors.map((color, cIdx) => (
+                                                                <button
+                                                                    key={cIdx}
+                                                                    onClick={() => handleUpdateCharColor(activeCharacter.id, colorField, color)}
+                                                                    className={`w-6 h-6 rounded-full border-2 transition-all ${activeCharacter[colorField]?.hex === color.hex ? 'border-primary scale-110 shadow-sm' : 'border-transparent hover:scale-105'}`}
+                                                                    style={{ backgroundColor: color.hex }}
+                                                                    title={color.name}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {/* Charms Section */}
-                        <div className="space-y-4 pt-4">
+                        <div className="space-y-6 pt-6 border-t border-gray-100">
                             <div className="flex justify-between items-center">
-                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Charm cố định</h4>
-                                <select 
-                                    onChange={(e) => { if(e.target.value) handleAddCharm(e.target.value); e.target.value = ''; }}
-                                    className="bg-green-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-green-700 transition-colors outline-none cursor-pointer"
-                                >
-                                    <option value="">+ Thêm Charm</option>
-                                    <optgroup label="Phụ kiện">
-                                        {partsByType.accessory.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </optgroup>
-                                    <optgroup label="Thú cưng">
-                                        {partsByType.pet.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </optgroup>
-                                </select>
+                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">Charm cố định (Sticker/Thú cưng)</h4>
+                                <span className="text-[10px] text-gray-400">Bấm vào Charm bên dưới để thêm</span>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {config.draggableItems.map(item => {
-                                    const part = allParts.find(p => p.id === item.partId);
-                                    return (
-                                        <div key={item.id} className="bg-gray-50 p-2 rounded-lg border border-gray-200 relative group">
-                                            <div className="flex items-center gap-2">
-                                                <img src={part?.imageUrl} className="w-8 h-8 object-contain" />
-                                                <span className="text-[10px] font-bold truncate flex-1">{part?.name}</span>
-                                            </div>
-                                            <div className="mt-2 grid grid-cols-2 gap-1">
-                                                <input 
-                                                    type="number" 
-                                                    value={item.x} 
-                                                    onChange={(e) => setConfig(prev => ({
-                                                        ...prev,
-                                                        draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, x: parseFloat(e.target.value) } : i)
-                                                    }))}
-                                                    className="w-full p-1 text-[9px] border border-gray-300 rounded"
-                                                    placeholder="X"
-                                                />
-                                                <input 
-                                                    type="number" 
-                                                    value={item.y} 
-                                                    onChange={(e) => setConfig(prev => ({
-                                                        ...prev,
-                                                        draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, y: parseFloat(e.target.value) } : i)
-                                                    }))}
-                                                    className="w-full p-1 text-[9px] border border-gray-300 rounded"
-                                                    placeholder="Y"
-                                                />
-                                            </div>
-                                            <button 
-                                                onClick={() => handleRemoveCharm(item.id)}
-                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                &times;
-                                            </button>
+                            {/* Visual Charm Picker */}
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                                <div className="space-y-4">
+                                    {/* Accessories */}
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Phụ kiện & Sticker</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {partsByType.accessory.map(p => (
+                                                <button 
+                                                    key={p.id}
+                                                    onClick={() => handleAddCharm(p.id)}
+                                                    className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1.5 hover:border-primary hover:shadow-sm transition-all group"
+                                                    title={p.name}
+                                                >
+                                                    <img src={p.imageUrl} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                                </button>
+                                            ))}
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                    {/* Pets */}
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Thú cưng</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {partsByType.pet.map(p => (
+                                                <button 
+                                                    key={p.id}
+                                                    onClick={() => handleAddCharm(p.id)}
+                                                    className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1.5 hover:border-primary hover:shadow-sm transition-all group"
+                                                    title={p.name}
+                                                >
+                                                    <img src={p.imageUrl} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Added Charms Management */}
+                            {config.draggableItems.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                    {config.draggableItems.map(item => {
+                                        const part = allParts.find(p => p.id === item.partId);
+                                        return (
+                                            <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-200 relative group shadow-sm">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 bg-gray-50 rounded-lg p-1">
+                                                        <img src={part?.imageUrl} className="w-full h-full object-contain" />
+                                                    </div>
+                                                    <span className="text-[10px] font-bold truncate flex-1">{part?.name}</span>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    <div className="space-y-0.5">
+                                                        <span className="text-[8px] text-gray-400 font-bold uppercase">X (%)</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.x} 
+                                                            onChange={(e) => setConfig(prev => ({
+                                                                ...prev,
+                                                                draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, x: parseFloat(e.target.value) } : i)
+                                                            }))}
+                                                            className="w-full p-1 text-[10px] border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <span className="text-[8px] text-gray-400 font-bold uppercase">Y (%)</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.y} 
+                                                            onChange={(e) => setConfig(prev => ({
+                                                                ...prev,
+                                                                draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, y: parseFloat(e.target.value) } : i)
+                                                            }))}
+                                                            className="w-full p-1 text-[10px] border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Charm Color Picker if available */}
+                                                {part?.colors && part.colors.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1 pt-2 border-t border-gray-50">
+                                                        {part.colors.map((c, cIdx) => (
+                                                            <button
+                                                                key={cIdx}
+                                                                onClick={() => handleUpdateCharmColor(item.id, c)}
+                                                                className={`w-4 h-4 rounded-full border transition-all ${item.selectedColor?.hex === c.hex ? 'ring-1 ring-primary scale-110' : 'border-transparent'}`}
+                                                                style={{ backgroundColor: c.hex }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <button 
+                                                    onClick={() => handleRemoveCharm(item.id)}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                         
                         <div className="pt-4 border-t border-gray-100">

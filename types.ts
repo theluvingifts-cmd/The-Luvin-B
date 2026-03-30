@@ -164,6 +164,7 @@ export interface LegoCharacterConfig {
   selectedShirtColor?: OutfitColor; 
   selectedPantsColor?: OutfitColor;
   selectedHairColor?: OutfitColor;
+  selectedHatColor?: OutfitColor;
   customPrintPrice?: number;
   x: number; y: number; rotation: number; scale: number; 
   opacity?: number;
@@ -234,6 +235,9 @@ export interface CollectionTemplate {
     category?: string; 
     purchaseCount?: number;
     price?: number;
+    salePrice?: number;
+    saleEndDate?: string;
+    description?: string;
     isSimple?: boolean;
 }
 
