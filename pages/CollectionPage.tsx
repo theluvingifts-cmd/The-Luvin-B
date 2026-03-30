@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig } from '../types';
+import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig, OutfitColor } from '../types';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../utils/pricing';
 import { SmartImage } from '../components/shared/SmartImage';
@@ -335,7 +335,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             id: Date.now() + Math.floor(Math.random() * 1000),
             partId: part.id,
             type: part.type === 'hat' ? 'hat' : (part.type === 'pet' ? 'pet' : 'accessory'),
-            x: 50, y: 50, rotation: 0, scale: 1
+            x: 50, y: 50, rotation: 0, scale: 1,
+            selectedColor: part.colors?.[0]
         };
         setCustomConfig({
             ...customConfig,
@@ -349,52 +350,69 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         const templateItemIds = new Set(selectedTemplate.config.draggableItems.map(i => i.id));
         const extraItems = customConfig.draggableItems.filter(i => !templateItemIds.has(i.id));
         
-        const groups: Record<string, { partId: string, items: DraggableItem[], part: LegoPart }> = {};
+        const groups: Record<string, { key: string, partId: string, items: DraggableItem[], part: LegoPart, selectedColor?: OutfitColor }> = {};
         
         extraItems.forEach(item => {
-            if (!groups[item.partId]) {
-                groups[item.partId] = { 
+            const colorKey = item.selectedColor?.hex || 'default';
+            const key = `${item.partId}_${colorKey}`;
+            if (!groups[key]) {
+                groups[key] = { 
+                    key,
                     partId: item.partId, 
                     items: [], 
-                    part: allParts[item.partId] 
+                    part: allParts[item.partId],
+                    selectedColor: item.selectedColor
                 };
             }
-            groups[item.partId].items.push(item);
+            groups[key].items.push(item);
         });
         
         return Object.values(groups);
     }, [customConfig, selectedTemplate, allParts]);
 
-    const updateExtraCharmQuantity = (partId: string, delta: number) => {
+    const updateExtraCharmQuantity = (partId: string, delta: number, selectedColor?: OutfitColor) => {
         if (!customConfig) return;
         
         const currentItems = customConfig.draggableItems;
-        const extraItems = groupedAddedExtraCharms.find(g => g.partId === partId)?.items || [];
-        const currentCount = extraItems.length;
+        const matchingItems = currentItems.filter(i => 
+            i.partId === partId && 
+            (selectedColor ? i.selectedColor?.hex === selectedColor.hex : !i.selectedColor)
+        );
+        const currentCount = matchingItems.length;
         const newCount = Math.max(0, currentCount + delta);
         
         if (newCount === currentCount) return;
         
         let newDraggableItems = [...currentItems];
-        
         if (delta > 0) {
             const part = allParts[partId];
             for (let i = 0; i < delta; i++) {
-                const newItem: DraggableItem = {
-                    id: Date.now() + Math.floor(Math.random() * 10000) + i,
-                    partId: partId,
+                newDraggableItems.push({
+                    id: Date.now() + Math.floor(Math.random() * 1000) + i,
+                    partId,
                     type: part.type === 'hat' ? 'hat' : (part.type === 'pet' ? 'pet' : 'accessory'),
-                    x: 50, y: 50, rotation: 0, scale: 1
-                };
-                newDraggableItems.push(newItem);
+                    x: 50, y: 50, rotation: 0, scale: 1,
+                    selectedColor
+                });
             }
         } else {
-            const itemsToRemove = extraItems.slice(0, Math.abs(delta));
+            const itemsToRemove = matchingItems.slice(0, Math.abs(delta));
             const idsToRemove = new Set(itemsToRemove.map(i => i.id));
             newDraggableItems = newDraggableItems.filter(i => !idsToRemove.has(i.id));
         }
         
         setCustomConfig({ ...customConfig, draggableItems: newDraggableItems });
+    };
+
+    const updateExtraCharmColor = (partId: string, oldColor: OutfitColor | undefined, newColor: OutfitColor) => {
+        if (!customConfig) return;
+        const newItems = customConfig.draggableItems.map(item => {
+            if (item.partId === partId && (oldColor ? item.selectedColor?.hex === oldColor.hex : !item.selectedColor)) {
+                return { ...item, selectedColor: newColor };
+            }
+            return item;
+        });
+        setCustomConfig({ ...customConfig, draggableItems: newItems });
     };
 
     const removeExtraCharm = (itemId: number) => {
@@ -447,7 +465,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     ))}
                                     {customConfig.draggableItems.map((item) => (
                                         <div key={item.id} className="w-12 h-12 bg-white rounded-xl shadow-sm border border-pink-50 p-1 flex items-center justify-center">
-                                            <img src={allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                            <img src={item.selectedColor?.imageUrl || allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                                         </div>
                                     ))}
                                 </div>
@@ -725,31 +743,56 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </h3>
                                 <div className="grid grid-cols-1 gap-2">
                                     {groupedAddedExtraCharms.map((group) => {
-                                        const { part, items, partId } = group;
+                                        const { part, items, partId, selectedColor, key } = group;
                                         return (
-                                            <div key={partId} className="flex items-center gap-4 p-3 rounded-2xl border border-primary/10 bg-primary/5">
-                                                <div className="w-10 h-10 bg-white rounded-xl p-1 shadow-sm border border-primary/5">
-                                                    <img src={part?.imageUrl} alt={part?.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                            <div key={key} className="flex flex-col p-3 rounded-2xl border border-primary/10 bg-primary/5 space-y-3">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-white rounded-xl p-1 shadow-sm border border-primary/5">
+                                                        <img src={selectedColor?.imageUrl || part?.imageUrl} alt={part?.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                    </div>
+                                                    <div className="flex-grow text-left">
+                                                        <p className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{part?.name}</p>
+                                                        <p className="text-[9px] text-primary font-bold">{formatCurrency(part?.price || 0)}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 bg-white rounded-lg border border-primary/10 p-0.5">
+                                                        <button 
+                                                            onClick={() => updateExtraCharmQuantity(partId, -1, selectedColor)}
+                                                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-primary transition-all"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                        </button>
+                                                        <span className="text-[10px] font-black text-gray-900 min-w-[12px] text-center">{items.length}</span>
+                                                        <button 
+                                                            onClick={() => updateExtraCharmQuantity(partId, 1, selectedColor)}
+                                                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-primary transition-all"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-grow text-left">
-                                                    <p className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{part?.name}</p>
-                                                    <p className="text-[9px] text-primary font-bold">{formatCurrency(part?.price || 0)}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2 bg-white rounded-lg border border-primary/10 p-0.5">
-                                                    <button 
-                                                        onClick={() => updateExtraCharmQuantity(partId, -1)}
-                                                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-primary transition-all"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
-                                                    </button>
-                                                    <span className="text-[10px] font-black text-gray-900 min-w-[12px] text-center">{items.length}</span>
-                                                    <button 
-                                                        onClick={() => updateExtraCharmQuantity(partId, 1)}
-                                                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-primary transition-all"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                                    </button>
-                                                </div>
+
+                                                {/* Color selection for charm */}
+                                                {part?.colors && part.colors.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 pt-1 border-t border-primary/5 pt-3">
+                                                        {part.colors.map(color => (
+                                                            <button
+                                                                key={color.hex}
+                                                                onClick={() => updateExtraCharmColor(partId, selectedColor, color)}
+                                                                className={`w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center ${
+                                                                    selectedColor?.hex === color.hex 
+                                                                    ? 'border-primary scale-110 shadow-sm' 
+                                                                    : 'border-white'
+                                                                }`}
+                                                                style={{ backgroundColor: color.hex }}
+                                                                title={color.name}
+                                                            >
+                                                                {selectedColor?.hex === color.hex && (
+                                                                    <div className="w-1 h-1 rounded-full bg-white shadow-sm"></div>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
