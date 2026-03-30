@@ -168,11 +168,32 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                     <p className="font-semibold">Khung tùy chỉnh x {totalQuantity}</p>
                                   </div>
                                 </div>
-                                <p className="font-semibold">{formatCurrency(order.totalPrice - order.shipping.fee - giftBoxFee)}</p>
+                                <p className="font-semibold">{formatCurrency(order.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0))}</p>
                             </div>
 
+                            {order.extraCharms && order.extraCharms.length > 0 && (
+                                <div className="bg-pink-50/30 rounded-lg border border-pink-100 p-4">
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 tracking-wider">Phụ kiện thêm</h3>
+                                    <div className="space-y-3">
+                                        {Array.from(new Set(order.extraCharms.map(c => c.id))).map(id => {
+                                            const charm = order.extraCharms!.find(c => c.id === id)!;
+                                            const count = order.extraCharms!.filter(c => c.id === id).length;
+                                            return (
+                                                <div key={id} className="flex justify-between items-center text-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <img src={charm.imageUrl} className="w-8 h-8 object-contain bg-white rounded border" alt="" />
+                                                        <span className="font-medium">{charm.name} <span className="text-gray-400">x{count}</span></span>
+                                                    </div>
+                                                    <span className="font-semibold">{formatCurrency((charm.price || 0) * count)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="text-sm space-y-2">
-                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.totalPrice - order.shipping.fee - giftBoxFee)}</span></div>
+                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) + (order.extraCharms?.reduce((sum, c) => sum + (c.price || 0), 0) || 0))}</span></div>
                                 <div className="flex justify-between">
                                     <span>Phí vận chuyển:</span>
                                     {order.shipping.fee === 0 && order.shipping.method === 'standard' ? (
@@ -182,6 +203,12 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                     )}
                                 </div>
                                 {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà ({totalQuantity} tranh):</span><span className="font-medium">{formatCurrency(giftBoxFee)}</span></div>}
+                                {order.discountAmount && order.discountAmount > 0 && (
+                                    <div className="flex justify-between text-green-600 font-bold">
+                                        <span>Giảm giá:</span>
+                                        <span>-{formatCurrency(order.discountAmount)}</span>
+                                    </div>
+                                )}
                                 <div className="border-t my-2"></div>
                                 <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
                                 <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>

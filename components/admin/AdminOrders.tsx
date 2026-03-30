@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField } from '../../types';
+import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField, PresetBackground } from '../../types';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
 import { uploadToCloudinary } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
@@ -166,6 +166,7 @@ interface AdminOrdersProps {
     setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
     products: LegoPart[];
     frames: FrameOption[];
+    backgrounds: PresetBackground[];
     currentUser: any;
     role: 'admin' | 'warehouse' | null;
     onRefreshProducts: () => void;
@@ -173,7 +174,7 @@ interface AdminOrdersProps {
 
 type OrderTab = 'active' | 'history';
 
-export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, currentUser, role, onRefreshProducts }) => {
+export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, backgrounds, currentUser, role, onRefreshProducts }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -928,6 +929,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                                                 <option value="color">Màu sắc</option>
                                                                                 <option value="image">Hình ảnh (URL)</option>
                                                                                 <option value="upload">Ảnh tải lên</option>
+                                                                                <option value="preset">Mẫu có sẵn</option>
                                                                             </select>
                                                                             {item.background.type === 'color' ? (
                                                                                 <input 
@@ -936,6 +938,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                                                     value={item.background.value.startsWith('#') ? item.background.value : '#ffffff'}
                                                                                     onChange={(e) => handleEditFormChange('background', { ...item.background, value: e.target.value }, undefined, idx)}
                                                                                 />
+                                                                            ) : item.background.type === 'preset' ? (
+                                                                                <select
+                                                                                    className="flex-grow text-xs border rounded p-1"
+                                                                                    value={item.background.value}
+                                                                                    onChange={(e) => handleEditFormChange('background', { ...item.background, value: e.target.value }, undefined, idx)}
+                                                                                >
+                                                                                    <option value="">Chọn mẫu nền...</option>
+                                                                                    {backgrounds.map(bg => (
+                                                                                        <option key={bg.id} value={bg.url}>{bg.name}</option>
+                                                                                    ))}
+                                                                                </select>
                                                                             ) : (
                                                                                 <input 
                                                                                     type="text"

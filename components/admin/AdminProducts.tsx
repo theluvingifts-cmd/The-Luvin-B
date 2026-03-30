@@ -188,7 +188,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                     {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
                     {activeProductSubTab === 'backgrounds' && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />}
                     {activeProductSubTab === 'frames' && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={switchToList} />}
-                    {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} onSave={handleSaveTemplate} onCancel={switchToList} />}
+                    {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} allParts={products} onSave={handleSaveTemplate} onCancel={switchToList} />}
                 </div>
             ) : (
                 <>
@@ -456,7 +456,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             <h4 className="font-bold text-gray-800">{tpl.name}</h4>
                                             <div className="flex justify-between items-center mt-2">
                                                 <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{tpl.category || 'Mẫu thiết kế'}</span>
-                                                <span className="text-xs text-gray-500">{tpl.config.characters.length} Nhân vật</span>
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full mb-1 ${tpl.isSimple ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                        {tpl.isSimple ? 'Mẫu Đơn Giản' : 'Mẫu Thiết Kế'}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-500 font-bold">{tpl.isSimple ? formatCurrency(tpl.price || 0) : `${tpl.config.characters.length} Nhân vật`}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">

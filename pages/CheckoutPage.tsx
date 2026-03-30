@@ -64,6 +64,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [voucherError, setVoucherError] = useState('');
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   
+  const [selectedExtraCharms, setSelectedExtraCharms] = useState<LegoPart[]>([]);
+  
   // Auto-fill & Loyalty State
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
@@ -149,7 +151,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }, [selectedDistrict, isApiError]);
 
 
-  const subtotal = useMemo(() => cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0), [cartItems, allParts]);
+  const subtotal = useMemo(() => {
+      const itemsTotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
+      const charmsTotal = selectedExtraCharms.reduce((total, charm) => total + (charm.price || 0), 0);
+      return itemsTotal + charmsTotal;
+  }, [cartItems, allParts, selectedExtraCharms]);
+
   const totalQuantity = useMemo(() => cartItems.reduce((total, item) => total + (item.quantity || 1), 0), [cartItems]);
   
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
@@ -311,6 +318,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             const { totalPrice: itemPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
             return { ...item, price: itemPrice };
           }),
+          extraCharms: selectedExtraCharms,
           addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },
@@ -550,6 +558,94 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t('checkout.order_notes')}</h3>
                   <textarea placeholder={t('checkout.order_notes_placeholder')} value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none"></textarea>
               </div>
+
+              {/* Extra Charms Selection */}
+              <div className="mt-8 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                      <span className="text-2xl">✨</span>
+                      <h3 className="text-lg font-bold text-gray-800">{t('checkout.extra_charms_title') || 'Chọn thêm Charm & Phụ kiện'}</h3>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-6">{t('checkout.extra_charms_desc') || 'Bạn có thể mua thêm các mảnh charm lẻ để trang trí thêm cho khung hình của mình.'}</p>
+                  
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {(Object.values(allParts) as LegoPart[])
+                          .filter(part => part.category === 'accessory' || part.category === 'pet')
+                          .map(part => {
+                              const isSelected = selectedExtraCharms.some(c => c.id === part.id);
+                              const count = selectedExtraCharms.filter(c => c.id === part.id).length;
+                              
+                              return (
+                                  <div 
+                                      key={part.id}
+                                      onClick={() => {
+                                          setSelectedExtraCharms(prev => [...prev, part]);
+                                      }}
+                                      className={`relative group cursor-pointer border rounded-xl p-2 transition-all hover:shadow-md ${isSelected ? 'border-luvin-pink bg-pink-50/30' : 'border-gray-100 bg-gray-50/30'}`}
+                                  >
+                                      <div className="aspect-square mb-2 flex items-center justify-center bg-white rounded-lg overflow-hidden">
+                                          <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                      </div>
+                                      <div className="text-center">
+                                          <p className="text-[10px] text-gray-600 truncate mb-1">{part.name}</p>
+                                          <p className="text-[11px] font-bold text-luvin-pink">{formatCurrency(part.price || 0)}</p>
+                                      </div>
+                                      
+                                      {count > 0 && (
+                                          <div className="absolute -top-2 -right-2 bg-luvin-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                                              {count}
+                                          </div>
+                                      )}
+                                      
+                                      {count > 0 && (
+                                          <button 
+                                              type="button"
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedExtraCharms(prev => {
+                                                      const index = prev.findIndex(c => c.id === part.id);
+                                                      if (index === -1) return prev;
+                                                      const next = [...prev];
+                                                      next.splice(index, 1);
+                                                      return next;
+                                                  });
+                                              }}
+                                              className="absolute -bottom-1 -right-1 bg-gray-800 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black"
+                                          >
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4"></path></svg>
+                                          </button>
+                                      )}
+                                  </div>
+                              );
+                          })}
+                  </div>
+                  
+                  {selectedExtraCharms.length > 0 && (
+                      <div className="mt-6 pt-4 border-t border-gray-100">
+                          <div className="flex justify-between items-center mb-3">
+                              <span className="text-sm font-medium text-gray-600">{t('checkout.selected_charms') || 'Phụ kiện đã chọn'}:</span>
+                              <button 
+                                  type="button" 
+                                  onClick={() => setSelectedExtraCharms([])}
+                                  className="text-[10px] text-red-500 hover:underline font-medium"
+                              >
+                                  {t('common.clear_all') || 'Xóa tất cả'}
+                              </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                              {Array.from(new Set(selectedExtraCharms.map(c => c.id))).map((id: string) => {
+                                  const charm = allParts[id];
+                                  const count = selectedExtraCharms.filter(c => c.id === id).length;
+                                  return (
+                                      <div key={id} className="flex items-center gap-1 bg-white border border-gray-200 rounded-full pl-1 pr-2 py-1 shadow-sm">
+                                          <img src={charm.imageUrl} className="w-4 h-4 object-contain" alt="" />
+                                          <span className="text-[10px] font-medium text-gray-700">x{count}</span>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
+                  )}
+              </div>
             </div>
 
             <div className={`bg-gray-50 p-4 rounded-lg border transition-all ${isGiftBoxOutOfStock ? 'opacity-70 grayscale-[0.5]' : ''}`}>
@@ -642,6 +738,26 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     </div>
                   )
                 })}
+                {selectedExtraCharms.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100 mt-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wider">{t('checkout.extra_charms') || 'Phụ kiện thêm'}</p>
+                    <div className="space-y-1">
+                      {Array.from(new Set(selectedExtraCharms.map(c => c.id))).map((id: string) => {
+                        const charm = allParts[id];
+                        const count = selectedExtraCharms.filter(c => c.id === id).length;
+                        return (
+                          <div key={id} className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2">
+                              <img src={charm.imageUrl} className="w-6 h-6 object-contain" alt="" />
+                              <span>{charm.name} <span className="text-gray-400 font-bold">x{count}</span></span>
+                            </div>
+                            <span className="font-medium">{formatCurrency((charm.price || 0) * count)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>{t('cart.subtotal')}</span><span>{formatCurrency(subtotal)}</span></div>

@@ -124,13 +124,12 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     // 4. DRAGGABLE ITEMS
     const partCounts: Record<string, number> = {};
     config.draggableItems.forEach((item) => {
-        if (item.type !== 'charm' && item.partId) {
+        if (item.partId) {
             partCounts[item.partId] = (partCounts[item.partId] || 0) + 1;
         }
     });
 
     config.draggableItems.forEach((item) => {
-        if (item.type === 'charm') return; 
         const part = allParts[item.partId];
         if (part) {
             const quantity = partCounts[item.partId] || 1;
@@ -142,7 +141,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
                     label: part.name,
                     value: effPrice,
                     originalValue: part.price > effPrice ? part.price : undefined,
-                    details: (part.price > effPrice) ? `Giá Combo (SL: ${quantity})` : (part.type === 'pet' ? 'Thú cưng' : 'Phụ kiện')
+                    details: (part.price > effPrice) ? `Giá Combo (SL: ${quantity})` : (part.type === 'pet' ? 'Thú cưng' : (part.type === 'hat' ? 'Mũ' : 'Phụ kiện'))
                 });
             }
             if (colorPrice > 0) {

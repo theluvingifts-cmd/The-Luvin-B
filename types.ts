@@ -118,7 +118,7 @@ export interface DraggableItem {
 }
 
 export interface BackgroundConfig {
-  type: 'color' | 'image' | 'upload';
+  type: 'color' | 'image' | 'upload' | 'preset';
   value: string;
 }
 
@@ -189,6 +189,7 @@ export interface Order {
   };
   delivery: { date: string; notes: string; };
   items: FrameConfig[];
+  extraCharms?: LegoPart[];
   addGiftBox: boolean;
   shipping: { method: 'standard' | 'express' | 'bookship'; fee: number; };
   payment: { method: 'deposit' | 'full'; };
@@ -232,6 +233,8 @@ export interface CollectionTemplate {
     config: FrameConfig;
     category?: string; 
     purchaseCount?: number;
+    price?: number;
+    isSimple?: boolean;
 }
 
 export interface FeedbackItem {
