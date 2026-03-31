@@ -2,9 +2,9 @@
 import React, { useState, useMemo } from 'react';
 import { LegoPart, FrameOption, PresetBackground, CollectionTemplate } from '../../types';
 import { addPart, updatePart, deletePart, seedDatabase, reorderParts } from '../../services/productService';
-import { addFrame, updateFrame, deleteFrame, seedFrames } from '../../services/frameService';
+import { addFrame, updateFrame, deleteFrame, seedFrames, reorderFrames } from '../../services/frameService';
 import { addBackground, updateBackground, deleteBackground, seedBackgrounds, reorderBackgrounds } from '../../services/backgroundService';
-import { addTemplate, updateTemplate, deleteTemplate, seedTemplates } from '../../services/templateService';
+import { addTemplate, updateTemplate, deleteTemplate, seedTemplates, reorderTemplates } from '../../services/templateService';
 import { ProductForm } from './forms/ProductForm';
 import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
@@ -39,6 +39,13 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const [bgTypeFilter, setBgTypeFilter] = useState<'all' | 'square' | 'rectangle'>('all');
     const [bgCategoryFilter, setBgCategoryFilter] = useState<string>('all');
 
+    // Frame Filters
+    const [frameSearch, setFrameSearch] = useState('');
+
+    // Template Filters
+    const [templateSearch, setTemplateSearch] = useState('');
+    const [templateCategory, setTemplateCategory] = useState('all');
+
     // Editing States (Objects)
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
     const [editingBg, setEditingBg] = useState<PresetBackground | null>(null);
@@ -72,6 +79,22 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             return matchType && matchCategory && matchSearch;
         }),
     [backgrounds, bgTypeFilter, bgCategoryFilter, bgSearch]);
+
+    const filteredFrames = useMemo(() => 
+        frames.filter(f => f.name.toLowerCase().includes(frameSearch.toLowerCase())),
+    [frames, frameSearch]);
+
+    const templateCategories = useMemo(() => {
+        return ['all', ...Array.from(new Set(templates.map(t => t.category).filter(Boolean)))];
+    }, [templates]);
+
+    const filteredTemplates = useMemo(() => 
+        templates.filter(t => {
+            const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase());
+            const matchesCategory = templateCategory === 'all' || t.category === templateCategory;
+            return matchesSearch && matchesCategory;
+        }),
+    [templates, templateSearch, templateCategory]);
 
     // Switch View Handler
     const switchToEdit = (item: any = null, type: ProductSubTab) => {
@@ -173,6 +196,38 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         reorderBackgrounds(items).then(() => onRefreshBackgrounds());
     };
 
+    const handleDropFrame = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId === targetId) return;
+        
+        const items = [...frames];
+        const draggedIndex = items.findIndex(f => f.id === draggedId);
+        const targetIndex = items.findIndex(f => f.id === targetId);
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [removed] = items.splice(draggedIndex, 1);
+        items.splice(targetIndex, 0, removed);
+
+        reorderFrames(items).then(() => onRefreshFrames());
+    };
+
+    const handleDropTemplate = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId === targetId) return;
+        
+        const items = [...templates];
+        const draggedIndex = items.findIndex(t => t.id === draggedId);
+        const targetIndex = items.findIndex(t => t.id === targetId);
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        const [removed] = items.splice(draggedIndex, 1);
+        items.splice(targetIndex, 0, removed);
+
+        reorderTemplates(items).then(() => onRefreshTemplates());
+    };
+
     return (
         <div className="animate-fade-in relative">
             {loading && <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"><div className="bg-white p-4 rounded shadow">Loading...</div></div>}
@@ -192,19 +247,38 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                 </div>
             ) : (
                 <>
-                    <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-4 overflow-x-auto no-scrollbar">
-                        <button onClick={() => setActiveProductSubTab('parts')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'parts' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Linh kiện</button>
-                        <button onClick={() => setActiveProductSubTab('frames')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'frames' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Khung</button>
-                        <button onClick={() => setActiveProductSubTab('backgrounds')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'backgrounds' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Hình nền</button>
-                        <button onClick={() => setActiveProductSubTab('templates')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeProductSubTab === 'templates' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}>Mẫu thiết kế</button>
+                    <div className="flex border-b border-gray-200 mb-6 bg-gray-100/50 p-1 rounded-xl overflow-x-auto no-scrollbar">
+                        {(['parts', 'frames', 'backgrounds', 'templates'] as const).map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveProductSubTab(tab)}
+                                className={`flex-1 py-2 px-4 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${
+                                    activeProductSubTab === tab
+                                        ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                }`}
+                            >
+                                {tab === 'parts' ? '🧩 Linh kiện' : 
+                                 tab === 'frames' ? '🖼️ Khung' : 
+                                 tab === 'backgrounds' ? '🌄 Hình nền' : '📋 Mẫu thiết kế'}
+                            </button>
+                        ))}
                     </div>
 
                     {activeProductSubTab === 'parts' && (
                         <>
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-4">
-                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-wrap">
-                                    <input placeholder="Tìm linh kiện..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-48" />
-                                    <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-wrap">
+                                    <div className="relative w-full sm:w-64">
+                                        <input 
+                                            placeholder="Tìm linh kiện..." 
+                                            value={productSearch} 
+                                            onChange={e => setProductSearch(e.target.value)} 
+                                            className="p-2 pl-8 border rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+                                        />
+                                        <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
+                                    </div>
+                                    <select value={productCategory} onChange={e => setProductCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none">
                                         <option value="all">Tất cả loại</option>
                                         <option value="hair">Tóc</option>
                                         <option value="face">Mặt</option>
@@ -217,14 +291,26 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     </select>
                                     <button 
                                         onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-                                        className={`px-3 py-2 text-xs font-bold rounded border transition-colors ${showLowStockOnly ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                        className={`px-4 py-2 text-xs font-bold rounded-lg border transition-all ${showLowStockOnly ? 'bg-red-500 text-white border-red-500 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
                                     >
                                         {showLowStockOnly ? 'Đang lọc: Sắp hết' : 'Lọc: Sắp hết'}
                                     </button>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
-                                    <button onClick={handleSeedData} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Data</button>
-                                    <button onClick={() => switchToEdit(null, 'parts')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                                    <button 
+                                        onClick={() => { if(window.confirm('Bạn có chắc chắn muốn reset toàn bộ linh kiện về mặc định?')) handleSeedData(); }} 
+                                        className="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition-colors"
+                                        title="Reset Data"
+                                    >
+                                        🔄
+                                    </button>
+                                    <button 
+                                        onClick={() => switchToEdit(null, 'parts')} 
+                                        className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all flex items-center gap-2"
+                                    >
+                                        <span>+</span>
+                                        <span>Thêm mới</span>
+                                    </button>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -257,16 +343,35 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             
                                             {/* Quick Stock Edit */}
                                             {quickStockEditId === part.id ? (
-                                                <div className="flex items-center gap-1 absolute bottom-1 right-1 bg-white border p-1 rounded shadow-lg z-10">
-                                                    <input 
-                                                        type="number" 
-                                                        className="w-12 border rounded px-1 text-xs" 
-                                                        value={quickStockValue}
-                                                        onChange={(e) => setQuickStockValue(Number(e.target.value))}
-                                                        autoFocus
-                                                    />
-                                                    <button onClick={() => saveQuickStock(part.id, 'part')} className="text-green-600 font-bold">✓</button>
-                                                    <button onClick={() => setQuickStockEditId(null)} className="text-red-500 font-bold">×</button>
+                                                <div className="flex items-center gap-1 absolute bottom-1 right-1 bg-white border border-blue-200 p-1.5 rounded-lg shadow-xl z-20 animate-in fade-in zoom-in duration-200">
+                                                    <div className="relative">
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-16 border border-gray-200 rounded-md px-2 py-1 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                                                            value={quickStockValue}
+                                                            onChange={(e) => setQuickStockValue(Number(e.target.value))}
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') saveQuickStock(part.id, 'part');
+                                                                if (e.key === 'Escape') setQuickStockEditId(null);
+                                                            }}
+                                                        />
+                                                        <span className="absolute -top-3 left-0 text-[8px] font-black text-blue-600 bg-white px-1">STOCK</span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => saveQuickStock(part.id, 'part')} 
+                                                        className="p-1 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
+                                                        title="Lưu"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setQuickStockEditId(null)} 
+                                                        className="p-1 bg-red-50 text-red-500 rounded hover:bg-red-100 transition-colors"
+                                                        title="Hủy"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
                                                 </div>
                                             ) : (
                                                 <button 
@@ -293,17 +398,49 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
 
                     {activeProductSubTab === 'frames' && (
                         <>
-                            <div className="flex justify-end gap-2 mb-4">
-                                <button onClick={handleSeedFrames} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Frames</button>
-                                <button onClick={() => switchToEdit(null, 'frames')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm Khung</button>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                    <div className="relative w-full sm:w-64">
+                                        <input 
+                                            placeholder="Tìm khung..." 
+                                            value={frameSearch} 
+                                            onChange={e => setFrameSearch(e.target.value)} 
+                                            className="p-2 pl-8 border rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+                                        />
+                                        <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                    <button 
+                                        onClick={() => { if(window.confirm('Bạn có chắc chắn muốn reset toàn bộ khung về mặc định?')) handleSeedFrames(); }} 
+                                        className="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition-colors"
+                                        title="Reset Frames"
+                                    >
+                                        🔄
+                                    </button>
+                                    <button 
+                                        onClick={() => switchToEdit(null, 'frames')} 
+                                        className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all flex items-center gap-2"
+                                    >
+                                        <span>+</span>
+                                        <span>Thêm Khung</span>
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                                {frames.map(frame => {
+                                {filteredFrames.map(frame => {
                                     const effectivePrice = getEffectivePrice(frame);
                                     const isSale = effectivePrice < frame.price;
 
                                     return (
-                                    <div key={frame.id} className="bg-white border rounded-lg p-4 shadow-sm relative group">
+                                    <div 
+                                        key={frame.id} 
+                                        className="bg-white border rounded-lg p-4 shadow-sm relative group cursor-move"
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, frame.id)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleDropFrame(e, frame.id)}
+                                    >
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-bold text-base sm:text-lg">{frame.name}</h4>
                                             <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">{frame.id}</span>
@@ -326,16 +463,35 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <span>Tồn kho:</span>
                                                 {/* Quick Stock Edit for Frames */}
                                                 {quickStockEditId === frame.id ? (
-                                                    <div className="flex items-center gap-1">
-                                                        <input 
-                                                            type="number" 
-                                                            className="w-16 border rounded px-1 text-xs" 
-                                                            value={quickStockValue}
-                                                            onChange={(e) => setQuickStockValue(Number(e.target.value))}
-                                                            autoFocus
-                                                        />
-                                                        <button onClick={() => saveQuickStock(frame.id, 'frame')} className="text-green-600 font-bold px-1">✓</button>
-                                                        <button onClick={() => setQuickStockEditId(null)} className="text-red-500 font-bold px-1">×</button>
+                                                    <div className="flex items-center gap-1 bg-white border border-blue-200 p-1.5 rounded-lg shadow-xl z-20 animate-in fade-in zoom-in duration-200">
+                                                        <div className="relative">
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-16 border border-gray-200 rounded-md px-2 py-1 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                                                                value={quickStockValue}
+                                                                onChange={(e) => setQuickStockValue(Number(e.target.value))}
+                                                                autoFocus
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') saveQuickStock(frame.id, 'frame');
+                                                                    if (e.key === 'Escape') setQuickStockEditId(null);
+                                                                }}
+                                                            />
+                                                            <span className="absolute -top-3 left-0 text-[8px] font-black text-blue-600 bg-white px-1">STOCK</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => saveQuickStock(frame.id, 'frame')} 
+                                                            className="p-1 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
+                                                            title="Lưu"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setQuickStockEditId(null)} 
+                                                            className="p-1 bg-red-50 text-red-500 rounded hover:bg-red-100 transition-colors"
+                                                            title="Hủy"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                        </button>
                                                     </div>
                                                 ) : (
                                                     <button 
@@ -363,31 +519,51 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
 
                     {activeProductSubTab === 'backgrounds' && (
                         <>
-                            <div className="flex flex-col gap-4 mb-4">
+                            <div className="flex flex-col gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                        <input placeholder="Tìm background..." value={bgSearch} onChange={e => setBgSearch(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-64" />
-                                        <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto">
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                        <div className="relative w-full sm:w-64">
+                                            <input 
+                                                placeholder="Tìm background..." 
+                                                value={bgSearch} 
+                                                onChange={e => setBgSearch(e.target.value)} 
+                                                className="p-2 pl-8 border rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+                                            />
+                                            <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
+                                        </div>
+                                        <select value={bgTypeFilter} onChange={(e: any) => setBgTypeFilter(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none">
                                             <option value="all">Tất cả loại</option>
                                             <option value="square">Vuông</option>
                                             <option value="rectangle">Chữ nhật</option>
                                         </select>
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">
-                                        <button onClick={handleSeedBackgrounds} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset BG</button>
-                                        <button onClick={() => switchToEdit(null, 'backgrounds')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm</button>
+                                        <button 
+                                            onClick={() => { if(window.confirm('Bạn có chắc chắn muốn reset toàn bộ background về mặc định?')) handleSeedBackgrounds(); }} 
+                                            className="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition-colors"
+                                            title="Reset Backgrounds"
+                                        >
+                                            🔄
+                                        </button>
+                                        <button 
+                                            onClick={() => switchToEdit(null, 'backgrounds')} 
+                                            className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all flex items-center gap-2"
+                                        >
+                                            <span>+</span>
+                                            <span>Thêm mới</span>
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
-                                    <span className="text-xs font-bold text-gray-500 uppercase mr-2 flex-shrink-0">Dịp:</span>
+                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase mr-2 flex-shrink-0">Dịp:</span>
                                     {bgCategories.map(cat => (
                                         <button
                                             key={cat}
                                             onClick={() => setBgCategoryFilter(cat)}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${
+                                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
                                                 bgCategoryFilter === cat 
-                                                    ? 'bg-gray-900 text-white border-gray-900' 
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
                                             }`}
                                         >
                                             {cat === 'all' ? 'Tất cả' : cat}
@@ -444,13 +620,53 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
 
                     {activeProductSubTab === 'templates' && (
                         <>
-                            <div className="flex justify-end gap-2 mb-4">
-                                <button onClick={handleSeedTemplates} className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 whitespace-nowrap">Reset Mẫu</button>
-                                <button onClick={() => switchToEdit(null, 'templates')} className="px-3 py-2 text-sm font-bold text-white bg-green-600 rounded hover:bg-green-700 whitespace-nowrap">+ Thêm Mẫu</button>
+                            <div className="flex flex-col gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                        <div className="relative w-full sm:w-64">
+                                            <input 
+                                                placeholder="Tìm mẫu..." 
+                                                value={templateSearch} 
+                                                onChange={e => setTemplateSearch(e.target.value)} 
+                                                className="p-2 pl-8 border rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+                                            />
+                                            <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
+                                        </div>
+                                        <select value={templateCategory} onChange={e => setTemplateCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none">
+                                            <option value="all">Tất cả danh mục</option>
+                                            {templateCategories.filter(c => c !== 'all').map(cat => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                        <button 
+                                            onClick={() => { if(window.confirm('Bạn có chắc chắn muốn reset toàn bộ mẫu về mặc định?')) handleSeedTemplates(); }} 
+                                            className="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition-colors"
+                                            title="Reset Mẫu"
+                                        >
+                                            🔄
+                                        </button>
+                                        <button 
+                                            onClick={() => switchToEdit(null, 'templates')} 
+                                            className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all flex items-center gap-2"
+                                        >
+                                            <span>+</span>
+                                            <span>Thêm Mẫu</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {templates.map(tpl => (
-                                    <div key={tpl.id} className="bg-white border rounded-lg overflow-hidden group relative shadow-sm hover:shadow-md transition-all">
+                                {filteredTemplates.map(tpl => (
+                                    <div 
+                                        key={tpl.id} 
+                                        className="bg-white border rounded-lg overflow-hidden group relative shadow-sm hover:shadow-md transition-all cursor-move"
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, tpl.id)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleDropTemplate(e, tpl.id)}
+                                    >
                                         <img src={tpl.imageUrl} className="w-full h-48 object-cover" />
                                         <div className="p-3">
                                             <h4 className="font-bold text-gray-800">{tpl.name}</h4>

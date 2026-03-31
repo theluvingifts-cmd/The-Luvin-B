@@ -820,28 +820,70 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
             <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-20 ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                 {selectedOrder ? (
-                    <div className="flex flex-col h-full relative">
-                        <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-start bg-white sticky top-0 z-30 shadow-sm">
-                            <div className="flex items-start gap-2 w-full">
-                                <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 mr-2 p-2 -ml-2 hover:bg-gray-100 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg></button>
-                                <div className="flex-grow">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1"><h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2><div className="mt-1 sm:mt-0"><StatusDropdown currentStatus={selectedOrder.status} onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })} onDelete={handleDeleteOrder} canCancel={canCancelOrder} canDelete={canDeleteOrder} /></div></div>
-                                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
+                    <div className="flex flex-col h-full relative bg-gray-50">
+                        <div className="p-3 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-30 shadow-sm">
+                            <div className="flex items-center gap-2 w-full min-w-0">
+                                <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 p-2 -ml-2 hover:bg-gray-100 rounded-full flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                                    </svg>
+                                </button>
+                                <div className="flex-grow min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                                        <h2 className="text-base sm:text-2xl font-bold text-gray-900 truncate">{selectedOrder.id}</h2>
+                                        {selectedOrder.isUrgent && <span className="text-red-500 text-sm sm:text-lg animate-pulse" title="Đơn gấp">🔥</span>}
+                                        <div className="scale-90 sm:scale-100 origin-left">
+                                            <StatusDropdown currentStatus={selectedOrder.status} onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })} onDelete={handleDeleteOrder} canCancel={canCancelOrder} canDelete={canDeleteOrder} />
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] sm:text-sm text-gray-500 flex items-center gap-2">
+                                        Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}
+                                        <button 
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/order-status/${selectedOrder.id}`;
+                                                navigator.clipboard.writeText(url);
+                                                alert("Đã copy link trạng thái đơn hàng!");
+                                            }}
+                                            className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded hover:bg-blue-100 transition-colors font-bold border border-blue-100"
+                                            title="Copy link gửi khách"
+                                        >
+                                            🔗 Copy Link
+                                        </button>
+                                    </p>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-2">
-                                 <div className="flex gap-2">
-                                     <button onClick={handlePrintOrder} className="bg-gray-100 text-gray-700 p-2 sm:px-3 sm:py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-1" title="In phiếu đóng gói"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg><span className="hidden sm:inline">In phiếu</span></button>
-                                     {role === 'warehouse' && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (<button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white p-2 sm:px-4 sm:py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"><span>✅</span> <span className="hidden sm:inline">Xong</span></button>)}
-                                 </div>
-                                 <div className="flex gap-2 mt-1">
-                                    {!isEditingOrder ? (<button onClick={startEditingOrder} disabled={isOrderPacked} className={`text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap ${isOrderPacked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{isOrderPacked ? 'Đã khoá' : 'Sửa chi tiết'}</button>) : (<div className="flex gap-2"><button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button><button onClick={saveOrderChanges} className="text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Lưu</button></div>)}
-                                 </div>
-                                 <label className="flex items-center gap-2 cursor-pointer select-none"><span className="text-xs font-medium text-gray-500">Gấp</span><input type="checkbox" className="accent-red-600 w-4 h-4" checked={selectedOrder.isUrgent || false} onChange={(e) => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} /></label>
+                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                 <button onClick={handlePrintOrder} className="bg-gray-100 text-gray-700 p-2 sm:px-3 sm:py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-1" title="In phiếu đóng gói">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                                    </svg>
+                                    <span className="hidden sm:inline">In phiếu</span>
+                                 </button>
+                                 {role === 'warehouse' && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (
+                                    <button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white p-2 sm:px-4 sm:py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                                        <span>✅</span> <span className="hidden sm:inline">Xong</span>
+                                    </button>
+                                 )}
                             </div>
                         </div>
 
-                        <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
+                        <div className="flex-grow overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-8 custom-scrollbar">
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {!isEditingOrder ? (
+                                    <button onClick={startEditingOrder} disabled={isOrderPacked} className={`text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition-all ${isOrderPacked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'}`}>
+                                        {isOrderPacked ? '🔒 Đã khoá' : '✏️ Sửa chi tiết'}
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <button onClick={cancelEditingOrder} className="text-xs font-bold bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50">Huỷ</button>
+                                        <button onClick={saveOrderChanges} className="text-xs font-bold bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700">Lưu thay đổi</button>
+                                    </div>
+                                )}
+                                <label className="flex items-center gap-2 cursor-pointer select-none bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                                    <span className="text-xs font-bold text-gray-600 uppercase">Gấp</span>
+                                    <input type="checkbox" className="accent-red-600 w-4 h-4" checked={selectedOrder.isUrgent || false} onChange={(e) => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} />
+                                </label>
+                            </div>
                             {selectedOrder.paymentProofUrl && (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                                     <h4 className="font-bold text-green-800 text-sm mb-2 flex items-center gap-2"><span>📸</span> Ảnh xác nhận chuyển khoản</h4>
@@ -1019,16 +1061,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                             </h4>
                                                             <div className="flex flex-wrap gap-3">
                                                                 {customerAssets.map((asset, aIdx) => (
-                                                                    <div key={aIdx} className="flex items-center gap-2 bg-white p-1.5 pr-3 rounded-lg border border-blue-200 shadow-sm">
-                                                                        <div className="w-10 h-10 bg-gray-100 rounded border overflow-hidden cursor-pointer" onClick={() => setZoomedImageUrl(asset.url)}>
-                                                                            <img src={asset.url} alt="customer resource" className="w-full h-full object-cover" />
+                                                                    <div key={aIdx} className="flex items-center gap-2 bg-white p-2 pr-4 rounded-xl border border-blue-200 shadow-sm hover:border-blue-400 transition-colors">
+                                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg border overflow-hidden cursor-pointer shadow-inner" onClick={() => setZoomedImageUrl(asset.url)}>
+                                                                            <img src={asset.url} alt="customer resource" className="w-full h-full object-contain" />
                                                                         </div>
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-[9px] font-bold text-gray-500 uppercase">{asset.type}</span>
+                                                                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-tighter">{asset.type}</span>
                                                                             <button 
                                                                                 onClick={() => downloadImage(asset.url, `TL_${selectedOrder.id}_Item${idx+1}_${asset.type}.png`)}
-                                                                                className="text-[10px] text-blue-600 font-bold hover:underline text-left"
+                                                                                className="text-xs text-blue-600 font-bold hover:text-blue-800 flex items-center gap-1 mt-1"
                                                                             >
+                                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                                                                 Tải về
                                                                             </button>
                                                                         </div>

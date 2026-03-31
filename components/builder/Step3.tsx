@@ -440,7 +440,7 @@ export const Step3Characters: React.FC<{
     }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch]);
 
     return (
-        <div className="space-y-4 text-left">
+        <div className="space-y-6 text-left px-0 sm:px-4">
             {printDialogCharId && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
@@ -457,97 +457,268 @@ export const Step3Characters: React.FC<{
                 </div>
               </div>
             )}
-            <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">{t('studio.character_management')}</h4>
-                    {activeCharacter && (
-                        <button 
-                            onClick={handleRandomizeOutfit}
-                            className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors active:scale-95"
-                            title={t('studio.randomize_outfit')}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                            {t('studio.random')}
-                        </button>
-                    )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {config.characters.map((char, index) => (
-                        <div key={char.id} className="relative">
-                            <button onClick={() => setActiveCharId(char.id)} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${activeCharId === char.id ? 'bg-pink-100 text-luvin-pink border border-luvin-pink shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
-                                {t('studio.character_index', { index: index + 1 })}
-                            </button>
-                            <button onClick={() => handleRemoveChar(char.id)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-xs font-bold shadow-sm hover:scale-110 transition-transform">
-                                &times;
-                            </button>
-                        </div>
-                    ))}
-                    <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">{t('studio.add_char')} ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
-                </div>
-                {activeCharacter && 
-                  <div className="mt-4 pt-4 border-t flex items-center justify-start">
-                    <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
-                      {activeCharacter.customPrintPrice ? `${t('studio.custom_print')} (${formatCurrency(activeCharacter.customPrintPrice)})` : t('studio.add_custom_print')}
+
+            {/* Character List */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base">{t('studio.character_management')}</h4>
+                    <button 
+                        onClick={handleAddChar} 
+                        className="bg-green-500 text-white text-xs px-4 py-2 rounded-full font-bold shadow-sm hover:bg-green-600 transition-colors active:scale-95 flex items-center gap-1"
+                    >
+                        <span className="text-lg leading-none">+</span>
+                        {t('studio.add_char')}
                     </button>
-                  </div>
-                }
+                </div>
+
+                {config.characters.map((char, index) => {
+                    const isActive = activeCharId === char.id;
+                    return (
+                        <div 
+                            key={char.id} 
+                            className={`border rounded-2xl overflow-hidden transition-all ${
+                                isActive ? 'border-luvin-pink ring-1 ring-luvin-pink shadow-md' : 'border-gray-200 bg-gray-50'
+                            }`}
+                        >
+                            {/* Character Header */}
+                            <div 
+                                className={`p-4 flex items-center justify-between cursor-pointer ${isActive ? 'bg-pink-50/50' : 'hover:bg-gray-100'}`}
+                                onClick={() => setActiveCharId(char.id)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-luvin-pink font-bold shadow-sm">
+                                        {index + 1}
+                                    </div>
+                                    <div>
+                                        <h5 className="font-bold text-gray-800 text-sm">{t('studio.character_index', { index: index + 1 })}</h5>
+                                        <p className="text-[10px] text-gray-500 uppercase font-medium tracking-wider">
+                                            {char.shirt?.name || t('studio.no_shirt')} • {char.pants?.name || t('studio.no_pants')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleRandomizeOutfit(); }}
+                                        className="p-2 text-purple-600 hover:bg-purple-100 rounded-full transition-colors"
+                                        title={t('studio.randomize_outfit')}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleRemoveChar(char.id); }}
+                                        className="p-2 text-red-500 hover:bg-red-100 rounded-full transition-colors"
+                                        title={t('studio.remove_character')}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                    <svg 
+                                        className={`w-5 h-5 text-gray-400 transition-transform ${isActive ? 'rotate-180' : ''}`} 
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {/* Character Editing Controls */}
+                            {isActive && (
+                                <div className="p-4 bg-white border-t border-gray-100 animate-fade-in">
+                                    {/* Part Type Tabs */}
+                                    <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full mb-4 pb-1">
+                                        {partTypes.map(pt => (
+                                            <button 
+                                                key={pt.key} 
+                                                onClick={() => setActivePartType(pt.key)} 
+                                                className={`flex-shrink-0 px-4 py-2 text-xs rounded-full font-bold transition-all whitespace-nowrap ${
+                                                    activePartType === pt.key 
+                                                        ? 'bg-luvin-pink text-white shadow-md scale-105' 
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                }`}
+                                            >
+                                                {pt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Color Picker for Active Part */}
+                                    {(() => {
+                                        const currentPart = char[activePartType === 'set' ? 'shirt' : activePartType];
+                                        let colors = currentPart?.colors;
+                                        const nameLower = currentPart?.name.toLowerCase() || '';
+                                        
+                                        if (!colors || colors.length === 0) {
+                                            if (activePartType === 'shirt' || activePartType === 'set') {
+                                                if (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || currentPart?.id === 'shirt1') colors = defaultShirtColors;
+                                            } else if (activePartType === 'pants') {
+                                                if (nameLower.includes('trơn') || nameLower.includes('plain') || nameLower.includes('basic') || currentPart?.id === 'pants1') colors = defaultPantsColors;
+                                            }
+                                        }
+
+                                        if (colors && colors.length > 0) {
+                                            const selectedColor = activePartType === 'shirt' || activePartType === 'set' 
+                                                ? char.selectedShirtColor 
+                                                : activePartType === 'pants' 
+                                                    ? char.selectedPantsColor 
+                                                    : char.selectedHairColor;
+
+                                            return (
+                                                <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">{t('studio.select_color')}</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {colors.map((color, idx) => (
+                                                            <button
+                                                                key={idx}
+                                                                onClick={() => {
+                                                                    setConfig(prev => ({
+                                                                        ...prev,
+                                                                        characters: prev.characters.map(c => {
+                                                                            if (c.id === char.id) {
+                                                                                const field = activePartType === 'shirt' || activePartType === 'set' 
+                                                                                    ? 'selectedShirtColor' 
+                                                                                    : activePartType === 'pants' 
+                                                                                        ? 'selectedPantsColor' 
+                                                                                        : 'selectedHairColor';
+                                                                                return { ...c, [field]: color };
+                                                                            }
+                                                                            return c;
+                                                                        })
+                                                                    }));
+                                                                }}
+                                                                className={`w-8 h-8 rounded-full border-2 transition-all relative ${
+                                                                    selectedColor?.name === color.name ? 'border-luvin-pink scale-110 shadow-md' : 'border-white hover:scale-105'
+                                                                }`}
+                                                                style={{ backgroundColor: color.hex }}
+                                                                title={color.name}
+                                                            >
+                                                                {selectedColor?.name === color.name && (
+                                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                                        <svg className={`w-4 h-4 ${['#ffffff', '#f8f9fa', '#fff'].includes(color.hex.toLowerCase()) ? 'text-gray-800' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                                        </svg>
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+
+                                    {/* Part Grid */}
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {activePartType === 'hat' && (
+                                            <button 
+                                                onClick={() => {
+                                                    // For hats, "None" means removing linked hats
+                                                    setConfig(prev => ({
+                                                        ...prev,
+                                                        draggableItems: prev.draggableItems.filter(item => item.linkedCharId !== char.id || item.type !== 'hat')
+                                                    }));
+                                                }} 
+                                                className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400"
+                                            >
+                                                <span className="text-2xl font-bold">&times;</span>
+                                                <span className="text-[11px] font-semibold">{t('studio.none')}</span>
+                                            </button>
+                                        )}
+                                        {isLoadingParts ? (
+                                            Array.from({ length: 8 }).map((_, i) => <PartSkeleton key={i} />)
+                                        ) : currentPartList.length > 0 ? currentPartList.map((part, index) => {
+                                            const isSelected = activePartType === 'hat' ? false : char[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
+                                            let effectiveBasePrice = getEffectivePrice(part);
+                                            let originalBasePrice = part.price;
+                                            let priceToDisplay = effectiveBasePrice;
+                                            let originalPriceToDisplay = originalBasePrice;
+                                            if (isSelected) {
+                                                let surcharge = 0;
+                                                if (activePartType === 'shirt' || activePartType === 'set') surcharge = (char.selectedShirtColor?.price || 0);
+                                                else if (activePartType === 'pants') surcharge = (char.selectedPantsColor?.price || 0);
+                                                else if (activePartType === 'hair') surcharge = (char.selectedHairColor?.price || 0);
+                                                priceToDisplay += surcharge;
+                                                originalPriceToDisplay += surcharge;
+                                            }
+                                            return (
+                                                <PartButton 
+                                                    key={part.id} 
+                                                    part={part}
+                                                    isSelected={isSelected}
+                                                    onClick={() => handlePartSelect(part)}
+                                                    priceToDisplay={priceToDisplay}
+                                                    originalPrice={originalPriceToDisplay}
+                                                    priority={index < 8} 
+                                                    disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
+                                                />
+                                            );
+                                        }) : (
+                                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
+                                                {legoParts[activePartType].length > 0 ? t('studio.out_of_stock_parts') : t('studio.loading_parts')}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Custom Print Option */}
+                                    <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                                        <button onClick={() => setPrintDialogCharId(char.id)} className="text-xs text-blue-600 hover:underline font-bold flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2z" /></svg>
+                                            {char.customPrintPrice ? `${t('studio.custom_print')} (${formatCurrency(char.customPrintPrice)})` : t('studio.add_custom_print')}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
-            {activeCharacter && (
-                <div className="p-4 border border-gray-200 rounded-lg relative">
-                    <div className="flex flex-col mb-4 border-b border-gray-200 pb-4">
-                        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1 mb-2">
-                            {partTypes.map(pt => (
-                                <button key={pt.key} onClick={() => setActivePartType(pt.key)} className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors whitespace-nowrap ${activePartType === pt.key ? 'bg-luvin-pink text-white shadow-sm' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
-                                    {pt.label}
+            {/* Selected Item Editor (for Accessories/Charms) */}
+            {(() => {
+                if (!selectedItemId || !selectedItemId.startsWith('item-')) return null;
+                const itemId = parseInt(selectedItemId.split('-')[1]);
+                const item = config.draggableItems.find(i => i.id === itemId);
+                if (!item) return null;
+                const part = allParts[item.partId];
+                if (!part || !part.colors || part.colors.length === 0) return null;
+
+                return (
+                    <div className="p-4 bg-pink-50 border border-pink-100 rounded-2xl animate-fade-in">
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-luvin-pink text-sm uppercase tracking-tight">{t('studio.edit_selected_item')}</h4>
+                            <span className="text-[10px] bg-white px-2 py-0.5 rounded-full border border-pink-200 text-luvin-pink font-bold">{part.name}</span>
+                        </div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">{t('studio.select_color')}</label>
+                        <div className="flex flex-wrap gap-2">
+                            {part.colors.map((color, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        setConfig(prev => ({
+                                            ...prev,
+                                            draggableItems: prev.draggableItems.map(i => i.id === itemId ? { ...i, selectedColor: color } : i)
+                                        }));
+                                    }}
+                                    className={`w-8 h-8 rounded-full border-2 transition-all relative ${
+                                        item.selectedColor?.name === color.name ? 'border-luvin-pink scale-110 shadow-md' : 'border-white hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: color.hex }}
+                                    title={color.name}
+                                >
+                                    {item.selectedColor?.name === color.name && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <svg className={`w-4 h-4 ${['#ffffff', '#f8f9fa', '#fff'].includes(color.hex.toLowerCase()) ? 'text-gray-800' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    )}
                                 </button>
                             ))}
                         </div>
                     </div>
-                     <div className="grid grid-cols-4 gap-2">
-                         {(activePartType === 'hair') && (
-                             <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
-                               <span className="text-2xl font-bold">&times;</span>
-                               <span className="text-[11px] font-semibold">{t('studio.none')}</span>
-                             </button>
-                         )}
-                        {isLoadingParts ? (
-                            Array.from({ length: 8 }).map((_, i) => <PartSkeleton key={i} />)
-                        ) : currentPartList.length > 0 ? currentPartList.map((part, index) => {
-                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
-                            let effectiveBasePrice = getEffectivePrice(part);
-                            let originalBasePrice = part.price;
-                            let priceToDisplay = effectiveBasePrice;
-                            let originalPriceToDisplay = originalBasePrice;
-                            if (isSelected) {
-                                let surcharge = 0;
-                                if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
-                                else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
-                                else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
-                                priceToDisplay += surcharge;
-                                originalPriceToDisplay += surcharge;
-                            }
-                            return (
-                                <PartButton 
-                                    key={part.id} 
-                                    part={part}
-                                    isSelected={isSelected}
-                                    onClick={() => handlePartSelect(part)}
-                                    priceToDisplay={priceToDisplay}
-                                    originalPrice={originalPriceToDisplay}
-                                    priority={index < 8} 
-                                    disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
-                                />
-                            );
-                        }) : (
-                            <div className="col-span-4 text-center text-sm text-gray-400 py-4">
-                                {legoParts[activePartType].length > 0 ? t('studio.out_of_stock_parts') : t('studio.loading_parts')}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+                );
+            })()}
             
+            {/* Accessories & Charms Section */}
             <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
                 <div className="flex flex-col gap-4 mb-4">
                     <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">{t('studio.add_accessories_charms')}</h4>

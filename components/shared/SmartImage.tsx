@@ -43,9 +43,10 @@ export const SmartImage: React.FC<SmartImageProps> = ({
 
   // Local data doesn't need anonymous crossOrigin
   const imgProps: any = { ...props };
-  if (!isBase64) {
-      imgProps.crossOrigin = "anonymous";
-  }
+  // Removed crossOrigin="anonymous" to avoid CORS issues for thumbnails
+  // if (!isBase64) {
+  //     imgProps.crossOrigin = "anonymous";
+  // }
 
   if (disableTransition) {
     return (
