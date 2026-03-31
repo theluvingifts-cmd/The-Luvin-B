@@ -37,7 +37,7 @@ export const TemplateForm: React.FC<{
         const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
         const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
         const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
-        const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
+        const hatImageUrl = hat?.imageUrl;
 
         const partStyle: React.CSSProperties = {
             position: 'absolute',
@@ -50,7 +50,7 @@ export const TemplateForm: React.FC<{
         };
 
         return (
-            <div className="relative w-32 h-48 bg-white rounded-2xl shadow-md border border-gray-100 p-3 flex items-center justify-center overflow-hidden mx-auto ring-4 ring-gray-50">
+            <div className="relative w-24 h-36 bg-white rounded-xl shadow-sm border border-gray-200 p-2 flex items-center justify-center overflow-hidden mx-auto">
                 <div className="relative w-full h-full">
                     {pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
                     {shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
@@ -95,7 +95,6 @@ export const TemplateForm: React.FC<{
             selectedShirtColor: partsByType.shirt[0]?.colors?.[0],
             selectedPantsColor: partsByType.pants[0]?.colors?.[0],
             selectedHairColor: partsByType.hair[0]?.colors?.[0],
-            selectedHatColor: partsByType.hat?.[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newChar] }));
         setActiveCharId(newId);
@@ -113,10 +112,10 @@ export const TemplateForm: React.FC<{
             characters: prev.characters.map(c => {
                 if (c.id === id) {
                     const updated = { ...c, [field]: part };
+                    // Reset colors when part changes
                     if (field === 'shirt') updated.selectedShirtColor = part?.colors?.[0];
                     if (field === 'pants') updated.selectedPantsColor = part?.colors?.[0];
                     if (field === 'hair') updated.selectedHairColor = part?.colors?.[0];
-                    if (field === 'hat') updated.selectedHatColor = part?.colors?.[0];
                     return updated;
                 }
                 return c;
@@ -124,23 +123,17 @@ export const TemplateForm: React.FC<{
         }));
     };
 
-    const handleUpdateCharColor = (charId: number, type: 'shirt' | 'pants' | 'hair' | 'hat', color: any) => {
+    const handleUpdateCharColor = (charId: number, field: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor', color: any) => {
         setConfig(prev => ({
             ...prev,
-            characters: prev.characters.map(c => {
-                if (c.id === charId) {
-                    const field = `selected${type.charAt(0).toUpperCase() + type.slice(1)}Color` as any;
-                    return { ...c, [field]: color };
-                }
-                return c;
-            })
+            characters: prev.characters.map(c => c.id === charId ? { ...c, [field]: color } : c)
         }));
     };
 
     const handleUpdateCharmColor = (charmId: number, color: any) => {
         setConfig(prev => ({
             ...prev,
-            draggableItems: prev.draggableItems.map(i => i.id === charmId ? { ...i, selectedColor: color } : i)
+            draggableItems: prev.draggableItems.map(item => item.id === charmId ? { ...item, selectedColor: color } : item)
         }));
     };
 
@@ -163,13 +156,11 @@ export const TemplateForm: React.FC<{
 
     const handleSave = () => {
         try {
-            // If isSimple is true, we use INITIAL_FRAME_CONFIG
-            // If isSimple is false, we use the visual 'config' state
-            const finalConfig = formData.isSimple ? INITIAL_FRAME_CONFIG : config;
-            
+            // Always use the visual 'config' state, even for simple templates
+            // isSimple just determines how it's displayed to the customer
             onSave({ 
                 ...formData, 
-                config: finalConfig 
+                config: config 
             });
         } catch (e) {
             console.error(e);
@@ -230,16 +221,39 @@ export const TemplateForm: React.FC<{
                             placeholder="VD: 350000" 
                         />
                     </div>
-                    <div className="flex items-center gap-2 pt-6">
-                        <input 
-                            type="checkbox"
-                            id="isSimple"
-                            checked={formData.isSimple || false}
-                            onChange={(e) => setFormData(prev => ({ ...prev, isSimple: e.target.checked }))}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <label htmlFor="isSimple" className="text-sm font-bold text-gray-700 cursor-pointer">Mẫu đơn giản (Chỉ cần ảnh & giá)</label>
+                {/* Mode Selection */}
+                <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Chế độ hiển thị</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chọn cách khách hàng nhìn thấy mẫu này</p>
+                        </div>
+                        <div className="flex bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({ ...formData, isSimple: false })}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!formData.isSimple ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Thiết kế (Canvas)
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({ ...formData, isSimple: true })}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${formData.isSimple ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Đơn giản (Ảnh mẫu)
+                            </button>
+                        </div>
                     </div>
+                    
+                    <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                        <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
+                            {formData.isSimple 
+                                ? "💡 Chế độ Đơn giản: Khách hàng sẽ thấy ảnh mẫu bạn tải lên. Các nhân vật & charm bạn thêm bên dưới sẽ được liệt kê như danh sách phụ kiện đi kèm."
+                                : "💡 Chế độ Thiết kế: Khách hàng có thể tự do di chuyển, thay đổi vị trí nhân vật & charm trên khung hình trực tuyến."}
+                        </p>
+                    </div>
+                </div>
                 </div>
                 
                 <div>
@@ -302,9 +316,9 @@ export const TemplateForm: React.FC<{
                                     <button onClick={() => setActiveCharId(null)} className="text-xs text-gray-400 hover:text-gray-600">Đóng</button>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row gap-8">
+                                <div className="flex flex-col md:flex-row gap-8">
                                     {/* Left: Preview */}
-                                    <div className="w-full lg:w-48 flex-shrink-0">
+                                    <div className="flex-shrink-0">
                                         <CharacterPreview character={activeCharacter} />
                                         <div className="mt-4 grid grid-cols-2 gap-2">
                                             <div>
@@ -376,39 +390,30 @@ export const TemplateForm: React.FC<{
                                     </div>
 
                                     {/* Right: Part Selection */}
-                                    <div className="flex-grow space-y-4">
+                                    <div className="flex-grow space-y-6">
                                         {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => {
-                                            const selectedPart = activeCharacter[type] as LegoPart | undefined;
-                                            const selectedColorField = `selected${type.charAt(0).toUpperCase() + type.slice(1)}Color` as keyof LegoCharacterConfig;
-                                            const selectedColor = activeCharacter[selectedColorField] as any;
+                                            const selectedPart = activeCharacter[type];
+                                            const colorField = type === 'shirt' ? 'selectedShirtColor' : type === 'pants' ? 'selectedPantsColor' : type === 'hair' ? 'selectedHairColor' : null;
 
                                             return (
-                                                <div key={type} className="space-y-2 pb-4 border-b border-gray-100 last:border-0">
-                                                    <div className="flex justify-between items-center">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                            {type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}
-                                                        </label>
-                                                        {selectedPart && selectedPart.colors && selectedPart.colors.length > 0 && (
-                                                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                                                                {selectedColor?.name || 'Mặc định'}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                <div key={type} className="space-y-3">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex justify-between">
+                                                        <span>{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</span>
+                                                        {selectedPart && <span className="text-primary normal-case">{selectedPart.name}</span>}
+                                                    </label>
                                                     
-                                                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                                        {type === 'hat' && (
-                                                            <button 
-                                                                onClick={() => handleUpdateChar(activeCharacter.id, type, '')}
-                                                                className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 transition-all ${!activeCharacter[type] ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-300'}`}
-                                                            >
-                                                                NONE
-                                                            </button>
-                                                        )}
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button 
+                                                            onClick={() => handleUpdateChar(activeCharacter.id, type, '')}
+                                                            className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 transition-all ${!selectedPart ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-gray-300 hover:border-gray-200'}`}
+                                                        >
+                                                            TRỐNG
+                                                        </button>
                                                         {partsByType[type].map(part => (
                                                             <button 
                                                                 key={part.id}
                                                                 onClick={() => handleUpdateChar(activeCharacter.id, type, part.id)}
-                                                                className={`w-12 h-12 rounded-xl border-2 flex-shrink-0 p-1.5 transition-all ${activeCharacter[type]?.id === part.id ? 'border-blue-600 bg-blue-50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-300'}`}
+                                                                className={`w-12 h-12 rounded-xl border-2 flex-shrink-0 p-1 transition-all ${selectedPart?.id === part.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
                                                                 title={part.name}
                                                             >
                                                                 <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
@@ -417,13 +422,13 @@ export const TemplateForm: React.FC<{
                                                     </div>
 
                                                     {/* Color Selection for Part */}
-                                                    {selectedPart && selectedPart.colors && selectedPart.colors.length > 1 && (
-                                                        <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-white rounded-lg border border-gray-100">
+                                                    {selectedPart && selectedPart.colors && selectedPart.colors.length > 0 && colorField && (
+                                                        <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-lg border border-gray-100">
                                                             {selectedPart.colors.map((color, cIdx) => (
                                                                 <button
                                                                     key={cIdx}
-                                                                    onClick={() => handleUpdateCharColor(activeCharacter.id, type as any, color)}
-                                                                    className={`w-6 h-6 rounded-full border-2 transition-all ${selectedColor?.imageUrl === color.imageUrl ? 'border-blue-600 scale-110 shadow-sm' : 'border-gray-200 hover:border-gray-400'}`}
+                                                                    onClick={() => handleUpdateCharColor(activeCharacter.id, colorField, color)}
+                                                                    className={`w-6 h-6 rounded-full border-2 transition-all ${activeCharacter[colorField]?.hex === color.hex ? 'border-primary scale-110 shadow-sm' : 'border-transparent hover:scale-105'}`}
                                                                     style={{ backgroundColor: color.hex }}
                                                                     title={color.name}
                                                                 />
@@ -439,106 +444,116 @@ export const TemplateForm: React.FC<{
                         )}
 
                         {/* Charms Section */}
-                        <div className="space-y-4 pt-4">
+                        <div className="space-y-6 pt-6 border-t border-gray-100">
                             <div className="flex justify-between items-center">
-                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Thêm Charm cố định</h4>
+                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">Charm cố định (Sticker/Thú cưng)</h4>
+                                <span className="text-[10px] text-gray-400">Bấm vào Charm bên dưới để thêm</span>
                             </div>
 
+                            {/* Visual Charm Picker */}
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phụ kiện</label>
-                                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                        {partsByType.accessory.map(part => (
-                                            <button 
-                                                key={part.id}
-                                                onClick={() => handleAddCharm(part.id)}
-                                                className="w-12 h-12 rounded-xl border-2 border-gray-100 bg-white p-1.5 hover:border-blue-600 transition-all shadow-sm"
-                                                title={part.name}
-                                            >
-                                                <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Thú cưng</label>
-                                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                        {partsByType.pet.map(part => (
-                                            <button 
-                                                key={part.id}
-                                                onClick={() => handleAddCharm(part.id)}
-                                                className="w-12 h-12 rounded-xl border-2 border-gray-100 bg-white p-1.5 hover:border-blue-600 transition-all shadow-sm"
-                                                title={part.name}
-                                            >
-                                                <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-between items-center pt-2">
-                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Danh sách Charm đã thêm</h4>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {config.draggableItems.map(item => {
-                                    const part = allParts.find(p => p.id === item.partId);
-                                    return (
-                                        <div key={item.id} className="bg-gray-50 p-2 rounded-lg border border-gray-200 relative group">
-                                            <div className="flex items-center gap-2">
-                                                <img src={part?.imageUrl} className="w-8 h-8 object-contain" />
-                                                <span className="text-[10px] font-bold truncate flex-1">{part?.name}</span>
-                                            </div>
-
-                                            {/* Color Selection for Charm */}
-                                            {part && part.colors && part.colors.length > 1 && (
-                                                <div className="mt-2 flex flex-wrap gap-1">
-                                                    {part.colors.map((color, cIdx) => (
-                                                        <button
-                                                            key={cIdx}
-                                                            onClick={() => handleUpdateCharmColor(item.id, color)}
-                                                            className={`w-4 h-4 rounded-full border transition-all ${item.selectedColor?.imageUrl === color.imageUrl ? 'border-blue-600 ring-1 ring-blue-600' : 'border-gray-300 hover:border-gray-500'}`}
-                                                            style={{ backgroundColor: color.hex }}
-                                                            title={color.name}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="mt-2 grid grid-cols-2 gap-1">
-                                                <input 
-                                                    type="number" 
-                                                    value={item.x} 
-                                                    onChange={(e) => setConfig(prev => ({
-                                                        ...prev,
-                                                        draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, x: parseFloat(e.target.value) } : i)
-                                                    }))}
-                                                    className="w-full p-1 text-[9px] border border-gray-300 rounded"
-                                                    placeholder="X"
-                                                />
-                                                <input 
-                                                    type="number" 
-                                                    value={item.y} 
-                                                    onChange={(e) => setConfig(prev => ({
-                                                        ...prev,
-                                                        draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, y: parseFloat(e.target.value) } : i)
-                                                    }))}
-                                                    className="w-full p-1 text-[9px] border border-gray-300 rounded"
-                                                    placeholder="Y"
-                                                />
-                                            </div>
-                                            <button 
-                                                onClick={() => handleRemoveCharm(item.id)}
-                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                &times;
-                                            </button>
+                                <div className="space-y-4">
+                                    {/* Accessories */}
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Phụ kiện & Sticker</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {partsByType.accessory.map(p => (
+                                                <button 
+                                                    key={p.id}
+                                                    onClick={() => handleAddCharm(p.id)}
+                                                    className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1.5 hover:border-primary hover:shadow-sm transition-all group"
+                                                    title={p.name}
+                                                >
+                                                    <img src={p.imageUrl} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                                </button>
+                                            ))}
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                    {/* Pets */}
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Thú cưng</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {partsByType.pet.map(p => (
+                                                <button 
+                                                    key={p.id}
+                                                    onClick={() => handleAddCharm(p.id)}
+                                                    className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1.5 hover:border-primary hover:shadow-sm transition-all group"
+                                                    title={p.name}
+                                                >
+                                                    <img src={p.imageUrl} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Added Charms Management */}
+                            {config.draggableItems.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                    {config.draggableItems.map(item => {
+                                        const part = allParts.find(p => p.id === item.partId);
+                                        return (
+                                            <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-200 relative group shadow-sm">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 bg-gray-50 rounded-lg p-1">
+                                                        <img src={part?.imageUrl} className="w-full h-full object-contain" />
+                                                    </div>
+                                                    <span className="text-[10px] font-bold truncate flex-1">{part?.name}</span>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    <div className="space-y-0.5">
+                                                        <span className="text-[8px] text-gray-400 font-bold uppercase">X (%)</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.x} 
+                                                            onChange={(e) => setConfig(prev => ({
+                                                                ...prev,
+                                                                draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, x: parseFloat(e.target.value) } : i)
+                                                            }))}
+                                                            className="w-full p-1 text-[10px] border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <span className="text-[8px] text-gray-400 font-bold uppercase">Y (%)</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.y} 
+                                                            onChange={(e) => setConfig(prev => ({
+                                                                ...prev,
+                                                                draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, y: parseFloat(e.target.value) } : i)
+                                                            }))}
+                                                            className="w-full p-1 text-[10px] border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Charm Color Picker if available */}
+                                                {part?.colors && part.colors.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1 pt-2 border-t border-gray-50">
+                                                        {part.colors.map((c, cIdx) => (
+                                                            <button
+                                                                key={cIdx}
+                                                                onClick={() => handleUpdateCharmColor(item.id, c)}
+                                                                className={`w-4 h-4 rounded-full border transition-all ${item.selectedColor?.hex === c.hex ? 'ring-1 ring-primary scale-110' : 'border-transparent'}`}
+                                                                style={{ backgroundColor: c.hex }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <button 
+                                                    onClick={() => handleRemoveCharm(item.id)}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                         
                         <div className="pt-4 border-t border-gray-100">

@@ -49,10 +49,9 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
     if (hasError || !src) return null;
 
     const imgProps: any = { ...props };
-    // Removed crossOrigin="anonymous" to avoid CORS issues in the preview
-    // if (!isBase64) {
-    //     imgProps.crossOrigin = "anonymous";
-    // }
+    if (!isBase64) {
+        imgProps.crossOrigin = "anonymous";
+    }
 
     if (disableTransition) {
         return (

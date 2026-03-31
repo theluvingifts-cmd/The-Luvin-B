@@ -239,7 +239,6 @@ export interface CollectionTemplate {
     saleEndDate?: string;
     description?: string;
     isSimple?: boolean;
-    order?: number;
 }
 
 export interface FeedbackItem {
