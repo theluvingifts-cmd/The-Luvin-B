@@ -25,7 +25,7 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                     phone,
                     name: order.customer.name,
                     email: order.customer.email,
-                    address: order.customer.address,
+                    address: [order.customer.address, order.customer.ward, order.customer.district, order.customer.province].filter(Boolean).join(', '),
                     totalOrders: 0,
                     totalSpent: 0,
                     lastOrderDate: 0,
@@ -43,7 +43,7 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                 stats[phone].lastOrderDate = order.createdAt;
                 // Update latest info
                 stats[phone].name = order.customer.name;
-                stats[phone].address = order.customer.address;
+                stats[phone].address = [order.customer.address, order.customer.ward, order.customer.district, order.customer.province].filter(Boolean).join(', ');
             }
             stats[phone].orders.push(order);
         });

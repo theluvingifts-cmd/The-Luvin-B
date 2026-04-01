@@ -890,7 +890,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   return (
     <div className="bg-gray-50 py-2 sm:py-6 safe-bottom">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-2 sm:px-4">
         <div className="flex justify-between items-center mb-2">
             <div className="text-sm text-gray-400">
                 <button onClick={() => navigateTo('home')} className="hover:underline">{t('nav.home')}</button> / {t('studio.design')}

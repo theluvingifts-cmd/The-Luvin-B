@@ -423,6 +423,7 @@ export const translations: any = {
             processing: "Đang xử lý...",
             free: "Miễn phí",
             invalid_voucher: "Mã không hợp lệ",
+            address_error: "Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã",
             phone_error: "Số điện thoại phải có đúng 10 số và bắt đầu bằng số 0",
             select_delivery_date: "Vui lòng chọn ngày nhận hàng mong muốn.",
             distance_warning: "Cảnh báo khoảng cách nếu chọn Bookship hoặc Express",

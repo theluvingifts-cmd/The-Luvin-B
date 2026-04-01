@@ -178,22 +178,17 @@ export const Step3Characters: React.FC<{
         const newId = Date.now();
         const availableShirts = getAvailableParts(legoParts.shirt);
         const availablePants = getAvailableParts(legoParts.pants);
-        const availableFaces = getAvailableParts(legoParts.face);
-        const availableHairs = getAvailableParts(legoParts.hair);
 
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
             shirt: availableShirts[0] || legoParts.shirt[0], 
             pants: availablePants[0] || legoParts.pants[0],
-            face: availableFaces[0] || legoParts.face[0], 
-            hair: availableHairs[0] || legoParts.hair[0],
             x: 30 + (config.characters.length % 3) * 20, 
             y: 75, 
             rotation: 0, 
             scale: 1,
             selectedShirtColor: availableShirts[0]?.colors?.[0],
             selectedPantsColor: availablePants[0]?.colors?.[0],
-            selectedHairColor: availableHairs[0]?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -311,20 +306,15 @@ export const Step3Characters: React.FC<{
         }
     };
 
-    const handlePartDeselect = (partType: 'hair' | 'hat') => {
+    const handlePartDeselect = (partType: 'hat') => {
       if (!activeCharId) return;
-      if (partType === 'hat') return;
-
-      setConfig(prev => ({
-        ...prev,
-        characters: prev.characters.map(c => {
-            if (c.id === activeCharId) {
-                const updatedChar = { ...c, [partType]: undefined };
-                return updatedChar;
-            }
-            return c;
-        })
-      }));
+      if (partType === 'hat') {
+          setConfig(prev => ({
+              ...prev,
+              draggableItems: prev.draggableItems.filter(item => item.type !== 'hat' || item.linkedCharId !== activeCharId)
+          }));
+          return;
+      }
     };
     
     const handleCustomPrintSelect = (price: number) => {
@@ -341,8 +331,6 @@ export const Step3Characters: React.FC<{
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
         
-        const availableHair = getAvailableParts(legoParts.hair);
-        const availableFace = getAvailableParts(legoParts.face);
         const availableShirt = getAvailableParts(legoParts.shirt);
         const availablePants = getAvailableParts(legoParts.pants);
 
@@ -354,8 +342,6 @@ export const Step3Characters: React.FC<{
             return availableColors.length > 0 ? availableColors[Math.floor(Math.random() * availableColors.length)] : undefined;
         };
 
-        const randomHair = getRandomItem(availableHair);
-        const randomFace = getRandomItem(availableFace);
         const randomShirt = getRandomItem(availableShirt);
         const randomPants = getRandomItem(availablePants);
 
@@ -365,10 +351,8 @@ export const Step3Characters: React.FC<{
                 if (c.id === activeCharId) {
                     const newChar: LegoCharacterConfig = { ...c };
                     
-                    newChar.face = randomFace || c.face;
                     newChar.shirt = randomShirt || c.shirt;
                     newChar.pants = randomPants || c.pants;
-                    newChar.hair = randomHair || c.hair;
 
                     let shirtColors = newChar.shirt?.colors;
                     if (!shirtColors || shirtColors.length === 0) {
@@ -384,7 +368,6 @@ export const Step3Characters: React.FC<{
 
                     newChar.selectedShirtColor = getRandomColor(shirtColors) || shirtColors?.[0];
                     newChar.selectedPantsColor = getRandomColor(pantsColors) || pantsColors?.[0];
-                    newChar.selectedHairColor = getRandomColor(newChar.hair?.colors) || newChar.hair?.colors?.[0];
 
                     return newChar;
                 }
@@ -393,12 +376,10 @@ export const Step3Characters: React.FC<{
         }));
     };
     
-    const partTypes: { key: 'hair' | 'hat' | 'face' | 'shirt' | 'pants' | 'set', label: string }[] = [
+    const partTypes: { key: 'hat' | 'shirt' | 'pants' | 'set', label: string }[] = [
         { key: 'shirt', label: t('studio.shirt') },
         { key: 'pants', label: t('studio.pants') },
         { key: 'set', label: t('studio.set') },
-        { key: 'face', label: t('studio.face') },
-        { key: 'hair', label: t('studio.hair') },
         { key: 'hat', label: t('studio.hat') },
     ];
 
@@ -505,7 +486,7 @@ export const Step3Characters: React.FC<{
                         </div>
                     </div>
                      <div className="grid grid-cols-4 gap-2">
-                         {(activePartType === 'hair') && (
+                         {(activePartType === 'hat') && (
                              <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
                                <span className="text-2xl font-bold">&times;</span>
                                <span className="text-[11px] font-semibold">{t('studio.none')}</span>
@@ -536,7 +517,7 @@ export const Step3Characters: React.FC<{
                                     priceToDisplay={priceToDisplay}
                                     originalPrice={originalPriceToDisplay}
                                     priority={index < 8} 
-                                    disableTransition={['hair', 'face', 'shirt', 'pants', 'set'].includes(activePartType)}
+                                    disableTransition={['shirt', 'pants', 'set'].includes(activePartType)}
                                 />
                             );
                         }) : (
