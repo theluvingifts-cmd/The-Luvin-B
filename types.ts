@@ -15,6 +15,9 @@ export interface CustomerStats {
     name: string;
     email: string;
     address: string;
+    province?: string;
+    district?: string;
+    ward?: string;
     totalOrders: number;
     totalSpent: number;
     lastOrderDate: number;

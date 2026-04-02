@@ -2,7 +2,7 @@
 // services/frameService.ts
 import { db } from '../config/firebase';
 // Standard imports for the firestore modular SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { FRAME_OPTIONS } from '../constants';
 import type { FrameOption } from '../types';
 
@@ -73,6 +73,21 @@ export const seedFrames = async () => {
         return true;
     } catch (error) {
         console.error("Seed frames error:", error);
+        return false;
+    }
+};
+
+export const reorderFrames = async (items: FrameOption[]) => {
+    try {
+        const batch = writeBatch(db);
+        items.forEach((item, index) => {
+            const ref = doc(db, COLLECTION_NAME, item.id);
+            batch.update(ref, { order: index });
+        });
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error reordering frames:", error);
         return false;
     }
 };

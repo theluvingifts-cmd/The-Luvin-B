@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 // Proper imports for the modular Firestore SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';
 
@@ -78,6 +78,21 @@ export const seedTemplates = async () => {
         return true;
     } catch (error) {
         console.error("Seed templates error:", error);
+        return false;
+    }
+};
+
+export const reorderTemplates = async (items: CollectionTemplate[]) => {
+    try {
+        const batch = writeBatch(db);
+        items.forEach((item, index) => {
+            const ref = doc(db, COLLECTION_NAME, item.id);
+            batch.update(ref, { order: index });
+        });
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error reordering templates:", error);
         return false;
     }
 };

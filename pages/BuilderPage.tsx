@@ -748,6 +748,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     const originalSelectedId = selectedItemId;
     setSelectedItemId(null); 
     return new Promise((resolve) => {
+      // Tăng timeout lên 1.5s để đảm bảo ảnh đã load xong
       setTimeout(async () => {
         try {
           const container = frameCaptureRef.current;
@@ -755,8 +756,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             const canvas = await html2canvas(container, {
               backgroundColor: null,
               useCORS: true, 
-              allowTaint: true, 
-              scale: 3,      
+              // Bỏ allowTaint để tránh lỗi bảo mật khi render ảnh từ domain khác
+              allowTaint: false, 
+              // Giảm scale xuống 2 để tránh tốn bộ nhớ trên mobile
+              scale: 2,      
               logging: false,
               scrollX: 0,    
               scrollY: 0,
@@ -764,14 +767,16 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             });
             resolve(canvas.toDataURL('image/png'));
           } else {
+            console.warn("html2canvas not found or container missing");
             resolve('');
           }
         } catch (error: any) {
+          console.error("html2canvas error:", error);
           resolve('');
         } finally {
           setSelectedItemId(originalSelectedId); 
         }
-      }, 1000); 
+      }, 1500); 
     });
   };
 
@@ -824,20 +829,17 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         }
         const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
         const cloudUrl = await uploadToCloudinary(imageFile);
-        if (!cloudUrl) {
-             showToast(t('studio.error_saving_image'), 'error');
-             setIsSaving(false);
-             return;
-        }
-        const finalConfig = { ...config, previewImageUrl: cloudUrl };
+        
+        const finalConfig = { ...config, previewImageUrl: cloudUrl || '' };
         if (editingCartIndex !== null && !andCheckout) {
             onUpdateCart(finalConfig);
         } else {
             onAddToCart({ ...finalConfig, quantity: 1 }, !andCheckout);
         }
         if (andCheckout) navigateTo('checkout');
-    } catch (e) {
-        showToast(t('studio.error_occurred'), 'error');
+    } catch (e: any) {
+        console.error("Error in handleAddToCartWrapper:", e);
+        showToast(e.message || t('studio.error_occurred'), 'error');
     } finally {
         setIsSaving(false);
     }
@@ -866,6 +868,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const handleTopCharmUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Giới hạn kích thước ảnh 5MB
+      if (file.size > 5 * 1024 * 1024) {
+          showToast(t('studio.image_too_large') || 'Ảnh quá lớn (tối đa 5MB)', 'error');
+          return;
+      }
       const fileReader = new FileReader();
       fileReader.onload = () => {
         const result = fileReader.result;
@@ -890,7 +897,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   return (
     <div className="bg-gray-50 py-2 sm:py-6 safe-bottom">
-      <div className="container mx-auto px-4">
+      <div className="max-w-[1400px] mx-auto px-4">
         <div className="flex justify-between items-center mb-2">
             <div className="text-sm text-gray-400">
                 <button onClick={() => navigateTo('home')} className="hover:underline">{t('nav.home')}</button> / {t('studio.design')}
