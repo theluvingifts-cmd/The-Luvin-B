@@ -69,8 +69,25 @@ export const incrementTemplatePurchaseCount = async (templateId: string) => {
     }
 };
 
+export const clearTemplates = async () => {
+    try {
+        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const batch = writeBatch(db);
+        querySnapshot.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error clearing templates:", error);
+        return false;
+    }
+};
+
 export const seedTemplates = async () => {
     try {
+        console.log("Seeding templates...");
+        await clearTemplates();
         for (const t of COLLECTION_TEMPLATES) {
             const id = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             await setDoc(doc(db, COLLECTION_NAME, id), { ...t, id, purchaseCount: 0 });
@@ -78,21 +95,6 @@ export const seedTemplates = async () => {
         return true;
     } catch (error) {
         console.error("Seed templates error:", error);
-        return false;
-    }
-};
-
-export const reorderTemplates = async (items: CollectionTemplate[]) => {
-    try {
-        const batch = writeBatch(db);
-        items.forEach((item, index) => {
-            const ref = doc(db, COLLECTION_NAME, item.id);
-            batch.update(ref, { order: index });
-        });
-        await batch.commit();
-        return true;
-    } catch (error) {
-        console.error("Error reordering templates:", error);
         return false;
     }
 };
