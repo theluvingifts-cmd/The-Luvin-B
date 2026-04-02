@@ -62,24 +62,46 @@ const cleanForFirestore = (data: any): any => {
 const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfig[]> => {
     return Promise.all(items.map(async (item) => {
         let newItem = { ...item };
+        
+        // 1. Preview Image
         if (newItem.previewImageUrl && newItem.previewImageUrl.startsWith('data:')) {
-            const cloudUrl = await uploadToCloudinary(newItem.previewImageUrl);
-            if (cloudUrl) newItem.previewImageUrl = cloudUrl;
+            try {
+                const cloudUrl = await uploadToCloudinary(newItem.previewImageUrl);
+                if (cloudUrl) newItem.previewImageUrl = cloudUrl;
+            } catch (e: any) {
+                console.error("Error uploading preview image:", e);
+                throw new Error(`Lỗi tải ảnh xem trước: ${e.message}`);
+            }
         }
+        
+        // 2. Custom Background
         if (newItem.background && newItem.background.type === 'upload' && newItem.background.value.startsWith('data:')) {
-             const bgCloudUrl = await uploadToCloudinary(newItem.background.value);
-             if (bgCloudUrl) newItem.background = { ...newItem.background, value: bgCloudUrl };
+             try {
+                const bgCloudUrl = await uploadToCloudinary(newItem.background.value);
+                if (bgCloudUrl) newItem.background = { ...newItem.background, value: bgCloudUrl };
+             } catch (e: any) {
+                console.error("Error uploading background image:", e);
+                throw new Error(`Lỗi tải ảnh nền: ${e.message}`);
+             }
         }
+        
+        // 3. Draggable Items (Charms)
         if (newItem.draggableItems && newItem.draggableItems.length > 0) {
             const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
                 if (di.type === 'charm' && di.partId && di.partId.startsWith('data:')) {
-                    const charmUrl = await uploadToCloudinary(di.partId);
-                    if (charmUrl) return { ...di, partId: charmUrl };
+                    try {
+                        const charmUrl = await uploadToCloudinary(di.partId);
+                        if (charmUrl) return { ...di, partId: charmUrl };
+                    } catch (e: any) {
+                        console.error("Error uploading charm image:", e);
+                        throw new Error(`Lỗi tải ảnh charm: ${e.message}`);
+                    }
                 }
                 return di;
             }));
             newItem.draggableItems = processedDraggables;
         }
+        
         return newItem; 
     }));
 };

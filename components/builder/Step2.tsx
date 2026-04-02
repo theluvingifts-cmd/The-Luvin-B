@@ -148,6 +148,11 @@ export const Step2BackgroundAndDecorations: React.FC<{
   const handleManualBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+        // Giới hạn kích thước ảnh 10MB cho ảnh nền
+        if (file.size > 10 * 1024 * 1024) {
+            showToast(t('studio.image_too_large') || 'Ảnh quá lớn (tối đa 10MB)', 'error');
+            return;
+        }
         setIsProcessingImage(true);
         try {
             const resized = await resizeImage(file, 1200, 1200);
