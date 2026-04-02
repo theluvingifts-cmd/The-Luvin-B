@@ -432,9 +432,7 @@ export const translations: any = {
             voucher_tag: "[VOUCHER: {{code}}] ",
             no_image: "Không ảnh",
             zero_vnd: "0₫",
-            custom_frame: "Khung tranh thiết kế",
-            extra_charms_title: "Chọn thêm Charm & Phụ kiện",
-            extra_charms_desc: "Bạn có thể mua thêm các mảnh charm lẻ để trang trí thêm cho khung hình của mình."
+            custom_frame: "Khung tranh thiết kế"
         }
     },
     en: {
@@ -869,9 +867,7 @@ export const translations: any = {
             voucher_tag: "[VOUCHER: {{code}}] ",
             no_image: "No image",
             zero_vnd: "0₫",
-            custom_frame: "Custom Design Frame",
-            extra_charms_title: "Add Extra Charms & Accessories",
-            extra_charms_desc: "You can purchase additional individual charms to further decorate your frame."
+            custom_frame: "Custom Design Frame"
         }
     }
 };

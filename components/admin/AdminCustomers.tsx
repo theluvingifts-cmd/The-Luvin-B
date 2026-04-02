@@ -26,9 +26,6 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                     name: order.customer.name,
                     email: order.customer.email,
                     address: order.customer.address,
-                    province: order.customer.province,
-                    district: order.customer.district,
-                    ward: order.customer.ward,
                     totalOrders: 0,
                     totalSpent: 0,
                     lastOrderDate: 0,
@@ -47,9 +44,6 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                 // Update latest info
                 stats[phone].name = order.customer.name;
                 stats[phone].address = order.customer.address;
-                stats[phone].province = order.customer.province;
-                stats[phone].district = order.customer.district;
-                stats[phone].ward = order.customer.ward;
             }
             stats[phone].orders.push(order);
         });
@@ -147,15 +141,7 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                                     </div>
                                     <div className="col-span-2 border-t pt-2 mt-1">
                                         <span className="text-gray-500 block text-xs">Địa chỉ gần nhất</span>
-                                        <span className="text-gray-800">
-                                            {selectedCustomer.address}
-                                            {selectedCustomer.province && !selectedCustomer.address.toLowerCase().includes(selectedCustomer.province.toLowerCase()) && (
-                                                <>
-                                                    {', '}
-                                                    {[selectedCustomer.ward, selectedCustomer.district, selectedCustomer.province].filter(Boolean).join(', ')}
-                                                </>
-                                            )}
-                                        </span>
+                                        <span className="text-gray-800">{selectedCustomer.address}</span>
                                     </div>
                                 </div>
                             </div>

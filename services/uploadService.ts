@@ -56,13 +56,11 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
     } catch (error: any) {
         console.error("Firebase Storage Upload Error:", error);
         
-        // Throw error instead of alert to let caller handle it
         if (error.code === 'storage/unauthorized') {
-            throw new Error("Lỗi quyền truy cập (403): Vui lòng kiểm tra Firebase Storage Rules.");
-        } else if (error.code === 'storage/quota-exceeded') {
-            throw new Error("Lỗi bộ nhớ (Quota exceeded): Vui lòng nâng cấp gói Firebase Storage.");
+            alert("Lỗi quyền truy cập (403): Vui lòng kiểm tra Firebase Storage Rules trong Console.");
         } else {
-            throw new Error(`Lỗi upload ảnh: ${error.message || "Kết nối thất bại"}`);
+            alert(`Lỗi upload: ${error.message || "Kết nối thất bại"}`);
         }
+        return null;
     }
 };

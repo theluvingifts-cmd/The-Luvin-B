@@ -359,7 +359,7 @@ const App: React.FC = () => {
         navigateTo('order-confirmation');
         sendOrderEmail(res.data);
         sendOrderTelegram(res.data, storeConfig); 
-    } else throw new Error(res.error?.message || "Lỗi kết nối cơ sở dữ liệu.");
+    } else throw new Error("Lỗi kết nối cơ sở dữ liệu.");
   };
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);

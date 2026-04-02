@@ -128,45 +128,17 @@ export const Step4Summary: React.FC<{
             </div>
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-4 space-y-2">
             {!isEditingOrder && <DesignerCommitment />}
             
-            <div className="flex flex-col sm:flex-row gap-3">
-                {!isEditingOrder && (
-                    <button 
-                        onClick={onBuyNow} 
-                        disabled={isSaving} 
-                        className="flex-1 bg-luvin-pink text-gray-800 font-bold py-4 rounded-2xl text-base hover:opacity-90 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        {isSaving ? (
-                            <span className="animate-spin h-5 w-5 border-2 border-gray-800 border-t-transparent rounded-full"></span>
-                        ) : (
-                            <>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                {t('studio.buy_now_checkout')}
-                            </>
-                        )}
-                    </button>
-                )}
-                <button 
-                    onClick={onAddToCart} 
-                    disabled={isSaving} 
-                    className={`flex-1 font-bold py-4 rounded-2xl text-base transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                        isEditingOrder 
-                            ? 'bg-luvin-pink text-gray-800 hover:opacity-90 shadow-lg' 
-                            : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                    }`}
-                >
-                    {isSaving ? (
-                        <span className="animate-spin h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full"></span>
-                    ) : (
-                        <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                            {isEditingOrder ? t('studio.save_design') : t('studio.add_to_cart')}
-                        </>
-                    )}
+            {!isEditingOrder && (
+                <button onClick={onBuyNow} disabled={isSaving} className="w-full bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg text-base hover:opacity-90 transition-colors shadow-md">
+                    {isSaving ? t('studio.processing') : t('studio.buy_now_checkout')}
                 </button>
-            </div>
+            )}
+            <button onClick={onAddToCart} disabled={isSaving} className={`w-full font-bold py-3 rounded-lg text-base transition-colors ${isEditingOrder ? 'bg-luvin-pink text-gray-800 hover:opacity-90' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
+                {isSaving ? '...' : (isEditingOrder ? t('studio.save_design') : t('studio.add_to_cart'))}
+            </button>
         </div>
     </div>
   );

@@ -152,57 +152,31 @@ export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
 
 export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Record<string, number>> => {
     try {
-        // We'll use a dedicated collection for ads costs to ensure persistence across browsers
-        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const stored = localStorage.getItem('ads_costs');
+        const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};
+        const filteredCosts: Record<string, number> = {};
         const startStr = startDate.toISOString().split('T')[0];
         const endStr = endDate.toISOString().split('T')[0];
-        
-        const q = query(
-            collection(db, 'ads_costs'),
-            where('__name__', '>=', startStr),
-            where('__name__', '<=', endStr)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const filteredCosts: Record<string, number> = {};
-        querySnapshot.forEach((doc) => {
-            filteredCosts[doc.id] = doc.data().cost || 0;
-        });
-        
-        // Fallback to localStorage for any legacy data if needed, but prefer Firestore
-        const stored = localStorage.getItem('ads_costs');
-        if (stored) {
-            try {
-                const allCosts: Record<string, number> = JSON.parse(stored);
-                for (const [date, cost] of Object.entries(allCosts)) {
-                    if (date >= startStr && date <= endStr && !filteredCosts[date]) {
-                        filteredCosts[date] = cost;
-                    }
-                }
-            } catch (e) {}
+
+        for (const [date, cost] of Object.entries(allCosts)) {
+            if (date >= startStr && date <= endStr) {
+                filteredCosts[date] = cost;
+            }
         }
-        
         return filteredCosts;
     } catch (e) {
-        console.error("Error fetching ads costs:", e);
         return {};
     }
 };
 
 export const saveAdsCost = async (date: string, cost: number) => {
     try {
-        const { doc, setDoc } = await import('firebase/firestore');
-        await setDoc(doc(db, 'ads_costs', date), { cost, updatedAt: Date.now() });
-        
-        // Also update localStorage for immediate feedback/offline support
         const stored = localStorage.getItem('ads_costs');
         const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};
         allCosts[date] = cost;
         localStorage.setItem('ads_costs', JSON.stringify(allCosts));
-        
         return true;
     } catch (e) {
-        console.error("Error saving ads cost:", e);
         return false;
     }
 };
