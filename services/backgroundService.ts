@@ -96,29 +96,10 @@ export const deleteBackground = async (bgId: string) => {
     }
 };
 
-export const clearBackgrounds = async () => {
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-        const batch = writeBatch(db);
-        querySnapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        return true;
-    } catch (error) {
-        console.error("Error clearing backgrounds:", error);
-        return false;
-    }
-};
-
 // 5. Seed dữ liệu mẫu (Chạy 1 lần)
 export const seedBackgrounds = async () => {
     try {
         console.log("Bắt đầu đồng bộ background mẫu...");
-        
-        // Clear old data first
-        await clearBackgrounds();
-        
         let count = 0;
         const batch = writeBatch(db);
         

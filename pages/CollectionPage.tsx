@@ -17,9 +17,10 @@ interface CollectionPageProps {
 }
 
 const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ character }) => {
-    const { shirt, pants, hat } = character;
+    const { hair, face, shirt, pants, hat } = character;
     const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
     const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
+    const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
     const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
 
     const partStyle: React.CSSProperties = {
@@ -37,6 +38,8 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
             <div className="relative w-full h-full">
                 {pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
                 {shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
+                {face?.imageUrl && <img src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
+                {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
                 {hatImageUrl && <img src={hatImageUrl} alt="hat" style={{ ...partStyle, zIndex: 5 }} referrerPolicy="no-referrer" />}
             </div>
         </div>
@@ -102,11 +105,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         } else {
             // Find all characters that are "identical" to this one
             const isIdentical = (c1: LegoCharacterConfig, c2: LegoCharacterConfig) => {
-                return c1.shirt?.id === c2.shirt?.id && 
+                return c1.hair?.id === c2.hair?.id && 
+                       c1.face?.id === c2.face?.id && 
+                       c1.shirt?.id === c2.shirt?.id && 
                        c1.pants?.id === c2.pants?.id && 
                        c1.hat?.id === c2.hat?.id &&
                        c1.selectedShirtColor?.hex === c2.selectedShirtColor?.hex &&
-                       c1.selectedPantsColor?.hex === c2.selectedPantsColor?.hex;
+                       c1.selectedPantsColor?.hex === c2.selectedPantsColor?.hex &&
+                       c1.selectedHairColor?.hex === c2.selectedHairColor?.hex;
             };
 
             const identicalChars = currentChars.filter(c => isIdentical(c, targetChar));
@@ -130,6 +136,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         const defaultParts = {
             shirt: partsByType.shirt[0],
             pants: partsByType.pants[0],
+            face: partsByType.face[0],
+            hair: partsByType.hair[0],
             hat: partsByType.hat?.[0],
         };
 
@@ -143,6 +151,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 ...defaultParts,
                 selectedShirtColor: defaultParts.shirt?.colors?.[0],
                 selectedPantsColor: defaultParts.pants?.colors?.[0],
+                selectedHairColor: defaultParts.hair?.colors?.[0],
                 selectedHatColor: defaultParts.hat?.colors?.[0],
             };
         
@@ -233,12 +242,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 const addPartCost = (part: LegoPart | undefined) => {
                     if (part) charSum += (part.price || 0);
                 };
+                addPartCost(char.hair);
+                addPartCost(char.face);
                 addPartCost(char.shirt);
                 addPartCost(char.pants);
                 addPartCost(char.hat);
                 
                 if (char.selectedShirtColor?.price) charSum += char.selectedShirtColor.price;
                 if (char.selectedPantsColor?.price) charSum += char.selectedPantsColor.price;
+                if (char.selectedHairColor?.price) charSum += char.selectedHairColor.price;
                 
                 return sum + charSum;
             }, 0);
@@ -260,11 +272,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         const groups: { char: LegoCharacterConfig, count: number, ids: number[] }[] = [];
         
         const isIdentical = (c1: LegoCharacterConfig, c2: LegoCharacterConfig) => {
-            return c1.shirt?.id === c2.shirt?.id && 
+            return c1.hair?.id === c2.hair?.id && 
+                   c1.face?.id === c2.face?.id && 
+                   c1.shirt?.id === c2.shirt?.id && 
                    c1.pants?.id === c2.pants?.id && 
                    c1.hat?.id === c2.hat?.id &&
                    c1.selectedShirtColor?.hex === c2.selectedShirtColor?.hex &&
-                   c1.selectedPantsColor?.hex === c2.selectedPantsColor?.hex;
+                   c1.selectedPantsColor?.hex === c2.selectedPantsColor?.hex &&
+                   c1.selectedHairColor?.hex === c2.selectedHairColor?.hex;
         };
 
         customConfig.characters.forEach(char => {
@@ -511,27 +526,25 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             {/* Part Selector */}
                                             {editingCharacterId === char.id && (
                                                 <div className="p-4 border-t border-primary/10 space-y-5 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
-                                                    {(['shirt', 'pants', 'hat'] as const).map(type => (
+                                                    {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => (
                                                         <div key={type} className="space-y-2.5">
                                                             <div className="flex justify-between items-center">
-                                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</label>
+                                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</label>
                                                                 {char[type] && (
                                                                     <span className="text-[8px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase">{char[type].name}</span>
                                                                 )}
                                                             </div>
                                                             
                                                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                                                {type === 'hat' && (
-                                                                    <button 
-                                                                        onClick={() => {
-                                                                            const newChars = customConfig.characters.map(c => c.id === char.id ? { ...c, [type]: undefined } : c);
-                                                                            setCustomConfig({ ...customConfig, characters: newChars });
-                                                                        }}
-                                                                        className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${!char[type] ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
-                                                                    >
-                                                                        NONE
-                                                                    </button>
-                                                                )}
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const newChars = customConfig.characters.map(c => c.id === char.id ? { ...c, [type]: undefined } : c);
+                                                                        setCustomConfig({ ...customConfig, characters: newChars });
+                                                                    }}
+                                                                    className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${!char[type] ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
+                                                                >
+                                                                    NONE
+                                                                </button>
                                                                 {partsByType[type].map(part => (
                                                                     <button 
                                                                         key={part.id}
@@ -541,6 +554,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                     const updated = { ...c, [type]: part };
                                                                                     if (type === 'shirt') updated.selectedShirtColor = part.colors?.[0];
                                                                                     if (type === 'pants') updated.selectedPantsColor = part.colors?.[0];
+                                                                                    if (type === 'hair') updated.selectedHairColor = part.colors?.[0];
                                                                                     return updated;
                                                                                 }
                                                                                 return c;
@@ -566,6 +580,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                         const updated = { ...c };
                                                                                         if (type === 'shirt') updated.selectedShirtColor = color;
                                                                                         if (type === 'pants') updated.selectedPantsColor = color;
+                                                                                        if (type === 'hair') updated.selectedHairColor = color;
                                                                                         if (type === 'hat') updated.selectedHatColor = color;
                                                                                         return updated;
                                                                                     }
@@ -576,6 +591,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                             className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
                                                                                 (type === 'shirt' ? char.selectedShirtColor?.hex : 
                                                                                  type === 'pants' ? char.selectedPantsColor?.hex : 
+                                                                                 type === 'hair' ? char.selectedHairColor?.hex :
                                                                                  char.selectedHatColor?.hex) === color.hex 
                                                                                 ? 'border-primary scale-110 shadow-md' 
                                                                                 : 'border-gray-100'
@@ -585,6 +601,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                         >
                                                                             {(type === 'shirt' ? char.selectedShirtColor?.hex : 
                                                                               type === 'pants' ? char.selectedPantsColor?.hex : 
+                                                                              type === 'hair' ? char.selectedHairColor?.hex :
                                                                               char.selectedHatColor?.hex) === color.hex && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
                                                                             )}

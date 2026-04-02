@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 // Explicitly import firestore functions from modular subpath
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { FEEDBACK_ITEMS } from '../constants';
 import type { FeedbackItem } from '../types';
 
@@ -55,25 +55,8 @@ export const deleteFeedback = async (id: string) => {
     }
 };
 
-export const clearFeedbacks = async () => {
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-        const batch = writeBatch(db);
-        querySnapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        return true;
-    } catch (error) {
-        console.error("Error clearing feedbacks:", error);
-        return false;
-    }
-};
-
 export const seedFeedbacks = async () => {
     try {
-        console.log("Seeding feedbacks...");
-        await clearFeedbacks();
         for (const f of FEEDBACK_ITEMS) {
             const id = `fb_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             // Ensure type compatibility if constants differ slightly from interface

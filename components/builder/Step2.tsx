@@ -20,7 +20,7 @@ const PresetBackgroundButton: React.FC<{
                 <SmartImage src={imageSrc} alt={bg.name} loading={priority ? "eager" : "lazy"} className="w-full h-full" />
                 <div className="absolute bottom-1 right-1 z-10 bg-black/40 text-white p-1 rounded-full cursor-pointer" onClick={(e) => { e.stopPropagation(); onZoom(imageSrc); }}><ZoomIcon className="w-3 h-3" /></div>
             </div>
-            <span className="text-[10px] sm:text-[11px] font-bold text-gray-700 py-1 truncate w-full px-1 uppercase">{bg.name}</span>
+            <span className="text-[9px] font-bold text-gray-700 py-1 truncate w-full px-1 uppercase">{bg.name}</span>
         </button>
     );
 };
@@ -148,11 +148,6 @@ export const Step2BackgroundAndDecorations: React.FC<{
   const handleManualBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        // Giới hạn kích thước ảnh 10MB cho ảnh nền
-        if (file.size > 10 * 1024 * 1024) {
-            showToast(t('studio.image_too_large') || 'Ảnh quá lớn (tối đa 10MB)', 'error');
-            return;
-        }
         setIsProcessingImage(true);
         try {
             const resized = await resizeImage(file, 1200, 1200);
@@ -200,7 +195,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
                 </button>
             ))}
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 max-h-[280px] sm:max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="grid grid-cols-4 gap-2.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
           {filteredBackgrounds.map(bg => (
             <PresetBackgroundButton key={bg.id} bg={bg} isSelected={config.background.value === bg.url} onClick={() => handleBackgroundSelect(bg)} onZoom={onZoomImage} />
           ))}

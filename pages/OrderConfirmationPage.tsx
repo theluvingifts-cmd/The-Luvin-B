@@ -67,7 +67,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadToCloudinary(file, 'temp');
+                const url = await uploadToCloudinary(file);
                 if (url) {
                     const success = await updateOrder(order.id, { 
                         paymentProofUrl: url,

@@ -2,7 +2,7 @@
 // services/frameService.ts
 import { db } from '../config/firebase';
 // Standard imports for the firestore modular SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { FRAME_OPTIONS } from '../constants';
 import type { FrameOption } from '../types';
 
@@ -61,25 +61,9 @@ export const deleteFrame = async (id: string) => {
     }
 };
 
-export const clearFrames = async () => {
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-        const batch = writeBatch(db);
-        querySnapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        return true;
-    } catch (error) {
-        console.error("Error clearing frames:", error);
-        return false;
-    }
-};
-
 export const seedFrames = async () => {
     try {
         console.log("Seeding frames...");
-        await clearFrames();
         let count = 0;
         for (const f of FRAME_OPTIONS) {
             await setDoc(doc(db, COLLECTION_NAME, f.id), { ...f, order: count });

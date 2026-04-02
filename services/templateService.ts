@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 // Proper imports for the modular Firestore SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';
 
@@ -69,25 +69,8 @@ export const incrementTemplatePurchaseCount = async (templateId: string) => {
     }
 };
 
-export const clearTemplates = async () => {
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-        const batch = writeBatch(db);
-        querySnapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        return true;
-    } catch (error) {
-        console.error("Error clearing templates:", error);
-        return false;
-    }
-};
-
 export const seedTemplates = async () => {
     try {
-        console.log("Seeding templates...");
-        await clearTemplates();
         for (const t of COLLECTION_TEMPLATES) {
             const id = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             await setDoc(doc(db, COLLECTION_NAME, id), { ...t, id, purchaseCount: 0 });
