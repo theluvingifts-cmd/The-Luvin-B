@@ -123,6 +123,12 @@ const FontSelector: React.FC<{
         { label: t('studio.uploaded_fonts'), fonts: uploadedFonts.map(f => f.name) }
     ], [uploadedFonts, t]);
 
+    const getFontFamily = (fontName: string) => {
+        if (!fontName) return 'sans-serif';
+        const cleanName = fontName.replace(/[^a-zA-Z0-9\s-]/g, '');
+        return `'${cleanName}', sans-serif`;
+    };
+
     const filteredGroups = useMemo(() => {
         const query = searchTerm.toLowerCase().trim();
         if (!query) return groups;
@@ -181,7 +187,7 @@ const FontSelector: React.FC<{
                                         onMouseEnter={() => onPreview(font)}
                                         onClick={() => { onChange(font); setIsOpen(false); }}
                                     >
-                                        <span style={{ fontFamily: font }}>{font}</span>
+                                        <span style={{ fontFamily: getFontFamily(font) }}>{font}</span>
                                     </div>
                                 ))}
                             </div>
@@ -217,78 +223,102 @@ const TextEditor: React.FC<{
     }
 
     const isLocked = activeText.lockedContent;
+    const { setIsEditingText } = config as any; // We need to set this to prevent global delete key
     
     return (
-        <div className="p-4 border border-gray-200 rounded-lg relative text-left">
+        <div className="p-4 relative text-left animate-fade-in">
             {isLocked && (
                 <div 
-                    className="absolute inset-0 z-20 bg-gray-50/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg cursor-not-allowed"
+                    className="absolute inset-0 z-20 bg-gray-50/40 backdrop-blur-[1px] flex items-center justify-center rounded-xl cursor-not-allowed border-2 border-dashed border-orange-200 m-1"
                     onClick={(e) => e.stopPropagation()} 
                 >
-                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 shadow-sm flex items-center gap-1 select-none">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 5v3h-4V7c0-1.103.897-2 2-2s2 .897 2 2z"/></svg>
-                        🔒 {t('studio.locked_by_admin')}
-                    </span>
+                    <div className="bg-white/90 shadow-lg px-4 py-2 rounded-full flex items-center gap-2 border border-orange-100 transform -rotate-2">
+                        <span className="text-orange-500 text-lg">🔒</span>
+                        <span className="text-orange-800 text-xs font-black uppercase tracking-wider">
+                            {t('studio.locked_by_admin')}
+                        </span>
+                    </div>
                 </div>
             )}
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight text-sm">{t('studio.edit_text')}</h3>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-gray-800 uppercase tracking-tight text-sm flex items-center gap-2">
+                    <span className="w-1.5 h-6 bg-luvin-pink rounded-full"></span>
+                    {t('studio.edit_text')}
+                </h3>
                 <div className="flex gap-2 relative z-30">
-                    <button onClick={onAddText} className="text-xs sm:text-sm font-body border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
+                    <button 
+                        onClick={onAddText} 
+                        className="text-[10px] uppercase font-black border-2 border-gray-100 text-gray-500 px-3 py-1.5 rounded-xl hover:bg-gray-50 hover:border-gray-200 transition-all active:scale-95"
+                    >
                         + {t('studio.add_text')}
                     </button>
-                    <button onClick={deselect} className="text-xs sm:text-sm font-body bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-lg hover:opacity-90 font-bold transition-colors">
+                    <button 
+                        onClick={deselect} 
+                        className="text-[10px] uppercase font-black bg-luvin-pink text-gray-800 px-4 py-1.5 rounded-xl hover:opacity-90 shadow-sm transition-all active:scale-95"
+                    >
                         {t('studio.done')}
                     </button>
                 </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
                 <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('studio.text_content')}</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase mb-1.5 block tracking-widest">{t('studio.text_content')}</label>
                     <textarea
                         value={activeText.content}
                         onChange={e => updateActiveText({ content: e.target.value })}
+                        onFocus={() => setIsEditingText?.(true)}
+                        onBlur={() => setIsEditingText?.(false)}
                         disabled={isLocked}
                         readOnly={isLocked}
                         rows={3}
-                        className={`w-full p-3 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
+                        className={`w-full p-3 border-2 rounded-xl text-sm bg-white transition-all ${isLocked ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed' : 'border-gray-100 focus:border-luvin-pink'} outline-none resize-none font-medium`}
                         placeholder={t('studio.enter_text_placeholder')}
                     />
                 </div>
-                <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('studio.font_family')}</label>
-                    <FontSelector 
-                        value={activeText.font} 
-                        onChange={(font) => updateActiveText({ font })}
-                        onPreview={setPreviewFont}
-                        uploadedFonts={uploadedFonts}
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase mb-1.5 block tracking-widest">{t('studio.font_family')}</label>
+                        <FontSelector 
+                            value={activeText.font} 
+                            onChange={(font) => updateActiveText({ font })}
+                            onPreview={setPreviewFont}
+                            uploadedFonts={uploadedFonts}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase mb-1.5 block tracking-widest">{t('studio.font_size')}</label>
+                        <div className="relative">
+                            <input 
+                                type="number" 
+                                min="8" 
+                                max="100" 
+                                value={activeText.size} 
+                                onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
+                                disabled={isLocked}
+                                readOnly={isLocked}
+                                className={`w-full p-2.5 border-2 rounded-xl text-sm bg-white transition-all ${isLocked ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed' : 'border-gray-100 focus:border-luvin-pink'} outline-none font-bold`}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase">PX</span>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('studio.font_size')}</label>
-                    <input 
-                      type="number" 
-                      min="8" 
-                      max="100" 
-                      value={activeText.size} 
-                      onChange={e => updateActiveText({ size: parseInt(e.target.value)})} 
-                      disabled={isLocked}
-                      readOnly={isLocked}
-                      className={`w-full p-2.5 border rounded-lg text-sm bg-white ${isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'border-gray-300'} focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`}
-                    />
-                </div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-3 pt-2">
                     <button 
                         onClick={() => updateActiveText({background: !activeText.background})} 
                         disabled={isLocked}
-                        className={`text-sm px-3 py-2 rounded-lg flex-1 font-bold ${activeText.background ? 'bg-luvin-pink text-gray-800' : 'bg-gray-200 text-gray-800'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} transition-all`}
+                        className={`text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl flex-1 font-black transition-all ${activeText.background ? 'bg-luvin-pink text-gray-800 shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {activeText.background ? t('studio.remove_blur') : t('studio.add_blur')}
                     </button>
-                    <div className={`flex rounded-lg border border-gray-300 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`flex rounded-xl border-2 border-gray-100 overflow-hidden ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                         {(['left', 'center', 'right'] as const).map(align => (
-                           <button key={align} onClick={() => updateActiveText({ textAlign: align })} className={`px-4 py-2 text-sm font-bold ${(activeText.textAlign || 'center') === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-800'} transition-all`}>
-                             {align.charAt(0).toUpperCase()}
+                           <button 
+                                key={align} 
+                                onClick={() => updateActiveText({ textAlign: align })} 
+                                className={`px-4 py-2 text-xs font-black transition-all ${(activeText.textAlign || 'center') === align ? 'bg-luvin-pink text-gray-800' : 'bg-white text-gray-400 hover:bg-gray-50'}`}
+                                title={align.toUpperCase()}
+                           >
+                             {align === 'left' ? '⫷' : align === 'center' ? '⫸⫷' : '⫸'}
                            </button>
                         ))}
                     </div>
@@ -973,7 +1003,16 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                   </div>
               )}
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                  {selectedText ? (<TextEditor activeText={selectedText} setConfig={setConfig} config={config} selectedTextId={selectedText.id} deselect={() => setSelectedItemId(null)} onAddText={addText} uploadedFonts={uploadedFonts} setPreviewFont={setPreviewFont} />) : (<div className="min-h-[350px]">{renderStepContent()}</div>)}
+                  {selectedText ? (<TextEditor 
+                        activeText={selectedText} 
+                        setConfig={setConfig} 
+                        config={{...config, setIsEditingText} as any} 
+                        selectedTextId={selectedText.id} 
+                        deselect={() => setSelectedItemId(null)} 
+                        onAddText={addText} 
+                        uploadedFonts={uploadedFonts} 
+                        setPreviewFont={setPreviewFont} 
+                      />) : (<div className="min-h-[350px]">{renderStepContent()}</div>)}
               </div>
               {!selectedText && (
                 <>

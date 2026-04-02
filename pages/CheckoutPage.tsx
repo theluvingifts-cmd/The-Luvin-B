@@ -86,7 +86,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setName(initialOrder.customer.name);
           setPhone(initialOrder.customer.phone);
           setEmail(initialOrder.customer.email);
-          setStreet(initialOrder.customer.address); 
+          
+          // If we have individual fields, use them. Otherwise fallback to full address as street.
+          if (initialOrder.customer.province || initialOrder.customer.district || initialOrder.customer.ward) {
+              setStreet(initialOrder.customer.address.split(',')[0].trim());
+              setSelectedProvince(initialOrder.customer.province || '');
+              setSelectedDistrict(initialOrder.customer.district || '');
+              setSelectedWard(initialOrder.customer.ward || '');
+              // Since we're loading from an order, we might need to set isApiError to true 
+              // if the values are names instead of codes, to allow editing.
+              // But for now, let's just set them.
+              setIsApiError(true); 
+          } else {
+              setStreet(initialOrder.customer.address);
+          }
+
           setDeliveryDate(initialOrder.delivery.date);
           setNotes(initialOrder.delivery.notes);
           setDemoContact(initialOrder.customer.demoContact || '');
@@ -125,6 +139,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         .then(data => setDistricts(data.districts))
         .catch(err => {
             console.error("District fetch error:", err);
+            setIsApiError(true);
         });
       setSelectedDistrict('');
       setWards([]);
@@ -143,7 +158,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             return res.json();
         })
         .then(data => setWards(data.wards))
-        .catch(err => console.error("Ward fetch error:", err));
+        .catch(err => {
+            console.error("Ward fetch error:", err);
+            setIsApiError(true);
+        });
       setSelectedWard('');
     } else {
       setWards([]);
@@ -200,7 +218,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   // Warning based on warehouse location (Dong Anh, Ha Noi)
   const isNonHanoiProvince = useMemo(() => {
-      const p = provinces.find(p => p.code === parseInt(selectedProvince));
+      const p = provinces.find(p => String(p.code) === String(selectedProvince));
       return p && p.name !== 'Thanh pho Ha Noi' && p.name !== 'Ha Noi' && p.name !== 'Hà Nội' && p.name !== 'Thành phố Hà Nội';
   }, [selectedProvince, provinces]);
 
@@ -277,14 +295,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
     setIsSubmitting(true);
 
-    const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || (isApiError ? selectedProvince : '');
-    const districtName = districts.find(d => d.code === parseInt(selectedDistrict))?.name || (isApiError ? selectedDistrict : '');
-    const wardName = wards.find(w => w.code === parseInt(selectedWard))?.name || (isApiError ? selectedWard : '');
+    const provinceName = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';
+    const districtName = districts.find(d => String(d.code) === String(selectedDistrict))?.name || selectedDistrict || '';
+    const wardName = wards.find(w => String(w.code) === String(selectedWard))?.name || selectedWard || '';
     
-    let fullAddress = street;
-    if (provinceName && !isApiError) {
-        fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
-    }
+    const fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
 
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
@@ -296,9 +311,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     const finalNotes = autoTags + notes;
 
     try {
-        const provinceVal = provinces.find(p => p.code === parseInt(selectedProvince))?.name || (isApiError ? selectedProvince : '');
-        const districtVal = districts.find(d => d.code === parseInt(selectedDistrict))?.name || (isApiError ? selectedDistrict : '');
-        const wardVal = wards.find(w => w.code === parseInt(selectedWard))?.name || (isApiError ? selectedWard : '');
+        const provinceVal = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';
+        const districtVal = districts.find(d => String(d.code) === String(selectedDistrict))?.name || selectedDistrict || '';
+        const wardVal = wards.find(w => String(w.code) === String(selectedWard))?.name || selectedWard || '';
 
         await onPlaceOrder({
           id: orderId,
@@ -306,7 +321,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             name, 
             phone, 
             email, 
-            address: street, 
+            address: fullAddress, 
             province: provinceVal,
             district: districtVal,
             ward: wardVal,
@@ -413,7 +428,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   
                   <div className="space-y-4">
                      {!isApiError ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <select 
                                 value={selectedProvince} 
                                 onChange={e => setSelectedProvince(e.target.value)} 
@@ -436,7 +451,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             <select 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm" 
                                 disabled={!selectedDistrict}
                                 required={!isApiError}
                             >
@@ -445,7 +460,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             </select>
                         </div>
                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                              <input 
                                 type="text" 
                                 placeholder={t('checkout.province')} 
@@ -467,7 +482,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder={t('checkout.ward')} 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm" 
                                 required 
                             />
                         </div>

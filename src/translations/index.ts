@@ -100,6 +100,8 @@ export const translations: any = {
             include_box: "Hộp quà cao cấp",
             include_card: "Thiệp viết tay",
             templates_count: "{count} mẫu",
+            view_all: "Xem tất cả",
+            search_backgrounds: "Tìm kiếm ảnh nền...",
             processing_image: "Đang xử lý ảnh...",
             change_background: "Thay ảnh nền khác",
             upload_own_background: "Tải ảnh nền của riêng bạn",

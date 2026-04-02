@@ -78,6 +78,9 @@ const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, fram
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
+    const [province, setProvince] = useState('');
+    const [district, setDistrict] = useState('');
+    const [ward, setWard] = useState('');
     const [selectedFrameId, setSelectedFrameId] = useState(frames[0]?.id || 'lg');
     const [qty, setQty] = useState(1);
     const [priceOverride, setPriceOverride] = useState<number | ''>('');
@@ -94,7 +97,7 @@ const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, fram
         const orderId = `#TL${Date.now().toString().slice(-6)}`;
         const orderData = {
             id: orderId,
-            customer: { name, phone, address, email: '' },
+            customer: { name, phone, address, province, district, ward, email: '' },
             delivery: { date: new Date().toISOString().split('T')[0], notes: `[ĐƠN TẠO NHANH] ${notes}` },
             items: [
                 {
@@ -132,7 +135,16 @@ const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, fram
                             <input placeholder="Số điện thoại" className="w-full p-2.5 border rounded-lg text-sm" value={phone} onChange={e => setPhone(e.target.value)} />
                         </div>
                         <div>
-                            <input placeholder="Địa chỉ (Tùy chọn)" className="w-full p-2.5 border rounded-lg text-sm" value={address} onChange={e => setAddress(e.target.value)} />
+                            <input placeholder="Địa chỉ" className="w-full p-2.5 border rounded-lg text-sm" value={address} onChange={e => setAddress(e.target.value)} />
+                        </div>
+                        <div>
+                            <input placeholder="Phường/Xã" className="w-full p-2.5 border rounded-lg text-sm" value={ward} onChange={e => setWard(e.target.value)} />
+                        </div>
+                        <div>
+                            <input placeholder="Quận/Huyện" className="w-full p-2.5 border rounded-lg text-sm" value={district} onChange={e => setDistrict(e.target.value)} />
+                        </div>
+                        <div>
+                            <input placeholder="Tỉnh/Thành phố" className="w-full p-2.5 border rounded-lg text-sm" value={province} onChange={e => setProvince(e.target.value)} />
                         </div>
                     </div>
                     <div>
@@ -411,7 +423,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             <body>
                 <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0964 393 115 - 0345 126 019 - Facebook: The Luvin</p></div>
                 <div class="info-grid">
-                    <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${selectedOrder.customer.address}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p></div>
+                    <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${[selectedOrder.customer.address, selectedOrder.customer.ward, selectedOrder.customer.district, selectedOrder.customer.province].filter(Boolean).join(', ')}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p></div>
                     <div class="box"><span class="box-title">Thông tin đơn hàng</span><p>Mã đơn: <strong>${selectedOrder.id}</strong></p><p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p><p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p><p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}</div>
                 </div>
                 <table class="item-table">
@@ -862,10 +874,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
                                         <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Demo:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.demoContact || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'demoContact')} placeholder="SĐT/Zalo gửi demo..." /></div>
-                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><p className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> {selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Gói quà</span>}</p><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div>
+                                        <div className="flex items-start gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Phường/Xã:</span> <input className="border rounded p-1 w-full" value={editForm.customer.ward || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'ward')} /></div>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Quận/Huyện:</span> <input className="border rounded p-1 w-full" value={editForm.customer.district || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'district')} /></div>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tỉnh/TP:</span> <input className="border rounded p-1 w-full" value={editForm.customer.province || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'province')} /></div>
+                                        <div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><p className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> {selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Gói quà</span>}</p><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
                                         <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
                                         {selectedOrder.customer.demoContact && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Demo:</span><span className="font-bold text-luvin-pink">{selectedOrder.customer.demoContact}</span></p>)}
-                                        {selectedOrder.customer.socialLink && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Liên hệ:</span><a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">Mở liên kết ↗</a></p>)}<p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{selectedOrder.customer.address}</span></p><p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p></>)}</div></div>
+                                        {selectedOrder.customer.socialLink && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Liên hệ:</span><a href={selectedOrder.customer.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">Mở liên kết ↗</a></p>)}
+                                        <p className="flex items-start"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Địa chỉ:</span> <span>{[selectedOrder.customer.address, selectedOrder.customer.ward, selectedOrder.customer.district, selectedOrder.customer.province].filter(Boolean).join(', ')}</span></p>
+                                        <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p></>)}</div></div>
                                 
                                 <div className="flex flex-col">
                                     <BillingBreakdown />

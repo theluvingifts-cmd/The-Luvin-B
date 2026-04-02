@@ -102,9 +102,28 @@ export const adjustStock = async (usageMap: Record<string, number>) => {
 };
 
 // 6. HÀM ĐẶC BIỆT: Đẩy dữ liệu mẫu từ constants.tsx lên Firebase (Chạy 1 lần đầu)
+export const clearDatabase = async () => {
+    try {
+        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const batch = writeBatch(db);
+        querySnapshot.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Lỗi xóa database:", error);
+        return false;
+    }
+};
+
 export const seedDatabase = async () => {
     try {
         console.log("Bắt đầu đồng bộ dữ liệu mẫu...");
+        
+        // Xóa dữ liệu cũ trước khi seed để đảm bảo sạch sẽ
+        await clearDatabase();
+        
         const allParts = Object.values(LEGO_PARTS).flat();
         
         let count = 0;

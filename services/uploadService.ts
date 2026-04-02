@@ -5,15 +5,51 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { dataURLToBlob } from '../utils/helpers';
 
 /**
+ * Xác định thư mục lưu trữ dựa trên loại file hoặc tên file
+ */
+const getStorageFolder = (file: File | string): string => {
+    let fileName = '';
+    let mimeType = '';
+
+    if (typeof file !== 'string') {
+        fileName = file.name.toLowerCase();
+        mimeType = file.type.toLowerCase();
+    } else if (file.startsWith('data:')) {
+        mimeType = file.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || '';
+    }
+
+    // 1. Nhóm Assets: Font chữ, Logo, Ảnh nền hệ thống
+    const assetExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+    const assetKeywords = ['logo', 'bg', 'background', 'banner', 'icon', 'system', 'asset', 'font'];
+    
+    const isAsset = assetExtensions.some(ext => fileName.endsWith(ext)) || 
+                    assetKeywords.some(key => fileName.includes(key)) ||
+                    mimeType.includes('font');
+
+    if (isAsset) return 'uploads/assets';
+
+    // 2. Nhóm Temp: Bill chuyển khoản, Preview thiết kế, Ảnh tạm
+    const tempKeywords = ['bill', 'preview', 'design', 'receipt', 'payment', 'chuyenkhoan', 'thietke', 'temp'];
+    if (tempKeywords.some(key => fileName.includes(key))) {
+        return 'uploads/temp';
+    }
+
+    // Mặc định cho các file khác (đưa vào temp để dễ cài đặt Lifecycle dọn dẹp)
+    return 'uploads/temp';
+};
+
+/**
  * Uploads a file or base64 string directly to Firebase Storage.
  * @param file File object or Base64 string
+ * @param customFolder Optional folder override (e.g., 'avatars')
  * @returns Public Download URL or null if failed
  */
-// Renamed from uploadToFirebase to uploadToCloudinary to fix missing export errors across the project
-export const uploadToCloudinary = async (file: File | string): Promise<string | null> => {
+// Giữ tên uploadToCloudinary để tránh lỗi export toàn hệ thống, thực tế là upload lên Firebase Storage
+export const uploadToCloudinary = async (file: File | string, customFolder?: string): Promise<string | null> => {
     try {
         let blob: Blob | null;
-        let fileName = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const folder = customFolder ? `uploads/${customFolder}` : getStorageFolder(file);
+        let fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
         if (typeof file === 'string') {
             // Handle Base64 String
@@ -51,7 +87,7 @@ export const uploadToCloudinary = async (file: File | string): Promise<string | 
         // Get the permanent download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        console.log("Upload success to Firebase Storage:", downloadURL);
+        console.log(`Upload success to Firebase Storage (${folder}):`, downloadURL);
         return downloadURL;
     } catch (error: any) {
         console.error("Firebase Storage Upload Error:", error);

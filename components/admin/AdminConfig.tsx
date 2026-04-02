@@ -306,7 +306,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
         setUploadingField(field);
         try {
-            const url = await uploadToCloudinary(file);
+            const url = await uploadToCloudinary(file, 'assets');
             if (url) {
                 const updates = { [field]: url };
                 await updateStoreConfig(updates);
@@ -340,7 +340,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             setIsUploadingFont(true);
             try {
                 const file = e.target.files[0];
-                const url = await uploadToCloudinary(file);
+                const url = await uploadToCloudinary(file, 'assets');
                 
                 if (url) {
                     const newFont: CustomFont = {
