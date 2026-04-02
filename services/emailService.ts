@@ -1,5 +1,6 @@
 // services/emailService.ts
 import type { Order } from '../types';
+import { formatFullAddress } from '../utils/helpers';
 
 export const sendOrderEmail = async (order: Order) => {
     try {
@@ -18,7 +19,7 @@ export const sendOrderEmail = async (order: Order) => {
                 to_email: order.customer.email,
                 order_id: order.id,
                 total_price: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalPrice),
-                address: order.customer.address,
+                address: formatFullAddress(order.customer),
                 items_list: itemsSummary,
             }),
         });

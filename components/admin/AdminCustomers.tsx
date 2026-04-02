@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Order, CustomerStats } from '../../types';
 import { formatCurrency } from '../../utils/pricing';
+import { formatFullAddress } from '../../utils/helpers';
 
 interface AdminCustomersProps {
     orders: Order[];
@@ -147,14 +148,7 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                                     </div>
                                     <div className="col-span-2 border-t pt-2 mt-1">
                                         <span className="text-gray-500 block text-xs">Địa chỉ gần nhất</span>
-                                        <span className="text-gray-800">
-                                            {[
-                                                selectedCustomer.address,
-                                                selectedCustomer.ward,
-                                                selectedCustomer.district,
-                                                selectedCustomer.province
-                                            ].filter(Boolean).join(', ')}
-                                        </span>
+                                        <span className="text-gray-800">{formatFullAddress(selectedCustomer)}</span>
                                     </div>
                                 </div>
                             </div>

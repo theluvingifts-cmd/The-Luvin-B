@@ -5,6 +5,7 @@ import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderSe
 import { uploadToCloudinary } from '../services/uploadService';
 import { MOCK_ORDERS, FRAME_OPTIONS } from '../constants';
 import { formatCurrency } from '../utils/pricing';
+import { formatFullAddress } from '../utils/helpers';
 import { getAllFrames } from '../services/frameService';
 import { useLanguage } from '../src/contexts/LanguageContext';
 
@@ -367,7 +368,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                             <div className="space-y-2 text-sm text-gray-700">
                                                 <p className="font-bold text-base text-gray-900">{foundOrder.customer.name}</p>
                                                 <p className="flex items-center gap-2 text-gray-600"><span className="text-gray-400 w-4 text-center">📞</span> {foundOrder.customer.phone}</p>
-                                                <p className="flex items-start gap-2 text-gray-600"><span className="text-gray-400 w-4 text-center mt-0.5">📍</span> {[foundOrder.customer.address, foundOrder.customer.ward, foundOrder.customer.district, foundOrder.customer.province].filter(Boolean).join(', ')}</p>
+                                                <p className="flex items-start gap-2 text-gray-600"><span className="text-gray-400 w-4 text-center mt-0.5">📍</span> {formatFullAddress(foundOrder.customer)}</p>
                                             </div>
                                         </div>
                                         

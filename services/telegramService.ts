@@ -1,6 +1,7 @@
 
 import { Order } from '../types';
 import { StoreConfig } from './configService';
+import { formatFullAddress } from '../utils/helpers';
 
 // Helper to send message/photo via API
 const sendTelegramMessage = async (token: string, chatId: string, text: string, photoUrl?: string) => {
@@ -60,7 +61,7 @@ export const sendOrderTelegram = async (order: Order, config: StoreConfig) => {
 <b>🗓️ Ngày nhận:</b> ${new Date(order.delivery.date).toLocaleDateString('vi-VN')}
 <b>👤 Khách hàng:</b> ${order.customer.name}
 <b>📞 SĐT:</b> <a href="tel:${order.customer.phone}">${order.customer.phone}</a>
-<b>📍 Địa chỉ:</b> ${order.customer.address}
+<b>📍 Địa chỉ:</b> ${formatFullAddress(order.customer)}
 <b>📝 Note:</b> ${order.delivery.notes || 'Không'}
 
 <b>🛒 Chi tiết sản phẩm:</b>
