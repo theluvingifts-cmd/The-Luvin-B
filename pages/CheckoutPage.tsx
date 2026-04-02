@@ -428,7 +428,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   
                   <div className="space-y-4">
                      {!isApiError ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <select 
                                 value={selectedProvince} 
                                 onChange={e => setSelectedProvince(e.target.value)} 
@@ -451,7 +451,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             <select 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm" 
                                 disabled={!selectedDistrict}
                                 required={!isApiError}
                             >
@@ -460,7 +460,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             </select>
                         </div>
                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                              <input 
                                 type="text" 
                                 placeholder={t('checkout.province')} 
@@ -482,7 +482,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder={t('checkout.ward')} 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm" 
                                 required 
                             />
                         </div>

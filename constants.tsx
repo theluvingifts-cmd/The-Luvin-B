@@ -31,10 +31,20 @@ export const LEGO_PARTS: {
   pet: LegoPart[];
   set: LegoPart[]; // Added set category
 } = {
-  hair: [],
-  face: [],
-  shirt: [],
-  pants: [],
+  hair: [
+    { id: 'hair-1', name: 'Tóc Nam 1', type: 'hair', price: 20000, imageUrl: 'https://placehold.co/200x200?text=Hair+1', stock: 100, widthCm: 0, heightCm: 0 },
+    { id: 'hair-2', name: 'Tóc Nữ 1', type: 'hair', price: 20000, imageUrl: 'https://placehold.co/200x200?text=Hair+2', stock: 100, widthCm: 0, heightCm: 0 },
+  ],
+  face: [
+    { id: 'face-1', name: 'Mặt Cười', type: 'face', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Face+1', stock: 100, widthCm: 0, heightCm: 0 },
+    { id: 'face-2', name: 'Mặt Ngầu', type: 'face', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Face+2', stock: 100, widthCm: 0, heightCm: 0 },
+  ],
+  shirt: [
+    { id: 'shirt-1', name: 'Áo Trơn', type: 'shirt', price: 30000, imageUrl: 'https://placehold.co/200x200?text=Shirt+1', colors: defaultShirtColors, stock: 100, widthCm: 0, heightCm: 0 },
+  ],
+  pants: [
+    { id: 'pants-1', name: 'Quần Trơn', type: 'pants', price: 20000, imageUrl: 'https://placehold.co/200x200?text=Pants+1', colors: defaultPantsColors, stock: 100, widthCm: 0, heightCm: 0 },
+  ],
   hat: [],
   accessory: [],
   pet: [],
@@ -46,9 +56,19 @@ export const LEGO_PARTS: {
 // BACKGROUNDS (Rỗng - Load từ DB)
 // ===================================================================================
 
-export const PRESET_BACKGROUNDS_SQUARE: { name: string; url: string; category: string; }[] = [];
+export const PRESET_BACKGROUNDS_SQUARE: { name: string; url: string; category: string; }[] = [
+  { name: 'Trắng tinh khôi', url: '#ffffff', category: 'Basic' },
+  { name: 'Xám thanh lịch', url: '#f3f4f6', category: 'Basic' },
+  { name: 'Hồng pastel', url: '#fce7f3', category: 'Basic' },
+  { name: 'Xanh mint', url: '#ecfdf5', category: 'Basic' },
+];
 
-export const PRESET_BACKGROUNDS_RECTANGLE: { name: string; url: string; category: string; }[] = [];
+export const PRESET_BACKGROUNDS_RECTANGLE: { name: string; url: string; category: string; }[] = [
+  { name: 'Trắng tinh khôi', url: '#ffffff', category: 'Basic' },
+  { name: 'Xám thanh lịch', url: '#f3f4f6', category: 'Basic' },
+  { name: 'Hồng pastel', url: '#fce7f3', category: 'Basic' },
+  { name: 'Xanh mint', url: '#ecfdf5', category: 'Basic' },
+];
 
 export const INITIAL_FRAME_CONFIG: FrameConfig = {
   frameId: 'lg',
@@ -64,9 +84,30 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
  * COLLECTION_TEMPLATES is used as a fallback when no templates are fetched from the database.
  * Explicitly type it as CollectionTemplate[] to ensure the category property is recognized.
  */
-export const COLLECTION_TEMPLATES: CollectionTemplate[] = [];
+export const COLLECTION_TEMPLATES: CollectionTemplate[] = [
+  {
+    id: 'template-1',
+    name: 'Mẫu Kỷ Niệm',
+    category: 'Love',
+    imageUrl: 'https://placehold.co/400x600?text=Template+1',
+    config: INITIAL_FRAME_CONFIG
+  }
+];
 
-export const FEEDBACK_ITEMS = [];
+export const FEEDBACK_ITEMS = [
+  {
+    id: 'fb-1',
+    name: 'Nguyễn Văn A',
+    text: 'Sản phẩm rất đẹp, đóng gói cẩn thận. Sẽ ủng hộ shop tiếp!',
+    imageUrl: 'https://placehold.co/100x100?text=User+1'
+  },
+  {
+    id: 'fb-2',
+    name: 'Trần Thị B',
+    text: 'Giao hàng nhanh, nhân viên tư vấn nhiệt tình. 5 sao!',
+    imageUrl: 'https://placehold.co/100x100?text=User+2'
+  }
+];
 
 export const MOCK_ORDERS: Record<string, Order> = {};
 
