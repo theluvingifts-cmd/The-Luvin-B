@@ -275,27 +275,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         return;
     }
 
-    if (!selectedProvince || !selectedDistrict || !selectedWard) {
-        setSubmissionError(t('checkout.address_error'));
-        return;
-    }
-
     setIsSubmitting(true);
 
     const provinceName = provinces.find(p => p.code === parseInt(selectedProvince))?.name || (isApiError ? selectedProvince : '');
     const districtName = districts.find(d => d.code === parseInt(selectedDistrict))?.name || (isApiError ? selectedDistrict : '');
     const wardName = wards.find(w => w.code === parseInt(selectedWard))?.name || (isApiError ? selectedWard : '');
     
-    if (!provinceName || !districtName || !wardName) {
-        setSubmissionError(t('checkout.address_error'));
-        setIsSubmitting(false);
-        return;
-    }
-    
-    let fullAddress = street;
-    if (provinceName && !isApiError) {
-        fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
-    }
+    let fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
+    if (!fullAddress) fullAddress = street;
 
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
@@ -317,7 +304,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             name, 
             phone, 
             email, 
-            address: street, 
+            address: fullAddress, 
             province: provinceVal,
             district: districtVal,
             ward: wardVal,

@@ -147,7 +147,15 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({ orders }) => {
                                     </div>
                                     <div className="col-span-2 border-t pt-2 mt-1">
                                         <span className="text-gray-500 block text-xs">Địa chỉ gần nhất</span>
-                                        <span className="text-gray-800">{[selectedCustomer.address, selectedCustomer.ward, selectedCustomer.district, selectedCustomer.province].filter(Boolean).join(', ')}</span>
+                                        <span className="text-gray-800">
+                                            {selectedCustomer.address}
+                                            {selectedCustomer.province && !selectedCustomer.address.toLowerCase().includes(selectedCustomer.province.toLowerCase()) && (
+                                                <>
+                                                    {', '}
+                                                    {[selectedCustomer.ward, selectedCustomer.district, selectedCustomer.province].filter(Boolean).join(', ')}
+                                                </>
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

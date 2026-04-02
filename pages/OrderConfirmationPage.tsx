@@ -217,7 +217,14 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                             
                             <div className="border-t pt-4 text-sm space-y-1">
                                 <p><span className="font-semibold">Giao đến:</span> {order.customer.name}</p>
-                                <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}</p>
+                                <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}
+                                    {order.customer.province && !order.customer.address.toLowerCase().includes(order.customer.province.toLowerCase()) && (
+                                        <>
+                                            {', '}
+                                            {[order.customer.ward, order.customer.district, order.customer.province].filter(Boolean).join(', ')}
+                                        </>
+                                    )}
+                                </p>
                                 <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
                                 {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">Liên hệ gửi demo:</span> {order.customer.demoContact}</p>}
                                 <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
