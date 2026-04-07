@@ -376,7 +376,9 @@ export const Step3Characters: React.FC<{
         }));
     };
     
-    const partTypes: { key: 'hat' | 'shirt' | 'pants' | 'set', label: string }[] = [
+    const partTypes: { key: 'hair' | 'face' | 'shirt' | 'pants' | 'set' | 'hat', label: string }[] = [
+        { key: 'hair', label: t('studio.hair') },
+        { key: 'face', label: t('studio.face') },
         { key: 'shirt', label: t('studio.shirt') },
         { key: 'pants', label: t('studio.pants') },
         { key: 'set', label: t('studio.set') },
