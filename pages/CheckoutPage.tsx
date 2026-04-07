@@ -609,7 +609,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
                     <div className="bg-green-100 text-green-800 p-3 rounded-lg text-sm font-bold flex items-center gap-2">
                         <span>🎉</span>
-                        <span>{t('checkout.free_shipping_congrats')}</span>
+                        <span>{t('checkout.freeship_congrats')}</span>
                     </div>
                 ) : (
                     <div>

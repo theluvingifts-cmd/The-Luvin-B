@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FeedbackItem, ThemeConfig, CustomFont, StaffMember } from '../../types';
 import { StoreConfig, updateStoreConfig, DEFAULT_THEME } from '../../services/configService';
 import { addFeedback, updateFeedback, deleteFeedback } from '../../services/feedbackService';
-import { uploadToCloudinary } from '../../services/uploadService';
+import { uploadFile } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { FeedbackForm } from './forms/FeedbackForm';
 import * as firebaseApp from 'firebase/app';
@@ -306,7 +306,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleConfigUpload = async (file: File, field: keyof StoreConfig) => {
         setUploadingField(field);
         try {
-            const url = await uploadToCloudinary(file, 'assets');
+            const url = await uploadFile(file, 'assets');
             if (url) {
                 const updates = { [field]: url };
                 await updateStoreConfig(updates);
@@ -340,7 +340,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             setIsUploadingFont(true);
             try {
                 const file = e.target.files[0];
-                const url = await uploadToCloudinary(file, 'assets');
+                const url = await uploadFile(file, 'assets');
                 
                 if (url) {
                     const newFont: CustomFont = {

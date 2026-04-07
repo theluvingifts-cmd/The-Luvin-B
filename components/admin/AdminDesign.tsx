@@ -7,17 +7,17 @@ import { useLanguage } from '../../src/contexts/LanguageContext';
 import { getAllFrames } from '../../services/frameService';
 import { addBackground, updateBackground, getAllBackgrounds } from '../../services/backgroundService'; 
 import { addTemplate, updateTemplate, getAllTemplates } from '../../services/templateService';
-import { uploadToCloudinary } from '../../services/uploadService';
+import { uploadFile } from '../../services/uploadService';
 import html2canvas from 'html2canvas';
 import { getStoreConfig } from '../../services/configService';
 import { getAllParts } from '../../services/productService';
 
 const MUSEUM_FRAMES = [
-    { id: 'gold_rect', nameKey: 'studio.museum.gold_rect', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_rect.png' },
-    { id: 'gold_oval', nameKey: 'studio.museum.gold_oval', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_oval.png' },
-    { id: 'gold_heart', nameKey: 'studio.museum.gold_heart', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_heart.png' },
-    { id: 'gold_square', nameKey: 'studio.museum.gold_square', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/gold_square.png' },
-    { id: 'spotlight', nameKey: 'studio.museum.spotlight', url: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1710515000/museum/spotlight.png' },
+    { id: 'gold_rect', nameKey: 'studio.museum.gold_rect', url: '' },
+    { id: 'gold_oval', nameKey: 'studio.museum.gold_oval', url: '' },
+    { id: 'gold_heart', nameKey: 'studio.museum.gold_heart', url: '' },
+    { id: 'gold_square', nameKey: 'studio.museum.gold_square', url: '' },
+    { id: 'spotlight', nameKey: 'studio.museum.spotlight', url: '' },
 ];
 
 const VELVET_COLORS = [
@@ -529,7 +529,7 @@ export const AdminDesign: React.FC = () => {
         if (e.target.files && e.target.files[0]) {
             setIsUploading(true);
             try {
-                const url = await uploadToCloudinary(e.target.files[0]);
+                const url = await uploadFile(e.target.files[0]);
                 if (url) {
                     handleUpdateTestForm(fieldId, url);
                 }
@@ -544,7 +544,7 @@ export const AdminDesign: React.FC = () => {
     const handleUploadSticker = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setIsUploading(true);
-            const url = await uploadToCloudinary(e.target.files[0]);
+            const url = await uploadFile(e.target.files[0]);
             if (url) {
                 const id = Date.now();
                 setConfig(prev => ({
@@ -807,7 +807,7 @@ export const AdminDesign: React.FC = () => {
                                         <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Thư viện ảnh nền</label>
                                         <input type="file" className="text-xs" onChange={async (e) => {
                                             if (e.target.files?.[0]) {
-                                                const url = await uploadToCloudinary(e.target.files[0]);
+                                                const url = await uploadFile(e.target.files[0]);
                                                 if (url) setConfig(prev => ({...prev, background: { type: 'image', value: url }}));
                                             }
                                         }} />
@@ -1110,7 +1110,7 @@ export const AdminDesign: React.FC = () => {
                                             const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
                                             if (blob) {
                                                 const file = new File([blob], `preview_${Date.now()}.jpg`, { type: 'image/jpeg' });
-                                                const uploadedUrl = await uploadToCloudinary(file);
+                                                const uploadedUrl = await uploadFile(file);
                                                 if (uploadedUrl) previewUrl = uploadedUrl;
                                             }
                                         } catch (captureErr) {

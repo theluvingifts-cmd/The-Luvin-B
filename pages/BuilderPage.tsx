@@ -7,7 +7,7 @@ import {
     INITIAL_FRAME_CONFIG,
 } from '../constants';
 import FramePreview from '../components/FramePreview';
-import { uploadToCloudinary } from '../services/uploadService';
+import { uploadFile } from '../services/uploadService';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getRecentOrders } from '../services/orderService';
@@ -853,7 +853,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             return;
         }
         const imageFile = new File([imageBlob], "design_preview.png", { type: "image/png" });
-        const cloudUrl = await uploadToCloudinary(imageFile);
+        const cloudUrl = await uploadFile(imageFile);
         if (!cloudUrl) {
              showToast(t('studio.error_saving_image'), 'error');
              setIsSaving(false);

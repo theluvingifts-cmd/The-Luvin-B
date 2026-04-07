@@ -44,8 +44,7 @@ const getStorageFolder = (file: File | string): string => {
  * @param customFolder Optional folder override (e.g., 'avatars')
  * @returns Public Download URL or null if failed
  */
-// Giữ tên uploadToCloudinary để tránh lỗi export toàn hệ thống, thực tế là upload lên Firebase Storage
-export const uploadToCloudinary = async (file: File | string, customFolder?: string): Promise<string | null> => {
+export const uploadFile = async (file: File | string, customFolder?: string): Promise<string | null> => {
     try {
         let blob: Blob | null;
         const folder = customFolder ? `uploads/${customFolder}` : getStorageFolder(file);

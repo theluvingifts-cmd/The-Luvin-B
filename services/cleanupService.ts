@@ -91,7 +91,7 @@ const extractUrls = (obj: any, urls: Set<string>) => {
     if (!obj) return;
 
     if (typeof obj === 'string') {
-        if (obj.startsWith('http') && (obj.includes('firebasestorage.googleapis.com') || obj.includes('cloudinary'))) {
+        if (obj.startsWith('http') && obj.includes('firebasestorage.googleapis.com')) {
             urls.add(obj);
         }
         return;

@@ -48,21 +48,7 @@ export const LEGO_PARTS: {
   hat: [],
   accessory: [],
   pet: [],
-  set: [
-    { id: 'set-1', name: 'Vest Đen', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Vest+Den', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-2', name: 'Váy cưới trắng', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Vay+Cuoi', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-3', name: 'Cao bồi nam', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Cao+Boi+Nam', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-4', name: 'Cao bồi nữ', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Cao+Boi+Nu', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-5', name: 'Bác sĩ 1', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Bac+Si+1', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-6', name: 'Bác sĩ 2', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Bac+Si+2', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-7', name: 'Argentina', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Argentina', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-8', name: 'MU', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=MU', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-9', name: 'PSG', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=PSG', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-10', name: 'MC', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=MC', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-11', name: 'Brazil', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Brazil', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-12', name: 'Stephen Curry', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Curry', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'set-13', name: 'LeBron James', type: 'set', price: 10000, imageUrl: 'https://placehold.co/200x200?text=LeBron', stock: 100, widthCm: 0, heightCm: 0 },
-  ],
+  set: [], 
 };
 
 
@@ -132,5 +118,5 @@ export const GENERAL_ASSETS = {
   inspire: '',
   giftbox: 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1766048421302_063vyq_b1a21245_e6e4_4087_bef7_890329278810.jpg?alt=media&token=e7da2f4e-00d3-4f49-b60f-11b21ae161c4', // Icon hộp quà nhẹ
   vietqr: '',
-  watermark: 'https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png' // Thay link ảnh watermark của bạn vào đây
+  watermark: '' // Thay link ảnh watermark của bạn vào đây
 }

@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Order, Page } from '../types';
 import { formatCurrency } from '../utils/pricing';
 import { ZoomIcon } from '../components/ZoomIcon';
-import { uploadToCloudinary } from '../services/uploadService';
+import { uploadFile } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
-import { dataURLToBlob, formatFullAddress } from '../utils/helpers';
+import { dataURLToBlob } from '../utils/helpers';
 
 declare var confetti: any;
 
@@ -67,7 +67,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
             const file = e.target.files[0];
             setIsUploading(true);
             try {
-                const url = await uploadToCloudinary(file);
+                const url = await uploadFile(file, 'temp');
                 if (url) {
                     const success = await updateOrder(order.id, { 
                         paymentProofUrl: url,
@@ -217,7 +217,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                             
                             <div className="border-t pt-4 text-sm space-y-1">
                                 <p><span className="font-semibold">Giao đến:</span> {order.customer.name}</p>
-                                <p><span className="font-semibold">Địa chỉ:</span> {formatFullAddress(order.customer)}</p>
+                                <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}</p>
                                 <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
                                 {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">Liên hệ gửi demo:</span> {order.customer.demoContact}</p>}
                                 <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
