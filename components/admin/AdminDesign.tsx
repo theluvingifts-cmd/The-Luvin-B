@@ -1118,7 +1118,7 @@ export const AdminDesign: React.FC = () => {
                                             // Fallback to background image if capture fails
                                         }
                                     } else if (!previewUrl.startsWith('http')) {
-                                        previewUrl = "https://res.cloudinary.com/dbdqd93km/image/upload/v1763705477/ce3r3dzdpp2gn5nv3jdx.png";
+                                        previewUrl = "";
                                     }
 
                                     if (saveType === 'background') {
