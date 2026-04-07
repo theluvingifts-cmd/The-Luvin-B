@@ -8,6 +8,21 @@ import type { FrameOption } from '../types';
 
 const COLLECTION_NAME = "frames";
 
+export const reorderFramesList = async (items: FrameOption[]) => {
+    try {
+        const batch = writeBatch(db);
+        items.forEach((item, index) => {
+            const ref = doc(db, COLLECTION_NAME, item.id);
+            batch.update(ref, { order: index });
+        });
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Error reordering frames:", error);
+        return false;
+    }
+};
+
 export const getAllFrames = async (): Promise<FrameOption[]> => {
     try {
         const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
@@ -61,25 +76,9 @@ export const deleteFrame = async (id: string) => {
     }
 };
 
-export const clearFrames = async () => {
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-        const batch = writeBatch(db);
-        querySnapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        return true;
-    } catch (error) {
-        console.error("Error clearing frames:", error);
-        return false;
-    }
-};
-
 export const seedFrames = async () => {
     try {
         console.log("Seeding frames...");
-        await clearFrames();
         let count = 0;
         for (const f of FRAME_OPTIONS) {
             await setDoc(doc(db, COLLECTION_NAME, f.id), { ...f, order: count });

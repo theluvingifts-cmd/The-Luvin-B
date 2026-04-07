@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { LegoPart, FrameOption, PresetBackground, CollectionTemplate } from '../../types';
 import { addPart, updatePart, deletePart, seedDatabase, reorderParts } from '../../services/productService';
-import { addFrame, updateFrame, deleteFrame, seedFrames, reorderFrames } from '../../services/frameService';
+import { addFrame, updateFrame, deleteFrame, seedFrames, reorderFramesList } from '../../services/frameService';
 import { addBackground, updateBackground, deleteBackground, seedBackgrounds, reorderBackgrounds } from '../../services/backgroundService';
 import { addTemplate, updateTemplate, deleteTemplate, seedTemplates, reorderTemplates } from '../../services/templateService';
 import { ProductForm } from './forms/ProductForm';
@@ -209,7 +209,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         const [removed] = items.splice(draggedIndex, 1);
         items.splice(targetIndex, 0, removed);
 
-        reorderFrames(items).then(() => onRefreshFrames());
+        reorderFramesList(items).then(() => onRefreshFrames());
     };
 
     const handleDropTemplate = (e: React.DragEvent, targetId: string) => {
