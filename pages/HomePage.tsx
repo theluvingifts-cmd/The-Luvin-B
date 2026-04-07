@@ -1,9 +1,11 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Page, FeedbackItem, CollectionTemplate } from '../types';
 import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
 import { StoreConfig, getCachedConfig } from '../services/configService';
 import { formatCurrency } from '../utils/pricing';
+import { slugify } from '../utils/helpers';
 import { getTotalOrderCount } from '../services/orderService';
 import { useLanguage } from '../src/contexts/LanguageContext';
 
@@ -36,6 +38,7 @@ const TextSkeleton: React.FC<{ className: string }> = ({ className }) => (
 
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConfig, feedbacks, templates }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   // 1. Initialize from Cache immediately for instant render
   const [localConfig, setLocalConfig] = useState<StoreConfig | null>(() => getCachedConfig());
 
@@ -223,7 +226,14 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                   {displayTemplates.map((item, index) => (
-                      <div key={item.id || index} className="group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 cursor-pointer" onClick={() => navigateTo('collection')}>
+                      <div 
+                        key={item.id || index} 
+                        className="group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 cursor-pointer" 
+                        onClick={() => {
+                            const categorySlug = slugify(item.category || 'all');
+                            navigate(`/collection/${categorySlug}/${item.id}`);
+                        }}
+                      >
                           <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
                               <FadeInImage src={item.imageUrl} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                               <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[8px] font-black text-primary uppercase shadow-sm">✨ {t('common.customize')}</div>

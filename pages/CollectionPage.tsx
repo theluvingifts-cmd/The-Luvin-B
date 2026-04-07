@@ -1,8 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig, OutfitColor } from '../types';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../utils/pricing';
+import { slugify } from '../utils/helpers';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
 
@@ -45,6 +47,8 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
 
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates, onZoomImage, allParts, frames }) => {
     const { t } = useLanguage();
+    const { category: urlCategory, templateId: urlTemplateId } = useParams();
+    const navigate = useNavigate();
     const displayTemplates: CollectionTemplate[] = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     
     const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +58,22 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [orderNote, setOrderNote] = useState('');
     const [charmSearch, setCharmSearch] = useState('');
     const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
+
+    // Handle initial template selection from URL
+    useEffect(() => {
+        if (urlTemplateId && displayTemplates.length > 0) {
+            const template = displayTemplates.find(t => t.id === urlTemplateId);
+            if (template) {
+                setSelectedTemplate(template);
+                setCustomConfig({ ...template.config, templateId: template.id });
+                
+                // Also set active category if it matches
+                if (template.category) {
+                    setActiveCategory(template.category);
+                }
+            }
+        }
+    }, [urlTemplateId, displayTemplates]);
 
     const partsByType = useMemo(() => {
         const result: Record<string, LegoPart[]> = {
@@ -84,9 +104,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     }, [displayTemplates, searchTerm, activeCategory, t]);
 
     const handleSelectTemplate = (template: CollectionTemplate) => {
+        const categorySlug = slugify(template.category || 'all');
+        navigate(`/collection/${categorySlug}/${template.id}`, { replace: true });
         setSelectedTemplate(template);
         setCustomConfig({ ...template.config, templateId: template.id });
         setOrderNote('');
+    };
+
+    const handleCloseModal = () => {
+        setSelectedTemplate(null);
+        setEditingCharacterId(null);
+        navigate('/collection', { replace: true });
     };
 
     const updateCharacterQuantity = (charId: number, delta: number) => {
@@ -412,7 +440,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
       <div className="min-h-screen bg-[#f1f3f5] pb-20 font-body text-site-text relative">
         {/* Quick Customize Drawer */}
         {selectedTemplate && customConfig && (
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" onClick={() => setSelectedTemplate(null)}>
+            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
                 <div 
                     className="bg-white w-full max-w-2xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col max-h-[95vh] sm:max-h-[90vh]"
                     onClick={e => e.stopPropagation()}
@@ -423,7 +451,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('collection.quick_customize_title')}</p>
                         </div>
-                        <button onClick={() => setSelectedTemplate(null)} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
+                        <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>

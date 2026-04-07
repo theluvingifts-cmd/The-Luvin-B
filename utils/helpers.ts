@@ -93,22 +93,17 @@ export const dataURLToBlob = (dataURL: string): Blob | null => {
 };
 
 /**
- * Formats a full address from street, ward, district, and province
+ * Slugifies a string for URL usage
  */
-export const formatFullAddress = (customer: { 
-    address: string; 
-    ward?: string; 
-    district?: string; 
-    province?: string; 
-}) => {
-    if (!customer) return '';
-    
-    const parts = [
-        customer.address,
-        customer.ward,
-        customer.district,
-        customer.province
-    ].filter(part => part && part.trim() !== '');
-    
-    return parts.join(', ');
+export const slugify = (text: string) => {
+    return text
+        .toString()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]+/g, '')
+        .replace(/--+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 };
