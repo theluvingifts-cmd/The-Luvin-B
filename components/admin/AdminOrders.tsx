@@ -564,7 +564,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
     const handleAddCharacter = (itemIndex: number) => {
         if (!editForm) return;
-        const newChar: LegoCharacterConfig = { id: Date.now(), x: 50, y: 50, rotation: 0, scale: 1 };
+        const newChar: LegoCharacterConfig = { 
+            id: Date.now(), 
+            x: 50, 
+            y: 50, 
+            rotation: 0, 
+            scale: 1,
+            hair: allKnownParts['hair-1'] || null,
+            face: allKnownParts['face-1'] || null
+        };
         setEditForm(prev => {
             if (!prev) return null;
             let newOrder = { ...prev };
@@ -787,7 +795,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-l-4 ${selectedOrder?.id === order.id ? 'bg-gray-50' : 'bg-white'} ${order.addGiftBox ? 'border-pink-300' : 'border-transparent'}`}
                             >
                                 <div className="flex justify-between items-start mb-1">
-                                    <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id} {order.paymentProofUrl && order.status === 'Chờ thanh toán' && <span className="ml-2 text-green-600 font-bold text-xs">📸</span>}</span>
+                                    <div className="flex flex-col gap-1">
+                                        <span className={`font-mono font-medium ${order.isUrgent ? 'text-red-600' : 'text-gray-900'}`}>{order.id} {order.paymentProofUrl && order.status === 'Chờ thanh toán' && <span className="ml-2 text-green-600 font-bold text-xs">📸</span>}</span>
+                                        {order.items.some(item => item.templateId) ? (
+                                            <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold border border-blue-100 w-fit">🛍️ BỘ SƯU TẬP</span>
+                                        ) : (
+                                            <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold border border-purple-100 w-fit">🎨 TỰ THIẾT KẾ</span>
+                                        )}
+                                    </div>
                                     <div className="flex flex-col items-end gap-1">
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'Chờ thanh toán' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span>
                                         {/* --- HIỂN THỊ COD NGAY TRONG LIST --- */}
@@ -880,7 +895,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 )}
                                             </span>
                                         </p>
-                                        <p className="flex items-start mt-2"><span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800">{selectedOrder.delivery.notes || 'Không có'}</span></p></>)}</div></div>
+                                        <p className="flex items-start mt-2">
+                                            <span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> 
+                                            <div className="flex flex-col gap-1">
+                                                <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800" title="Ghi chú từ khách hàng">{selectedOrder.delivery.notes || 'Không có'}</span>
+                                                {selectedOrder.internalNotes && (
+                                                    <span className="italic bg-blue-50 px-2 py-0.5 rounded text-blue-800 text-xs" title="Ghi chú nội bộ admin">Admin: {selectedOrder.internalNotes}</span>
+                                                )}
+                                            </div>
+                                        </p></>)}</div></div>
                                 
                                 <div className="flex flex-col">
                                     <BillingBreakdown />
@@ -921,7 +944,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 </button>
                                             )}
 
-                                            {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa vị trí (Kéo thả)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={() => {}} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
+                                            {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa thiết kế (Kéo thả & Click đúp chữ để sửa)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={(textId, updates) => {
+                                                setEditForm(prev => {
+                                                    if (!prev) return null;
+                                                    const newItems = [...prev.items];
+                                                    newItems[idx] = {
+                                                        ...newItems[idx],
+                                                        texts: newItems[idx].texts.map(t => t.id === textId ? { ...t, ...updates } : t)
+                                                    };
+                                                    return { ...prev, items: newItems };
+                                                });
+                                            }} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
 
                                             <div className="flex gap-4 items-start flex-col md:flex-row">
                                                 <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer" onClick={() => !isEditingOrder && item.previewImageUrl && setZoomedImageUrl(item.previewImageUrl)}>

@@ -178,9 +178,13 @@ export const Step3Characters: React.FC<{
         const newId = Date.now();
         const availableShirts = getAvailableParts(legoParts.shirt);
         const availablePants = getAvailableParts(legoParts.pants);
+        const availableHair = getAvailableParts(legoParts.hair);
+        const availableFace = getAvailableParts(legoParts.face);
 
         const newCharacter: LegoCharacterConfig = {
             id: newId, 
+            hair: availableHair.find(h => h.id === 'hair-1') || availableHair[0] || legoParts.hair[0],
+            face: availableFace.find(f => f.id === 'face-1') || availableFace[0] || legoParts.face[0],
             shirt: availableShirts[0] || legoParts.shirt[0], 
             pants: availablePants[0] || legoParts.pants[0],
             x: 30 + (config.characters.length % 3) * 20, 
@@ -189,6 +193,7 @@ export const Step3Characters: React.FC<{
             scale: 1,
             selectedShirtColor: availableShirts[0]?.colors?.[0],
             selectedPantsColor: availablePants[0]?.colors?.[0],
+            selectedHairColor: (availableHair.find(h => h.id === 'hair-1') || availableHair[0] || legoParts.hair[0])?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);

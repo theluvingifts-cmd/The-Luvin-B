@@ -106,6 +106,7 @@ export const AdminDesign: React.FC = () => {
 
     const TOOLS = [
         { id: 'templates', icon: '📂', label: t('studio.tools.templates') }, 
+        { id: 'character', icon: '👤', label: 'Nhân vật' },
         { id: 'background', icon: '🎨', label: t('studio.tools.background') },
         { id: 'museum', icon: '🏛️', label: t('studio.tools.museum') },
         { id: 'shape', icon: '🟥', label: t('studio.tools.shape') },
@@ -116,6 +117,7 @@ export const AdminDesign: React.FC = () => {
     ];
 
     const [activeTool, setActiveTool] = useState('templates');
+    const [activePartType, setActivePartType] = useState<'hair' | 'face' | 'shirt' | 'pants' | 'hat' | 'set'>('hair');
     const [config, setConfig] = useState<FrameConfig>(INITIAL_FRAME_CONFIG);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
     const [products, setProducts] = useState<LegoPart[]>([]);
@@ -308,10 +310,41 @@ export const AdminDesign: React.FC = () => {
             if (clipboard.type === 'text') return { ...prev, texts: [...prev.texts, newData] };
             if (clipboard.type === 'item') return { ...prev, draggableItems: [...prev.draggableItems, newData] };
             if (clipboard.type === 'shape') return { ...prev, shapes: [...(prev.shapes || []), newData] };
+            if (clipboard.type === 'character') return { ...prev, characters: [...prev.characters, newData] };
             return prev;
         });
         setTimeout(() => setSelectedItemId(`${clipboard.type}-${newId}`), 50);
     }, [clipboard]);
+
+    const handleAddCharacter = () => {
+        const newChar: LegoCharacterConfig = {
+            id: Date.now(),
+            x: 50,
+            y: 50,
+            rotation: 0,
+            scale: 1,
+            hair: allKnownParts['hair-1'] || null,
+            face: allKnownParts['face-1'] || null,
+            shirt: allKnownParts['shirt-1'] || null,
+            pants: allKnownParts['pants-1'] || null,
+            selectedShirtColor: allKnownParts['shirt-1']?.colors?.[0],
+            selectedPantsColor: allKnownParts['pants-1']?.colors?.[0],
+            selectedHairColor: allKnownParts['hair-1']?.colors?.[0],
+        };
+        setConfig(prev => ({
+            ...prev,
+            characters: [...prev.characters, newChar]
+        }));
+        setSelectedItemId(`character-${newChar.id}`);
+        setActiveTool('character');
+    };
+
+    const handleCharacterUpdate = (id: number, updates: Partial<LegoCharacterConfig>) => {
+        setConfig(prev => ({
+            ...prev,
+            characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c)
+        }));
+    };
 
     const handleSave = useCallback(() => {
         setShowSaveModal(true);
@@ -629,6 +662,16 @@ export const AdminDesign: React.FC = () => {
                                 </div>
                             )}
 
+                             {selectedItemId?.startsWith('character-') && (
+                                 <div className="space-y-4">
+                                     <div className="flex justify-between items-center">
+                                         <span className="text-xs font-bold text-gray-500">Nhân vật</span>
+                                     </div>
+                                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                         <p className="text-[10px] text-gray-500 leading-relaxed italic">Sử dụng công cụ "Nhân vật" ở thanh bên trái để thay đổi trang phục, tóc và mặt của nhân vật này.</p>
+                                     </div>
+                                 </div>
+                             )}
                             {selectedItemId?.startsWith('text-') && (
                                 <div className="space-y-5">
                                     <div><label className="text-[10px] font-black text-gray-400 mb-1.5 block uppercase">Nội dung mặc định</label>
@@ -799,7 +842,125 @@ export const AdminDesign: React.FC = () => {
                                     ))}
                                 </div>
                             )}
-                            {activeTool === 'background' && (
+                            {activeTool === 'character' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                    <span>👤</span> Cấu hình nhân vật
+                                </h3>
+                                <button 
+                                    onClick={handleAddCharacter}
+                                    className="px-3 py-1.5 bg-gray-900 text-white text-[10px] font-bold rounded-lg hover:bg-gray-800 transition-all uppercase tracking-widest"
+                                >
+                                    + Thêm nhân vật
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {config.characters.map((char, idx) => (
+                                    <div 
+                                        key={char.id} 
+                                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${selectedItemId === `character-${char.id}` ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
+                                        onClick={() => setSelectedItemId(`character-${char.id}`)}
+                                    >
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-xs font-bold text-gray-900">Nhân vật {idx + 1}</span>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleItemRemove(`character-${char.id}`); }}
+                                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+
+                                        {selectedItemId === `character-${char.id}` && (
+                                            <div className="space-y-4 pt-2 border-t border-gray-100">
+                                                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                                                    {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => (
+                                                        <button
+                                                            key={type}
+                                                            onClick={() => setActivePartType(type)}
+                                                            className={`flex-1 py-1.5 text-[9px] font-bold uppercase rounded-md transition-all ${activePartType === type ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                                        >
+                                                            {type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                                                    <button
+                                                        onClick={() => handleCharacterUpdate(char.id, { [activePartType]: null })}
+                                                        className={`aspect-square flex flex-col items-center justify-center border-2 rounded-lg transition-all ${!char[activePartType] ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
+                                                    >
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Trống</span>
+                                                    </button>
+                                                    {(products.filter(p => p.type === activePartType)).map(part => (
+                                                        <button
+                                                            key={part.id}
+                                                            onClick={() => handleCharacterUpdate(char.id, { [activePartType]: part })}
+                                                            className={`aspect-square flex flex-col items-center justify-center border-2 rounded-lg transition-all overflow-hidden ${char[activePartType]?.id === part.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
+                                                        >
+                                                            <img src={part.imageUrl} alt={part.name} className="w-full h-full object-contain p-1" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                {/* Color selection for shirt/pants/hair if applicable */}
+                                                {((activePartType === 'shirt' && char.shirt?.colors) || (activePartType === 'pants' && char.pants?.colors) || (activePartType === 'hair' && char.hair?.colors)) && (
+                                                    <div className="space-y-2">
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Màu sắc</span>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {(activePartType === 'shirt' ? char.shirt!.colors : activePartType === 'pants' ? char.pants!.colors : char.hair!.colors)!.map(color => (
+                                                                <button
+                                                                    key={color.hex}
+                                                                    onClick={() => {
+                                                                        if (activePartType === 'shirt') handleCharacterUpdate(char.id, { selectedShirtColor: color });
+                                                                        else if (activePartType === 'pants') handleCharacterUpdate(char.id, { selectedPantsColor: color });
+                                                                        else if (activePartType === 'hair') handleCharacterUpdate(char.id, { selectedHairColor: color });
+                                                                    }}
+                                                                    className={`w-6 h-6 rounded-full border-2 transition-all ${
+                                                                        (activePartType === 'shirt' ? char.selectedShirtColor?.hex === color.hex : 
+                                                                         activePartType === 'pants' ? char.selectedPantsColor?.hex === color.hex : 
+                                                                         char.selectedHairColor?.hex === color.hex) 
+                                                                        ? 'border-gray-900 scale-110 shadow-md' : 'border-white shadow-sm hover:scale-105'
+                                                                    }`}
+                                                                    style={{ backgroundColor: color.hex }}
+                                                                    title={color.name}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Độ mờ</label>
+                                                        <input 
+                                                            type="range" min="0" max="1" step="0.1" 
+                                                            value={char.opacity ?? 1} 
+                                                            onChange={(e) => handleCharacterUpdate(char.id, { opacity: parseFloat(e.target.value) })}
+                                                            className="w-full accent-gray-900"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <input 
+                                                            type="checkbox" id={`lock-${char.id}`}
+                                                            checked={char.lockedPosition || false}
+                                                            onChange={(e) => handleCharacterUpdate(char.id, { lockedPosition: e.target.checked })}
+                                                            className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                                                        />
+                                                        <label htmlFor={`lock-${char.id}`} className="text-[9px] font-bold text-gray-400 uppercase tracking-wider cursor-pointer">Khóa vị trí</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTool === 'background' && (
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Màu nền đơn sắc</label>
                                     <input type="color" className="w-full h-12 rounded-lg cursor-pointer" value={config.background.value} onChange={e => setConfig(prev => ({...prev, background: { type: 'color', value: e.target.value }}))} />
@@ -1019,7 +1180,31 @@ export const AdminDesign: React.FC = () => {
 
                 <div className="flex-grow relative flex items-center justify-center p-8 overflow-auto custom-scrollbar" onMouseDown={() => setSelectedItemId(null)}>
                     <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }} className="bg-white shadow-2xl transition-transform duration-300 ring-1 ring-gray-200">
-                        <FramePreview ref={previewRef} config={config} containerWidth={500} onItemTransform={handleItemTransform} onItemRemove={handleItemRemove} onTextUpdate={() => {}} isInteractive={true} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} setIsEditingText={() => {}} allParts={allKnownParts} previewFont={previewFont} allowTextScaling />
+                        <FramePreview 
+                            ref={previewRef} 
+                            config={config} 
+                            containerWidth={500} 
+                            onItemTransform={handleItemTransform} 
+                            onItemRemove={handleItemRemove} 
+                            onTextUpdate={(id, updates) => {
+                                setConfig(prev => ({
+                                    ...prev,
+                                    texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t)
+                                }));
+                            }}
+                            onCharacterUpdate={handleCharacterUpdate}
+                            isInteractive={true} 
+                            selectedItemId={selectedItemId} 
+                            setSelectedItemId={(id) => {
+                                setSelectedItemId(id);
+                                if (id?.startsWith('character-')) setActiveTool('character');
+                            }} 
+                            setIsEditingText={() => {}} 
+                            allParts={allKnownParts} 
+                            activePartType={activePartType}
+                            previewFont={previewFont} 
+                            allowTextScaling 
+                        />
                     </div>
                 </div>
             </div>
@@ -1122,8 +1307,9 @@ export const AdminDesign: React.FC = () => {
                                     }
 
                                     if (saveType === 'background') {
+                                        const newId = editingBgId || `bg_${Date.now()}`;
                                         const backgroundData: PresetBackground = {
-                                            id: editingBgId || `bg_${Date.now()}`,
+                                            id: newId,
                                             name: bgName, 
                                             category: finalCategory, 
                                             type: bgType, 
@@ -1132,10 +1318,14 @@ export const AdminDesign: React.FC = () => {
                                             formFields: config.formFields || []
                                         };
                                         const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
-                                        if (success) alert("Đã lưu nền thành công!");
+                                        if (success) {
+                                            alert("Đã lưu nền thành công!");
+                                            setEditingBgId(newId);
+                                        }
                                     } else {
+                                        const newId = editingBgId || `tpl_${Date.now()}`;
                                         const templateData = {
-                                            id: editingBgId || `tpl_${Date.now()}`,
+                                            id: newId,
                                             name: bgName,
                                             imageUrl: previewUrl,
                                             category: finalCategory,
@@ -1143,7 +1333,10 @@ export const AdminDesign: React.FC = () => {
                                             purchaseCount: 0
                                         };
                                         const success = editingBgId ? await updateTemplate(editingBgId, templateData) : await addTemplate(templateData);
-                                        if (success) alert("Đã lưu mẫu sản phẩm thành công!");
+                                        if (success) {
+                                            alert("Đã lưu mẫu sản phẩm thành công!");
+                                            setEditingBgId(newId);
+                                        }
                                     }
 
                                     setShowSaveModal(false); 
