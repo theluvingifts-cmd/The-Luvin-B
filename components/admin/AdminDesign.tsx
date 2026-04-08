@@ -894,7 +894,7 @@ export const AdminDesign: React.FC = () => {
                                                     >
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">Trống</span>
                                                     </button>
-                                                    {(products.filter(p => p.type === activePartType)).map(part => (
+                                                    {(products.filter(p => p.type === activePartType && (p.stock === undefined || p.stock > 0))).map(part => (
                                                         <button
                                                             key={part.id}
                                                             onClick={() => handleCharacterUpdate(char.id, { [activePartType]: part })}

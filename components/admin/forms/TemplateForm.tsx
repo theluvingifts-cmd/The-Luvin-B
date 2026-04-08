@@ -27,7 +27,10 @@ export const TemplateForm: React.FC<{
             hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
         };
         allParts.forEach(p => {
-            if (result[p.type]) result[p.type].push(p);
+            // Only include parts that are in stock
+            if (result[p.type] && (p.stock === undefined || p.stock > 0)) {
+                result[p.type].push(p);
+            }
         });
         return result;
     }, [allParts]);

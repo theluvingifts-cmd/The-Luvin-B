@@ -20,10 +20,12 @@ interface CollectionPageProps {
 }
 
 const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ character }) => {
-    const { shirt, pants, hat } = character;
+    const { shirt, pants, hat, hair, face } = character;
     const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
     const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
     const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
+    const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
+    const faceImageUrl = face?.imageUrl;
 
     const partStyle: React.CSSProperties = {
         position: 'absolute',
@@ -40,6 +42,8 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
             <div className="relative w-full h-full">
                 {pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
                 {shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
+                {faceImageUrl && <img src={faceImageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
+                {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
                 {hatImageUrl && <img src={hatImageUrl} alt="hat" style={{ ...partStyle, zIndex: 5 }} referrerPolicy="no-referrer" />}
             </div>
         </div>
@@ -94,7 +98,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
         };
         (Object.values(allParts) as LegoPart[]).forEach(p => {
-            if (result[p.type]) result[p.type].push(p);
+            // Filter out out-of-stock items
+            if (result[p.type] && (p.stock === undefined || p.stock > 0)) {
+                result[p.type].push(p);
+            }
         });
         return result;
     }, [allParts]);
@@ -174,6 +181,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         
         // Default parts if no characters exist
         const defaultParts = {
+            hair: partsByType.hair.find(p => p.id.includes('hair-1')) || partsByType.hair[0],
+            face: partsByType.face.find(p => p.id.includes('face-1')) || partsByType.face[0],
             shirt: partsByType.shirt[0],
             pants: partsByType.pants[0],
             hat: partsByType.hat?.[0],
@@ -190,6 +199,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 selectedShirtColor: defaultParts.shirt?.colors?.[0],
                 selectedPantsColor: defaultParts.pants?.colors?.[0],
                 selectedHatColor: defaultParts.hat?.colors?.[0],
+                selectedHairColor: defaultParts.hair?.colors?.[0],
             };
         
         setCustomConfig({ ...customConfig, characters: [...customConfig.characters, newChar] });
@@ -347,10 +357,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const extraCharms = useMemo(() => {
         if (!allParts) return [];
         // Filter for accessories, pets, and hats that are NOT already in the template
+        // AND are in stock
         const templatePartIds = new Set(selectedTemplate?.config.draggableItems.map(i => i.partId) || []);
         return (Object.values(allParts) as LegoPart[]).filter(p => 
             (p.type === 'accessory' || p.type === 'pet' || p.type === 'hat') && 
-            !templatePartIds.has(p.id)
+            !templatePartIds.has(p.id) &&
+            (p.stock === undefined || p.stock > 0)
         );
     }, [allParts, selectedTemplate]);
 
@@ -456,124 +468,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     return ( 
       <div className="min-h-screen bg-[#f1f3f5] pb-20 font-body text-site-text relative">
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-12">
-            <div className="text-center mb-12 space-y-4">
-                <h1 className="text-4xl md:text-5xl font-black text-gray-900 uppercase tracking-tight">
-                    Bộ sưu tập <span className="text-primary italic font-light lowercase">Luvin</span>
-                </h1>
-                <div className="max-w-md mx-auto relative group">
-                    <input 
-                        type="text" 
-                        placeholder={t('collection.search_placeholder')}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full px-12 py-4 bg-white rounded-full shadow-sm border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
-                    />
-                    <svg className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                </div>
-            </div>
-
-            {/* Categories */}
-            <div className="flex flex-wrap justify-center gap-2 mb-12">
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-400 hover:bg-gray-50 border border-gray-100'}`}
-                    >
-                        {cat}
-                    </button>
-                ))}
-            </div>
-
-            {/* Templates Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {isInitialLoading ? (
-                    // Skeleton Loading
-                    Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100 animate-pulse">
-                            <div className="aspect-[3/4] bg-gray-200"></div>
-                            <div className="p-6 space-y-3">
-                                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                                <div className="h-10 bg-gray-200 rounded-full w-full mt-4"></div>
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    filteredTemplates.map((template) => (
-                        <div 
-                            key={template.id}
-                            className="group bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 flex flex-col"
-                        >
-                            <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
-                                <SmartImage 
-                                    src={template.imageUrl} 
-                                    alt={template.name} 
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                    referrerPolicy="no-referrer"
-                                />
-                                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                                    <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black text-primary uppercase shadow-sm">✨ 100% Tùy chỉnh</div>
-                                    {template.category && (
-                                        <div className="bg-black/80 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black text-white uppercase shadow-sm w-fit">{template.category}</div>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            <div className="p-6 flex flex-col flex-grow">
-                                <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">{template.name}</h3>
-                                <div className="flex items-center gap-1.5 mb-4">
-                                    <span className="text-yellow-400 text-[10px]">⭐</span>
-                                    <span className="text-[9px] font-black text-primary uppercase tracking-tighter">Tin dùng</span>
-                                    <span className="text-[9px] text-gray-300 font-bold uppercase tracking-tighter ml-auto">Đang hot</span>
-                                </div>
-                                
-                                <div className="mt-auto space-y-4">
-                                    <div className="flex justify-between items-end">
-                                        <div>
-                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Giá cơ bản từ</p>
-                                            <p className="text-sm font-black text-gray-900">{formatCurrency(template.price || 230000)}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{template.config.characters.length} NV Lego</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        onClick={() => handleSelectTemplate(template)}
-                                        className="w-full py-3 bg-gray-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg shadow-gray-900/10 active:scale-95 flex items-center justify-center gap-2"
-                                    >
-                                        Chọn mẫu này
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-
-            {/* Empty State */}
-            {!isInitialLoading && filteredTemplates.length === 0 && (
-                <div className="text-center py-20">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </div>
-                    <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-2">Không tìm thấy mẫu nào</h3>
-                    <p className="text-sm text-gray-500">Thử tìm kiếm với từ khóa khác hoặc chọn danh mục khác nhé!</p>
-                    <button 
-                        onClick={() => { setSearchTerm(''); setActiveCategory(t('common.all')); }}
-                        className="mt-6 text-primary font-black text-[10px] uppercase tracking-widest border-b-2 border-primary pb-1"
-                    >
-                        Xóa tất cả bộ lọc
-                    </button>
-                </div>
-            )}
-        </div>
-
-        {/* Quick Customize Drawer */}
+        {/* Simple Clean Header */}
         {selectedTemplate && customConfig && (
             <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
                 <div 
@@ -674,10 +569,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             {/* Part Selector */}
                                             {editingCharacterId === char.id && (
                                                 <div className="p-4 border-t border-primary/10 space-y-5 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
-                                                    {(['shirt', 'pants', 'hat'] as const).map(type => (
+                                                    {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => (
                                                         <div key={type} className="space-y-2.5">
                                                             <div className="flex justify-between items-center">
-                                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</label>
+                                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                                    {type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}
+                                                                </label>
                                                                 {char[type] && (
                                                                     <span className="text-[8px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase">{char[type].name}</span>
                                                                 )}
@@ -704,6 +601,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                     const updated = { ...c, [type]: part };
                                                                                     if (type === 'shirt') updated.selectedShirtColor = part.colors?.[0];
                                                                                     if (type === 'pants') updated.selectedPantsColor = part.colors?.[0];
+                                                                                    if (type === 'hair') updated.selectedHairColor = part.colors?.[0];
+                                                                                    if (type === 'hat') updated.selectedHatColor = part.colors?.[0];
                                                                                     return updated;
                                                                                 }
                                                                                 return c;
@@ -730,6 +629,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                         if (type === 'shirt') updated.selectedShirtColor = color;
                                                                                         if (type === 'pants') updated.selectedPantsColor = color;
                                                                                         if (type === 'hat') updated.selectedHatColor = color;
+                                                                                        if (type === 'hair') updated.selectedHairColor = color;
                                                                                         return updated;
                                                                                     }
                                                                                     return c;
@@ -739,6 +639,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                             className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
                                                                                 (type === 'shirt' ? char.selectedShirtColor?.hex : 
                                                                                  type === 'pants' ? char.selectedPantsColor?.hex : 
+                                                                                 type === 'hair' ? char.selectedHairColor?.hex :
                                                                                  char.selectedHatColor?.hex) === color.hex 
                                                                                 ? 'border-primary scale-110 shadow-md' 
                                                                                 : 'border-gray-100'
@@ -748,6 +649,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                         >
                                                                             {(type === 'shirt' ? char.selectedShirtColor?.hex : 
                                                                               type === 'pants' ? char.selectedPantsColor?.hex : 
+                                                                              type === 'hair' ? char.selectedHairColor?.hex :
                                                                               char.selectedHatColor?.hex) === color.hex && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
                                                                             )}
@@ -1040,7 +942,20 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
         {/* Product Grid */}
         <div className="container mx-auto px-3 sm:px-6 py-8">
-            {filteredTemplates.length > 0 ? (
+            {isInitialLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-pulse">
+                            <div className="aspect-[3/4] bg-gray-200"></div>
+                            <div className="p-5 space-y-3">
+                                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                <div className="h-10 bg-gray-200 rounded-xl w-full mt-4"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {filteredTemplates.map((template, index) => {
                     const { totalPrice } = calculatePrice(template.config, allParts, frames);
