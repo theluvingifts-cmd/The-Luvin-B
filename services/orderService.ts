@@ -9,6 +9,7 @@ import { adjustStock } from './productService';
 import { incrementTemplatePurchaseCount } from './templateService';
 import { getStoreConfig } from './configService';
 import { pushOrderToPancake, PancakeOrderData } from './pancakeService';
+import { cleanForFirestore } from '../utils/helpers';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
@@ -35,27 +36,6 @@ export const countPartsInOrder = (orderItems: Order['items']): Record<string, nu
     });
 
     return counts;
-};
-
-// HELPER: Deep clean data for Firestore
-const cleanForFirestore = (data: any): any => {
-    if (data === null || data === undefined) return data; 
-    if (typeof data !== 'object') return data;
-
-    if (Array.isArray(data)) {
-        return data
-            .map(cleanForFirestore)
-            .filter(item => item !== undefined);
-    }
-
-    const newObj: any = {};
-    Object.keys(data).forEach(key => {
-        const val = cleanForFirestore(data[key]);
-        if (val !== undefined) {
-            newObj[key] = val;
-        }
-    });
-    return newObj;
 };
 
 // HELPER: Process images in order items

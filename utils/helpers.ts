@@ -115,3 +115,28 @@ export const formatFullAddress = (customer: { address: string; ward?: string; di
     const parts = [customer.address, customer.ward, customer.district, customer.province].filter(Boolean);
     return parts.join(', ');
 };
+
+/**
+ * Removes undefined values from an object recursively to prevent Firestore errors.
+ */
+export const cleanForFirestore = (obj: any): any => {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj !== 'object') return obj;
+    
+    if (Array.isArray(obj)) {
+        return obj
+            .map(cleanForFirestore)
+            .filter(item => item !== undefined);
+    }
+    
+    const newObj: any = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const val = cleanForFirestore(obj[key]);
+            if (val !== undefined) {
+                newObj[key] = val;
+            }
+        }
+    }
+    return newObj;
+};

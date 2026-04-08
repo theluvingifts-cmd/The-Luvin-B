@@ -3,6 +3,7 @@ import { db } from '../config/firebase';
 // Standard firestore imports for modular SDK
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ThemeConfig, CustomFont, StaffMember } from '../types';
+import { cleanForFirestore } from '../utils/helpers';
 
 const CONFIG_DOC_ID = 'general';
 const CACHE_KEY = 'store_config_cache';
@@ -152,7 +153,8 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
 
 export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
     try {
-        await setDoc(doc(db, 'config', CONFIG_DOC_ID), config, { merge: true });
+        const cleaned = cleanForFirestore(config);
+        await setDoc(doc(db, 'config', CONFIG_DOC_ID), cleaned, { merge: true });
         // Update cache
         const current = getCachedConfig() || {};
         localStorage.setItem(CACHE_KEY, JSON.stringify({ ...current, ...config }));
@@ -165,13 +167,13 @@ export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
 
 export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Record<string, number>> => {
     try {
-        // We'll use a dedicated collection for ads costs to ensure persistence across browsers
+        // Use a subcollection of 'config' to leverage existing security rules
         const { collection, query, where, getDocs } = await import('firebase/firestore');
         const startStr = startDate.toISOString().split('T')[0];
         const endStr = endDate.toISOString().split('T')[0];
         
         const q = query(
-            collection(db, 'ads_costs'),
+            collection(db, 'config', CONFIG_DOC_ID, 'ads_costs'),
             where('__name__', '>=', startStr),
             where('__name__', '<=', endStr)
         );
@@ -205,7 +207,8 @@ export const getAdsCosts = async (startDate: Date, endDate: Date): Promise<Recor
 export const saveAdsCost = async (date: string, cost: number) => {
     try {
         const { doc, setDoc } = await import('firebase/firestore');
-        await setDoc(doc(db, 'ads_costs', date), { cost, updatedAt: Date.now() });
+        const cleaned = cleanForFirestore({ cost, updatedAt: Date.now() });
+        await setDoc(doc(db, 'config', CONFIG_DOC_ID, 'ads_costs', date), cleaned);
         
         // Also update localStorage for immediate feedback/offline support
         const stored = localStorage.getItem('ads_costs');

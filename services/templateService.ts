@@ -4,6 +4,7 @@ import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';
+import { cleanForFirestore } from '../utils/helpers';
 
 const COLLECTION_NAME = "templates";
 
@@ -33,10 +34,11 @@ export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
 
 export const addTemplate = async (template: CollectionTemplate) => {
     try {
-        await setDoc(doc(db, COLLECTION_NAME, template.id), {
+        const cleaned = cleanForFirestore({
             ...template,
             purchaseCount: template.purchaseCount || 0
         });
+        await setDoc(doc(db, COLLECTION_NAME, template.id), cleaned);
         return true;
     } catch (error) {
         console.error("Error adding template:", error);
