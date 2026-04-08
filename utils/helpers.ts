@@ -107,3 +107,11 @@ export const slugify = (text: string) => {
         .replace(/^-+/, '')
         .replace(/-+$/, '');
 };
+
+/**
+ * Formats a full address string from customer details
+ */
+export const formatFullAddress = (customer: { address: string; ward?: string; district?: string; province?: string }) => {
+    const parts = [customer.address, customer.ward, customer.district, customer.province].filter(Boolean);
+    return parts.join(', ');
+};
