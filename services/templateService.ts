@@ -14,6 +14,12 @@ export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
         querySnapshot.forEach((doc) => {
             templates.push(doc.data() as CollectionTemplate);
         });
+        
+        // Cache to localStorage
+        try {
+            localStorage.setItem('templates_cache', JSON.stringify(templates));
+        } catch (e) {}
+        
         return templates;
     } catch (error: any) {
         if (error.code === 'permission-denied') {

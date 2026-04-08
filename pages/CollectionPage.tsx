@@ -7,6 +7,7 @@ import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../utils/p
 import { slugify } from '../utils/helpers';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
+import { getCachedTemplates } from '../services/configService';
 
 interface CollectionPageProps {
     navigateTo: (page: Page) => void, 
@@ -45,11 +46,24 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
     );
 };
 
-export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates, onZoomImage, allParts, frames }) => {
+export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames }) => {
     const { t } = useLanguage();
     const { category: urlCategory, templateId: urlTemplateId } = useParams();
     const navigate = useNavigate();
-    const displayTemplates: CollectionTemplate[] = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
+    
+    // 1. Initialize from Cache immediately
+    const [displayTemplates, setDisplayTemplates] = useState<CollectionTemplate[]>(() => {
+        const cached = getCachedTemplates();
+        if (cached && cached.length > 0) return cached;
+        return (propTemplates && propTemplates.length > 0) ? propTemplates : COLLECTION_TEMPLATES;
+    });
+
+    // 2. Sync with Prop when server data arrives
+    useEffect(() => {
+        if (propTemplates && propTemplates.length > 0) {
+            setDisplayTemplates(propTemplates);
+        }
+    }, [propTemplates]);
     
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState(t('common.all'));
@@ -102,6 +116,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             return matchesSearch && matchesCategory;
         });
     }, [displayTemplates, searchTerm, activeCategory, t]);
+
+    const isInitialLoading = useMemo(() => {
+        return displayTemplates.length === 0;
+    }, [displayTemplates]);
 
     const handleSelectTemplate = (template: CollectionTemplate) => {
         const categorySlug = slugify(template.category || 'all');
@@ -438,6 +456,123 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     return ( 
       <div className="min-h-screen bg-[#f1f3f5] pb-20 font-body text-site-text relative">
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-12">
+            <div className="text-center mb-12 space-y-4">
+                <h1 className="text-4xl md:text-5xl font-black text-gray-900 uppercase tracking-tight">
+                    Bộ sưu tập <span className="text-primary italic font-light lowercase">Luvin</span>
+                </h1>
+                <div className="max-w-md mx-auto relative group">
+                    <input 
+                        type="text" 
+                        placeholder={t('collection.search_placeholder')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full px-12 py-4 bg-white rounded-full shadow-sm border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                    />
+                    <svg className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+            </div>
+
+            {/* Categories */}
+            <div className="flex flex-wrap justify-center gap-2 mb-12">
+                {categories.map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-400 hover:bg-gray-50 border border-gray-100'}`}
+                    >
+                        {cat}
+                    </button>
+                ))}
+            </div>
+
+            {/* Templates Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {isInitialLoading ? (
+                    // Skeleton Loading
+                    Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100 animate-pulse">
+                            <div className="aspect-[3/4] bg-gray-200"></div>
+                            <div className="p-6 space-y-3">
+                                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                <div className="h-10 bg-gray-200 rounded-full w-full mt-4"></div>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    filteredTemplates.map((template) => (
+                        <div 
+                            key={template.id}
+                            className="group bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 flex flex-col"
+                        >
+                            <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
+                                <SmartImage 
+                                    src={template.imageUrl} 
+                                    alt={template.name} 
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                    referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                                    <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black text-primary uppercase shadow-sm">✨ 100% Tùy chỉnh</div>
+                                    {template.category && (
+                                        <div className="bg-black/80 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black text-white uppercase shadow-sm w-fit">{template.category}</div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="p-6 flex flex-col flex-grow">
+                                <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">{template.name}</h3>
+                                <div className="flex items-center gap-1.5 mb-4">
+                                    <span className="text-yellow-400 text-[10px]">⭐</span>
+                                    <span className="text-[9px] font-black text-primary uppercase tracking-tighter">Tin dùng</span>
+                                    <span className="text-[9px] text-gray-300 font-bold uppercase tracking-tighter ml-auto">Đang hot</span>
+                                </div>
+                                
+                                <div className="mt-auto space-y-4">
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Giá cơ bản từ</p>
+                                            <p className="text-sm font-black text-gray-900">{formatCurrency(template.price || 230000)}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{template.config.characters.length} NV Lego</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={() => handleSelectTemplate(template)}
+                                        className="w-full py-3 bg-gray-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg shadow-gray-900/10 active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        Chọn mẫu này
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Empty State */}
+            {!isInitialLoading && filteredTemplates.length === 0 && (
+                <div className="text-center py-20">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-2">Không tìm thấy mẫu nào</h3>
+                    <p className="text-sm text-gray-500">Thử tìm kiếm với từ khóa khác hoặc chọn danh mục khác nhé!</p>
+                    <button 
+                        onClick={() => { setSearchTerm(''); setActiveCategory(t('common.all')); }}
+                        className="mt-6 text-primary font-black text-[10px] uppercase tracking-widest border-b-2 border-primary pb-1"
+                    >
+                        Xóa tất cả bộ lọc
+                    </button>
+                </div>
+            )}
+        </div>
+
         {/* Quick Customize Drawer */}
         {selectedTemplate && customConfig && (
             <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" onClick={handleCloseModal}>

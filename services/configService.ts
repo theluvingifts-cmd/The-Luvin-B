@@ -6,6 +6,7 @@ import { ThemeConfig, CustomFont, StaffMember } from '../types';
 
 const CONFIG_DOC_ID = 'general';
 const CACHE_KEY = 'store_config_cache';
+const TEMPLATES_CACHE_KEY = 'templates_cache';
 
 export interface StoreConfig {
     // Legacy fields
@@ -109,6 +110,18 @@ export const DEFAULT_THEME: ThemeConfig = {
 export const getCachedConfig = (): StoreConfig | null => {
     try {
         const cached = localStorage.getItem(CACHE_KEY);
+        return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+        return null;
+    }
+};
+
+/**
+ * Returns the cached templates from localStorage.
+ */
+export const getCachedTemplates = (): any[] | null => {
+    try {
+        const cached = localStorage.getItem(TEMPLATES_CACHE_KEY);
         return cached ? JSON.parse(cached) : null;
     } catch (e) {
         return null;
