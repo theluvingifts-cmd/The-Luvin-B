@@ -5,7 +5,9 @@ import {
     signInWithPopup, 
     GoogleAuthProvider, 
     onAuthStateChanged, 
-    signOut 
+    signOut,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { 
     doc, 
@@ -59,7 +61,10 @@ const CollaboratorPage: React.FC = () => {
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState<Order[]>([]);
-    const [isRegistering, setIsRegistering] = useState(false);
+    const [authEmail, setAuthEmail] = useState('');
+    const [authPassword, setAuthPassword] = useState('');
+    const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+    const [authError, setAuthError] = useState('');
     const [formData, setFormData] = useState({ fullName: '', phone: '', bankName: '', bankAccount: '', bankOwner: '' });
     const [isEditing, setIsEditing] = useState(false);
 
@@ -128,12 +133,40 @@ const CollaboratorPage: React.FC = () => {
         }
     };
 
-    const handleLogin = async () => {
-        const provider = new GoogleAuthProvider();
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAuthError('');
         try {
-            await signInWithPopup(auth, provider);
-        } catch (error) {
+            await signInWithEmailAndPassword(auth, authEmail, authPassword);
+        } catch (error: any) {
             console.error("Login error:", error);
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                setAuthError('Email hoặc mật khẩu không chính xác');
+            } else if (error.code === 'auth/invalid-email') {
+                setAuthError('Email không hợp lệ');
+            } else {
+                setAuthError('Lỗi đăng nhập. Vui lòng thử lại.');
+            }
+        }
+    };
+
+    const handleSignUp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAuthError('');
+        if (authPassword.length < 6) {
+            return setAuthError('Mật khẩu phải có ít nhất 6 ký tự');
+        }
+        try {
+            await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+        } catch (error: any) {
+            console.error("Signup error:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                setAuthError('Email này đã được sử dụng');
+            } else if (error.code === 'auth/invalid-email') {
+                setAuthError('Email không hợp lệ');
+            } else {
+                setAuthError('Lỗi đăng ký. Vui lòng thử lại.');
+            }
         }
     };
 
@@ -174,17 +207,62 @@ const CollaboratorPage: React.FC = () => {
     if (!user) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-                    <Logo className="h-12 mx-auto mb-6" />
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Cổng Cộng Tác Viên</h1>
-                    <p className="text-gray-500 mb-8">Đăng nhập để bắt đầu kiếm thu nhập cùng The Luvin</p>
-                    <button 
-                        onClick={handleLogin}
-                        className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all"
-                    >
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" className="w-6 h-6" alt="Google" />
-                        Đăng nhập với Google
-                    </button>
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
+                    <div className="text-center mb-8">
+                        <Logo className="h-12 mx-auto mb-6" />
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Cổng Cộng Tác Viên</h1>
+                        <p className="text-gray-500">
+                            {authMode === 'login' ? 'Đăng nhập để bắt đầu kiếm thu nhập' : 'Đăng ký tài khoản CTV mới'}
+                        </p>
+                    </div>
+
+                    <form onSubmit={authMode === 'login' ? handleLogin : handleSignUp} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Email</label>
+                            <input 
+                                type="email" 
+                                required
+                                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none"
+                                value={authEmail}
+                                onChange={e => setAuthEmail(e.target.value)}
+                                placeholder="example@email.com"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Mật khẩu</label>
+                            <input 
+                                type="password" 
+                                required
+                                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none"
+                                value={authPassword}
+                                onChange={e => setAuthPassword(e.target.value)}
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        {authError && (
+                            <p className="text-red-500 text-sm font-medium text-center">{authError}</p>
+                        )}
+
+                        <button 
+                            type="submit"
+                            className="w-full bg-luvin-pink text-white py-3 rounded-xl font-bold hover:bg-luvin-pink/90 transition-all shadow-lg shadow-luvin-pink/20"
+                        >
+                            {authMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}
+                        </button>
+                    </form>
+
+                    <div className="mt-6 text-center">
+                        <button 
+                            onClick={() => {
+                                setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                                setAuthError('');
+                            }}
+                            className="text-luvin-pink text-sm font-bold hover:underline"
+                        >
+                            {authMode === 'login' ? 'Chưa có tài khoản? Đăng ký ngay' : 'Đã có tài khoản? Đăng nhập'}
+                        </button>
+                    </div>
                 </div>
             </div>
         );
