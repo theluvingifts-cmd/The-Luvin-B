@@ -552,23 +552,58 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       
       if (!image) return;
 
+      // Get user phone from localStorage (saved from previous orders)
+      let userPhone = '';
+      try {
+          userPhone = localStorage.getItem('last_customer_phone') || localStorage.getItem('referral_id') || '';
+          if (!userPhone) {
+              userPhone = 'REF' + Math.random().toString(36).substring(7);
+              localStorage.setItem('referral_id', userPhone);
+          }
+      } catch (e) {}
+
+      const shareUrl = `${window.location.origin}?ref=${userPhone}`;
+      const shareText = `${t('studio.share_text')}\n\nXem thiết kế của mình tại đây: ${shareUrl}`;
+
+      // ALWAYS copy to clipboard first for convenience
+      try {
+          await navigator.clipboard.writeText(shareUrl);
+          showToast(t('studio.link_copied_and_downloading'), 'success');
+      } catch (err) {
+          console.error("Failed to copy link", err);
+      }
+
       if (navigator.share) {
           try {
               const blob = dataURLToBlob(image);
               if (!blob) throw new Error("Conversion failed");
               const file = new File([blob], "the-luvin-design.png", { type: blob.type });
+              
+              // Try sharing everything
               await navigator.share({
                   title: t('studio.share_title'),
-                  text: t('studio.share_text'),
+                  text: shareText,
+                  url: shareUrl,
                   files: [file]
                 });
           } catch (e) {
-              const link = document.createElement('a');
-              link.href = image;
-              link.download = 'the-luvin-design.png';
-              link.click();
+              // If sharing files fails or is cancelled, try sharing just text/url
+              try {
+                  await navigator.share({
+                      title: t('studio.share_title'),
+                      text: shareText,
+                      url: shareUrl
+                  });
+              } catch (err2) {
+                  // Fallback: Download image if share fails
+                  const link = document.createElement('a');
+                  link.href = image;
+                  link.download = 'the-luvin-design.png';
+                  link.click();
+              }
           }
       } else {
+          // Fallback for browsers that don't support navigator.share
           const link = document.createElement('a');
           link.href = image;
           link.download = 'the-luvin-design.png';

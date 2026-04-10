@@ -210,6 +210,7 @@ export interface Order {
   paymentProofUploadedAt?: string;
   discountCode?: string;
   discountAmount?: number;
+  referredBy?: string;
   imagesCleaned?: boolean;
 }
 

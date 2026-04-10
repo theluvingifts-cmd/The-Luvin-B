@@ -92,6 +92,23 @@ const updateMetaTags = (config: StoreConfig) => {
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Referral Tracking
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      localStorage.setItem('referred_by', ref);
+      // Optional: Clean up URL
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('ref');
+      const newSearch = newParams.toString();
+      navigate({
+        pathname: location.pathname,
+        search: newSearch ? `?${newSearch}` : ''
+      }, { replace: true });
+    }
+  }, [location, navigate]);
   
   // Determine currentPage from location for Header/Footer visibility
   const currentPage = useMemo<Page>(() => {

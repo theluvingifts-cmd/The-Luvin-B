@@ -343,10 +343,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           totalPrice,
           amountToPay,
           discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
-          discountAmount: totalDiscount
+          discountAmount: totalDiscount,
+          referredBy: localStorage.getItem('referred_by') || undefined
         });
 
         if (!initialOrder) trackFunnelStep('order_complete');
+
+        // Save phone for referral system
+        localStorage.setItem('last_customer_phone', phone);
+        localStorage.removeItem('referred_by'); // Clear ref after use
 
         if (appliedVoucher) {
             await incrementVoucherUsage(appliedVoucher.code);
