@@ -208,7 +208,13 @@ const CollaboratorPage: React.FC = () => {
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-luvin-pink/5 border-luvin-pink/20">
                         <p className="text-luvin-pink text-xs mb-1 uppercase font-bold">Hoa hồng (10%)</p>
                         <p className="text-2xl font-bold text-luvin-pink">
-                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + (o.totalPrice * COMMISSION_RATE), 0))}
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0))}
+                        </p>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-orange-50 border-orange-200">
+                        <p className="text-orange-700 text-xs mb-1 uppercase font-bold">Chưa thanh toán</p>
+                        <p className="text-2xl font-bold text-orange-700">
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng' && !o.commissionPaid).reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0))}
                         </p>
                     </div>
                 </div>
@@ -246,13 +252,15 @@ const CollaboratorPage: React.FC = () => {
                                     <th className="px-6 py-4">Ngày đặt</th>
                                     <th className="px-6 py-4">Khách hàng</th>
                                     <th className="px-6 py-4">Giá trị</th>
+                                    <th className="px-6 py-4">Hoa hồng</th>
                                     <th className="px-6 py-4">Trạng thái</th>
+                                    <th className="px-6 py-4">Thanh toán</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-400">Chưa có đơn hàng nào được giới thiệu.</td>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-gray-400">Chưa có đơn hàng nào được giới thiệu.</td>
                                     </tr>
                                 ) : orders.map(order => (
                                     <tr key={order.id} className="text-sm">
@@ -260,6 +268,9 @@ const CollaboratorPage: React.FC = () => {
                                         <td className="px-6 py-4 text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
                                         <td className="px-6 py-4">{order.customer.name}</td>
                                         <td className="px-6 py-4 font-bold">{formatCurrency(order.totalPrice)}</td>
+                                        <td className="px-6 py-4 text-luvin-pink font-bold">
+                                            {formatCurrency(order.commissionAmount || order.totalPrice * COMMISSION_RATE)}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                                 order.status === 'Đã giao hàng' ? 'bg-green-100 text-green-700' :
@@ -268,6 +279,17 @@ const CollaboratorPage: React.FC = () => {
                                             }`}>
                                                 {order.status}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {order.status === 'Đã giao hàng' ? (
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                                    order.commissionPaid ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                                                }`}>
+                                                    {order.commissionPaid ? 'Đã trả' : 'Chờ trả'}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-[10px]">—</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

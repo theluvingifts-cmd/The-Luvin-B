@@ -94,8 +94,14 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Referral Tracking
+  // Referral Tracking & Legacy Redirects
   useEffect(() => {
+    // Handle /studio legacy path
+    if (location.pathname === '/studio') {
+      navigate('/builder/3', { replace: true });
+      return;
+    }
+
     const params = new URLSearchParams(location.search);
     const ref = params.get('ref');
     if (ref) {
@@ -271,7 +277,7 @@ const App: React.FC = () => {
     }
     
     if (page === 'home') navigate('/');
-    else if (page === 'builder') navigate('/builder/1');
+    else if (page === 'builder') navigate('/builder/3');
     else navigate(`/${page}`);
     
     window.scrollTo(0, 0);

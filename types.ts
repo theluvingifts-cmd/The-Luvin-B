@@ -211,6 +211,8 @@ export interface Order {
   discountCode?: string;
   discountAmount?: number;
   referredBy?: string;
+  commissionAmount?: number;
+  commissionPaid?: boolean;
   imagesCleaned?: boolean;
 }
 

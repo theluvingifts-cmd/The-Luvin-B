@@ -346,7 +346,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           amountToPay,
           discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
           discountAmount: totalDiscount,
-          referredBy: manualReferralCode || undefined
+          referredBy: manualReferralCode || undefined,
+          commissionAmount: manualReferralCode ? Math.round(totalPrice * 0.1) : 0,
+          commissionPaid: false
         });
 
         if (!initialOrder) trackFunnelStep('order_complete');

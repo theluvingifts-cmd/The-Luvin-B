@@ -887,9 +887,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 </p>
                                                 <p className="flex items-center">
                                                     <span className="text-gray-500 w-20 inline-block">Hoa hồng:</span>
-                                                    <span className="font-bold text-luvin-pink bg-pink-50 px-2 py-0.5 rounded text-xs">
-                                                        {formatCurrency(selectedOrder.totalPrice * 0.1)} (10%)
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-luvin-pink bg-pink-50 px-2 py-0.5 rounded text-xs">
+                                                            {formatCurrency(selectedOrder.commissionAmount || (selectedOrder.totalPrice * 0.1))} (10%)
+                                                        </span>
+                                                        <label className="flex items-center gap-1 cursor-pointer select-none">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={selectedOrder.commissionPaid || false} 
+                                                                onChange={(e) => handleUpdate(selectedOrder.id, { commissionPaid: e.target.checked }, false)}
+                                                                className="w-3 h-3 accent-green-600"
+                                                            />
+                                                            <span className={`text-[10px] font-bold ${selectedOrder.commissionPaid ? 'text-green-600' : 'text-gray-400'}`}>
+                                                                {selectedOrder.commissionPaid ? 'Đã trả' : 'Chưa trả'}
+                                                            </span>
+                                                        </label>
+                                                    </div>
                                                 </p>
                                             </div>
                                         )}
