@@ -1,6 +1,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, FrameConfig, FormField, PresetBackground, CollectionTemplate } from '../../types';
+import { db } from '../../config/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
 import { uploadFile } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
@@ -298,6 +300,26 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
     const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+    const [ctvInfo, setCtvInfo] = useState<any>(null);
+    const [isFetchingCtv, setIsFetchingCtv] = useState(false);
+
+    const fetchCtvInfo = async (phone: string) => {
+        setIsFetchingCtv(true);
+        try {
+            const q = query(collection(db, 'collaborators'), where('phone', '==', phone));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                setCtvInfo(snapshot.docs[0].data());
+            } else {
+                alert("Không tìm thấy thông tin CTV cho số điện thoại này.");
+            }
+        } catch (error) {
+            console.error("Error fetching CTV info:", error);
+        } finally {
+            setIsFetchingCtv(false);
+        }
+    };
+
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!scrollContainerRef.current) return;
         setIsDragging(true);
@@ -316,6 +338,13 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     };
 
     const handleUpdate = async (orderId: string, updates: Partial<Order>, showMsg = true) => {
+        const currentOrder = orders.find(o => o.id === orderId);
+        
+        // Recalculate commission if totalPrice changes and it's a referral order
+        if (updates.totalPrice !== undefined && currentOrder?.referredBy) {
+            updates.commissionAmount = Math.round(updates.totalPrice * 0.1);
+        }
+
         if (updates.status === 'Đã xác nhận') {
             const currentOrder = orders.find(o => o.id === orderId);
             if (currentOrder && (!currentOrder.amountPaid || currentOrder.amountPaid === 0)) {
@@ -883,13 +912,43 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                             <div className="mt-2 space-y-1">
                                                 <p className="flex items-center">
                                                     <span className="text-gray-500 w-20 inline-block">Giới thiệu:</span>
-                                                    <span className="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">REF: {selectedOrder.referredBy}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">REF: {selectedOrder.referredBy}</span>
+                                                        <button 
+                                                            onClick={() => fetchCtvInfo(selectedOrder.referredBy!)}
+                                                            disabled={isFetchingCtv}
+                                                            className="text-[10px] text-blue-600 hover:underline font-bold"
+                                                        >
+                                                            {isFetchingCtv ? 'Đang tải...' : 'Xem thông tin CTV'}
+                                                        </button>
+                                                    </div>
                                                 </p>
+                                                {ctvInfo && ctvInfo.phone === selectedOrder.referredBy && (
+                                                    <div className="bg-blue-50 p-2 rounded-lg text-[10px] space-y-1 border border-blue-100 animate-fade-in">
+                                                        <div className="flex justify-between">
+                                                            <span className="text-gray-500">CTV:</span>
+                                                            <span className="font-bold text-gray-700">{ctvInfo.fullName}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-gray-500">Ngân hàng:</span>
+                                                            <span className="font-bold text-gray-700">{ctvInfo.bankName}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-gray-500">STK:</span>
+                                                            <span className="font-bold text-gray-700">{ctvInfo.bankAccount}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-gray-500">Chủ TK:</span>
+                                                            <span className="font-bold text-gray-700 uppercase">{ctvInfo.bankOwner}</span>
+                                                        </div>
+                                                        <button onClick={() => setCtvInfo(null)} className="w-full text-center text-gray-400 hover:text-gray-600 pt-1">Đóng</button>
+                                                    </div>
+                                                )}
                                                 <p className="flex items-center">
                                                     <span className="text-gray-500 w-20 inline-block">Hoa hồng:</span>
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-luvin-pink bg-pink-50 px-2 py-0.5 rounded text-xs">
-                                                            {formatCurrency(selectedOrder.commissionAmount || (selectedOrder.totalPrice * 0.1))} (10%)
+                                                            {formatCurrency(selectedOrder.commissionAmount || (selectedOrder.totalPrice * 0.1), 'admin')} (10%)
                                                         </span>
                                                         <label className="flex items-center gap-1 cursor-pointer select-none">
                                                             <input 

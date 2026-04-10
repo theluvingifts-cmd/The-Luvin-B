@@ -22,6 +22,37 @@ import { Logo } from '../components/shared/Logo';
 import { formatCurrency } from '../utils/pricing';
 import { Order } from '../types';
 
+enum OperationType {
+    CREATE = 'create',
+    UPDATE = 'update',
+    DELETE = 'delete',
+    LIST = 'list',
+    GET = 'get',
+    WRITE = 'write',
+}
+
+const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+    const errInfo = {
+        error: error instanceof Error ? error.message : String(error),
+        authInfo: {
+            userId: auth.currentUser?.uid,
+            email: auth.currentUser?.email,
+            emailVerified: auth.currentUser?.emailVerified,
+            isAnonymous: auth.currentUser?.isAnonymous,
+            providerInfo: auth.currentUser?.providerData.map(provider => ({
+                providerId: provider.providerId,
+                displayName: provider.displayName,
+                email: provider.email,
+                photoUrl: provider.photoURL
+            })) || []
+        },
+        operationType,
+        path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    return errInfo;
+};
+
 const CollaboratorPage: React.FC = () => {
     const { t } = useLanguage();
     const [user, setUser] = useState<any>(null);
@@ -29,7 +60,20 @@ const CollaboratorPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState<Order[]>([]);
     const [isRegistering, setIsRegistering] = useState(false);
-    const [formData, setFormData] = useState({ phone: '', fullName: '' });
+    const [formData, setFormData] = useState({ fullName: '', phone: '', bankName: '', bankAccount: '', bankOwner: '' });
+    const [isEditing, setIsEditing] = useState(false);
+
+    useEffect(() => {
+        if (profile) {
+            setFormData({
+                fullName: profile.fullName || '',
+                phone: profile.phone || '',
+                bankName: profile.bankName || '',
+                bankAccount: profile.bankAccount || '',
+                bankOwner: profile.bankOwner || ''
+            });
+        }
+    }, [profile]);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -63,18 +107,23 @@ const CollaboratorPage: React.FC = () => {
 
     const fetchOrders = async (refCode: string) => {
         try {
+            // Remove orderBy to avoid index requirement, sort in memory instead
             const q = query(
                 collection(db, 'orders'), 
-                where('referredBy', '==', refCode),
-                orderBy('createdAt', 'desc')
+                where('referredBy', '==', refCode)
             );
             const querySnapshot = await getDocs(q);
             const ordersData: Order[] = [];
             querySnapshot.forEach((doc) => {
                 ordersData.push(doc.data() as Order);
             });
+            
+            // Sort in memory: newest first
+            ordersData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            
             setOrders(ordersData);
         } catch (error) {
+            handleFirestoreError(error, OperationType.GET, 'orders');
             console.error("Error fetching orders:", error);
         }
     };
@@ -99,18 +148,22 @@ const CollaboratorPage: React.FC = () => {
             email: user.email,
             phone: formData.phone,
             fullName: formData.fullName,
+            bankName: formData.bankName,
+            bankAccount: formData.bankAccount,
+            bankOwner: formData.bankOwner,
             referralCode,
             status: 'active',
-            createdAt: Date.now()
+            createdAt: profile?.createdAt || Date.now()
         };
 
         try {
             await setDoc(doc(db, 'collaborators', user.uid), newProfile);
             setProfile(newProfile);
+            setIsEditing(false);
             localStorage.setItem('referral_id', referralCode);
         } catch (error) {
-            console.error("Registration error:", error);
-            alert("Lỗi khi đăng ký. Vui lòng thử lại.");
+            console.error("Registration/Update error:", error);
+            alert("Lỗi khi lưu thông tin. Vui lòng thử lại.");
         }
     };
 
@@ -137,11 +190,13 @@ const CollaboratorPage: React.FC = () => {
         );
     }
 
-    if (!profile) {
+    if (!profile || isEditing) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Đăng ký Cộng Tác Viên</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+                        {profile ? 'Cập nhật thông tin' : 'Đăng ký Cộng Tác Viên'}
+                    </h1>
                     <form onSubmit={handleRegister} className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Họ và tên</label>
@@ -154,7 +209,7 @@ const CollaboratorPage: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Số điện thoại (Dùng làm mã giới thiệu)</label>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Số điện thoại (Mã giới thiệu)</label>
                             <input 
                                 type="tel" 
                                 required
@@ -163,12 +218,56 @@ const CollaboratorPage: React.FC = () => {
                                 onChange={e => setFormData({...formData, phone: e.target.value})}
                             />
                         </div>
-                        <button 
-                            type="submit"
-                            className="w-full bg-luvin-pink text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition-all shadow-lg"
-                        >
-                            Hoàn tất đăng ký
-                        </button>
+                        <div className="pt-4 border-t border-gray-100">
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">Thông tin nhận thanh toán</p>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tên ngân hàng</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ví dụ: MB Bank, Techcombank..."
+                                        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none text-sm"
+                                        value={formData.bankName}
+                                        onChange={e => setFormData({...formData, bankName: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Số tài khoản</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none text-sm font-mono"
+                                        value={formData.bankAccount}
+                                        onChange={e => setFormData({...formData, bankAccount: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Chủ tài khoản</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none text-sm uppercase"
+                                        value={formData.bankOwner}
+                                        onChange={e => setFormData({...formData, bankOwner: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 pt-4">
+                            {profile && (
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsEditing(false)}
+                                    className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                                >
+                                    Hủy
+                                </button>
+                            )}
+                            <button 
+                                type="submit"
+                                className="flex-[2] bg-luvin-pink text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition-all shadow-lg"
+                            >
+                                {profile ? 'Lưu thay đổi' : 'Hoàn tất đăng ký'}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -185,7 +284,10 @@ const CollaboratorPage: React.FC = () => {
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Chào, {profile.fullName}!</h1>
-                        <p className="text-gray-500">Mã CTV: <span className="font-bold text-luvin-pink">{profile.referralCode}</span></p>
+                        <div className="flex items-center gap-3">
+                            <p className="text-gray-500">Mã CTV: <span className="font-bold text-luvin-pink">{profile.referralCode}</span></p>
+                            <button onClick={() => setIsEditing(true)} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-200 font-bold">Sửa hồ sơ</button>
+                        </div>
                     </div>
                     <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 font-medium">Đăng xuất</button>
                 </div>
@@ -202,19 +304,19 @@ const CollaboratorPage: React.FC = () => {
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-xs mb-1 uppercase font-bold">Doanh số</p>
                         <p className="text-2xl font-bold text-blue-600">
-                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + o.totalPrice, 0))}
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + o.totalPrice, 0), 'payment')}
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-luvin-pink/5 border-luvin-pink/20">
                         <p className="text-luvin-pink text-xs mb-1 uppercase font-bold">Hoa hồng (10%)</p>
                         <p className="text-2xl font-bold text-luvin-pink">
-                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0))}
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0), 'payment')}
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-orange-50 border-orange-200">
                         <p className="text-orange-700 text-xs mb-1 uppercase font-bold">Chưa thanh toán</p>
                         <p className="text-2xl font-bold text-orange-700">
-                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng' && !o.commissionPaid).reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0))}
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng' && !o.commissionPaid).reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0), 'payment')}
                         </p>
                     </div>
                 </div>
@@ -267,9 +369,9 @@ const CollaboratorPage: React.FC = () => {
                                         <td className="px-6 py-4 font-mono font-bold">{order.id}</td>
                                         <td className="px-6 py-4 text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
                                         <td className="px-6 py-4">{order.customer.name}</td>
-                                        <td className="px-6 py-4 font-bold">{formatCurrency(order.totalPrice)}</td>
+                                        <td className="px-6 py-4 font-bold">{formatCurrency(order.totalPrice, 'payment')}</td>
                                         <td className="px-6 py-4 text-luvin-pink font-bold">
-                                            {formatCurrency(order.commissionAmount || order.totalPrice * COMMISSION_RATE)}
+                                            {formatCurrency(order.commissionAmount || order.totalPrice * COMMISSION_RATE, 'payment')}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${

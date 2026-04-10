@@ -20,9 +20,10 @@ import { AdminConfig } from '../components/admin/AdminConfig';
 import { AdminVouchers } from '../components/admin/AdminVouchers'; 
 import { AdminCustomers } from '../components/admin/AdminCustomers'; 
 import { AdminDesign } from '../components/admin/AdminDesign';
+import { AdminCollaborators } from '../components/admin/AdminCollaborators';
 import { Logo } from '../components/shared/Logo';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'collaborators';
 
 const AdminPage: React.FC = () => {
     const navigate = useNavigate();
@@ -145,6 +146,7 @@ const AdminPage: React.FC = () => {
                                         <button onClick={() => handleTabChange('products')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Sản phẩm</button>
                                         <button onClick={() => handleTabChange('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => handleTabChange('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
+                                        <button onClick={() => handleTabChange('collaborators')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'collaborators' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cộng tác viên</button>
                                         <button onClick={() => handleTabChange('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
                                         <button onClick={() => handleTabChange('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
                                     </>
@@ -180,6 +182,7 @@ const AdminPage: React.FC = () => {
                                 <button onClick={() => handleTabChange('products')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'products' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Sản phẩm</button>
                                 <button onClick={() => handleTabChange('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Khách hàng</button>
                                 <button onClick={() => handleTabChange('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Marketing</button>
+                                <button onClick={() => handleTabChange('collaborators')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'collaborators' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>CTV</button>
                                 <button onClick={() => handleTabChange('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Design</button>
                                 <button onClick={() => handleTabChange('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Cấu hình</button>
                             </>
@@ -195,6 +198,7 @@ const AdminPage: React.FC = () => {
                 {activeTab === 'config' && role === 'admin' && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
+                {activeTab === 'collaborators' && role === 'admin' && <AdminCollaborators orders={orders} />}
                 {activeTab === 'design' && role === 'admin' && <AdminDesign />}
             </main>
         </div>
