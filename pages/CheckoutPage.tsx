@@ -11,11 +11,11 @@ import { useLanguage } from '../src/contexts/LanguageContext';
 
 // Popular provinces as fallback if API fails
 const POPULAR_PROVINCES = [
-    { name: 'Ha Noi', code: 1 },
-    { name: 'Ho Chi Minh', code: 79 },
-    { name: 'Da Nang', code: 48 },
-    { name: 'Can Tho', code: 92 },
-    { name: 'Hai Phong', code: 31 }
+    { name: 'Hà Nội', code: 1 },
+    { name: 'Hồ Chí Minh', code: 79 },
+    { name: 'Đà Nẵng', code: 48 },
+    { name: 'Cần Thơ', code: 92 },
+    { name: 'Hải Phòng', code: 31 }
 ];
 
 interface CheckoutPageProps {
@@ -68,6 +68,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   // Auto-fill & Loyalty State
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
+  
+  const [manualReferralCode, setManualReferralCode] = useState(localStorage.getItem('referred_by') || '');
 
   const GIFT_BOX_PRICE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
@@ -344,7 +346,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           amountToPay,
           discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
           discountAmount: totalDiscount,
-          referredBy: localStorage.getItem('referred_by') || undefined
+          referredBy: manualReferralCode || undefined
         });
 
         if (!initialOrder) trackFunnelStep('order_complete');
@@ -737,6 +739,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   </div>
                   {voucherError && <p className="text-xs text-red-500 mt-1">{voucherError}</p>}
                   {appliedVoucher && <p className="text-xs text-green-600 mt-1">{t('checkout.applied_code', { desc: appliedVoucher.description || appliedVoucher.code })}</p>}
+              </div>
+
+              {/* Referral Code Input */}
+              <div className="mt-4 pt-2 border-t border-dashed">
+                  <p className="text-xs font-bold text-gray-500 mb-2">{t('checkout.referral_code')}</p>
+                  <div className="flex gap-2">
+                      <input 
+                          type="text" 
+                          placeholder={t('checkout.enter_referral_code')} 
+                          value={manualReferralCode} 
+                          onChange={e => {
+                              setManualReferralCode(e.target.value);
+                              localStorage.setItem('referred_by', e.target.value);
+                          }}
+                          className="flex-grow p-2 border rounded-lg text-sm"
+                      />
+                  </div>
+                  {manualReferralCode && (
+                      <p className="text-xs text-green-600 mt-1">
+                          {t('checkout.referral_applied', { code: manualReferralCode })}
+                      </p>
+                  )}
               </div>
 
               <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">

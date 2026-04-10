@@ -297,6 +297,7 @@ export const translations: any = {
             custom_lego_frame: "Khung LEGO tùy chỉnh",
             edit: "Sửa",
             subtotal: "Tạm tính",
+            total: "Tổng cộng",
             view_cart: "Xem giỏ hàng",
             checkout: "Thanh toán",
         },
@@ -439,7 +440,10 @@ export const translations: any = {
             voucher_tag: "[VOUCHER: {{code}}] ",
             no_image: "Không ảnh",
             zero_vnd: "0₫",
-            custom_frame: "Khung tranh thiết kế"
+            custom_frame: "Khung tranh thiết kế",
+            referral_code: "Mã giới thiệu (CTV)",
+            referral_applied: "Đã áp dụng mã giới thiệu: {code}",
+            enter_referral_code: "Nhập mã CTV (nếu có)",
         }
     },
     en: {
@@ -737,6 +741,7 @@ export const translations: any = {
             custom_lego_frame: "Custom LEGO Frame",
             edit: "Edit",
             subtotal: "Subtotal",
+            total: "Total",
             view_cart: "View Cart",
             checkout: "Checkout",
         },
@@ -879,7 +884,10 @@ export const translations: any = {
             voucher_tag: "[VOUCHER: {{code}}] ",
             no_image: "No image",
             zero_vnd: "0₫",
-            custom_frame: "Custom Design Frame"
+            custom_frame: "Custom Design Frame",
+            referral_code: "Referral Code (CTV)",
+            referral_applied: "Referral code applied: {code}",
+            enter_referral_code: "Enter CTV code (if any)",
         }
     }
 };

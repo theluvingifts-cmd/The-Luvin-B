@@ -175,7 +175,7 @@ const CollaboratorPage: React.FC = () => {
         );
     }
 
-    const referralLink = `${window.location.origin}/studio?ref=${profile.referralCode}`;
+    const referralLink = `${window.location.origin}/builder/3?ref=${profile.referralCode}`;
 
     const COMMISSION_RATE = 0.1; // 10% commission
 

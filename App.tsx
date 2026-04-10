@@ -403,7 +403,7 @@ const App: React.FC = () => {
             <Routes>
                 <Route path="/" element={<HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />} />
                 <Route path="/home" element={<Navigate to="/" replace />} />
-                <Route path="/studio" element={<Navigate to="/builder/1" replace />} />
+                <Route path="/studio" element={<Navigate to="/builder/3" replace />} />
                 <Route path="/builder" element={<Navigate to="/builder/1" replace />} />
                 <Route path="/builder/:stepId" element={
                     <BuilderPage 

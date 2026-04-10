@@ -551,6 +551,12 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     const loadSharedDesign = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const designId = urlParams.get('design');
+        const refCode = urlParams.get('ref');
+        
+        if (refCode) {
+            localStorage.setItem('referred_by', refCode);
+        }
+
         if (designId) {
             setIsDesignLoading(true);
             const sharedConfig = await getSharedDesign(designId);
@@ -596,7 +602,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           return;
       }
 
-      const shareUrl = `${window.location.origin}/builder/1?design=${designId}&ref=${userPhone}`;
+      const shareUrl = `${window.location.origin}/builder/3?design=${designId}&ref=${userPhone}`;
       const shareText = `${t('studio.share_text')}\n\nXem thiết kế của mình tại đây: ${shareUrl}`;
 
       // ALWAYS copy to clipboard first for convenience
