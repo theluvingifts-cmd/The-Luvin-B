@@ -84,5 +84,20 @@ service cloud.firestore {
       allow read: if true; // Or restrict to admin only if preferred
       allow write: if true; // Allow anyone to increment stats
     }
+
+    // NEW: Shared Designs - Allow public read and create
+    match /shared_designs/{designId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // NEW: Collaborators - Allow users to manage their own profile
+    match /collaborators/{uid} {
+      allow read: if true; // Allow public to check referral codes
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

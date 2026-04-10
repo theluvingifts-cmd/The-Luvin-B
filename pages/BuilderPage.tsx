@@ -13,6 +13,7 @@ import { ZoomIcon } from '../components/ZoomIcon';
 import { getRecentOrders } from '../services/orderService';
 import { trackFunnelStep } from '../services/analyticsService'; 
 import { dataURLToBlob, preloadImage } from '../utils/helpers';
+import { saveSharedDesign, getSharedDesign } from '../services/shareService';
 
 // Sub-components
 import { Step1Frame } from '../components/builder/Step1';
@@ -364,6 +365,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const frameCaptureRef = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(480);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDesignLoading, setIsDesignLoading] = useState(false);
   const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [isEditingText, setIsEditingText] = useState(false);
@@ -545,14 +547,37 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     }
   };
 
+  useEffect(() => {
+    const loadSharedDesign = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const designId = urlParams.get('design');
+        if (designId) {
+            setIsDesignLoading(true);
+            const sharedConfig = await getSharedDesign(designId);
+            if (sharedConfig) {
+                setConfig(sharedConfig);
+                setHistory([JSON.stringify(sharedConfig)]);
+                setHistoryIndex(0);
+                showToast(t('studio.design_loaded'), 'success');
+            } else {
+                showToast(t('studio.design_not_found'), 'error');
+            }
+            setIsDesignLoading(false);
+        }
+    };
+    loadSharedDesign();
+  }, []);
+
   const handleShare = async () => {
       setIsSaving(true);
       const image = await captureFrameAsImage();
-      setIsSaving(false);
       
-      if (!image) return;
+      if (!image) {
+          setIsSaving(false);
+          return;
+      }
 
-      // Get user phone from localStorage (saved from previous orders)
+      // Get user phone from localStorage
       let userPhone = '';
       try {
           userPhone = localStorage.getItem('last_customer_phone') || localStorage.getItem('referral_id') || '';
@@ -562,7 +587,16 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           }
       } catch (e) {}
 
-      const shareUrl = `${window.location.origin}?ref=${userPhone}`;
+      // Save design to Firestore
+      const designId = await saveSharedDesign(config, userPhone);
+      setIsSaving(false);
+
+      if (!designId) {
+          showToast(t('studio.share_error'), 'error');
+          return;
+      }
+
+      const shareUrl = `${window.location.origin}/builder/1?design=${designId}&ref=${userPhone}`;
       const shareText = `${t('studio.share_text')}\n\nXem thiết kế của mình tại đây: ${shareUrl}`;
 
       // ALWAYS copy to clipboard first for convenience

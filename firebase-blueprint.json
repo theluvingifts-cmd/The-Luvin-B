@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "SharedDesign": {
+      "title": "SharedDesign",
+      "description": "A design shared by a user to be loaded by others.",
+      "type": "object",
+      "properties": {
+        "config": {
+          "type": "object",
+          "description": "The FrameConfig object representing the design."
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp when the design was shared."
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Referral ID or phone of the person who shared it."
+        }
+      },
+      "required": ["config", "createdAt"]
+    },
+    "Collaborator": {
+      "title": "Collaborator",
+      "description": "A collaborator (CTV) who refers customers.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "fullName": { "type": "string" },
+        "referralCode": { "type": "string", "description": "Unique code for links." },
+        "status": { "type": "string", "enum": ["pending", "active", "suspended"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "email", "referralCode"]
+    }
+  },
+  "firestore": {
+    "/shared_designs/{designId}": {
+      "schema": "SharedDesign",
+      "description": "Collection of shared designs."
+    },
+    "/collaborators/{uid}": {
+      "schema": "Collaborator",
+      "description": "Collection of collaborator profiles."
+    }
+  }
+}

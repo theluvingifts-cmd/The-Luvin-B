@@ -66,6 +66,7 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
                         <li><button onClick={() => navigateTo('warranty')} className="hover:text-primary transition-colors">Chính sách bảo hành</button></li>
                         <li><button onClick={() => navigateTo('business')} className="hover:text-primary transition-colors">Khách hàng Doanh nghiệp</button></li>
                         <li><button onClick={() => navigateTo('about')} className="hover:text-primary transition-colors">Về chúng tôi</button></li>
+                        <li><button onClick={() => navigateTo('ctv')} className="hover:text-primary transition-colors font-bold text-luvin-pink">Cộng tác viên (CTV)</button></li>
                     </ul>
                 </div>
                 <div>

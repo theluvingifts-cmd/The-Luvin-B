@@ -34,6 +34,7 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
+import CollaboratorPage from './pages/CollaboratorPage';
 import { categorizeParts } from './utils/helpers';
 
 declare var confetti: any;
@@ -113,7 +114,7 @@ const App: React.FC = () => {
   // Determine currentPage from location for Header/Footer visibility
   const currentPage = useMemo<Page>(() => {
     const path = location.pathname.split('/')[1] || 'home';
-    const validPages: Page[] = ['home', 'builder', 'collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business'];
+    const validPages: Page[] = ['home', 'builder', 'collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv'];
     return validPages.includes(path as Page) ? (path as Page) : 'home';
   }, [location]);
   
@@ -402,6 +403,7 @@ const App: React.FC = () => {
             <Routes>
                 <Route path="/" element={<HomePage navigateTo={navigateTo} config={storeConfig} feedbacks={feedbacks} templates={templates} />} />
                 <Route path="/home" element={<Navigate to="/" replace />} />
+                <Route path="/studio" element={<Navigate to="/builder/1" replace />} />
                 <Route path="/builder" element={<Navigate to="/builder/1" replace />} />
                 <Route path="/builder/:stepId" element={
                     <BuilderPage 
@@ -420,6 +422,7 @@ const App: React.FC = () => {
                 <Route path="/order-confirmation" element={<OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />} />
                 <Route path="/order-lookup" element={<OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />} />
                 <Route path="/admin/*" element={<AdminPage />} />
+                <Route path="/ctv" element={<CollaboratorPage />} />
                 <Route path="/about" element={<AboutPage config={storeConfig} />} />
                 <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />
                 <Route path="/business" element={<BusinessPage config={storeConfig} legoParts={legoParts} />} />
