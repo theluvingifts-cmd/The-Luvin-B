@@ -174,6 +174,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   const totalQuantity = useMemo(() => cartItems.reduce((total, item) => total + (item.quantity || 1), 0), [cartItems]);
   
+  const hasCustomPrint = useMemo(() => {
+    return cartItems.some(item => {
+      const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS);
+      return priceBreakdown.some(pb => pb.label.includes('In mặt riêng') || pb.label.includes(t('studio.custom_print')));
+    });
+  }, [cartItems, allParts, t]);
+
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
   const isFreeShippingEligible = subtotal >= FREE_SHIPPING_THRESHOLD;
   
@@ -553,6 +560,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                               <p>{t('checkout.distance_warning_desc', { location: t('checkout.warehouse_location') })}</p>
                               {shippingOption === 'bookship' && <p className="mt-1">{t('checkout.bookship_warning')}</p>}
                               {isNonHanoiProvince && <p className="mt-1 text-red-600 font-bold">{t('checkout.non_hanoi_warning')}</p>}
+                          </div>
+                      </div>
+                  )}
+
+                  {hasCustomPrint && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start animate-fade-in mb-4">
+                          <span className="text-xl">⚠️</span>
+                          <div className="text-xs text-amber-900 leading-relaxed">
+                              <p className="font-bold mb-1">{t('studio.custom_print')}</p>
+                              <p>{t('studio.custom_print_notice')}</p>
                           </div>
                       </div>
                   )}

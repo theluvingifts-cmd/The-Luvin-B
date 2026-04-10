@@ -65,6 +65,7 @@ export const Step4Summary: React.FC<{
 }> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
   const { t } = useLanguage();
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
+  const hasCustomPrint = priceBreakdown.some(item => item.label.includes('In mặt riêng') || item.label.includes(t('studio.custom_print')));
 
   return (
     <div className="text-left">
@@ -116,6 +117,16 @@ export const Step4Summary: React.FC<{
                 )}
             </div>
         </div>
+
+        {hasCustomPrint && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in text-left">
+                <span className="text-xl">⚠️</span>
+                <div>
+                    <p className="font-bold text-amber-900 text-sm mb-1">{t('studio.custom_print')}</p>
+                    <p className="text-xs text-amber-800 font-medium leading-relaxed">{t('studio.custom_print_notice')}</p>
+                </div>
+            </div>
+        )}
 
         <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in text-left">
             <span className="text-xl">📅</span>

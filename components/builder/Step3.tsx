@@ -433,7 +433,8 @@ export const Step3Characters: React.FC<{
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
                   <h3 className="font-bold text-lg mb-2">{t('studio.select_print_quality')}</h3>
-                  <p className="text-sm text-gray-600 mb-4">{t('studio.print_quality_desc')}</p>
+                  <p className="text-sm text-gray-600 mb-2">{t('studio.print_quality_desc')}</p>
+                  <p className="text-xs font-bold text-amber-600 mb-4 bg-amber-50 p-2 rounded border border-amber-100">{t('studio.custom_print_notice')}</p>
                   <div className="space-y-2">
                     <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">{t('studio.standard_print')} - {formatCurrency(150000)}</button>
                     <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">{t('studio.premium_print')} - {formatCurrency(300000)}</button>

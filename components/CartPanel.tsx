@@ -24,6 +24,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
+  const hasCustomPrint = cartItems.some(item => {
+    const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS);
+    return priceBreakdown.some(pb => pb.label.includes('In mặt riêng') || pb.label.includes(t('studio.custom_print')));
+  });
+
   const handleCheckout = () => {
     onClose();
     navigateTo('checkout');
@@ -128,6 +133,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
           </div>
         )}
         <div className="p-4 border-t bg-white space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+          {hasCustomPrint && (
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 flex gap-2 items-start animate-fade-in">
+                  <span className="text-sm">⚠️</span>
+                  <p className="text-[10px] text-amber-800 font-medium leading-tight">{t('studio.custom_print_notice')}</p>
+              </div>
+          )}
           <div className="flex justify-between items-end">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('cart.subtotal')}</span>
             <span className="text-xl font-black text-gray-800">{formatCurrency(subtotal)}</span>
