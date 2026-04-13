@@ -131,3 +131,32 @@ export const deleteCTVDesign = async (designId: string, ctvUid?: string) => {
         return false;
     }
 };
+
+export const getCollaboratorByReferralCode = async (referralCode: string): Promise<Collaborator | null> => {
+    try {
+        const { query, where, getDocs, collection } = await import('firebase/firestore');
+        const q = query(
+            collection(db, 'collaborators'),
+            where('referralCode', '==', referralCode)
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs[0].data() as Collaborator;
+        }
+        
+        // Also check by phone just in case
+        const q2 = query(
+            collection(db, 'collaborators'),
+            where('phone', '==', referralCode)
+        );
+        const querySnapshot2 = await getDocs(q2);
+        if (!querySnapshot2.empty) {
+            return querySnapshot2.docs[0].data() as Collaborator;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error("Error getting collaborator by referral code:", error);
+        return null;
+    }
+};

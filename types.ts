@@ -233,6 +233,7 @@ export interface Collaborator {
     status: 'pending' | 'active' | 'suspended';
     createdAt: number;
     designs?: SavedDesign[];
+    customCommissionRate?: number;
 }
 
 export interface PresetBackground {

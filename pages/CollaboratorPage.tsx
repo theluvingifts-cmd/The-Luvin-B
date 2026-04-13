@@ -206,7 +206,7 @@ const CollaboratorPage: React.FC = () => {
             bankAccount: formData.bankAccount,
             bankOwner: formData.bankOwner,
             referralCode,
-            status: 'active',
+            status: 'pending',
             createdAt: profile?.createdAt || Date.now()
         };
 
@@ -373,6 +373,48 @@ const CollaboratorPage: React.FC = () => {
         );
     }
 
+    if (profile.status === 'pending') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+                    <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Đang chờ xác duyệt</h1>
+                    <p className="text-gray-600 mb-8">
+                        Cảm ơn bạn đã đăng ký làm Cộng tác viên! Tài khoản của bạn đang được quản trị viên kiểm tra. Chúng tôi sẽ thông báo cho bạn ngay khi tài khoản được kích hoạt.
+                    </p>
+                    <button onClick={handleLogout} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">
+                        Đăng xuất
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (profile.status === 'suspended') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+                    <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Tài khoản bị tạm khóa</h1>
+                    <p className="text-gray-600 mb-8">
+                        Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.
+                    </p>
+                    <button onClick={handleLogout} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">
+                        Đăng xuất
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const referralLink = `${window.location.origin}/builder/3?ref=${profile.referralCode}`;
 
     const COMMISSION_RATE = 0.1; // 10% commission
@@ -407,17 +449,47 @@ const CollaboratorPage: React.FC = () => {
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-luvin-pink/5 border-luvin-pink/20">
-                        <p className="text-luvin-pink text-xs mb-1 uppercase font-bold">Hoa hồng (10%)</p>
+                        <p className="text-luvin-pink text-xs mb-1 uppercase font-bold">Tổng hoa hồng</p>
                         <p className="text-2xl font-bold text-luvin-pink">
-                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0), 'payment')}
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => {
+                                if (o.commissionAmount !== undefined) return sum + o.commissionAmount;
+                                const rate = profile.customCommissionRate !== undefined ? profile.customCommissionRate / 100 : (orders.filter(ord => ord.status === 'Đã giao hàng').length < 2 ? 0.05 : 0.1);
+                                return sum + Math.round(o.totalPrice * rate);
+                            }, 0), 'payment')}
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-orange-50 border-orange-200">
                         <p className="text-orange-700 text-xs mb-1 uppercase font-bold">Chưa thanh toán</p>
                         <p className="text-2xl font-bold text-orange-700">
-                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng' && !o.commissionPaid).reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * COMMISSION_RATE), 0), 'payment')}
+                            {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng' && !o.commissionPaid).reduce((sum, o) => {
+                                if (o.commissionAmount !== undefined) return sum + o.commissionAmount;
+                                const rate = profile.customCommissionRate !== undefined ? profile.customCommissionRate / 100 : (orders.filter(ord => ord.status === 'Đã giao hàng').length < 2 ? 0.05 : 0.1);
+                                return sum + Math.round(o.totalPrice * rate);
+                            }, 0), 'payment')}
                         </p>
                     </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                    <h2 className="font-bold text-gray-900 mb-4">Chính sách hoa hồng</h2>
+                    {profile.customCommissionRate !== undefined ? (
+                        <div className="p-4 rounded-xl bg-luvin-pink/5 border border-luvin-pink/20">
+                            <p className="text-luvin-pink font-bold text-sm mb-1">Mức hoa hồng riêng biệt: {profile.customCommissionRate}%</p>
+                            <p className="text-gray-600 text-xs">Bạn đang được áp dụng mức hoa hồng đặc biệt dành riêng cho đối tác chiến lược.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                                <p className="text-blue-800 font-bold text-sm mb-1">Mức 1: Khởi động (5%)</p>
+                                <p className="text-blue-600 text-xs">Áp dụng cho 2 đơn hàng thành công đầu tiên của bạn.</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-green-50 border border-green-100">
+                                <p className="text-green-800 font-bold text-sm mb-1">Mức 2: Chuyên nghiệp (10%)</p>
+                                <p className="text-green-600 text-xs">Áp dụng từ đơn hàng thành công thứ 3 trở đi.</p>
+                            </div>
+                        </div>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-4 italic">* Hoa hồng chỉ được tính khi đơn hàng ở trạng thái "Đã giao hàng". Không tính hoa hồng cho đơn hàng tự đặt.</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">

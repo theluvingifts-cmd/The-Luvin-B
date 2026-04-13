@@ -4,10 +4,11 @@ import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../util
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
-import { getOrdersByPhone, getOrderById } from '../services/orderService'; 
+import { getOrdersByPhone, getOrderById, getOrdersByReferralCode } from '../services/orderService'; 
 import { getStoreConfig, StoreConfig } from '../services/configService';
 import { trackFunnelStep } from '../services/analyticsService';
 import { useLanguage } from '../src/contexts/LanguageContext';
+import { getCollaboratorByReferralCode } from '../services/shareService';
 
 // Popular provinces as fallback if API fails
 const POPULAR_PROVINCES = [
@@ -68,6 +69,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   // Auto-fill & Loyalty State
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
+  const [isSelfReferral, setIsSelfReferral] = useState(false);
   
   const [manualReferralCode, setManualReferralCode] = useState(localStorage.getItem('referred_by') || '');
 
@@ -169,6 +171,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     }
   }, [selectedDistrict, isApiError]);
 
+
+  useEffect(() => {
+      const checkSelfReferral = async () => {
+          if (manualReferralCode && phone.length >= 10) {
+              const collaborator = await getCollaboratorByReferralCode(manualReferralCode);
+              setIsSelfReferral(collaborator?.phone === phone);
+          } else {
+              setIsSelfReferral(false);
+          }
+      };
+      checkSelfReferral();
+  }, [manualReferralCode, phone]);
 
   const subtotal = useMemo(() => {
       return cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
@@ -301,6 +315,39 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
     setIsSubmitting(true);
 
+    let finalCommissionAmount = 0;
+    
+    // Tiered Commission Logic
+    if (manualReferralCode) {
+        try {
+            const collaborator = await getCollaboratorByReferralCode(manualReferralCode);
+            if (collaborator) {
+                // Self-referral check
+                if (collaborator.phone === phone) {
+                    finalCommissionAmount = 0;
+                    console.log("Self-referral detected. Commission set to 0.");
+                } else {
+                    // Logic: Custom rate > Tiered rate (First 2 orders = 5%, From 3rd order = 10%)
+                    let rate = 0;
+                    if (collaborator.customCommissionRate !== undefined) {
+                        rate = collaborator.customCommissionRate / 100;
+                    } else {
+                        const refOrders = await getOrdersByReferralCode(manualReferralCode);
+                        const successfulOrdersCount = refOrders.filter(o => o.status === 'Đã giao hàng').length;
+                        rate = successfulOrdersCount < 2 ? 0.05 : 0.1;
+                    }
+                    
+                    finalCommissionAmount = Math.round(totalPrice * rate);
+                    console.log(`Commission rate applied: ${rate * 100}%`);
+                }
+            }
+        } catch (e) {
+            console.error("Error calculating tiered commission:", e);
+            // Fallback to 5% if error
+            finalCommissionAmount = Math.round(totalPrice * 0.05);
+        }
+    }
+
     const provinceName = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';
     const districtName = districts.find(d => String(d.code) === String(selectedDistrict))?.name || selectedDistrict || '';
     const wardName = wards.find(w => String(w.code) === String(selectedWard))?.name || selectedWard || '';
@@ -347,7 +394,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
           discountAmount: totalDiscount,
           referredBy: manualReferralCode || undefined,
-          commissionAmount: manualReferralCode ? Math.round(totalPrice * 0.1) : 0,
+          commissionAmount: finalCommissionAmount,
           commissionPaid: false
         });
 
@@ -759,8 +806,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                       />
                   </div>
                   {manualReferralCode && (
-                      <p className="text-xs text-green-600 mt-1">
-                          {t('checkout.referral_applied', { code: manualReferralCode })}
+                      <p className={`text-xs mt-1 ${isSelfReferral ? 'text-amber-600 font-bold' : 'text-green-600'}`}>
+                          {isSelfReferral 
+                            ? "⚠️ Bạn không thể nhận hoa hồng cho đơn hàng của chính mình." 
+                            : t('checkout.referral_applied', { code: manualReferralCode })}
                       </p>
                   )}
               </div>

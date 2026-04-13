@@ -180,6 +180,20 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
     }
 };
 
+// 2c. Hàm tra cứu đơn hàng bằng mã giới thiệu
+export const getOrdersByReferralCode = async (referralCode: string): Promise<Order[]> => {
+    try {
+        const q = query(collection(db, "orders"), where("referredBy", "==", referralCode));
+        const querySnapshot = await getDocs(q);
+        const orders: Order[] = [];
+        querySnapshot.forEach((doc) => { orders.push(doc.data() as Order); });
+        return orders;
+    } catch (error) {
+        console.error("Lỗi tra cứu theo mã giới thiệu:", error);
+        return [];
+    }
+};
+
 // 3. Hàm lấy toàn bộ danh sách đơn hàng
 export const getAllOrders = async (): Promise<Order[]> => {
     try {

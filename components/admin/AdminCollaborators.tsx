@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Order } from '../../types';
 import { formatCurrency } from '../../utils/pricing';
@@ -15,6 +15,7 @@ interface CollaboratorProfile {
     referralCode: string;
     status: string;
     createdAt: number;
+    customCommissionRate?: number;
 }
 
 interface AdminCollaboratorsProps {
@@ -42,12 +43,41 @@ export const AdminCollaborators: React.FC<AdminCollaboratorsProps> = ({ orders }
         fetchCollaborators();
     }, []);
 
+    const handleUpdateStatus = async (uid: string, newStatus: string) => {
+        if (!confirm(`Bạn có chắc chắn muốn chuyển trạng thái CTV này sang "${newStatus === 'active' ? 'Hoạt động' : newStatus === 'pending' ? 'Chờ duyệt' : 'Tạm khóa'}"?`)) return;
+        
+        try {
+            await updateDoc(doc(db, 'collaborators', uid), { status: newStatus });
+            setCollaborators(prev => prev.map(c => c.uid === uid ? { ...c, status: newStatus } : c));
+        } catch (error) {
+            console.error("Error updating status:", error);
+            alert("Lỗi khi cập nhật trạng thái");
+        }
+    };
+
+    const handleUpdateCommission = async (uid: string, rate: number) => {
+        try {
+            await updateDoc(doc(db, 'collaborators', uid), { customCommissionRate: rate });
+            setCollaborators(prev => prev.map(c => c.uid === uid ? { ...c, customCommissionRate: rate } : c));
+        } catch (error) {
+            console.error("Error updating commission:", error);
+            alert("Lỗi khi cập nhật hoa hồng");
+        }
+    };
+
     const colabStats = useMemo(() => {
         return collaborators.map(c => {
             const cOrders = orders.filter(o => o.referredBy === c.phone || o.referredBy === c.referralCode);
             const successfulOrders = cOrders.filter(o => o.status === 'Đã giao hàng');
-            const totalCommission = successfulOrders.reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * 0.1), 0);
-            const unpaidCommission = successfulOrders.filter(o => !o.commissionPaid).reduce((sum, o) => sum + (o.commissionAmount || o.totalPrice * 0.1), 0);
+            
+            const calculateOrderCommission = (o: Order) => {
+                if (o.commissionAmount !== undefined) return o.commissionAmount;
+                const rate = c.customCommissionRate !== undefined ? c.customCommissionRate / 100 : (successfulOrders.length < 2 ? 0.05 : 0.1);
+                return Math.round(o.totalPrice * rate);
+            };
+
+            const totalCommission = successfulOrders.reduce((sum, o) => sum + calculateOrderCommission(o), 0);
+            const unpaidCommission = successfulOrders.filter(o => !o.commissionPaid).reduce((sum, o) => sum + calculateOrderCommission(o), 0);
             
             return {
                 ...c,
@@ -93,15 +123,18 @@ export const AdminCollaborators: React.FC<AdminCollaboratorsProps> = ({ orders }
                             <tr>
                                 <th className="px-6 py-4">CTV / Thông tin</th>
                                 <th className="px-6 py-4">Ngân hàng</th>
+                                <th className="px-6 py-4 text-center">Trạng thái</th>
+                                <th className="px-6 py-4 text-center">Hoa hồng (%)</th>
                                 <th className="px-6 py-4 text-center">Đơn hàng</th>
                                 <th className="px-6 py-4 text-right">Tổng hoa hồng</th>
                                 <th className="px-6 py-4 text-right text-orange-600">Chưa trả</th>
+                                <th className="px-6 py-4 text-right">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredColabs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400">Không tìm thấy CTV nào.</td>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-400">Không tìm thấy CTV nào.</td>
                                 </tr>
                             ) : filteredColabs.map(c => (
                                 <tr key={c.uid} className="hover:bg-gray-50 transition-colors">
@@ -116,6 +149,36 @@ export const AdminCollaborators: React.FC<AdminCollaboratorsProps> = ({ orders }
                                         <div className="text-[10px] text-gray-400 uppercase">{c.bankOwner}</div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
+                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                                            c.status === 'active' ? 'bg-green-100 text-green-600' : 
+                                            c.status === 'pending' ? 'bg-amber-100 text-amber-600' : 
+                                            'bg-red-100 text-red-600'
+                                        }`}>
+                                            {c.status === 'active' ? 'Đang hoạt động' : 
+                                             c.status === 'pending' ? 'Chờ duyệt' : 
+                                             'Tạm khóa'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <input 
+                                                type="number" 
+                                                className="w-12 p-1 border rounded text-xs text-center font-bold"
+                                                defaultValue={c.customCommissionRate || (c.successfulOrders < 2 ? 5 : 10)}
+                                                onBlur={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    if (!isNaN(val) && val >= 0 && val <= 100) {
+                                                        handleUpdateCommission(c.uid, val);
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-xs text-gray-400">%</span>
+                                        </div>
+                                        {c.customCommissionRate === undefined && (
+                                            <div className="text-[9px] text-gray-400 mt-1 italic">Mặc định</div>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
                                         <div className="font-bold text-gray-900">{c.successfulOrders} / {c.totalOrders}</div>
                                         <div className="text-[10px] text-gray-400">Thành công / Tổng</div>
                                     </td>
@@ -127,6 +190,36 @@ export const AdminCollaborators: React.FC<AdminCollaboratorsProps> = ({ orders }
                                         {c.unpaidCommission > 0 && (
                                             <div className="text-[10px] text-orange-400 italic">Cần thanh toán</div>
                                         )}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            {c.status === 'pending' && (
+                                                <button 
+                                                    onClick={() => handleUpdateStatus(c.uid, 'active')}
+                                                    className="p-1.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                                                    title="Duyệt CTV"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                </button>
+                                            )}
+                                            {c.status === 'active' ? (
+                                                <button 
+                                                    onClick={() => handleUpdateStatus(c.uid, 'suspended')}
+                                                    className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                                                    title="Khóa CTV"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                </button>
+                                            ) : c.status === 'suspended' ? (
+                                                <button 
+                                                    onClick={() => handleUpdateStatus(c.uid, 'active')}
+                                                    className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                                                    title="Mở khóa"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
