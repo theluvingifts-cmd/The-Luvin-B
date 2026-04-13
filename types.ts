@@ -216,6 +216,25 @@ export interface Order {
   imagesCleaned?: boolean;
 }
 
+export interface SavedDesign {
+    id: string;
+    ctvUid: string;
+    name: string;
+    config: FrameConfig;
+    createdAt: number;
+}
+
+export interface Collaborator {
+    uid: string;
+    email: string;
+    phone?: string;
+    fullName?: string;
+    referralCode: string;
+    status: 'pending' | 'active' | 'suspended';
+    createdAt: number;
+    designs?: SavedDesign[];
+}
+
 export interface PresetBackground {
     id: string;
     name: string;

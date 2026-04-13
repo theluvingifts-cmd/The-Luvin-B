@@ -1,6 +1,8 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { auth, db } from '../config/firebase';
+import { getDoc, doc } from 'firebase/firestore';
 import type { Page, FrameConfig, LegoPart, TextConfig, FrameOption, CustomFont } from '../types';
 import { 
     LEGO_PARTS, 
@@ -13,7 +15,7 @@ import { ZoomIcon } from '../components/ZoomIcon';
 import { getRecentOrders } from '../services/orderService';
 import { trackFunnelStep } from '../services/analyticsService'; 
 import { dataURLToBlob, preloadImage } from '../utils/helpers';
-import { saveSharedDesign, getSharedDesign } from '../services/shareService';
+import { saveSharedDesign, getSharedDesign, saveCTVDesign } from '../services/shareService';
 
 // Sub-components
 import { Step1Frame } from '../components/builder/Step1';
@@ -374,6 +376,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [lastSquareFrameId, setLastSquareFrameId] = useState<string>('lg'); 
   const [previewFont, setPreviewFont] = useState<string | null>(null); 
   
+  const [isCTV, setIsCTV] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [designName, setDesignName] = useState('');
+
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
 
@@ -518,6 +524,43 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     };
     fetchHotTrends();
   }, []);
+
+  useEffect(() => {
+    const checkCTV = async () => {
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                const docSnap = await getDoc(doc(db, 'collaborators', user.uid));
+                if (docSnap.exists()) {
+                    setIsCTV(true);
+                }
+            } catch (e) {
+                console.error("Error checking CTV status:", e);
+            }
+        }
+    };
+    checkCTV();
+  }, []);
+
+  const handleSaveCTVDesign = async () => {
+      if (!designName.trim()) {
+          showToast("Vui lòng nhập tên thiết kế", 'error');
+          return;
+      }
+      setIsSaving(true);
+      const user = auth.currentUser;
+      if (user) {
+          const designId = await saveCTVDesign(user.uid, designName, config);
+          if (designId) {
+              showToast("Đã lưu thiết kế thành công!", 'success');
+              setShowSaveModal(false);
+              setDesignName('');
+          } else {
+              showToast("Lỗi khi lưu thiết kế", 'error');
+          }
+      }
+      setIsSaving(false);
+  };
 
   const handleUndo = () => {
       if (historyIndex > 0) {
@@ -1047,6 +1090,11 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         <button onClick={handleShare} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition-all shadow-sm" title={t('studio.share_design')}>
                             <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
+                        {isCTV && (
+                            <button onClick={() => setShowSaveModal(true)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-green-600 hover:bg-green-50 active:scale-95 transition-all shadow-sm" title="Lưu thiết kế CTV">
+                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div 
@@ -1127,6 +1175,43 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           </div>
         </div>
       </div>
+
+      {showSaveModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+                  <div className="bg-luvin-pink p-6 text-white">
+                      <h3 className="text-xl font-bold">Lưu thiết kế CTV</h3>
+                      <p className="text-white/80 text-sm mt-1">Đặt tên cho thiết kế để dễ dàng quản lý và chia sẻ.</p>
+                  </div>
+                  <div className="p-6">
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest">Tên thiết kế</label>
+                      <input 
+                        type="text" 
+                        value={designName}
+                        onChange={e => setDesignName(e.target.value)}
+                        placeholder="Ví dụ: Link tốt nghiệp 1"
+                        className="w-full p-3 border-2 border-gray-100 rounded-xl focus:border-luvin-pink outline-none transition-all font-medium mb-6"
+                        autoFocus
+                      />
+                      <div className="flex gap-3">
+                          <button 
+                            onClick={() => setShowSaveModal(false)}
+                            className="flex-1 px-4 py-3 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all"
+                          >
+                              Hủy
+                          </button>
+                          <button 
+                            onClick={handleSaveCTVDesign}
+                            disabled={isSaving || !designName.trim()}
+                            className="flex-[2] px-4 py-3 rounded-xl font-bold text-white bg-luvin-pink hover:bg-pink-600 transition-all shadow-lg disabled:opacity-50"
+                          >
+                              {isSaving ? 'Đang lưu...' : 'Lưu thiết kế'}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

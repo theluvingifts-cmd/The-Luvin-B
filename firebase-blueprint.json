@@ -34,6 +34,18 @@
         "createdAt": { "type": "number" }
       },
       "required": ["uid", "email", "referralCode"]
+    },
+    "CTVDesign": {
+      "title": "CTVDesign",
+      "description": "A design saved by a CTV for their own use and sharing.",
+      "type": "object",
+      "properties": {
+        "ctvUid": { "type": "string", "description": "UID of the CTV who saved it." },
+        "name": { "type": "string", "description": "Name of the design." },
+        "config": { "type": "object", "description": "The FrameConfig object." },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["ctvUid", "name", "config", "createdAt"]
     }
   },
   "firestore": {
@@ -44,6 +56,10 @@
     "/collaborators/{uid}": {
       "schema": "Collaborator",
       "description": "Collection of collaborator profiles."
+    },
+    "/ctv_designs/{designId}": {
+      "schema": "CTVDesign",
+      "description": "Collection of designs saved by CTVs."
     }
   }
 }

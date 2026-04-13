@@ -99,5 +99,12 @@ service cloud.firestore {
       allow update: if (request.auth != null && request.auth.uid == uid) || isAdmin();
       allow delete: if isAdmin();
     }
+
+    // NEW: CTV Designs - Allow CTVs to manage their own designs
+    match /ctv_designs/{designId} {
+      allow read: if true; // Allow anyone to view the design if they have the link
+      allow create: if request.auth != null && request.resource.data.ctvUid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.ctvUid == request.auth.uid;
+    }
   }
 }

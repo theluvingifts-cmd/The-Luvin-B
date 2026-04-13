@@ -22,7 +22,9 @@ import {
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { Logo } from '../components/shared/Logo';
 import { formatCurrency } from '../utils/pricing';
-import { Order } from '../types';
+import { Order, SavedDesign } from '../types';
+import { getCTVDesigns, deleteCTVDesign } from '../services/shareService';
+import { useNavigate } from 'react-router-dom';
 
 enum OperationType {
     CREATE = 'create',
@@ -57,10 +59,12 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
 
 const CollaboratorPage: React.FC = () => {
     const { t } = useLanguage();
+    const navigate = useNavigate();
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState<Order[]>([]);
+    const [designs, setDesigns] = useState<SavedDesign[]>([]);
     const [authEmail, setAuthEmail] = useState('');
     const [authPassword, setAuthPassword] = useState('');
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -100,7 +104,10 @@ const CollaboratorPage: React.FC = () => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setProfile(data);
-                await fetchOrders(data.referralCode);
+                await Promise.all([
+                    fetchOrders(data.referralCode),
+                    fetchDesigns(uid)
+                ]);
             } else {
                 setProfile(null);
             }
@@ -130,6 +137,20 @@ const CollaboratorPage: React.FC = () => {
         } catch (error) {
             handleFirestoreError(error, OperationType.GET, 'orders');
             console.error("Error fetching orders:", error);
+        }
+    };
+
+    const fetchDesigns = async (uid: string) => {
+        const data = await getCTVDesigns(uid);
+        setDesigns(data);
+    };
+
+    const handleDeleteDesign = async (id: string) => {
+        if (confirm("Bạn có chắc chắn muốn xóa thiết kế này?")) {
+            const success = await deleteCTVDesign(id, auth.currentUser?.uid);
+            if (success) {
+                setDesigns(prev => prev.filter(d => d.id !== id));
+            }
         }
     };
 
@@ -418,6 +439,59 @@ const CollaboratorPage: React.FC = () => {
                         </button>
                     </div>
                     <p className="text-xs text-gray-400 mt-3 italic">* Gửi link này cho bạn bè, khi họ mua hàng bạn sẽ được ghi nhận doanh số.</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="font-bold text-gray-900">Thiết kế của bạn</h2>
+                        <button 
+                            onClick={() => navigate(`/builder/1?ref=${profile.referralCode}`)}
+                            className="bg-luvin-pink text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-pink-600 transition-all shadow-sm"
+                        >
+                            + Tạo thiết kế mới
+                        </button>
+                    </div>
+                    
+                    {designs.length === 0 ? (
+                        <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                            <p className="text-gray-400 text-sm">Bạn chưa có thiết kế nào được lưu.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {designs.map(design => (
+                                <div key={design.id} className="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold text-gray-800 truncate pr-2">{design.name}</h3>
+                                        <button 
+                                            onClick={() => handleDeleteDesign(design.id)}
+                                            className="text-gray-300 hover:text-red-500 transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mb-4">{new Date(design.createdAt).toLocaleDateString('vi-VN')}</p>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/builder/3?design=${design.id}&ref=${profile.referralCode}`;
+                                                navigator.clipboard.writeText(url);
+                                                alert("Đã copy link thiết kế!");
+                                            }}
+                                            className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-xs font-bold hover:bg-black transition-all"
+                                        >
+                                            Copy Link
+                                        </button>
+                                        <button 
+                                            onClick={() => navigate(`/builder/3?design=${design.id}&ref=${profile.referralCode}`)}
+                                            className="px-3 bg-gray-100 text-gray-600 py-2 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all"
+                                        >
+                                            Xem
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
