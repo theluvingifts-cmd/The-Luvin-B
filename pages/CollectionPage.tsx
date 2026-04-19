@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig, OutfitColor } from '../types';
 import { COLLECTION_TEMPLATES } from '../constants';
-import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../utils/pricing';
+import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice } from '../utils/pricing';
 import { slugify } from '../utils/helpers';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
@@ -279,7 +279,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         
         // If simple, use template price as base and add extra charms + characters
         if (selectedTemplate.isSimple) {
-            const basePrice = selectedTemplate.price || 0;
+            const basePrice = getEffectivePrice(selectedTemplate as any);
             
             // Calculate characters price
             const charactersPrice = customConfig.characters.reduce((sum, char) => {
@@ -287,11 +287,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 if (char.customPrintPrice) charSum += char.customPrintPrice;
                 
                 const addPartCost = (part: LegoPart | undefined) => {
-                    if (part) charSum += (part.price || 0);
+                    if (part) charSum += getEffectivePrice(part);
                 };
                 addPartCost(char.shirt);
                 addPartCost(char.pants);
                 addPartCost(char.hat);
+                addPartCost(char.hair);
+                addPartCost(char.face);
                 
                 if (char.selectedShirtColor?.price) charSum += char.selectedShirtColor.price;
                 if (char.selectedPantsColor?.price) charSum += char.selectedPantsColor.price;
@@ -301,13 +303,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
             const extraCharmsPrice = customConfig.draggableItems.reduce((sum, item) => {
                 const part = allParts[item.partId];
-                return sum + (part?.price || 0);
+                return sum + (part ? getEffectivePrice(part) : 0);
             }, 0);
             
             return basePrice + charactersPrice + extraCharmsPrice;
         }
 
-        const { totalPrice } = calculatePrice(customConfig, allParts, frames);
+        const { totalPrice } = calculatePrice(customConfig, allParts, frames, displayTemplates);
         return totalPrice;
     }, [customConfig, selectedTemplate, allParts, frames]);
 
@@ -697,7 +699,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 </div>
                                                 <div className="flex-grow text-left">
                                                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{part?.name || 'Phụ kiện'}</p>
-                                                    <p className="text-[10px] text-gray-400 font-bold">{formatCurrency(part?.price || 0)}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-[10px] text-primary font-bold">
+                                                            {formatCurrency(getEffectivePrice(part, currentCount, part?.bulkPricing))}
+                                                        </p>
+                                                        {part && (getEffectivePrice(part, currentCount, part.bulkPricing) < part.price) && (
+                                                            <p className="text-[8px] text-gray-400 line-through font-medium">
+                                                                {formatCurrency(part.price)}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 
                                                 <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-1">
@@ -759,8 +770,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 className="w-full h-full object-contain group-hover:scale-110 transition-transform"
                                                 referrerPolicy="no-referrer"
                                             />
-                                            <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black">
-                                                +{formatCurrency(part.price).replace('₫', '')}
+                                            <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black flex flex-col items-end">
+                                                {part.salePrice && getEffectivePrice(part) < part.price && (
+                                                    <span className="text-[6px] text-gray-400 line-through opacity-70 leading-none mb-0.5">
+                                                        {formatCurrency(part.price).replace('₫', '')}
+                                                    </span>
+                                                )}
+                                                <span>+{formatCurrency(getEffectivePrice(part)).replace('₫', '')}</span>
                                             </div>
                                         </button>
                                     ))}
@@ -800,7 +816,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                     </div>
                                                     <div className="flex-grow text-left">
                                                         <p className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{part?.name}</p>
-                                                        <p className="text-[9px] text-primary font-bold">{formatCurrency(part?.price || 0)}</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="text-[9px] text-primary font-bold">
+                                                                {formatCurrency(getEffectivePrice(part, items.length, part?.bulkPricing))}
+                                                            </p>
+                                                            {part && (getEffectivePrice(part, items.length, part.bulkPricing) < part.price) && (
+                                                                <p className="text-[8px] text-gray-400 line-through font-medium">
+                                                                    {formatCurrency(part.price)}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div className="flex items-center gap-2 bg-white rounded-lg border border-primary/10 p-0.5">
                                                         <button 
@@ -958,7 +983,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             ) : filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {filteredTemplates.map((template, index) => {
-                    const { totalPrice } = calculatePrice(template.config, allParts, frames);
+                    const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
                     const purchaseCount = template.purchaseCount || 0;
                     
                     return ( 
