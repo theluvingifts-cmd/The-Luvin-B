@@ -95,7 +95,6 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
             <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
                 <li>{t('studio.include_frame')}</li>
                 <li>{t('studio.include_bg')}</li>
-                <li>{t('studio.include_chars')}</li>
                 <li>{t('studio.include_box')}</li>
                 <li>{t('studio.include_card')}</li>
             </ul>

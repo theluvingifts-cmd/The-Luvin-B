@@ -671,7 +671,13 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <div className="p-3">
                                             <h4 className="font-bold text-gray-800">{tpl.name}</h4>
                                             <div className="flex justify-between items-center mt-2">
-                                                <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{tpl.category || 'Mẫu thiết kế'}</span>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase w-fit">{tpl.category || 'Mẫu thiết kế'}</span>
+                                                    <div className="flex gap-1">
+                                                        {tpl.isHot && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded font-bold">🔥 HOT</span>}
+                                                        {tpl.isNew && <span className="text-[9px] bg-blue-100 text-blue-600 px-1 rounded font-bold">✨ NEW</span>}
+                                                    </div>
+                                                </div>
                                                 <div className="flex flex-col items-end">
                                                     <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full mb-1 ${tpl.isSimple ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
                                                         {tpl.isSimple ? 'Mẫu Đơn Giản' : 'Mẫu Thiết Kế'}

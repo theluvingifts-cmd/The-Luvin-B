@@ -77,6 +77,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [charmSearch, setCharmSearch] = useState('');
     const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
 
+    // Filter and Sort states
+    const [priceRange, setPriceRange] = useState<'all' | 'under300' | '300to500' | 'above500'>('all');
+    const [charCount, setCharCount] = useState<'all' | '1' | '2' | '3plus'>('all');
+    const [sortBy, setSortBy] = useState<'default' | 'priceAsc' | 'priceDesc' | 'mostPurchased'>('default');
+
     // Handle initial template selection from URL
     useEffect(() => {
         if (urlTemplateId && displayTemplates.length > 0) {
@@ -116,13 +121,80 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return [t('common.all'), ...Array.from(dynamicCats).sort()];
     }, [displayTemplates, t]);
 
+    // Derived counts for filters
+    const filterCounts = useMemo(() => {
+        const counts = {
+            categories: {} as Record<string, number>,
+            prices: { all: 0, under300: 0, '300to500': 0, above500: 0 },
+            characters: { all: 0, '1': 0, '2': 0, '3plus': 0 }
+        };
+
+        displayTemplates.forEach(template => {
+            // Category counts
+            const cat = template.category || t('common.all');
+            counts.categories[cat] = (counts.categories[cat] || 0) + 1;
+            counts.categories[t('common.all')] = (counts.categories[t('common.all')] || 0) + 1;
+
+            const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
+            
+            // Price counts
+            counts.prices.all++;
+            if (totalPrice < 300000) counts.prices.under300++;
+            else if (totalPrice >= 300000 && totalPrice <= 500000) counts.prices['300to500']++;
+            else if (totalPrice > 500000) counts.prices.above500++;
+
+            // Character counts
+            const numChars = template.config.characters.length;
+            counts.characters.all++;
+            if (numChars === 1) counts.characters['1']++;
+            else if (numChars === 2) counts.characters['2']++;
+            else if (numChars >= 3) counts.characters['3plus']++;
+        });
+
+        return counts;
+    }, [displayTemplates, allParts, frames, t]);
+
     const filteredTemplates = useMemo(() => {
-        return displayTemplates.filter(template => {
+        let result = displayTemplates.filter(template => {
             const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesCategory = activeCategory === t('common.all') || template.category === activeCategory;
-            return matchesSearch && matchesCategory;
+            
+            // Price Filter
+            const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
+            let matchesPrice = true;
+            if (priceRange === 'under300') matchesPrice = totalPrice < 300000;
+            else if (priceRange === '300to500') matchesPrice = totalPrice >= 300000 && totalPrice <= 500000;
+            else if (priceRange === 'above500') matchesPrice = totalPrice > 500000;
+
+            // Character Count Filter
+            const numChars = template.config.characters.length;
+            let matchesChars = true;
+            if (charCount === '1') matchesChars = numChars === 1;
+            else if (charCount === '2') matchesChars = numChars === 2;
+            else if (charCount === '3plus') matchesChars = numChars >= 3;
+
+            return matchesSearch && matchesCategory && matchesPrice && matchesChars;
         });
-    }, [displayTemplates, searchTerm, activeCategory, t]);
+
+        // Sorting
+        if (sortBy === 'priceAsc') {
+            result.sort((a, b) => {
+                const priceA = calculatePrice(a.config, allParts, frames, displayTemplates).totalPrice;
+                const priceB = calculatePrice(b.config, allParts, frames, displayTemplates).totalPrice;
+                return priceA - priceB;
+            });
+        } else if (sortBy === 'priceDesc') {
+            result.sort((a, b) => {
+                const priceA = calculatePrice(a.config, allParts, frames, displayTemplates).totalPrice;
+                const priceB = calculatePrice(b.config, allParts, frames, displayTemplates).totalPrice;
+                return priceB - priceA;
+            });
+        } else if (sortBy === 'mostPurchased') {
+            result.sort((a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0));
+        }
+
+        return result;
+    }, [displayTemplates, searchTerm, activeCategory, priceRange, charCount, sortBy, t, allParts, frames]);
 
     const isInitialLoading = useMemo(() => {
         return displayTemplates.length === 0;
@@ -948,20 +1020,78 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
         {/* Filter Section */}
         <div className="sticky top-16 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 py-3 shadow-sm">
-            <div className="container mx-auto px-4 overflow-x-auto no-scrollbar flex items-center gap-2">
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={`px-5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                            activeCategory === cat 
-                                ? 'bg-primary text-white shadow-md' 
-                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
-                    >
-                        {cat}
-                    </button>
-                ))}
+            <div className="container mx-auto px-4 space-y-3">
+                {/* Categories */}
+                <div className="overflow-x-auto no-scrollbar flex items-center gap-2">
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setActiveCategory(cat)}
+                            className={`px-5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                                activeCategory === cat 
+                                    ? 'bg-primary text-white shadow-md' 
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                        >
+                            {cat} <span className="opacity-40 text-[9px]">({filterCounts.categories[cat] || 0})</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Sub-filters */}
+                <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                    {/* Price Range */}
+                    <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                        <span className="pl-2 opacity-50">Ngân sách:</span>
+                        {[
+                            { id: 'all', label: 'Tất cả' },
+                            { id: 'under300', label: '< 300k' },
+                            { id: '300to500', label: '300k - 500k' }
+                        ].map(range => (
+                            <button 
+                                key={range.id}
+                                onClick={() => setPriceRange(range.id as any)}
+                                className={`px-3 py-1 rounded-lg transition-all ${priceRange === range.id ? 'bg-white shadow-sm text-primary' : 'hover:text-gray-900'}`}
+                            >
+                                {range.label} <span className="opacity-40 text-[8px]">({filterCounts.prices[range.id as keyof typeof filterCounts.prices]})</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Character Count */}
+                    <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                        <span className="pl-2 opacity-50">Nhân vật:</span>
+                        {[
+                            { id: 'all', label: 'Tất cả' },
+                            { id: '1', label: '1 NV' },
+                            { id: '2', label: '2 NV' },
+                            { id: '3plus', label: '3+ NV' }
+                        ].map(count => (
+                            <button 
+                                key={count.id}
+                                onClick={() => setCharCount(count.id as any)}
+                                className={`px-3 py-1 rounded-lg transition-all ${charCount === count.id ? 'bg-white shadow-sm text-primary' : 'hover:text-gray-900'}`}
+                            >
+                                {count.label} <span className="opacity-40 text-[8px]">({filterCounts.characters[count.id as keyof typeof filterCounts.characters]})</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Sorting */}
+                    <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100 ml-auto">
+                        <span className="pl-2 opacity-50">Sắp xếp:</span>
+                        <select 
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="bg-transparent border-none outline-none pr-4 text-gray-900 cursor-pointer"
+                        >
+                            <option value="default">Mặc định</option>
+                            <option value="mostPurchased">Bán chạy nhất</option>
+                            <option value="priceAsc">Giá thấp đến cao</option>
+                            <option value="priceDesc">Giá cao đến thấp</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -997,8 +1127,25 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 />
                                 
                                 <div className="absolute top-2 left-2 right-2 flex flex-col gap-1.5 pointer-events-none">
+                                    <div className="flex flex-wrap gap-1">
+                                        {(template.isHot || purchaseCount > 20) && (
+                                            <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
+                                                🔥 Bán chạy
+                                            </div>
+                                        )}
+                                        {template.isNew && (
+                                            <div className="bg-blue-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
+                                                ✨ Mẫu mới
+                                            </div>
+                                        )}
+                                        {template.price && template.salePrice && template.salePrice < template.price && (
+                                            <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md">
+                                                OFF {Math.round((1 - template.salePrice / template.price) * 100)}%
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-black text-primary uppercase tracking-tight shadow-sm border border-primary/10 w-fit">
-                                        ✨ {t('collection.customizable')}
+                                        🎨 {t('collection.customizable')}
                                     </div>
                                     {template.category && (
                                         <div className="bg-gray-900/80 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-bold text-white uppercase tracking-tight shadow-sm w-fit">
@@ -1015,12 +1162,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </h3>
                                 
                                 <div className="flex items-center gap-1.5 mb-4">
-                                    <div className="flex items-center gap-1 bg-blue-50/80 px-1.5 py-1 rounded-lg">
-                                        <span className="text-[10px]">⭐</span>
-                                        <span className="text-[8px] sm:text-[9px] text-blue-700 font-black uppercase">{t('collection.trusted')}</span>
-                                    </div>
-                                    <div className="text-[8px] sm:text-[9px] text-gray-400 font-bold leading-tight">
-                                        {purchaseCount > 0 ? `${purchaseCount} ${t('collection.orders')}` : t('collection.hot')}
+                                    <div className="text-[10px] sm:text-[11px] text-gray-400 font-bold leading-tight">
+                                        {purchaseCount} lượt chọn
                                     </div>
                                 </div>
 

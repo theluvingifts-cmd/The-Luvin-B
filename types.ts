@@ -265,6 +265,8 @@ export interface CollectionTemplate {
     saleEndDate?: string;
     description?: string;
     isSimple?: boolean;
+    isHot?: boolean;
+    isNew?: boolean;
 }
 
 export interface FeedbackItem {

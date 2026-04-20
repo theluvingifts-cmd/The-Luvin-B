@@ -225,6 +225,39 @@ export const TemplateForm: React.FC<{
                             placeholder="VD: 350000" 
                         />
                     </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Lượt chọn ảo (Social Proof)</label>
+                        <input 
+                            type="number"
+                            name="purchaseCount" 
+                            value={formData.purchaseCount || 0} 
+                            onChange={handleChange} 
+                            className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
+                            placeholder="VD: 100" 
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Số lượng này sẽ hiển thị trên web để tăng độ uy tín.</p>
+                    </div>
+                {/* Badges Selection */}
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                            type="checkbox" 
+                            checked={formData.isHot || false} 
+                            onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
+                            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" 
+                        />
+                        <span className="text-xs font-bold text-gray-600 group-hover:text-orange-600">🔥 Mẫu Bán Chạy (HOT)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                            type="checkbox" 
+                            checked={formData.isNew || false} 
+                            onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" 
+                        />
+                        <span className="text-xs font-bold text-gray-600 group-hover:text-blue-600">✨ Mẫu Mới (NEW)</span>
+                    </label>
+                </div>
                 {/* Mode Selection */}
                 <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
