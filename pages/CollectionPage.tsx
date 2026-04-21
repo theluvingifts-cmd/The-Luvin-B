@@ -319,6 +319,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const handleBuyNow = () => {
         if (!customConfig) return;
+        if (!orderNote.trim()) {
+            alert("Vui lòng nhập ghi chú (Ví dụ: Đổi tên, đổi ngày...)");
+            return;
+        }
         const finalConfig = {
             ...customConfig,
             previewImageUrl: selectedTemplate?.imageUrl,
@@ -335,6 +339,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const handleQuickAddToCart = () => {
         if (!customConfig) return;
+        if (!orderNote.trim()) {
+            alert("Vui lòng nhập ghi chú (Ví dụ: Đổi tên, đổi ngày...)");
+            return;
+        }
         const finalConfig = {
             ...customConfig,
             previewImageUrl: selectedTemplate?.imageUrl,
@@ -948,15 +956,23 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         <div className="space-y-3">
                             <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                {t('common.order_note')}
+                                Ghi chú <span className="text-[10px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
                             </h3>
-                            <textarea 
-                                value={orderNote}
-                                onChange={e => setOrderNote(e.target.value)}
-                                placeholder={t('common.order_note_placeholder')}
-                                rows={3}
-                                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none"
-                            />
+                            <div className="relative">
+                                <textarea 
+                                    value={orderNote}
+                                    onChange={e => setOrderNote(e.target.value)}
+                                    placeholder={t('common.order_note_placeholder')}
+                                    rows={3}
+                                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none"
+                                />
+                                <div className="mt-2 flex items-start gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                    <span className="text-blue-500 text-xs">ℹ️</span>
+                                    <p className="text-[10px] sm:text-[11px] text-blue-700 font-medium leading-relaxed">
+                                        {t('common.order_note_demo_note')}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

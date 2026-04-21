@@ -1205,6 +1205,18 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                                         </div>
                                                                     );
                                                                 })}
+                                                                
+                                                                {/* Extra non-standard fields (like order_note from Collection) */}
+                                                                {Object.entries(item.customFormData || {}).map(([key, val]) => {
+                                                                    if ((item.formFields || []).some((f: FormField) => f.id === key)) return null;
+                                                                    if (!val) return null;
+                                                                    return (
+                                                                        <div key={key} className="border-b border-orange-100 pb-2">
+                                                                            <span className="block text-[9px] font-bold text-gray-400 uppercase mb-0.5">{key === 'order_note' ? 'Ghi chú SP' : key}</span>
+                                                                            <span className="text-xs font-medium text-orange-900 break-words italic">{val}</span>
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
                                                     )}

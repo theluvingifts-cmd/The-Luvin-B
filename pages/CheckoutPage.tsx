@@ -361,7 +361,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     if (isLoyalCustomer) autoTags += t('checkout.loyal_customer_tag');
     if (appliedVoucher) autoTags += t('checkout.voucher_tag', { code: appliedVoucher.code });
     
-    const finalNotes = autoTags + notes;
+    // Aggregating notes from individual cart items (especially from CollectionPage)
+    const itemNotes = cartItems
+        .map((item, index) => {
+            const note = item.customFormData?.order_note;
+            if (note) return `[SP ${index + 1}]: ${note}`;
+            return null;
+        })
+        .filter(Boolean)
+        .join(' | ');
+
+    const finalNotes = [autoTags, itemNotes, notes].filter(n => n && n.trim()).join(' --- ');
 
     try {
         const provinceVal = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';

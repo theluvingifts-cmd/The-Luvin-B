@@ -221,6 +221,11 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                 <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
                                 {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">Liên hệ gửi demo:</span> {order.customer.demoContact}</p>}
                                 <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
+                                {order.delivery.notes && (
+                                    <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-100 italic text-gray-700">
+                                        <span className="font-semibold not-italic">Ghi chú của bạn:</span> {order.delivery.notes}
+                                    </div>
+                                )}
                             </div>
                          </div>
                     </div>
