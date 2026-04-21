@@ -313,11 +313,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         return;
     }
 
-    if (!notes || notes.trim().length === 0) {
-        alert("Vui lòng nhập ghi chú đơn hàng. Đây là thông tin bắt buộc để shop xử lý đơn của bạn (Lời nhắn tặng, yêu cầu thay đổi...).");
-        return;
-    }
-
     setIsSubmitting(true);
 
     let finalCommissionAmount = 0;
@@ -644,18 +639,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
 
               <div>
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
-                      {t('checkout.order_notes')} <span className="text-red-500">* (Bắt buộc)</span>
-                  </h3>
-                  <textarea 
-                    placeholder={t('checkout.order_notes_placeholder')} 
-                    value={notes} 
-                    onChange={e => setNotes(e.target.value)} 
-                    rows={3} 
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none border-dashed border-red-200 focus:border-luvin-pink"
-                    required
-                  ></textarea>
-                  <p className="text-[10px] text-red-500 mt-1 italic font-medium">Lưu ý: Mọi yêu cầu đặc biệt của bạn về sản phẩm, lời nhắn thiệp... hãy ghi chú ở đây để Shop thực hiện đúng nhé!</p>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t('checkout.order_notes')}</h3>
+                  <textarea placeholder={t('checkout.order_notes_placeholder')} value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none"></textarea>
                </div>
             </div>
 
