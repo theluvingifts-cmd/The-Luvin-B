@@ -321,6 +321,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         if (!customConfig) return;
         const finalConfig = {
             ...customConfig,
+            previewImageUrl: selectedTemplate?.imageUrl,
             customFormData: {
                 ...(customConfig.customFormData || {}),
                 order_note: orderNote
@@ -336,6 +337,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         if (!customConfig) return;
         const finalConfig = {
             ...customConfig,
+            previewImageUrl: selectedTemplate?.imageUrl,
             customFormData: {
                 ...(customConfig.customFormData || {}),
                 order_note: orderNote

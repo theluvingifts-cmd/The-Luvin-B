@@ -1043,8 +1043,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                             }} selectedItemId={editingItemId} setSelectedItemId={setEditingItemId} isInteractive={true} setIsEditingText={() => {}} allParts={allKnownParts} onItemUpdate={() => {}} onCharacterUpdate={() => {}} /></div></div>)}
 
                                             <div className="flex gap-4 items-start flex-col md:flex-row">
-                                                <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer" onClick={() => !isEditingOrder && item.previewImageUrl && setZoomedImageUrl(item.previewImageUrl)}>
-                                                    {item.previewImageUrl ? (<><img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" />{!isEditingOrder && (<div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div>)}</>) : <span className="text-xs text-gray-400">No img</span>}
+                                                <div className="w-24 h-24 bg-gray-50 rounded border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center relative group cursor-pointer" onClick={() => {
+                                                    if (isEditingOrder) return;
+                                                    const img = item.previewImageUrl || (item.templateId ? templates.find(t => t.id === item.templateId)?.imageUrl : undefined);
+                                                    if (img) setZoomedImageUrl(img);
+                                                }}>
+                                                    {item.previewImageUrl ? (
+                                                        <><img src={item.previewImageUrl} className="max-w-full max-h-full object-contain" />{!isEditingOrder && (<div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div>)}</>
+                                                    ) : (item.templateId && templates.find(t => t.id === item.templateId)?.imageUrl) ? (
+                                                        <><img src={templates.find(t => t.id === item.templateId)?.imageUrl} className="max-w-full max-h-full object-contain" />{!isEditingOrder && (<div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIcon className="text-white w-6 h-6" /></div>)}</>
+                                                    ) : <span className="text-xs text-gray-400 text-center px-1">Mẫu {item.templateId || 'Tùy chỉnh'} (No image)</span>}
                                                 </div>
                                                 <div className="flex-grow w-full">
                                                     <div className="mb-3 pb-3 border-b border-gray-100 flex justify-between items-start">
