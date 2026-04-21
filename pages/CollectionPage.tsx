@@ -20,10 +20,10 @@ interface CollectionPageProps {
 }
 
 const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ character }) => {
-    const { shirt, pants, hat, hair, face } = character;
+    const { shirt, pants, hair, face, set } = character;
     const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
     const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
-    const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
+    const setImageUrl = character.selectedSetColor?.imageUrl || set?.imageUrl;
     const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
     const faceImageUrl = face?.imageUrl;
 
@@ -40,11 +40,11 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
     return (
         <div className="relative w-16 h-24 bg-white rounded-lg shadow-sm border border-pink-100 p-1 flex items-center justify-center overflow-hidden">
             <div className="relative w-full h-full">
-                {pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
-                {shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
+                {!set && pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
+                {!set && shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
+                {set && setImageUrl && <img src={setImageUrl} alt="set" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
                 {faceImageUrl && <img src={faceImageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
                 {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
-                {hatImageUrl && <img src={hatImageUrl} alt="hat" style={{ ...partStyle, zIndex: 5 }} referrerPolicy="no-referrer" />}
             </div>
         </div>
     );
@@ -645,11 +645,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             {/* Part Selector */}
                                             {editingCharacterId === char.id && (
                                                 <div className="p-4 border-t border-primary/10 space-y-5 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
-                                                    {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => (
+                                                    {(['hair', 'face', 'shirt', 'pants', 'set'] as const).map(type => (
                                                         <div key={type} className="space-y-2.5">
                                                             <div className="flex justify-between items-center">
                                                                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                                                    {type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}
+                                                                    {type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Bộ đồ'}
                                                                 </label>
                                                                 {char[type] && (
                                                                     <span className="text-[8px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase">{char[type].name}</span>
@@ -657,17 +657,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                             </div>
                                                             
                                                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                                                {type === 'hat' && (
-                                                                    <button 
-                                                                        onClick={() => {
-                                                                            const newChars = customConfig.characters.map(c => c.id === char.id ? { ...c, [type]: undefined } : c);
-                                                                            setCustomConfig({ ...customConfig, characters: newChars });
-                                                                        }}
-                                                                        className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${!char[type] ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
-                                                                    >
-                                                                        NONE
-                                                                    </button>
-                                                                )}
                                                                 {partsByType[type].map(part => (
                                                                     <button 
                                                                         key={part.id}
@@ -678,7 +667,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                     if (type === 'shirt') updated.selectedShirtColor = part.colors?.[0];
                                                                                     if (type === 'pants') updated.selectedPantsColor = part.colors?.[0];
                                                                                     if (type === 'hair') updated.selectedHairColor = part.colors?.[0];
-                                                                                    if (type === 'hat') updated.selectedHatColor = part.colors?.[0];
+                                                                                    if (type === 'set') {
+                                                                                        updated.selectedSetColor = part.colors?.[0];
+                                                                                        // If set is selected, we might want to clear individual shirt/pants
+                                                                                        updated.shirt = undefined;
+                                                                                        updated.pants = undefined;
+                                                                                    } else {
+                                                                                        // If shirt or pants selected, clear set
+                                                                                        updated.set = undefined;
+                                                                                    }
                                                                                     return updated;
                                                                                 }
                                                                                 return c;
@@ -704,8 +701,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                         const updated = { ...c };
                                                                                         if (type === 'shirt') updated.selectedShirtColor = color;
                                                                                         if (type === 'pants') updated.selectedPantsColor = color;
-                                                                                        if (type === 'hat') updated.selectedHatColor = color;
                                                                                         if (type === 'hair') updated.selectedHairColor = color;
+                                                                                        if (type === 'set') updated.selectedSetColor = color;
                                                                                         return updated;
                                                                                     }
                                                                                     return c;
@@ -716,7 +713,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                 (type === 'shirt' ? char.selectedShirtColor?.hex : 
                                                                                  type === 'pants' ? char.selectedPantsColor?.hex : 
                                                                                  type === 'hair' ? char.selectedHairColor?.hex :
-                                                                                 char.selectedHatColor?.hex) === color.hex 
+                                                                                 char.selectedSetColor?.hex) === color.hex 
                                                                                 ? 'border-primary scale-110 shadow-md' 
                                                                                 : 'border-gray-100'
                                                                             }`}
@@ -726,7 +723,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                             {(type === 'shirt' ? char.selectedShirtColor?.hex : 
                                                                               type === 'pants' ? char.selectedPantsColor?.hex : 
                                                                               type === 'hair' ? char.selectedHairColor?.hex :
-                                                                              char.selectedHatColor?.hex) === color.hex && (
+                                                                              char.selectedSetColor?.hex) === color.hex && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
                                                                             )}
                                                                         </button>
@@ -812,66 +809,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             </div>
                         )}
 
-                        {/* Extra Charms Section */}
-                        {(selectedTemplate.isSimple || extraCharms.length > 0) && (
-                            <div className="space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        {selectedTemplate.isSimple ? 'Chọn thêm Charm (Phụ kiện)' : 'Thêm phụ kiện khác'}
-                                    </h3>
-                                    <div className="relative">
-                                        <input 
-                                            type="text"
-                                            placeholder="Tìm kiếm charm..."
-                                            value={charmSearch}
-                                            onChange={(e) => setCharmSearch(e.target.value)}
-                                            className="w-full sm:w-48 pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full text-[10px] focus:outline-none focus:border-primary/30 transition-all"
-                                        />
-                                        <svg className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {filteredExtraCharms.map((part) => (
-                                        <button
-                                            key={part.id}
-                                            onClick={() => addExtraCharm(part)}
-                                            className="relative aspect-square rounded-2xl border-2 border-gray-100 hover:border-primary transition-all p-1 bg-white group"
-                                        >
-                                            <img 
-                                                src={part.imageUrl} 
-                                                alt={part.name} 
-                                                className="w-full h-full object-contain group-hover:scale-110 transition-transform"
-                                                referrerPolicy="no-referrer"
-                                            />
-                                            <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black flex flex-col items-end">
-                                                {part.salePrice && getEffectivePrice(part) < part.price && (
-                                                    <span className="text-[6px] text-gray-400 line-through opacity-70 leading-none mb-0.5">
-                                                        {formatCurrency(part.price).replace('₫', '')}
-                                                    </span>
-                                                )}
-                                                <span>+{formatCurrency(getEffectivePrice(part)).replace('₫', '')}</span>
-                                            </div>
-                                        </button>
-                                    ))}
-                                    {filteredExtraCharms.length === 0 && (
-                                        <div className="col-span-full py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                            Không tìm thấy charm phù hợp
-                                        </div>
-                                    )}
-                                    {!selectedTemplate.isSimple && (
-                                        <button 
-                                            onClick={() => onCustomize(selectedTemplate)}
-                                            className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all bg-gray-50/50"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                            <span className="text-[8px] font-black uppercase tracking-tighter mt-1">Xem thêm</span>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
                         {/* Added Extra Charms */}
                         {groupedAddedExtraCharms.length > 0 && (
                             <div className="space-y-3">
@@ -943,6 +880,66 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Extra Charms Section */}
+                        {(selectedTemplate.isSimple || extraCharms.length > 0) && (
+                            <div className="space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        {selectedTemplate.isSimple ? 'Chọn thêm Charm (Phụ kiện)' : 'Thêm phụ kiện khác'}
+                                    </h3>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            placeholder="Tìm kiếm charm..."
+                                            value={charmSearch}
+                                            onChange={(e) => setCharmSearch(e.target.value)}
+                                            className="w-full sm:w-48 pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full text-[10px] focus:outline-none focus:border-primary/30 transition-all"
+                                        />
+                                        <svg className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {filteredExtraCharms.map((part) => (
+                                        <button
+                                            key={part.id}
+                                            onClick={() => addExtraCharm(part)}
+                                            className="relative aspect-square rounded-2xl border-2 border-gray-100 hover:border-primary transition-all p-1 bg-white group"
+                                        >
+                                            <img 
+                                                src={part.imageUrl} 
+                                                alt={part.name} 
+                                                className="w-full h-full object-contain group-hover:scale-110 transition-transform"
+                                                referrerPolicy="no-referrer"
+                                            />
+                                            <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black flex flex-col items-end">
+                                                {part.salePrice && getEffectivePrice(part) < part.price && (
+                                                    <span className="text-[6px] text-gray-400 line-through font-medium opacity-70 leading-none mb-0.5">
+                                                        {formatCurrency(part.price).replace('₫', '')}
+                                                    </span>
+                                                )}
+                                                <span>+{formatCurrency(getEffectivePrice(part)).replace('₫', '')}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {filteredExtraCharms.length === 0 && (
+                                        <div className="col-span-full py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                            Không tìm thấy charm phù hợp
+                                        </div>
+                                    )}
+                                    {!selectedTemplate.isSimple && (
+                                        <button 
+                                            onClick={() => onCustomize(selectedTemplate)}
+                                            className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all bg-gray-50/50"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                            <span className="text-[8px] font-black uppercase tracking-tighter mt-1">Xem thêm</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}

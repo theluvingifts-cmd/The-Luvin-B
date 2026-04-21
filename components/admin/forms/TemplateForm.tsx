@@ -36,12 +36,11 @@ export const TemplateForm: React.FC<{
     }, [allParts]);
 
     const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ character }) => {
-        const { hair, face, shirt, pants, hat } = character;
+        const { hair, face, shirt, pants } = character;
         const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
         const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
         const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
         const faceImageUrl = face?.imageUrl;
-        const hatImageUrl = hat?.imageUrl;
 
         const partStyle: React.CSSProperties = {
             position: 'absolute',
@@ -60,7 +59,6 @@ export const TemplateForm: React.FC<{
                     {shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
                     {faceImageUrl && <img src={faceImageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
                     {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
-                    {hatImageUrl && <img src={hatImageUrl} alt="hat" style={{ ...partStyle, zIndex: 5 }} referrerPolicy="no-referrer" />}
                 </div>
             </div>
         );
@@ -117,9 +115,20 @@ export const TemplateForm: React.FC<{
                 if (c.id === id) {
                     const updated = { ...c, [field]: part };
                     // Reset colors when part changes
-                    if (field === 'shirt') updated.selectedShirtColor = part?.colors?.[0];
-                    if (field === 'pants') updated.selectedPantsColor = part?.colors?.[0];
+                    if (field === 'shirt') {
+                        updated.selectedShirtColor = part?.colors?.[0];
+                        updated.set = undefined;
+                    }
+                    if (field === 'pants') {
+                        updated.selectedPantsColor = part?.colors?.[0];
+                        updated.set = undefined;
+                    }
                     if (field === 'hair') updated.selectedHairColor = part?.colors?.[0];
+                    if (field === 'set') {
+                        updated.selectedSetColor = part?.colors?.[0];
+                        updated.shirt = undefined;
+                        updated.pants = undefined;
+                    }
                     return updated;
                 }
                 return c;
@@ -127,7 +136,7 @@ export const TemplateForm: React.FC<{
         }));
     };
 
-    const handleUpdateCharColor = (charId: number, field: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor', color: any) => {
+    const handleUpdateCharColor = (charId: number, field: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor' | 'selectedSetColor', color: any) => {
         setConfig(prev => ({
             ...prev,
             characters: prev.characters.map(c => c.id === charId ? { ...c, [field]: color } : c)
@@ -429,26 +438,18 @@ export const TemplateForm: React.FC<{
 
                                     {/* Right: Part Selection */}
                                     <div className="flex-grow space-y-6">
-                                        {(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(type => {
+                                        {(['hair', 'face', 'shirt', 'pants', 'set'] as const).map(type => {
                                             const selectedPart = activeCharacter[type];
-                                            const colorField = type === 'shirt' ? 'selectedShirtColor' : type === 'pants' ? 'selectedPantsColor' : type === 'hair' ? 'selectedHairColor' : null;
+                                            const colorField = type === 'shirt' ? 'selectedShirtColor' : type === 'pants' ? 'selectedPantsColor' : type === 'hair' ? 'selectedHairColor' : type === 'set' ? 'selectedSetColor' : null;
 
                                             return (
                                                 <div key={type} className="space-y-3">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex justify-between">
-                                                        <span>{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Mũ'}</span>
+                                                        <span>{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Bộ đồ'}</span>
                                                         {selectedPart && <span className="text-primary normal-case">{selectedPart.name}</span>}
                                                     </label>
                                                     
                                                     <div className="flex flex-wrap gap-2">
-                                                        {type === 'hat' && (
-                                                            <button 
-                                                                onClick={() => handleUpdateChar(activeCharacter.id, type, '')}
-                                                                className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0 transition-all ${!selectedPart ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-gray-300 hover:border-gray-200'}`}
-                                                            >
-                                                                TRỐNG
-                                                            </button>
-                                                        )}
                                                         {partsByType[type].map(part => (
                                                             <button 
                                                                 key={part.id}

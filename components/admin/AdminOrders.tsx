@@ -440,7 +440,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
             <body>
                 <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0964 393 115 - 0345 126 019 - Facebook: The Luvin</p></div>
                 <div class="info-grid">
-                    <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${selectedOrder.customer.address}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p></div>
+                    <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${selectedOrder.customer.address}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || selectedOrder.customer.note || 'Không'}</p></div>
                     <div class="box"><span class="box-title">Thông tin đơn hàng</span><p>Mã đơn: <strong>${selectedOrder.id}</strong></p><p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p><p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p><p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}</div>
                 </div>
                 <table class="item-table">
@@ -843,10 +843,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                        <p className="text-sm text-gray-600 truncate max-w-[120px]">{order.customer.name}</p>
-                                        {order.addGiftBox && (
-                                            <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <p className="text-sm text-gray-600 truncate max-w-[120px]">{order.customer.name}</p>
+                                            {order.addGiftBox && (
+                                                <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
+                                            )}
+                                        </div>
+                                        {(order.delivery.notes || order.customer.note) && (
+                                            <p className="text-[10px] text-orange-600 italic truncate max-w-[180px] bg-orange-50/50 px-1 rounded mt-0.5">
+                                                📝 {(order.delivery.notes || order.customer.note)?.replace(/\[.*?\]/g, '').trim()}
+                                            </p>
                                         )}
                                     </div>
                                     <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice, 'admin')}</p>
@@ -983,10 +990,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         </p>
                                         <p className="flex items-start mt-2">
                                             <span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> 
-                                            <div className="flex flex-col gap-1">
-                                                <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800" title="Ghi chú từ khách hàng">{selectedOrder.delivery.notes || 'Không có'}</span>
+                                            <div className="flex flex-col gap-1 w-full bg-yellow-50 p-2 rounded border border-yellow-200 mt-1">
+                                                <span className="text-[10px] font-bold text-yellow-700 uppercase">Ghi chú từ khách:</span>
+                                                <span className="italic text-gray-800 font-bold whitespace-pre-wrap block" title="Ghi chú từ khách hàng">{selectedOrder.delivery.notes || selectedOrder.customer.note || 'Không có'}</span>
                                                 {selectedOrder.internalNotes && (
-                                                    <span className="italic bg-blue-50 px-2 py-0.5 rounded text-blue-800 text-xs" title="Ghi chú nội bộ admin">Admin: {selectedOrder.internalNotes}</span>
+                                                    <div className="mt-1 pt-1 border-t border-yellow-200">
+                                                        <span className="text-[10px] font-bold text-blue-600 uppercase">Admin:</span>
+                                                        <span className="italic text-blue-800 text-xs ml-1">{selectedOrder.internalNotes}</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </p></>)}</div></div>
