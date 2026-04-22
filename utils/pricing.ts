@@ -126,6 +126,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         addPartCost(char.hat, 'Mũ');
         addPartCost(char.shirt, 'Áo');
         addPartCost(char.pants, 'Quần');
+        addPartCost(char.set, 'Bộ đồ');
         addPartCost(char.face, 'Mặt');
 
         if (char.selectedShirtColor && char.selectedShirtColor.price > 0) {
@@ -139,6 +140,14 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         if (char.selectedHairColor && char.selectedHairColor.price > 0) {
             total += char.selectedHairColor.price;
             breakdown.push({ label: `Màu tóc: ${char.selectedHairColor.name} ${charLabel}`, value: char.selectedHairColor.price });
+        }
+        if (char.selectedHatColor && char.selectedHatColor.price > 0) {
+            total += char.selectedHatColor.price;
+            breakdown.push({ label: `Màu mũ: ${char.selectedHatColor.name} ${charLabel}`, value: char.selectedHatColor.price });
+        }
+        if (char.selectedSetColor && char.selectedSetColor.price > 0) {
+            total += char.selectedSetColor.price;
+            breakdown.push({ label: `Màu bộ đồ: ${char.selectedSetColor.name} ${charLabel}`, value: char.selectedSetColor.price });
         }
     });
 

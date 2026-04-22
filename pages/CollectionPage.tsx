@@ -376,9 +376,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 addPartCost(char.hat);
                 addPartCost(char.hair);
                 addPartCost(char.face);
+                addPartCost(char.set);
                 
                 if (char.selectedShirtColor?.price) charSum += char.selectedShirtColor.price;
                 if (char.selectedPantsColor?.price) charSum += char.selectedPantsColor.price;
+                if (char.selectedSetColor?.price) charSum += char.selectedSetColor.price;
+                if (char.selectedHairColor?.price) charSum += char.selectedHairColor.price;
+                if (char.selectedHatColor?.price) charSum += char.selectedHatColor.price;
                 
                 return sum + charSum;
             }, 0);

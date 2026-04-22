@@ -257,10 +257,14 @@ export const Step3Characters: React.FC<{
                 if (c.id === activeCharId) {
                     const newChar = { ...c };
                     if (part.type === 'set') {
-                        newChar.shirt = part;
+                        newChar.set = part;
+                        newChar.shirt = undefined;
                         newChar.pants = undefined; 
                     } else {
                         (newChar as any)[part.type] = part;
+                        if (part.type === 'shirt' || part.type === 'pants') {
+                            newChar.set = undefined;
+                        }
                     }
 
                     let partColors = part.colors;
@@ -274,9 +278,11 @@ export const Step3Characters: React.FC<{
                         }
                     }
 
-                    if (part.type === 'shirt' || part.type === 'set') newChar.selectedShirtColor = partColors?.[0];
+                    if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
+                    if (part.type === 'set') newChar.selectedSetColor = partColors?.[0];
                     if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
                     if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
+                    if (part.type === 'hat') newChar.selectedHatColor = partColors?.[0];
                     
                     return newChar;
                 }
@@ -506,14 +512,15 @@ export const Step3Characters: React.FC<{
                         {isLoadingParts ? (
                             Array.from({ length: 8 }).map((_, i) => <PartSkeleton key={i} />)
                         ) : currentPartList.length > 0 ? currentPartList.map((part, index) => {
-                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType === 'set' ? 'shirt' : activePartType]?.id === part.id;
+                            const isSelected = activePartType === 'hat' ? false : activeCharacter[activePartType]?.id === part.id;
                             let effectiveBasePrice = getEffectivePrice(part);
                             let originalBasePrice = part.price;
                             let priceToDisplay = effectiveBasePrice;
                             let originalPriceToDisplay = originalBasePrice;
                             if (isSelected) {
                                 let surcharge = 0;
-                                if (activePartType === 'shirt' || activePartType === 'set') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
+                                if (activePartType === 'shirt') surcharge = (activeCharacter.selectedShirtColor?.price || 0);
+                                else if (activePartType === 'set') surcharge = (activeCharacter.selectedSetColor?.price || 0);
                                 else if (activePartType === 'pants') surcharge = (activeCharacter.selectedPantsColor?.price || 0);
                                 else if (activePartType === 'hair') surcharge = (activeCharacter.selectedHairColor?.price || 0);
                                 priceToDisplay += surcharge;
