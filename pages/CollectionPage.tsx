@@ -121,6 +121,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return [t('common.all'), ...Array.from(dynamicCats).sort()];
     }, [displayTemplates, t]);
 
+    useEffect(() => {
+        if (selectedTemplate) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [selectedTemplate]);
+
     // Derived counts for filters
     const filterCounts = useMemo(() => {
         const counts = {
@@ -558,9 +569,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
       <div className="min-h-screen bg-[#f1f3f5] pb-20 font-body text-site-text relative">
         {/* Simple Clean Header */}
         {selectedTemplate && customConfig && (
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
+            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
                 <div 
-                    className="bg-white w-full max-w-2xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col max-h-[95vh] sm:max-h-[90vh]"
+                    className="bg-white w-full max-w-2xl rounded-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col max-h-[90vh] sm:max-h-[90vh]"
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
@@ -574,7 +585,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </button>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar">
+                    <div className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain">
                         {/* Preview Image */}
                         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center">
                             {selectedTemplate.isSimple ? (
@@ -1022,7 +1033,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         </div>
 
         {/* Filter Section */}
-        <div className="sticky top-16 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 py-3 shadow-sm">
+        <div className="relative sm:sticky sm:top-16 z-30 bg-white border-b border-gray-100 py-3 mb-2 sm:mb-0 shadow-sm">
             <div className="container mx-auto px-4 space-y-3">
                 {/* Categories */}
                 <div className="overflow-x-auto no-scrollbar flex items-center gap-2">
