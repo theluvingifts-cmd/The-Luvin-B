@@ -37,10 +37,12 @@ export const TemplateForm: React.FC<{
     }, [allParts]);
 
     const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ character }) => {
-        const { hair, face, shirt, pants } = character;
+        const { hair, face, shirt, pants, hat, set } = character;
         const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
         const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
+        const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
         const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
+        const setImageUrl = character.selectedSetColor?.imageUrl || set?.imageUrl;
         const faceImageUrl = face?.imageUrl;
 
         const partStyle: React.CSSProperties = {
@@ -56,8 +58,9 @@ export const TemplateForm: React.FC<{
         return (
             <div className="relative w-24 h-36 bg-white rounded-xl shadow-sm border border-gray-200 p-2 flex items-center justify-center overflow-hidden mx-auto">
                 <div className="relative w-full h-full">
-                    {pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
-                    {shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
+                    {!set && pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
+                    {!set && shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
+                    {set && setImageUrl && <img src={setImageUrl} alt="set" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
                     {faceImageUrl && <img src={faceImageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
                     {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
                 </div>
@@ -125,6 +128,7 @@ export const TemplateForm: React.FC<{
                         updated.set = undefined;
                     }
                     if (field === 'hair') updated.selectedHairColor = part?.colors?.[0];
+                    if (field === 'hat') updated.selectedHatColor = part?.colors?.[0];
                     if (field === 'set') {
                         updated.selectedSetColor = part?.colors?.[0];
                         updated.shirt = undefined;
@@ -137,7 +141,7 @@ export const TemplateForm: React.FC<{
         }));
     };
 
-    const handleUpdateCharColor = (charId: number, field: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor' | 'selectedSetColor', color: any) => {
+    const handleUpdateCharColor = (charId: number, field: 'selectedShirtColor' | 'selectedPantsColor' | 'selectedHairColor' | 'selectedHatColor' | 'selectedSetColor', color: any) => {
         setConfig(prev => ({
             ...prev,
             characters: prev.characters.map(c => c.id === charId ? { ...c, [field]: color } : c)
@@ -469,15 +473,17 @@ export const TemplateForm: React.FC<{
                                                     const face = randomPart('face');
                                                     const shirt = randomPart('shirt');
                                                     const pants = randomPart('pants');
+                                                    const hat = randomPart('hat');
                                                     
                                                     setConfig(prev => ({
                                                         ...prev,
                                                         characters: prev.characters.map(c => c.id === activeCharacter.id ? {
                                                             ...c,
-                                                            hair, face, shirt, pants,
+                                                            hair, face, shirt, pants, hat,
                                                             selectedShirtColor: shirt?.colors?.[Math.floor(Math.random() * (shirt.colors?.length || 1))],
                                                             selectedPantsColor: pants?.colors?.[Math.floor(Math.random() * (pants.colors?.length || 1))],
                                                             selectedHairColor: hair?.colors?.[Math.floor(Math.random() * (hair.colors?.length || 1))],
+                                                            selectedHatColor: hat?.colors?.[Math.floor(Math.random() * (hat.colors?.length || 1))],
                                                         } : c)
                                                     }));
                                                 }}
@@ -503,18 +509,31 @@ export const TemplateForm: React.FC<{
 
                                     {/* Right: Part Selection */}
                                     <div className="flex-grow space-y-6">
-                                        {(['hair', 'face', 'shirt', 'pants', 'set'] as const).map(type => {
+                                        {(['hair', 'face', 'shirt', 'pants', 'hat', 'set'] as const).map(type => {
                                             const selectedPart = activeCharacter[type];
-                                            const colorField = type === 'shirt' ? 'selectedShirtColor' : type === 'pants' ? 'selectedPantsColor' : type === 'hair' ? 'selectedHairColor' : type === 'set' ? 'selectedSetColor' : null;
+                                            const colorField = type === 'shirt' ? 'selectedShirtColor' : 
+                                                              type === 'pants' ? 'selectedPantsColor' : 
+                                                              type === 'hair' ? 'selectedHairColor' : 
+                                                              type === 'hat' ? 'selectedHatColor' :
+                                                              type === 'set' ? 'selectedSetColor' : null;
 
                                             return (
                                                 <div key={type} className="space-y-3">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex justify-between">
-                                                        <span>{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Bộ đồ'}</span>
+                                                        <span>{type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : type === 'hat' ? 'Mũ' : 'Bộ đồ'}</span>
                                                         {selectedPart && <span className="text-primary normal-case">{selectedPart.name}</span>}
                                                     </label>
                                                     
                                                     <div className="flex flex-wrap gap-2">
+                                                        {type === 'hat' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateChar(activeCharacter.id, type, 'none')}
+                                                                className={`w-12 h-12 rounded-xl border-2 border-dashed flex-shrink-0 flex items-center justify-center transition-all ${!selectedPart ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
+                                                                title="Không chọn"
+                                                            >
+                                                                <span className="text-[10px] font-bold text-gray-400 uppercase">Trống</span>
+                                                            </button>
+                                                        )}
                                                         {partsByType[type].map(part => (
                                                             <button 
                                                                 key={part.id}

@@ -89,10 +89,11 @@ const SafeImage = memo(({ src, style, className, alt, priority, disableTransitio
 });
 
 const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterConfig; pxPerCm: number }) => {
-  const { hair, face, shirt, pants, set } = character;
+  const { hair, face, shirt, pants, set, hat } = character;
   const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
   const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
   const setImageUrl = character.selectedSetColor?.imageUrl || set?.imageUrl;
+  const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
   
   let hairImageUrl = hair?.imageUrl;
   if (character.selectedHairColor?.imageUrl) {
@@ -128,9 +129,9 @@ const LegoCharacter = memo(({ character, pxPerCm }: { character: LegoCharacterCo
       {!set && pants && pantsImageUrl && <SafeImage disableTransition priority src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} />}
       {!set && shirt && shirtImageUrl && <SafeImage disableTransition priority src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} />}
       {set && setImageUrl && <SafeImage disableTransition priority src={setImageUrl} alt="set" style={{ ...partStyle, zIndex: 2 }} />}
-      {face && face.imageUrl && <SafeImage disableTransition priority src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
-      {hair && hairImageUrl && <SafeImage disableTransition priority src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
-    </div>
+                    {face && face.imageUrl && <SafeImage disableTransition priority src={face.imageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} />}
+                    {hair && hairImageUrl && <SafeImage disableTransition priority src={hairImageUrl} alt={hair.name} style={{ ...partStyle, zIndex: 4 }} />}
+                </div>
   );
 });
 

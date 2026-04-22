@@ -494,10 +494,13 @@ export const Step3Characters: React.FC<{
                         </div>
                     </div>
                      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
-                         {(activePartType === 'hat') && (
-                             <button onClick={() => handlePartDeselect(activePartType)} className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-colors text-center w-full h-full min-h-[100px] text-gray-500 hover:bg-gray-100 hover:border-gray-400">
-                               <span className="text-2xl font-bold">&times;</span>
-                               <span className="text-[11px] font-semibold">{t('studio.none')}</span>
+                         {activePartType === 'hat' && (
+                             <button 
+                                onClick={() => handlePartDeselect('hat')} 
+                                className="border border-gray-200 rounded-lg p-1.5 flex flex-col items-center justify-center gap-1 transition-all text-center w-full aspect-square bg-gray-50 hover:bg-gray-100 hover:border-gray-300"
+                             >
+                               <span className="text-xl font-bold text-gray-400">&times;</span>
+                               <span className="text-[10px] font-bold text-gray-400 uppercase">{t('studio.none')}</span>
                              </button>
                          )}
                         {isLoadingParts ? (
