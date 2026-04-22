@@ -114,6 +114,7 @@ export interface DraggableItem {
     lockedPosition?: boolean;
     lockedContent?: boolean;
     maskShape?: 'none' | 'circle' | 'rounded' | 'heart' | 'star';
+    frameUrl?: string; // URL for the museum frame image (overlay)
     linkedCharId?: number;
     opacity?: number;
     isHidden?: boolean;

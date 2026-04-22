@@ -106,6 +106,7 @@ export const AdminDesign: React.FC = () => {
 
     const TOOLS = [
         { id: 'templates', icon: '📂', label: t('studio.tools.templates') }, 
+        { id: 'khung', icon: '🖼️', label: 'Khung' },
         { id: 'character', icon: '👤', label: 'Nhân vật' },
         { id: 'background', icon: '🎨', label: t('studio.tools.background') },
         { id: 'museum', icon: '🏛️', label: t('studio.tools.museum') },
@@ -574,6 +575,31 @@ export const AdminDesign: React.FC = () => {
         }
     };
 
+    const handleUploadMuseumFrame = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setIsUploading(true);
+            const url = await uploadFile(e.target.files[0]);
+            if (url) {
+                const id = Date.now();
+                setConfig(prev => ({
+                    ...prev,
+                    draggableItems: [...prev.draggableItems, { 
+                        id, 
+                        partId: 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1741542152648_d106r_photo_placeholder.png?alt=media&token=4e1e0a9d-5a6b-4e9e-b8d2-4b3d8a9e6e8b', // Transparent placeholder
+                        type: 'charm', 
+                        x: 50, 
+                        y: 50, 
+                        rotation: 0, 
+                        scale: 0.5,
+                        frameUrl: url // The uploaded museum frame
+                    }]
+                }));
+                setSelectedItemId(`item-${id}`);
+            }
+            setIsUploading(false);
+        }
+    };
+
     const handleUploadSticker = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setIsUploading(true);
@@ -783,37 +809,47 @@ export const AdminDesign: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">{t('studio.museum.add_gold_frames')}</label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {MUSEUM_FRAMES.map(frame => (
-                                                <button 
-                                                    key={frame.id}
-                                                    onClick={() => {
-                                                        const id = Date.now();
-                                                        setConfig(prev => ({
-                                                            ...prev,
-                                                            draggableItems: [...prev.draggableItems, { 
-                                                                id, 
-                                                                partId: frame.url, 
-                                                                type: 'charm', 
-                                                                x: 50, 
-                                                                y: 50, 
-                                                                rotation: 0, 
-                                                                scale: frame.id === 'spotlight' ? 0.8 : 0.4,
-                                                                maskShape: frame.id === 'gold_oval' ? 'circle' : frame.id === 'gold_heart' ? 'heart' : 'none'
-                                                            }]
-                                                        }));
-                                                        setSelectedItemId(`item-${id}`);
-                                                    }}
-                                                    className="p-2 border rounded-xl flex flex-col items-center gap-2 hover:bg-amber-50 hover:border-amber-200 transition-all group"
-                                                >
-                                                    <div className="w-12 h-12 flex items-center justify-center">
-                                                        <img src={frame.url} className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform" alt={t(frame.nameKey)} referrerPolicy="no-referrer" />
-                                                    </div>
-                                                    <span className="text-[9px] font-black uppercase text-gray-500">{t(frame.nameKey)}</span>
-                                                </button>
-                                            ))}
+                                    <div className="space-y-4">
+                                        <div className="border-2 border-dashed border-amber-300 p-4 rounded-2xl text-center relative hover:bg-amber-50/50 transition-all">
+                                            <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleUploadMuseumFrame} disabled={isUploading} />
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest leading-tight">
+                                                {isUploading ? 'ĐANG TẢI...' : '+ TẢI KHUNG MUSEUM CỦA BẠN (PNG RỖNG)'}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">{t('studio.museum.add_gold_frames')}</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {MUSEUM_FRAMES.map(frame => (
+                                                    <button 
+                                                        key={frame.id}
+                                                        onClick={() => {
+                                                            const id = Date.now();
+                                                            setConfig(prev => ({
+                                                                ...prev,
+                                                                draggableItems: [...prev.draggableItems, { 
+                                                                    id, 
+                                                                    partId: 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1741542152648_d106r_photo_placeholder.png?alt=media&token=4e1e0a9d-5a6b-4e9e-b8d2-4b3d8a9e6e8b',
+                                                                    type: 'charm', 
+                                                                    x: 50, 
+                                                                    y: 50, 
+                                                                    rotation: 0, 
+                                                                    scale: frame.id === 'spotlight' ? 0.8 : 0.4,
+                                                                    frameUrl: frame.url,
+                                                                    maskShape: frame.id === 'gold_oval' ? 'circle' : frame.id === 'gold_heart' ? 'heart' : 'none'
+                                                                }]
+                                                            }));
+                                                            setSelectedItemId(`item-${id}`);
+                                                        }}
+                                                        className="p-2 border rounded-xl flex flex-col items-center gap-2 hover:bg-amber-50 hover:border-amber-200 transition-all group"
+                                                    >
+                                                        <div className="w-12 h-12 flex items-center justify-center">
+                                                            <img src={frame.url} className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform" alt={t(frame.nameKey)} referrerPolicy="no-referrer" />
+                                                        </div>
+                                                        <span className="text-[9px] font-black uppercase text-gray-500">{t(frame.nameKey)}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -833,13 +869,78 @@ export const AdminDesign: React.FC = () => {
                             )}
 
                             {activeTool === 'templates' && (
-                                <div className="grid grid-cols-1 gap-2">
-                                    {existingBackgrounds.map(bg => (
-                                        <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className="flex items-center gap-3 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                                            <img src={bg.previewUrl || bg.url} className="w-10 h-10 object-cover rounded" />
-                                            <div className="min-w-0 flex-grow"><p className="text-xs font-bold truncate">{bg.name}</p></div>
+                                <div className="space-y-4">
+                                    <button 
+                                        onClick={() => {
+                                            if (confirm("Làm mới toàn bộ thiết kế hiện tại?")) {
+                                                setConfig(INITIAL_FRAME_CONFIG);
+                                                setEditingBgId(null);
+                                                setBgName('');
+                                                setSelectedItemId(null);
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        ✨ Thiết kế mới (Làm sạch)
+                                    </button>
+                                    
+                                    <div className="pt-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Sửa từ mẫu cũ / Nền cũ</label>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {existingBackgrounds.map(bg => (
+                                                <div key={bg.id} onClick={() => handleLoadTemplate(bg)} className="flex items-center gap-3 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all">
+                                                    <img src={bg.previewUrl || bg.url} className="w-10 h-10 object-cover rounded shadow-sm" />
+                                                    <div className="min-w-0 flex-grow">
+                                                        <p className="text-xs font-bold truncate">{bg.name}</p>
+                                                        <p className="text-[9px] text-gray-400 uppercase">{bg.category}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTool === 'khung' && (
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-widest">KÍCH THƯỚC KHUNG</label>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {frames.map(f => (
+                                                <button 
+                                                    key={f.id}
+                                                    onClick={() => setConfig(prev => ({ ...prev, frameId: f.id }))}
+                                                    className={`p-3 border-2 rounded-xl flex items-center justify-between transition-all ${config.frameId === f.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
+                                                >
+                                                    <div className="text-left">
+                                                        <p className="text-xs font-black uppercase">{f.name}</p>
+                                                        <p className="text-[9px] text-gray-400 italic">{f.description}</p>
+                                                    </div>
+                                                    {config.frameId === f.id && <span className="text-blue-600">✓</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-widest">MÀU KHUNG THỰC TẾ</label>
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => setConfig(prev => ({ ...prev, frameColor: 'white' }))}
+                                                className={`flex-1 p-3 border-2 rounded-xl transition-all ${config.frameColor === 'white' ? 'border-gray-900 shadow-md' : 'border-gray-100'}`}
+                                            >
+                                                <div className="w-full h-8 bg-white border mb-2 rounded shadow-inner"></div>
+                                                <span className="text-[10px] font-bold uppercase">Trắng</span>
+                                            </button>
+                                            <button 
+                                                onClick={() => setConfig(prev => ({ ...prev, frameColor: 'black' }))}
+                                                className={`flex-1 p-3 border-2 rounded-xl transition-all ${config.frameColor === 'black' ? 'border-gray-900 shadow-md' : 'border-gray-100'}`}
+                                            >
+                                                <div className="w-full h-8 bg-gray-900 mb-2 rounded shadow-inner"></div>
+                                                <span className="text-[10px] font-bold uppercase">Đen</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             {activeTool === 'character' && (

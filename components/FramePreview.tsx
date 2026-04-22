@@ -829,13 +829,25 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                             key={`item-${item.id}`} id={`item-${item.id}`} initialTransform={item} 
                             onTransform={onItemTransform}
                             isFlipped={item.isFlipped} parentRef={previewContainerRef} isSelected={selectedItemId === `item-${item.id}`} onSelect={setSelectedItemId}
-                            isResizable={isInteractive && isCharm} isRotatable={isInteractive} isDraggable={isInteractive}
+                            isResizable={isInteractive && (isCharm || !!item.frameUrl)} isRotatable={isInteractive} isDraggable={isInteractive}
                             isPositionLocked={item.lockedPosition}
                             zIndex={item.type === 'hat' ? 12 : 10}
                             containerSize={{ width: backgroundWidth, height: backgroundHeight }}
                         >
-                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block' }}>
+                            <div style={{ ...maskStyle, overflow: 'hidden', width: widthCm * pxPerCm, height: heightCm * pxPerCm, opacity: item.opacity ?? 1, display: item.isHidden ? 'none' : 'block', position: 'relative' }}>
+                                {/* The content image (sticker or uploaded photo) */}
                                 <SafeImage priority={!isCharm} src={imageUrl} alt={name} className="pointer-events-none" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                
+                                {/* The Frame Overlay (Museum Frame) */}
+                                {item.frameUrl && (
+                                    <SafeImage 
+                                        priority 
+                                        src={item.frameUrl} 
+                                        alt="frame overlay" 
+                                        className="pointer-events-none absolute inset-0 w-full h-full object-contain" 
+                                        style={{ zIndex: 1 }}
+                                    />
+                                )}
                             </div>
                         </Transformable>
                     );

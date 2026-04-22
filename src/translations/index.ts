@@ -239,6 +239,7 @@ export const translations: any = {
                 gold_heart: "Khung Trái Tim",
                 gold_square: "Khung Vuông",
                 spotlight: "Đèn Spotlight",
+                upload_frame: "Tải khung Museum của bạn (PNG rỗng)",
             }
         },
         about: {
@@ -684,6 +685,7 @@ export const translations: any = {
                 gold_heart: "Gold Heart",
                 gold_square: "Gold Square",
                 spotlight: "Spotlight",
+                upload_frame: "Upload Your Museum Frame (Transparent PNG)",
             }
         },
         about: {
