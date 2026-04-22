@@ -243,7 +243,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                     {activeProductSubTab === 'parts' && <ProductForm initialData={editingPart} onSave={handleSaveProduct} onCancel={switchToList} />}
                     {activeProductSubTab === 'backgrounds' && <BackgroundForm initialData={editingBg} onSave={handleSaveBackground} onCancel={switchToList} />}
                     {activeProductSubTab === 'frames' && <FrameForm initialData={editingFrame} onSave={handleSaveFrame} onCancel={switchToList} />}
-                    {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} allParts={products} onSave={handleSaveTemplate} onCancel={switchToList} />}
+                    {activeProductSubTab === 'templates' && <TemplateForm initialData={editingTemplate} allParts={products} allFrames={frames} onSave={handleSaveTemplate} onCancel={switchToList} />}
                 </div>
             ) : (
                 <>

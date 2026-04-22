@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, FrameConfig } from '../../../types';
+import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, FrameConfig, FrameOption } from '../../../types';
 import { INITIAL_FRAME_CONFIG } from '../../../constants';
 import { uploadFile } from '../../../services/uploadService';
 
@@ -9,9 +9,10 @@ const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia �
 export const TemplateForm: React.FC<{
     initialData?: CollectionTemplate | null;
     allParts: LegoPart[];
+    allFrames: FrameOption[];
     onSave: (tpl: CollectionTemplate) => void;
     onCancel: () => void;
-}> = ({ initialData, allParts, onSave, onCancel }) => {
+}> = ({ initialData, allParts, allFrames, onSave, onCancel }) => {
     const [formData, setFormData] = useState<CollectionTemplate>(initialData || {
         id: `tpl_${Date.now()}`, name: '', imageUrl: '', category: 'Khác', config: INITIAL_FRAME_CONFIG
     });
@@ -246,6 +247,71 @@ export const TemplateForm: React.FC<{
                         />
                         <p className="text-[10px] text-gray-400 mt-1">Số lượng này sẽ hiển thị trên web để tăng độ uy tín.</p>
                     </div>
+                </div>
+
+                {/* Frame Settings */}
+                <div className="bg-blue-50/50 p-6 rounded-3xl border-2 border-blue-100 shadow-sm space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 rounded-lg text-lg">🖼️</div>
+                        <div>
+                            <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Cấu hình khung mẫu</h3>
+                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Thiết lập kích thước và màu sắc mặc định</p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">Kích thước khung</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {allFrames.map(f => (
+                                    <button 
+                                        key={f.id}
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, frameId: f.id })}
+                                        className={`p-3 border-2 rounded-xl flex items-center justify-between transition-all ${config.frameId === f.id ? 'border-blue-500 bg-white shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'}`}
+                                    >
+                                        <div className="text-left">
+                                            <p className="text-xs font-black uppercase text-gray-800">{f.name}</p>
+                                            <p className="text-[9px] text-gray-400 italic lowercase">{f.description}</p>
+                                        </div>
+                                        {config.frameId === f.id && <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Màu khung mặc định</label>
+                                <div className="flex gap-3">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, frameColor: 'white' })}
+                                        className={`flex-1 p-3 border-2 rounded-2xl transition-all ${config.frameColor === 'white' ? 'border-primary bg-white shadow-lg scale-[1.02]' : 'border-gray-100 bg-gray-50'}`}
+                                    >
+                                        <div className="w-full h-10 bg-white border mb-2 rounded-xl shadow-inner"></div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Trắng</span>
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, frameColor: 'black' })}
+                                        className={`flex-1 p-3 border-2 rounded-2xl transition-all ${config.frameColor === 'black' ? 'border-primary bg-white shadow-lg scale-[1.02]' : 'border-gray-100 bg-gray-50'}`}
+                                    >
+                                        <div className="w-full h-10 bg-gray-900 mb-2 rounded-xl shadow-inner"></div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Đen</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100">
+                                <p className="text-[9px] text-amber-700 leading-relaxed">
+                                    <span className="font-black">LƯU Ý:</span> Đây là cấu hình mặc định khi khách hàng mở mẫu này. Họ vẫn có thể thay đổi kích thước/màu khung nếu mẫu ở chế độ Canvas.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Badges Selection */}
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-wrap gap-4">
                     <label className="flex items-center gap-2 cursor-pointer group">
@@ -299,7 +365,6 @@ export const TemplateForm: React.FC<{
                                 : "💡 Chế độ Thiết kế: Khách hàng có thể tự do di chuyển, thay đổi vị trí nhân vật & charm trên khung hình trực tuyến."}
                         </p>
                     </div>
-                </div>
                 </div>
                 
                 <div>
