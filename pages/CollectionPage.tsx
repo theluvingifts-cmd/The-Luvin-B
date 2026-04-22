@@ -943,15 +943,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             Không tìm thấy charm phù hợp
                                         </div>
                                     )}
-                                    {!selectedTemplate.isSimple && (
-                                        <button 
-                                            onClick={() => onCustomize(selectedTemplate)}
-                                            className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all bg-gray-50/50"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                            <span className="text-[8px] font-black uppercase tracking-tighter mt-1">Xem thêm</span>
-                                        </button>
-                                    )}
                                 </div>
                             </div>
                         )}
@@ -987,13 +978,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('common.total')}</span>
                                 <span className="text-2xl font-black text-gray-900">{formatCurrency(currentPrice)}</span>
                             </div>
-                            <button 
-                                onClick={() => onCustomize(selectedTemplate)}
-                                className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1"
-                            >
-                                {t('common.customize')} 
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                            </button>
                         </div>
                         <div className="flex gap-3">
                             <button 
