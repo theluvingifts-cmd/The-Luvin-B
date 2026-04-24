@@ -16,15 +16,17 @@ interface CollectionPageProps {
     templates?: CollectionTemplate[],
     onZoomImage: (url: string) => void,
     allParts: Record<string, LegoPart>,
-    frames: FrameOption[]
+    frames: FrameOption[],
+    isLoadingParts?: boolean
 }
 
-const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ character }) => {
-    const { shirt, pants, hair, face, set } = character;
+const CharacterPreview: React.FC<{ character: LegoCharacterConfig, hideHat?: boolean }> = ({ character, hideHat }) => {
+    const { shirt, pants, hair, face, set, hat } = character;
     const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
     const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
     const setImageUrl = character.selectedSetColor?.imageUrl || set?.imageUrl;
     const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
+    const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
     const faceImageUrl = face?.imageUrl;
 
     const partStyle: React.CSSProperties = {
@@ -45,12 +47,13 @@ const CharacterPreview: React.FC<{ character: LegoCharacterConfig }> = ({ charac
                 {set && setImageUrl && <img src={setImageUrl} alt="set" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
                 {faceImageUrl && <img src={faceImageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
                 {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
+                {hatImageUrl && !hideHat && <img src={hatImageUrl} alt="hat" style={{ ...partStyle, zIndex: 5 }} referrerPolicy="no-referrer" />}
             </div>
         </div>
     );
 };
 
-export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames }) => {
+export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts }) => {
     const { t } = useLanguage();
     const { category: urlCategory, templateId: urlTemplateId } = useParams();
     const navigate = useNavigate();
@@ -98,6 +101,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         }
     }, [urlTemplateId, displayTemplates]);
 
+    const categories = useMemo(() => {
+        const dynamicCats = new Set<string>();
+        displayTemplates.forEach(t => {
+            if (t.category && t.category.trim() !== '') {
+                dynamicCats.add(t.category.trim());
+            }
+        });
+        return [t('common.all'), ...Array.from(dynamicCats).sort()];
+    }, [displayTemplates, t]);
+
     const partsByType = useMemo(() => {
         const result: Record<string, LegoPart[]> = {
             hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
@@ -111,15 +124,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return result;
     }, [allParts]);
 
-    const categories = useMemo(() => {
-        const dynamicCats = new Set<string>();
-        displayTemplates.forEach(t => {
-            if (t.category && t.category.trim() !== '') {
-                dynamicCats.add(t.category.trim());
+    // Update active category when URL changes (category only)
+    useEffect(() => {
+        if (urlCategory && !urlTemplateId && displayTemplates.length > 0) {
+            const catMatch = categories.find(cat => slugify(cat) === urlCategory);
+            if (catMatch) {
+                setActiveCategory(catMatch);
             }
-        });
-        return [t('common.all'), ...Array.from(dynamicCats).sort()];
-    }, [displayTemplates, t]);
+        }
+    }, [urlCategory, urlTemplateId, displayTemplates, categories]);
 
     useEffect(() => {
         if (selectedTemplate) {
@@ -210,6 +223,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const isInitialLoading = useMemo(() => {
         return displayTemplates.length === 0;
     }, [displayTemplates]);
+
+    const handleCategoryChange = (cat: string) => {
+        setActiveCategory(cat);
+        const categorySlug = slugify(cat);
+        if (cat === t('common.all')) {
+            navigate('/collection', { replace: true });
+        } else {
+            navigate(`/collection/${categorySlug}`, { replace: true });
+        }
+    };
 
     const handleSelectTemplate = (template: CollectionTemplate) => {
         const categorySlug = slugify(template.category || 'all');
@@ -370,45 +393,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const currentPrice = useMemo(() => {
         if (!customConfig || !selectedTemplate) return 0;
         
-        // If simple, use template price as base and add extra charms + characters
-        if (selectedTemplate.isSimple) {
-            const basePrice = getEffectivePrice(selectedTemplate as any);
-            
-            // Calculate characters price
-            const charactersPrice = customConfig.characters.reduce((sum, char) => {
-                let charSum = CHARACTER_BASE_PRICE; // Base fee per character
-                if (char.customPrintPrice) charSum += char.customPrintPrice;
-                
-                const addPartCost = (part: LegoPart | undefined) => {
-                    if (part) charSum += getEffectivePrice(part);
-                };
-                addPartCost(char.shirt);
-                addPartCost(char.pants);
-                addPartCost(char.hat);
-                addPartCost(char.hair);
-                addPartCost(char.face);
-                addPartCost(char.set);
-                
-                if (char.selectedShirtColor?.price) charSum += char.selectedShirtColor.price;
-                if (char.selectedPantsColor?.price) charSum += char.selectedPantsColor.price;
-                if (char.selectedSetColor?.price) charSum += char.selectedSetColor.price;
-                if (char.selectedHairColor?.price) charSum += char.selectedHairColor.price;
-                if (char.selectedHatColor?.price) charSum += char.selectedHatColor.price;
-                
-                return sum + charSum;
-            }, 0);
-
-            const extraCharmsPrice = customConfig.draggableItems.reduce((sum, item) => {
-                const part = allParts[item.partId];
-                return sum + (part ? getEffectivePrice(part) : 0);
-            }, 0);
-            
-            return basePrice + charactersPrice + extraCharmsPrice;
+        // Stabilize price during initial load
+        if (isLoadingParts && selectedTemplate.price) {
+            return selectedTemplate.price;
         }
 
         const { totalPrice } = calculatePrice(customConfig, allParts, frames, displayTemplates);
         return totalPrice;
-    }, [customConfig, selectedTemplate, allParts, frames]);
+    }, [customConfig, selectedTemplate, allParts, frames, displayTemplates, isLoadingParts]);
 
     const groupedCharacters = useMemo(() => {
         if (!customConfig) return [];
@@ -602,7 +594,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     )}
                                     {customConfig.characters.map((char) => (
                                         <div key={char.id} className="transform scale-125">
-                                            <CharacterPreview character={char} />
+                                            <CharacterPreview character={char} hideHat={true} />
                                         </div>
                                     ))}
                                     {customConfig.draggableItems.map((item) => (
@@ -646,7 +638,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             onClick={() => setEditingCharacterId(editingCharacterId === char.id ? null : char.id)}
                                         >
                                             <div className="flex items-center gap-4 p-3">
-                                                <CharacterPreview character={char} />
+                                                <CharacterPreview character={char} hideHat={true} />
                                                 <div className="flex-grow">
                                                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Nhân vật {idx + 1}</p>
                                                     <p className="text-[9px] text-primary font-black uppercase tracking-tighter">
@@ -776,6 +768,67 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </span>
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
+                                    {/* Graduation Hats from Characters */}
+                                    {customConfig.characters.map((char, charIdx) => {
+                                        if (!char.hat) return null;
+                                        const hat = char.hat;
+                                        return (
+                                            <div 
+                                                key={`char-hat-${char.id}`}
+                                                className="flex items-center gap-4 p-3 rounded-2xl border-2 border-primary bg-primary/5 shadow-sm"
+                                            >
+                                                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
+                                                    <img src={char.selectedHatColor?.imageUrl || hat.imageUrl} alt="Hat" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                </div>
+                                                <div className="flex-grow text-left">
+                                                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{hat.name} (NV {charIdx + 1})</p>
+                                                    <p className="text-[10px] text-primary font-bold">{formatCurrency(hat.price || 0)}</p>
+                                                    
+                                                    {/* Color selection for the hat */}
+                                                    {hat.colors && hat.colors.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {hat.colors.map(color => (
+                                                                <button
+                                                                    key={color.hex}
+                                                                    onClick={() => {
+                                                                        const newChars = customConfig.characters.map(c => {
+                                                                            if (c.id === char.id) return { ...c, selectedHatColor: color };
+                                                                            return c;
+                                                                        });
+                                                                        setCustomConfig({ ...customConfig, characters: newChars });
+                                                                    }}
+                                                                    className={`w-4 h-4 rounded-full border border-white shadow-sm ${char.selectedHatColor?.hex === color.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                                                                    style={{ backgroundColor: color.hex }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-1">
+                                                    <button 
+                                                        onClick={() => {
+                                                            const newChars = customConfig.characters.map(c => {
+                                                                if (c.id === char.id) return { ...c, hat: undefined, selectedHatColor: undefined };
+                                                                return c;
+                                                            });
+                                                            setCustomConfig({ ...customConfig, characters: newChars });
+                                                        }}
+                                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                    </button>
+                                                    <span className="text-xs font-black text-gray-900 leading-none">1</span>
+                                                    <button 
+                                                        disabled
+                                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-200"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
                                     {groupedTemplateCharms.map((group) => {
                                         const { part, originalItems, partId } = group;
                                         const currentInConfig = customConfig.draggableItems.filter(i => originalItems.some(oi => oi.id === i.id));
@@ -1040,7 +1093,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     {categories.map(cat => (
                         <button
                             key={cat}
-                            onClick={() => setActiveCategory(cat)}
+                            onClick={() => handleCategoryChange(cat)}
                             className={`px-5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                                 activeCategory === cat 
                                     ? 'bg-primary text-white shadow-md' 
@@ -1127,7 +1180,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             ) : filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {filteredTemplates.map((template, index) => {
-                    const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
+                    const hasParts = Object.keys(allParts).length > 0;
+                    const calculated = calculatePrice(template.config, allParts, frames, displayTemplates);
+                    const totalPrice = hasParts ? calculated.totalPrice : (template.price || 290000); // 290k is common base price
                     const purchaseCount = template.purchaseCount || 0;
                     
                     return ( 
@@ -1185,7 +1240,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">{t('collection.base_price')}</span>
-                                            <span className="text-sm sm:text-lg font-black text-gray-900 leading-none">{formatCurrency(totalPrice)}</span>
+                                            <span className="text-sm sm:text-lg font-black text-gray-900 leading-none">
+                                                {isLoadingParts && template.price ? formatCurrency(template.price) : formatCurrency(totalPrice)}
+                                            </span>
                                         </div>
                                         <div className="bg-gray-100 px-1.5 py-0.5 rounded text-[8px] font-bold text-gray-500 mb-0.5">
                                             {template.config.characters.length} {t('collection.characters_count')}
