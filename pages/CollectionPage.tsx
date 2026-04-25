@@ -525,6 +525,18 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         });
     };
 
+    const customizeSectionRef = React.useRef<HTMLDivElement>(null);
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+    const scrollToCustomize = () => {
+        if (customizeSectionRef.current) {
+            customizeSectionRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    };
+
     return ( 
       <div className="min-h-screen bg-[#f1f3f5] pb-20 font-body text-site-text relative">
         {/* Simple Clean Header */}
@@ -540,13 +552,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('collection.quick_customize_title')}</p>
                         </div>
-                        <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
+                        <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors" title="Đóng">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain">
-                        {/* Preview Image */}
+                    <div 
+                        ref={scrollContainerRef}
+                        className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain scroll-smooth"
+                    >
+                        {/* Preview Image with Scroll Hint */}
                         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center">
                             {selectedTemplate.isSimple ? (
                                 <div className="relative w-full h-full p-4 sm:p-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 content-center">
@@ -567,7 +582,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     ))}
                                     {customConfig.draggableItems.map((item) => (
                                         <div key={item.id} className="w-12 h-12 bg-white rounded-xl shadow-sm border border-pink-50 p-1 flex items-center justify-center">
-                                            <img src={item.selectedColor?.imageUrl || allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                            <img src={item.selectedColor?.imageUrl || allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="Item" />
                                         </div>
                                     ))}
                                 </div>
@@ -578,14 +593,29 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         alt={selectedTemplate.name} 
                                         className="w-full h-full object-cover" 
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"></div>
+                                    
+                                    {/* Mobile Scroll Instructions */}
+                                    <div className="absolute bottom-6 inset-x-0 px-6 flex flex-col items-center gap-3">
+                                        <button 
+                                            onClick={scrollToCustomize}
+                                            className="w-full py-4 bg-white text-gray-900 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-black/20 flex items-center justify-center gap-2 hover:bg-gray-50 transition-all active:scale-95 sm:hidden border border-gray-100"
+                                        >
+                                            ✨ Bắt đầu Tùy chỉnh ngay
+                                            <svg className="w-3.5 h-3.5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                                        </button>
+                                        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur rounded-full">
+                                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                            <span className="text-[9px] text-white font-black uppercase tracking-widest">Cuộn để tùy chỉnh chi tiết</span>
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </div>
 
                         {/* Characters Section */}
                         {(selectedTemplate.isSimple || groupedCharacters.length > 0) && (
-                            <div className="space-y-4">
+                            <div ref={customizeSectionRef} className="space-y-4 scroll-mt-6">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
