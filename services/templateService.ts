@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 // Proper imports for the modular Firestore SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, increment, writeBatch, query, orderBy } from 'firebase/firestore';
 import { COLLECTION_TEMPLATES } from '../constants';
 import type { CollectionTemplate } from '../types';
 import { cleanForFirestore } from '../utils/helpers';
@@ -10,11 +10,23 @@ const COLLECTION_NAME = "templates";
 
 export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
     try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
+        let querySnapshot = await getDocs(q).catch(async (err) => {
+            // Fallback if index is not created yet
+            console.warn("Index not found or error, falling back to unordered fetch:", err);
+            return await getDocs(collection(db, COLLECTION_NAME));
+        });
+
         const templates: CollectionTemplate[] = [];
         querySnapshot.forEach((doc) => {
             templates.push(doc.data() as CollectionTemplate);
         });
+
+        // If fallback was used or order is missing, templates might not be sorted correctly here in JS
+        // but we'll return them anyway
+        
+        // Final JS sort as safety net if order field exists
+        templates.sort((a, b) => (a.order || 0) - (b.order || 0));
         
         // Cache to localStorage
         try {

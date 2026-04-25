@@ -2,7 +2,7 @@
 // services/productService.ts
 import { db } from '../config/firebase';
 // Proper modular firestore imports
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, increment, getDoc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, increment, getDoc, query, orderBy } from 'firebase/firestore';
 import { LEGO_PARTS } from '../constants'; // Lấy dữ liệu mẫu ban đầu
 import type { LegoPart } from '../types';
 
@@ -12,18 +12,22 @@ const COLLECTION_NAME = "lego_parts";
 // 1. Hàm lấy toàn bộ sản phẩm từ Firebase
 export const getAllParts = async (): Promise<LegoPart[]> => {
     try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
+        let querySnapshot = await getDocs(q).catch(async (err) => {
+            console.warn("Index not found or error, falling back to unordered fetch:", err);
+            return await getDocs(collection(db, COLLECTION_NAME));
+        });
+
         const parts: LegoPart[] = [];
         querySnapshot.forEach((doc) => {
             parts.push(doc.data() as LegoPart);
         });
-        // Sort by order if available, otherwise by index/default
-        return parts.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+        
+        // Safety sort
+        parts.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+        
+        return parts;
     } catch (error: any) {
-        if (error.code === 'permission-denied') {
-             console.warn("Firestore: Không có quyền đọc 'lego_parts'. Dùng dữ liệu mẫu.");
-             return [];
-        }
         console.error("Lỗi lấy danh sách sản phẩm:", error);
         return [];
     }

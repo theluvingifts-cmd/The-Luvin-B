@@ -270,6 +270,7 @@ export interface CollectionTemplate {
     isSimple?: boolean;
     isHot?: boolean;
     isNew?: boolean;
+    order?: number;
 }
 
 export interface FeedbackItem {

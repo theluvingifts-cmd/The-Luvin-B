@@ -2,7 +2,7 @@
 // services/frameService.ts
 import { db } from '../config/firebase';
 // Standard imports for the firestore modular SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
 import { FRAME_OPTIONS } from '../constants';
 import type { FrameOption } from '../types';
 
@@ -25,17 +25,19 @@ export const reorderFramesList = async (items: FrameOption[]) => {
 
 export const getAllFrames = async (): Promise<FrameOption[]> => {
     try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
+        let querySnapshot = await getDocs(q).catch(async (err) => {
+            console.warn("Index not found or error, falling back to unordered fetch:", err);
+            return await getDocs(collection(db, COLLECTION_NAME));
+        });
+        
         const frames: FrameOption[] = [];
         querySnapshot.forEach((doc) => {
             frames.push(doc.data() as FrameOption);
         });
         
-        // Sort by order if possible, or by price
-        if (frames.length > 0) {
-             return frames.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        }
-        return [];
+        // Final JS sort as safety net
+        return frames.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     } catch (error: any) {
         if (error.code === 'permission-denied') {
             console.warn("Firestore: Permission denied for frames. Using default.");

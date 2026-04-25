@@ -295,6 +295,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     >
                                         {showLowStockOnly ? 'Đang lọc: Sắp hết' : 'Lọc: Sắp hết'}
                                     </button>
+                                    {productCategory === 'all' && productSearch === '' && (
+                                        <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                    )}
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
                                     <button 
@@ -321,7 +324,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     return (
                                     <div 
                                         key={part.id} 
-                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all"
+                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all cursor-move active:opacity-50"
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, part.id)}
                                         onDragOver={handleDragOver}
@@ -409,6 +412,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         />
                                         <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                                     </div>
+                                    {frameSearch === '' && (
+                                        <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                    )}
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
                                     <button 
@@ -435,7 +441,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     return (
                                     <div 
                                         key={frame.id} 
-                                        className="bg-white border rounded-lg p-4 shadow-sm relative group cursor-move"
+                                        className="bg-white border rounded-lg p-4 shadow-sm relative group cursor-move active:opacity-50"
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, frame.id)}
                                         onDragOver={handleDragOver}
@@ -536,6 +542,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             <option value="square">Vuông</option>
                                             <option value="rectangle">Chữ nhật</option>
                                         </select>
+                                        {bgSearch === '' && bgCategoryFilter === 'all' && bgTypeFilter === 'all' && (
+                                            <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                        )}
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">
                                         <button 
@@ -575,7 +584,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 {filteredBackgrounds.map(bg => (
                                     <div 
                                         key={bg.id} 
-                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all cursor-move"
+                                        className="bg-white border rounded-lg p-2 sm:p-3 group relative hover:shadow-md transition-all cursor-move active:opacity-50"
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, bg.id)}
                                         onDragOver={handleDragOver}
@@ -638,6 +647,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <option key={cat} value={cat}>{cat}</option>
                                             ))}
                                         </select>
+                                        {templateSearch === '' && templateCategory === 'all' && (
+                                            <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                        )}
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">
                                         <button 
@@ -661,7 +673,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 {filteredTemplates.map(tpl => (
                                     <div 
                                         key={tpl.id} 
-                                        className="bg-white border rounded-lg overflow-hidden group relative shadow-sm hover:shadow-md transition-all cursor-move"
+                                        className="bg-white border rounded-lg overflow-hidden group relative shadow-sm hover:shadow-md transition-all cursor-move active:opacity-50"
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, tpl.id)}
                                         onDragOver={handleDragOver}

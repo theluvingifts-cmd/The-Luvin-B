@@ -1,7 +1,7 @@
 
 import { db } from '../config/firebase';
 // Proper firestore imports for modular SDK
-import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
 import { PRESET_BACKGROUNDS_SQUARE, PRESET_BACKGROUNDS_RECTANGLE } from '../constants';
 import type { PresetBackground } from '../types';
 
@@ -31,7 +31,12 @@ const cleanForFirestore = (data: any): any => {
 // 1. Lấy tất cả background
 export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
     try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
+        let querySnapshot = await getDocs(q).catch(async (err) => {
+            console.warn("Index not found or error, falling back to unordered fetch:", err);
+            return await getDocs(collection(db, COLLECTION_NAME));
+        });
+
         const backgrounds: PresetBackground[] = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data() as any;
@@ -48,7 +53,7 @@ export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
                 formFields: data.formFields || [] // BỔ SUNG: Ánh xạ trường formFields từ DB
             } as PresetBackground);
         });
-        // Sort by order
+        // Final JS sort as safety net
         return backgrounds.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
     } catch (error: any) {
         if (error.code === 'permission-denied') {
