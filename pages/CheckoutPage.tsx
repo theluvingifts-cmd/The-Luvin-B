@@ -9,6 +9,7 @@ import { getStoreConfig, StoreConfig } from '../services/configService';
 import { trackFunnelStep } from '../services/analyticsService';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { getCollaboratorByReferralCode } from '../services/shareService';
+import { CharacterPreview } from '../components/shared/CharacterPreview';
 
 // Popular provinces as fallback if API fails
 const POPULAR_PROVINCES = [
@@ -715,32 +716,65 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   const quantity = item.quantity || 1;
                   
                   return (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 object-contain bg-white border rounded cursor-pointer group relative" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
-                            {item.previewImageUrl ? (
-                                <>
-                                    <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
-                                    <div className="absolute bottom-0 right-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                        <div 
-                                            className="bg-black/40 hover:bg-black/60 text-white p-1 rounded-full cursor-pointer pointer-events-auto scale-50"
-                                            onClick={(e) => { e.stopPropagation(); onZoomImage(item.previewImageUrl!); }}
-                                            title="Zoom"
-                                        >
-                                            <ZoomIcon className="w-4 h-4" />
+                    <div key={index} className="border border-gray-100 rounded-xl p-3 bg-gray-50 flex flex-col gap-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex gap-3">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 object-contain bg-white border rounded-lg cursor-pointer group relative flex-shrink-0" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                                {item.previewImageUrl ? (
+                                    <>
+                                        <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
+                                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                            <ZoomIcon className="w-5 h-5 text-white" />
                                         </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[8px]">{t('checkout.no_image')}</div>
-                            )}
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[8px]">{t('checkout.no_image')}</div>
+                                )}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-gray-800 text-sm truncate">{t('checkout.custom_frame')}</span>
+                                <span className="text-xs text-gray-400 truncate">{(FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0]).name}</span>
+                                {quantity > 1 && <span className="text-xs font-black text-luvin-pink mt-1">x{quantity}</span>}
+                            </div>
                         </div>
-                        <div>
-                            <span className="font-medium">{t('checkout.custom_frame')}</span>
-                            {quantity > 1 && <span className="ml-1 text-xs font-bold text-gray-400">x{quantity}</span>}
+                        <div className="text-right">
+                            <span className="font-black text-gray-900">{formatCurrency(totalPrice * quantity)}</span>
                         </div>
                       </div>
-                      <span className="font-semibold">{formatCurrency(totalPrice * quantity)}</span>
+
+                      {/* Character & Charm Previews */}
+                      <div className="flex flex-wrap gap-2 mt-1">
+                          {item.characters.map((char, cIdx) => (
+                              <div key={cIdx} className="relative group">
+                                  <CharacterPreview character={char} size="sm" />
+                                  <div className="absolute -top-1 -right-1 bg-white border border-pink-200 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-pink-600 shadow-sm">
+                                      {cIdx + 1}
+                                  </div>
+                              </div>
+                          ))}
+                          {item.draggableItems.filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 4).map((di, diIdx) => {
+                              const part = allParts[di.partId];
+                              if (!part) return null;
+                              return (
+                                  <div key={diIdx} className="w-12 h-12 bg-white border border-gray-100 rounded-lg p-1 flex items-center justify-center">
+                                      <img src={part.imageUrl} className="w-full h-full object-contain" alt="charm" />
+                                  </div>
+                              );
+                          })}
+                      </div>
+
+                      {/* Item Breakdown (Optional/Toggleable or always show if space allows) */}
+                      <div className="bg-white/60 rounded-lg p-2 space-y-1">
+                          {calculatePrice(item, allParts, FRAME_OPTIONS).priceBreakdown.slice(0, 6).map((pb, pbIdx) => (
+                              <div key={pbIdx} className="flex justify-between text-[10px]">
+                                  <span className="text-gray-500">{pb.label}</span>
+                                  <span className="text-gray-700 font-medium">{formatCurrency(pb.value)}</span>
+                              </div>
+                          ))}
+                          {calculatePrice(item, allParts, FRAME_OPTIONS).priceBreakdown.length > 6 && (
+                              <div className="text-[9px] text-gray-400 italic text-center pt-1">... and more details</div>
+                          )}
+                      </div>
                     </div>
                   )
                 })}

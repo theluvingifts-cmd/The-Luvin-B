@@ -11,6 +11,7 @@ import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../../constants';
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
+import { CharacterPreview } from '../shared/CharacterPreview';
 
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
@@ -910,7 +911,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                         <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
                                         {selectedOrder.referredBy && (
                                             <div className="mt-2 space-y-1">
-                                                <p className="flex items-center">
+                                                <div className="flex items-center">
                                                     <span className="text-gray-500 w-20 inline-block">Giới thiệu:</span>
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">REF: {selectedOrder.referredBy}</span>
@@ -922,7 +923,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                             {isFetchingCtv ? 'Đang tải...' : 'Xem thông tin CTV'}
                                                         </button>
                                                     </div>
-                                                </p>
+                                                </div>
                                                 {ctvInfo && ctvInfo.phone === selectedOrder.referredBy && (
                                                     <div className="bg-blue-50 p-2 rounded-lg text-[10px] space-y-1 border border-blue-100 animate-fade-in">
                                                         <div className="flex justify-between">
@@ -944,7 +945,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                         <button onClick={() => setCtvInfo(null)} className="w-full text-center text-gray-400 hover:text-gray-600 pt-1">Đóng</button>
                                                     </div>
                                                 )}
-                                                <p className="flex items-center">
+                                                <div className="flex items-center">
                                                     <span className="text-gray-500 w-20 inline-block">Hoa hồng:</span>
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-luvin-pink bg-pink-50 px-2 py-0.5 rounded text-xs">
@@ -962,7 +963,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                             </span>
                                                         </label>
                                                     </div>
-                                                </p>
+                                                </div>
                                             </div>
                                         )}
                                         {selectedOrder.customer.demoContact && (<p className="flex items-center"><span className="text-gray-500 w-20 inline-block">Demo:</span><span className="font-bold text-luvin-pink">{selectedOrder.customer.demoContact}</span></p>)}
@@ -981,7 +982,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 )}
                                             </span>
                                         </p>
-                                        <p className="flex items-start mt-2">
+                                        <div className="flex items-start mt-2">
                                             <span className="text-gray-500 w-20 inline-block flex-shrink-0">Note:</span> 
                                             <div className="flex flex-col gap-1">
                                                 <span className="italic bg-yellow-50 px-2 py-0.5 rounded text-gray-800" title="Ghi chú từ khách hàng">{selectedOrder.delivery.notes || 'Không có'}</span>
@@ -989,7 +990,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                     <span className="italic bg-blue-50 px-2 py-0.5 rounded text-blue-800 text-xs" title="Ghi chú nội bộ admin">Admin: {selectedOrder.internalNotes}</span>
                                                 )}
                                             </div>
-                                        </p></>)}</div></div>
+                                        </div></>)}</div></div>
                                 
                                 <div className="flex flex-col">
                                     <BillingBreakdown />
@@ -1223,19 +1224,53 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                     
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                                         {item.characters.map((char, charIdx) => (
-                                                            <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative">
-                                                                <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
-                                                                {isEditingOrder && editForm && (<button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>)}
-                                                                {isEditingOrder && editForm ? (
-                                                                    <div className="space-y-1">{(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (<div key={partType} className="flex flex-col"><div className="flex justify-between items-center"><span className="text-gray-500 capitalize w-16">{partType}</span><select className="border rounded p-1 text-xs flex-grow" value={char[partType]?.id || ''} onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}><option value="">None</option>{partsByType[partType]?.map(part => (<option key={part.id} value={part.id}>{part.name}</option>))}</select></div>{['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (<div className="flex gap-1 mt-1 ml-16">{char[partType]!.colors!.map(c => (<button key={c.hex} onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)} className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`} style={{backgroundColor: c.hex}} title={c.name} />))}</div>)}</div>))}</div>
-                                                                ) : (
-                                                                    <ul className="text-gray-600 space-y-0.5 mt-1">{char.hair && <li>Tóc: {char.hair.name}</li>}{char.face && <li>Mặt: {char.face.name}</li>}{char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}{char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}{char.hat && <li>Mũ: {char.hat.name}</li>}{char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}</ul>
-                                                                )}
+                                                            <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative flex gap-3">
+                                                                <CharacterPreview character={char} size="sm" />
+                                                                <div className="flex-grow">
+                                                                    <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
+                                                                    {isEditingOrder && editForm && (<button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>)}
+                                                                    {isEditingOrder && editForm ? (
+                                                                        <div className="space-y-1">{(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (<div key={partType} className="flex flex-col"><div className="flex justify-between items-center"><span className="text-gray-500 capitalize w-16">{partType}</span><select className="border rounded p-1 text-xs flex-grow" value={char[partType]?.id || ''} onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}><option value="">None</option>{partsByType[partType]?.map(part => (<option key={part.id} value={part.id}>{part.name}</option>))}</select></div>{['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (<div className="flex gap-1 mt-1 ml-16">{char[partType]!.colors!.map(c => (<button key={c.hex} onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)} className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`} style={{backgroundColor: c.hex}} title={c.name} />))}</div>)}</div>))}</div>
+                                                                    ) : (
+                                                                        <ul className="text-gray-600 space-y-0.5 mt-1">{char.hair && <li>Tóc: {char.hair.name}</li>}{char.face && <li>Mặt: {char.face.name}</li>}{char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}{char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}{char.hat && <li>Mũ: {char.hat.name}</li>}{char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}</ul>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         ))}
                                                         {isEditingOrder && editForm && (<button onClick={() => handleAddCharacter(idx)} className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-sm font-bold">+ Thêm NV</button>)}
                                                     </div>
-                                                    {item.draggableItems.length > 0 && (<div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs font-bold text-gray-500 uppercase mb-2">Phụ kiện & Thú cưng</p><div className="flex flex-wrap gap-2">{item.draggableItems.map((di, diIdx) => { const part = allKnownParts[di.partId]; return (<div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">{di.type === 'charm' ? (<span>Charm (Ảnh)</span>) : (<span>{part?.name || 'Unknown'} {di.selectedColor ? `(${di.selectedColor.name})` : ''}</span>)}{isEditingOrder && editForm && (<button onClick={() => handleRemoveDraggable(idx, diIdx)} className="text-red-500 font-bold hover:text-red-700">×</button>)}</div>); })}</div></div>)}
+                                                    {item.draggableItems.length > 0 && (
+                                                        <div className="mt-3 pt-3 border-t border-gray-100 italic">
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Phụ kiện & Thú cưng / Charms</p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {item.draggableItems.map((di, diIdx) => { 
+                                                                    const part = allKnownParts[di.partId]; 
+                                                                    return (
+                                                                        <div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
+                                                                            {di.type === 'charm' ? (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <div className="w-6 h-6 rounded bg-gray-50 p-0.5 border border-gray-100 flex-shrink-0">
+                                                                                        <img src={di.partId} className="w-full h-full object-contain" alt="charm" />
+                                                                                    </div>
+                                                                                    <span>Charm (Ảnh)</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {part?.imageUrl && (
+                                                                                        <div className="w-6 h-6 rounded bg-gray-50 p-0.5 border border-gray-100 flex-shrink-0">
+                                                                                            <img src={part.imageUrl} className="w-full h-full object-contain" alt={part.name} />
+                                                                                        </div>
+                                                                                    )}
+                                                                                    <span>{part?.name || 'Unknown'} {di.selectedColor ? `(${di.selectedColor.name})` : ''}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {isEditingOrder && editForm && (<button onClick={() => handleRemoveDraggable(idx, diIdx)} className="text-red-500 font-bold hover:text-red-700 ml-1">×</button>)}
+                                                                        </div>
+                                                                    ); 
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {isEditingOrder && editForm && (<div className="mt-2"><button onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)} className="text-xs text-blue-600 hover:underline font-semibold">+ Thêm phụ kiện/thú cưng</button>{addingAccessoryToItemIndex === idx && (<div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">{[...products.filter(p => p.type === 'accessory' || p.type === 'pet')].map(p => (<button key={p.id} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500"><img src={p.imageUrl} className="w-8 h-8 object-contain" /><span className="text-[10px] text-gray-500">{p.name}</span></button>))}</div>)}</div>)}
                                                 </div>
                                             </div>

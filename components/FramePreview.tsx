@@ -505,11 +505,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const responsiveScale = backgroundWidth / 500;
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!config.isMuseumStyle) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: x * 15, y: -y * 15 });
+    // Tilt effect removed for flat design
   };
 
   const handleMouseLeave = () => {
@@ -592,10 +588,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
       ref={ref} 
       className={`flex items-center justify-center relative ${className}`} 
       style={{ 
-        width: frameWidth + (config.isMuseumStyle ? frameThickness * 2 : 0), 
-        height: frameHeight + (config.isMuseumStyle ? frameThickness * 2 : 0),
-        perspective: config.isMuseumStyle ? '1500px' : 'none',
-        padding: config.isMuseumStyle ? frameThickness : 0
+        width: frameWidth + frameThickness * 2, 
+        height: frameHeight + frameThickness * 2,
+        perspective: 'none',
+        padding: frameThickness
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -607,99 +603,27 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
               height: frameHeight, 
               backgroundColor: config.frameColor === 'black' ? '#1a1a1a' : '#ffffff',
               boxShadow: config.isMuseumStyle 
-                ? '0 50px 100px -20px rgba(0, 0, 0, 0.3), 0 30px 60px -30px rgba(0, 0, 0, 0.4)'
-                : '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-              transform: config.isMuseumStyle ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)` : 'none',
-              transformStyle: 'preserve-3d'
+                ? '0 10px 30px -10px rgba(0, 0, 0, 0.1)'
+                : '0 10px 30px -10px rgba(0, 0, 0, 0.1)',
+              transform: 'none',
+              transformStyle: 'preserve-3d',
+              border: '2px solid #f0f0f0'
           }}
           onMouseDown={(e) => {
               if (isInteractive) setSelectedItemId(null);
           }}
         >
-            {/* OUTER FRAME BOX (The wooden part) */}
-            {config.isMuseumStyle && (
-              <>
-                {/* Top Outer */}
-                <div style={{
-                  position: 'absolute', top: -frameThickness, left: -frameThickness,
-                  width: frameWidth + frameThickness * 2, height: frameThickness,
-                  backgroundColor: config.frameColor === 'black' ? '#0a0a0a' : '#f0f0f0',
-                  transform: `rotateX(90deg)`, transformOrigin: 'bottom', zIndex: 2
-                }} />
-                {/* Bottom Outer */}
-                <div style={{
-                  position: 'absolute', bottom: -frameThickness, left: -frameThickness,
-                  width: frameWidth + frameThickness * 2, height: frameThickness,
-                  backgroundColor: config.frameColor === 'black' ? '#050505' : '#d0d0d0',
-                  transform: `rotateX(-90deg)`, transformOrigin: 'top', zIndex: 2
-                }} />
-                {/* Left Outer */}
-                <div style={{
-                  position: 'absolute', left: -frameThickness, top: -frameThickness,
-                  width: frameThickness, height: frameHeight + frameThickness * 2,
-                  backgroundColor: config.frameColor === 'black' ? '#080808' : '#e0e0e0',
-                  transform: `rotateY(-90deg)`, transformOrigin: 'right', zIndex: 2
-                }} />
-                {/* Right Outer */}
-                <div style={{
-                  position: 'absolute', right: -frameThickness, top: -frameThickness,
-                  width: frameThickness, height: frameHeight + frameThickness * 2,
-                  backgroundColor: config.frameColor === 'black' ? '#080808' : '#e0e0e0',
-                  transform: `rotateY(90deg)`, transformOrigin: 'left', zIndex: 2
-                }} />
-                
-                {/* INNER WALLS (Recessed space) - Centered */}
-                {/* Top Inner Wall */}
-                <div style={{
-                  position: 'absolute', top: (frameHeight - backgroundHeight) / 2, left: (frameWidth - backgroundWidth) / 2, 
-                  width: backgroundWidth, height: depth,
-                  background: `linear-gradient(to bottom, rgba(0,0,0,0.5), transparent), ${config.background.value}`,
-                  transform: `rotateX(-90deg)`, transformOrigin: 'top', zIndex: 1
-                }} />
-                {/* Bottom Inner Wall */}
-                <div style={{
-                  position: 'absolute', bottom: (frameHeight - backgroundHeight) / 2, left: (frameWidth - backgroundWidth) / 2, 
-                  width: backgroundWidth, height: depth,
-                  background: `linear-gradient(to top, rgba(0,0,0,0.7), transparent), ${config.background.value}`,
-                  transform: `rotateX(90deg)`, transformOrigin: 'bottom', zIndex: 1
-                }} />
-                {/* Left Inner Wall */}
-                <div style={{
-                  position: 'absolute', left: (frameWidth - backgroundWidth) / 2, top: (frameHeight - backgroundHeight) / 2, 
-                  width: depth, height: backgroundHeight,
-                  background: `linear-gradient(to right, rgba(0,0,0,0.6), transparent), ${config.background.value}`,
-                  transform: `rotateY(90deg)`, transformOrigin: 'left', zIndex: 1
-                }} />
-                {/* Right Inner Wall */}
-                <div style={{
-                  position: 'absolute', right: (frameWidth - backgroundWidth) / 2, top: (frameHeight - backgroundHeight) / 2, 
-                  width: depth, height: backgroundHeight,
-                  background: `linear-gradient(to left, rgba(0,0,0,0.4), transparent), ${config.background.value}`,
-                  transform: `rotateY(-90deg)`, transformOrigin: 'right', zIndex: 1
-                }} />
-
-                {/* Glass Reflection Layer */}
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
-                  zIndex: 10,
-                  pointerEvents: 'none',
-                  transform: 'translateZ(1px)'
-                }} />
-              </>
-            )}
-
+            {/* Flat Frame Style */}
             <div
                 ref={previewContainerRef}
                 className="relative overflow-hidden"
                 style={{
                     width: backgroundWidth,
                     height: backgroundHeight,
-                    border: config.isMuseumStyle ? 'none' : '1px solid #c0c0c0',
-                    transform: config.isMuseumStyle ? `translateZ(-${depth}px)` : 'none',
+                    border: '1px solid #e5e7eb',
+                    transform: 'none',
                     transformStyle: 'preserve-3d',
-                    boxShadow: config.isMuseumStyle ? 'inset 0 0 80px rgba(0,0,0,0.8)' : 'none'
+                    backgroundColor: '#ffffff'
                 }}
                 onMouseDown={(e) => {
                     if (isInteractive) {

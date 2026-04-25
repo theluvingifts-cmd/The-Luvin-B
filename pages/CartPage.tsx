@@ -5,6 +5,7 @@ import { calculatePrice, formatCurrency } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { useLanguage } from '../src/contexts/LanguageContext';
+import { CharacterPreview } from '../components/shared/CharacterPreview';
 
 interface CartPageProps {
     cartItems: FrameConfig[]; 
@@ -60,7 +61,29 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         <h3 className="font-bold text-lg font-body text-luvin-pink">{t('order_lookup.frame_lego', { name: frame.name })}</h3>
                                         <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
                                         <p className="text-sm text-gray-600">{t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}</p>
-                                        <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                                        
+                                        {/* Character & Charm Previews */}
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {item.characters.map((char, cIdx) => (
+                                                <div key={cIdx} className="relative group">
+                                                    <CharacterPreview character={char} size="sm" />
+                                                    <div className="absolute -top-1 -right-1 bg-white border border-pink-200 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-pink-600 shadow-sm leading-none">
+                                                        {cIdx + 1}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {item.draggableItems.filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 6).map((di, diIdx) => {
+                                                const part = allParts[di.partId];
+                                                if (!part) return null;
+                                                return (
+                                                    <div key={diIdx} className="w-10 h-10 bg-white border border-gray-100 rounded-lg p-1 flex items-center justify-center">
+                                                        <img src={part.imageUrl} className="w-full h-full object-contain" alt="charm" />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
                                             <span className="text-sm font-medium">{t('common.quantity')}:</span>
                                             <div className="flex items-center border border-gray-300 rounded">
                                                 <button 

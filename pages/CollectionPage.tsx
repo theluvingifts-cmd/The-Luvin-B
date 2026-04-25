@@ -7,6 +7,7 @@ import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice
 import { slugify } from '../utils/helpers';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
+import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { getCachedTemplates } from '../services/configService';
 
 interface CollectionPageProps {
@@ -19,39 +20,6 @@ interface CollectionPageProps {
     frames: FrameOption[],
     isLoadingParts?: boolean
 }
-
-const CharacterPreview: React.FC<{ character: LegoCharacterConfig, hideHat?: boolean }> = ({ character, hideHat }) => {
-    const { shirt, pants, hair, face, set, hat } = character;
-    const shirtImageUrl = character.selectedShirtColor?.imageUrl || shirt?.imageUrl;
-    const pantsImageUrl = character.selectedPantsColor?.imageUrl || pants?.imageUrl;
-    const setImageUrl = character.selectedSetColor?.imageUrl || set?.imageUrl;
-    const hairImageUrl = character.selectedHairColor?.imageUrl || hair?.imageUrl;
-    const hatImageUrl = character.selectedHatColor?.imageUrl || hat?.imageUrl;
-    const faceImageUrl = face?.imageUrl;
-
-    const partStyle: React.CSSProperties = {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        objectFit: 'contain',
-        pointerEvents: 'none'
-    };
-
-    return (
-        <div className="relative w-16 h-24 bg-white rounded-lg shadow-sm border border-pink-100 p-1 flex items-center justify-center overflow-hidden">
-            <div className="relative w-full h-full">
-                {!set && pantsImageUrl && <img src={pantsImageUrl} alt="pants" style={{ ...partStyle, zIndex: 1 }} referrerPolicy="no-referrer" />}
-                {!set && shirtImageUrl && <img src={shirtImageUrl} alt="shirt" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
-                {set && setImageUrl && <img src={setImageUrl} alt="set" style={{ ...partStyle, zIndex: 2 }} referrerPolicy="no-referrer" />}
-                {faceImageUrl && <img src={faceImageUrl} alt="face" style={{ ...partStyle, zIndex: 3 }} referrerPolicy="no-referrer" />}
-                {hairImageUrl && <img src={hairImageUrl} alt="hair" style={{ ...partStyle, zIndex: 4 }} referrerPolicy="no-referrer" />}
-                {hatImageUrl && !hideHat && <img src={hatImageUrl} alt="hat" style={{ ...partStyle, zIndex: 5 }} referrerPolicy="no-referrer" />}
-            </div>
-        </div>
-    );
-};
 
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts }) => {
     const { t } = useLanguage();
@@ -1081,6 +1049,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <svg className="w-5 h-5 text-gray-400 absolute left-5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
+                </div>
+
+                <div className="mt-4 flex items-center justify-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50/50 border border-yellow-100/50 rounded-full">
+                        <span className="text-[10px] sm:text-xs text-yellow-600">✨</span>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                            Tất cả mẫu có thể thay đổi <span className="text-primary italic">tiêu đề, ảnh & thông tin</span> theo ý muốn
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
