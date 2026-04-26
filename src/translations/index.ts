@@ -446,6 +446,21 @@ export const translations: any = {
             referral_code: "Mã giới thiệu (CTV)",
             referral_applied: "Đã áp dụng mã giới thiệu: {code}",
             enter_referral_code: "Nhập mã CTV (nếu có)",
+        },
+        footer: {
+            brand_desc: "Nơi những mảnh ghép LEGO kể câu chuyện tình yêu của riêng bạn. Quà tặng độc đáo, tinh tế và đầy ý nghĩa.",
+            contact: "LIÊN HỆ",
+            support: "CHÍNH SÁCH & HỖ TRỢ",
+            connect: "KẾT NỐI VỚI CHÚNG TÔI",
+            copyright: "Bản quyền © {year} The Luvin. Bảo lưu mọi quyền.",
+            developed_by: "Thiết kế & Phát triển bởi",
+            badges: {
+                lego: "LEGO",
+                gifts: "QUÀ TẶNG",
+                anniversary: "KỶ NIỆM",
+                love: "TÌNH YÊU"
+            },
+            address: "Xưởng thiết kế: Khu 6, Thư Lâm, Đông Anh, Hà Nội"
         }
     },
     en: {
@@ -892,6 +907,21 @@ export const translations: any = {
             referral_code: "Referral Code (CTV)",
             referral_applied: "Referral code applied: {code}",
             enter_referral_code: "Enter CTV code (if any)",
+        },
+        footer: {
+            brand_desc: "Where LEGO pieces tell your own love story. Unique, delicate, and meaningful gifts.",
+            contact: "CONTACT",
+            support: "POLICIES & SUPPORT",
+            connect: "CONNECT WITH US",
+            copyright: "Copyright © {year} The Luvin. All rights reserved.",
+            developed_by: "Designed & Developed by",
+            badges: {
+                lego: "LEGO",
+                gifts: "GIFTS",
+                anniversary: "ANNIVERSARY",
+                love: "LOVE"
+            },
+            address: "Studio: Khu 6, Thu Lam, Dong Anh, Hanoi"
         }
     }
 };
