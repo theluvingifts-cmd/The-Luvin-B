@@ -439,7 +439,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 </style>
             </head>
             <body>
-                <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0964 393 115 - 0345 126 019 - Facebook: The Luvin</p></div>
+                <div class="header"><h1 class="title">THE LUVIN - PHIẾU GIAO HÀNG</h1><p class="subtitle">Hotline: 0968 432 043 - 0345 126 019 - Facebook: The Luvin</p></div>
                 <div class="info-grid">
                     <div class="box"><span class="box-title">Người nhận</span><p><strong>${selectedOrder.customer.name}</strong></p><p>${selectedOrder.customer.phone}</p><p>${selectedOrder.customer.address}</p><p style="margin-top: 5px; font-style: italic;">Ghi chú: ${selectedOrder.delivery.notes || 'Không'}</p></div>
                     <div class="box"><span class="box-title">Thông tin đơn hàng</span><p>Mã đơn: <strong>${selectedOrder.id}</strong></p><p>Ngày đặt: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p><p>Thanh toán: ${selectedOrder.payment.method === 'deposit' ? 'Chuyển khoản cọc' : 'Chuyển khoản toàn bộ'}</p><p>Thu hộ (COD): <strong>${formatCurrency(selectedOrder.totalPrice - (selectedOrder.amountPaid || 0), 'admin')}</strong></p>${selectedOrder.discountAmount ? `<p>Giảm giá: -${formatCurrency(selectedOrder.discountAmount, 'admin')}</p>` : ''}${selectedOrder.trackingCode ? `<p>Mã vận đơn: <strong>${selectedOrder.trackingCode}</strong></p>` : ''}</div>

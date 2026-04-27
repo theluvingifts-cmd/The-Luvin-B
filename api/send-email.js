@@ -42,7 +42,7 @@ ${items_list}
 
 -------------------------
 Chúng tôi sẽ sớm liên hệ để xác nhận và giao hàng.
-Hotline: 0964 393 115 - 0345 126 019
+Hotline: 0968 432 043 - 0345 126 019
         `,
         // Bạn có thể thêm html: '<h1>...</h1>' nếu muốn email đẹp hơn
     };

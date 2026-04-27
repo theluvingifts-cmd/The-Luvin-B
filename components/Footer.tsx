@@ -57,7 +57,7 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
                     <h3 className="font-bold text-base mb-3 uppercase tracking-wider">{t('footer.contact')}</h3>
                     <p className="opacity-80 mb-1">{t('footer.address')}</p>
                     <p className="opacity-80 mb-1">
-                        Hotline/Zalo: <a href={`https://zalo.me/${config?.hotline?.replace(/\s/g, '') || '0964393115'}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">{config?.hotline || '0964 393 115'}</a> - <a href={`https://zalo.me/${config?.hotline2?.replace(/\s/g, '') || '0345126019'}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">{config?.hotline2 || '0345 126 019'}</a>
+                        Hotline/Zalo: <a href={`https://zalo.me/${config?.hotline?.replace(/\s/g, '') || '0968432043'}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">{config?.hotline || '0968 432 043'}</a> - <a href={`https://zalo.me/${config?.hotline2?.replace(/\s/g, '') || '0345126019'}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-semibold">{config?.hotline2 || '0345 126 019'}</a>
                     </p>
                     <p className="opacity-80">Email: {config?.email || 'theluvin.gifts@gmail.com'}</p>
                 </div>

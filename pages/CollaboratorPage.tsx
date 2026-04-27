@@ -197,7 +197,7 @@ const CollaboratorPage: React.FC = () => {
         if (!formData.phone || !formData.fullName) return alert("Vui lòng điền đầy đủ thông tin");
 
         const referralCode = formData.phone; // Use phone as ref code for simplicity
-        const updatedProfile = {
+        const newProfile = {
             uid: user.uid,
             email: user.email,
             phone: formData.phone,
@@ -206,13 +206,13 @@ const CollaboratorPage: React.FC = () => {
             bankAccount: formData.bankAccount,
             bankOwner: formData.bankOwner,
             referralCode,
-            status: profile?.status || 'pending',
+            status: 'pending',
             createdAt: profile?.createdAt || Date.now()
         };
 
         try {
-            await setDoc(doc(db, 'collaborators', user.uid), updatedProfile, { merge: true });
-            setProfile(prev => ({ ...prev, ...updatedProfile }));
+            await setDoc(doc(db, 'collaborators', user.uid), newProfile);
+            setProfile(newProfile);
             setIsEditing(false);
             localStorage.setItem('referral_id', referralCode);
         } catch (error) {

@@ -33,8 +33,7 @@ export const translations: any = {
             buy_now: "Mua ngay",
             view_details: "Xem chi tiết",
             back: "Quay lại",
-            next: "Tiếp theo",
-            scroll_hint: "Cuộn để tùy chỉnh"
+            next: "Tiếp theo"
         },
         collection: {
             title: "Bộ sưu tập",
@@ -220,7 +219,6 @@ export const translations: any = {
             edit_order: "Chỉnh sửa đơn hàng",
             design_and_buy: "Thiết kế & Mua hàng",
             design_label: "Thiết kế",
-            scroll_to_customize: "Cuộn để tùy chỉnh",
             enter_text: "Nhập chữ...",
             error_generating_image: "Lỗi tạo ảnh. Có thể do lỗi CORS.",
             error_saving_image: "Lỗi lưu ảnh. Vui lòng kiểm tra kết nối mạng.",
@@ -498,8 +496,7 @@ export const translations: any = {
             buy_now: "Buy Now",
             view_details: "View Details",
             back: "Back",
-            next: "Next",
-            scroll_hint: "Scroll to customize"
+            next: "Next"
         },
         collection: {
             title: "Our",
@@ -683,7 +680,6 @@ export const translations: any = {
             edit_order: "Edit Order",
             design_and_buy: "Design & Buy",
             design_label: "Design",
-            scroll_to_customize: "Scroll to customize",
             enter_text: "Enter text...",
             error_generating_image: "Error generating image. Possibly due to CORS error.",
             error_saving_image: "Error saving image. Please check your network connection.",

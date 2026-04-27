@@ -612,7 +612,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </>
                             )}
                         </div>
-                        
 
                         {/* Characters Section */}
                         {(selectedTemplate.isSimple || groupedCharacters.length > 0) && (
@@ -1036,14 +1035,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                     {/* Footer Actions */}
                     <div className="px-4 py-6 sm:p-6 border-t border-gray-100 bg-white space-y-4 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
-                        {/* Scroll hint visual for mobile */}
-                        <div className="flex sm:hidden items-center justify-center gap-1.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 mb-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-luvin-pink animate-pulse"></span>
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('common.scroll_hint')}</span>
-                            <svg className="w-3 h-3 text-luvin-pink animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                            </svg>
-                        </div>
                         <div className="flex justify-between items-end">
                             <div>
                                 <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('common.total')}</span>

@@ -99,32 +99,8 @@ export const Step4Summary: React.FC<{
                     </div>
                 ))}
             </div>
-
-            {/* What's included section */}
-            <div className="mt-4 pt-3 border-t border-dashed border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('studio.base_price_includes')}</p>
-                <div className="grid grid-cols-2 gap-y-1.5 gap-x-3">
-                    {[
-                        { icon: '🖼️', label: t('studio.include_frame') },
-                        { icon: '🎨', label: t('studio.include_bg') },
-                        { icon: '🎁', label: t('studio.include_box') },
-                        { icon: '💌', label: t('studio.include_card') }
-                    ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-600 font-medium">
-                            <span className="text-xs grayscale opacity-70">{item.icon}</span>
-                            <span>{item.label}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
             
             <div className="border-t border-gray-200 my-3 pt-2">
-                <div className="flex justify-center mb-2 animate-bounce">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                        {t('studio.scroll_to_customize')}
-                    </span>
-                </div>
                 <div className="flex justify-between text-base font-bold text-gray-800 items-center">
                     <span>{t('studio.subtotal')}</span>
                     <span className="text-xl text-luvin-pink">{formatCurrency(totalPrice)}</span>

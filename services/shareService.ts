@@ -1,64 +1,11 @@
 
 import { db } from '../config/firebase';
-import { 
-    collection, 
-    addDoc, 
-    getDoc, 
-    doc, 
-    serverTimestamp, 
-    updateDoc, 
-    arrayUnion, 
-    setDoc, 
-    query, 
-    where, 
-    getDocs,
-    deleteDoc
-} from 'firebase/firestore';
+import { collection, addDoc, getDoc, doc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import { FrameConfig, SavedDesign, Collaborator } from '../types';
 
-
-enum OperationType {
-    CREATE = 'create',
-    UPDATE = 'update',
-    DELETE = 'delete',
-    LIST = 'list',
-    GET = 'get',
-    WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-    error: string;
-    operationType: OperationType;
-    path: string | null;
-    authInfo: {
-        userId?: string | null;
-        email?: string | null;
-    }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-    const userId = auth.currentUser?.uid;
-    const email = auth.currentUser?.email;
-    
-    const errInfo: FirestoreErrorInfo = {
-        error: error instanceof Error ? error.message : String(error),
-        authInfo: {
-            userId,
-            email,
-        },
-        operationType,
-        path
-    };
-    console.error('Firestore Error Detailed: ', JSON.stringify(errInfo));
-    throw new Error(JSON.stringify(errInfo));
-}
-
-import { auth } from '../config/firebase';
-
 export const saveSharedDesign = async (config: FrameConfig, createdBy: string) => {
-    const path = 'shared_designs';
     try {
-        const docRef = await addDoc(collection(db, path), {
+        const docRef = await addDoc(collection(db, 'shared_designs'), {
             config,
             createdBy,
             createdAt: serverTimestamp()
@@ -71,7 +18,6 @@ export const saveSharedDesign = async (config: FrameConfig, createdBy: string) =
 };
 
 export const getSharedDesign = async (designId: string) => {
-    const path = `shared_designs/${designId}`;
     try {
         const docSnap = await getDoc(doc(db, 'shared_designs', designId));
         if (docSnap.exists()) {
@@ -85,7 +31,6 @@ export const getSharedDesign = async (designId: string) => {
 };
 
 export const saveCTVDesign = async (ctvUid: string, name: string, config: FrameConfig) => {
-    const path = `collaborators/${ctvUid}`;
     try {
         const designId = Math.random().toString(36).substring(2, 15);
         const newDesign: SavedDesign = {
@@ -96,48 +41,27 @@ export const saveCTVDesign = async (ctvUid: string, name: string, config: FrameC
             createdAt: Date.now()
         };
         
-        // Primary Attempt: Save inside collaborators document
+        const { setDoc } = await import('firebase/firestore');
+        await setDoc(doc(db, 'collaborators', ctvUid), {
+            designs: arrayUnion(newDesign)
+        }, { merge: true });
+        
+        return designId;
+    } catch (error) {
+        console.error("Error saving CTV design (primary):", error);
+        // Fallback to ctv_designs if collaborators update fails
         try {
-            await setDoc(doc(db, 'collaborators', ctvUid), {
-                designs: arrayUnion(newDesign)
-            }, { merge: true });
-            console.log("CTV design saved successfully in collaborators collection");
-            return designId;
-        } catch (collabError: any) {
-            console.warn("Could not save to collaborators document, trying ctv_designs collection:", collabError.message);
-            
-            if (collabError.code === 'permission-denied') {
-                // Log detailed error but don't throw yet, try fallback
-                try {
-                   const errInfo = {
-                       error: collabError.message,
-                       operationType: OperationType.WRITE,
-                       path,
-                       authUid: auth.currentUser?.uid
-                   };
-                   console.error("Permission Denied on Collaborators:", JSON.stringify(errInfo));
-                } catch (e) {}
-            }
-
-            // Secondary Attempt: Save as standalone document in ctv_designs
-            try {
-                const docRef = await addDoc(collection(db, 'ctv_designs'), {
-                    ctvUid,
-                    name,
-                    config,
-                    createdAt: Date.now()
-                });
-                console.log("CTV design saved successfully in ctv_designs collection");
-                return docRef.id;
-            } catch (fallbackError: any) {
-                console.error("Fallback saveCTVDesign failed:", fallbackError);
-                handleFirestoreError(fallbackError, OperationType.WRITE, 'ctv_designs');
-                return null;
-            }
+            const docRef = await addDoc(collection(db, 'ctv_designs'), {
+                ctvUid,
+                name,
+                config,
+                createdAt: Date.now()
+            });
+            return docRef.id;
+        } catch (e2) {
+            console.warn("Fallback saveCTVDesign failed:", e2);
+            return null;
         }
-    } catch (error: any) {
-        console.error("Critical error in saveCTVDesign:", error);
-        throw error;
     }
 };
 
@@ -155,6 +79,7 @@ export const getCTVDesigns = async (ctvUid: string): Promise<SavedDesign[]> => {
         // Fallback to ctv_designs collection - wrap in try-catch to avoid surfacing permission errors
         // if the collection rules aren't deployed
         try {
+            const { query, where, getDocs } = await import('firebase/firestore');
             // Remove orderBy to avoid index requirement in fallback
             const q = query(
                 collection(db, 'ctv_designs'),
@@ -194,6 +119,7 @@ export const deleteCTVDesign = async (designId: string, ctvUid?: string) => {
         
         // Fallback/Legacy delete - wrap in try-catch
         try {
+            const { deleteDoc } = await import('firebase/firestore');
             await deleteDoc(doc(db, 'ctv_designs', designId));
             return true;
         } catch (fallbackError) {
@@ -208,6 +134,7 @@ export const deleteCTVDesign = async (designId: string, ctvUid?: string) => {
 
 export const getCollaboratorByReferralCode = async (referralCode: string): Promise<Collaborator | null> => {
     try {
+        const { query, where, getDocs, collection } = await import('firebase/firestore');
         const q = query(
             collection(db, 'collaborators'),
             where('referralCode', '==', referralCode)

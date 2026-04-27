@@ -28,34 +28,6 @@ const cleanForFirestore = (data: any): any => {
     return newObj;
 };
 
-import { auth } from '../config/firebase';
-
-enum OperationType {
-    CREATE = 'create',
-    UPDATE = 'update',
-    DELETE = 'delete',
-    LIST = 'list',
-    GET = 'get',
-    WRITE = 'write',
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-    const userId = auth.currentUser?.uid;
-    const email = auth.currentUser?.email;
-    
-    const errInfo = {
-        error: error instanceof Error ? error.message : String(error),
-        authInfo: {
-            userId,
-            email,
-        },
-        operationType,
-        path
-    };
-    console.error('Firestore Error Detailed: ', JSON.stringify(errInfo));
-    throw new Error(JSON.stringify(errInfo));
-}
-
 // 1. Lấy tất cả background
 export const getAllBackgrounds = async (): Promise<PresetBackground[]> => {
     try {
@@ -101,9 +73,6 @@ export const addBackground = async (bg: PresetBackground) => {
         return true;
     } catch (error) {
         console.error("Lỗi thêm background:", error);
-        try {
-            handleFirestoreError(error, OperationType.WRITE, `backgrounds/${bg.id}`);
-        } catch (e) {}
         return false;
     }
 };
@@ -117,9 +86,6 @@ export const updateBackground = async (bgId: string, updates: Partial<PresetBack
         return true;
     } catch (error) {
         console.error("Lỗi cập nhật background:", error);
-        try {
-            handleFirestoreError(error, OperationType.WRITE, `backgrounds/${bgId}`);
-        } catch (e) {}
         return false;
     }
 };
