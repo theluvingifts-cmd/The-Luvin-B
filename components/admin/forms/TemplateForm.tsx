@@ -12,9 +12,14 @@ export const TemplateForm: React.FC<{
     allFrames: FrameOption[];
     onSave: (tpl: CollectionTemplate) => void;
     onCancel: () => void;
-}> = ({ initialData, allParts, allFrames, onSave, onCancel }) => {
+    defaultCategory?: string;
+}> = ({ initialData, allParts, allFrames, onSave, onCancel, defaultCategory }) => {
     const [formData, setFormData] = useState<CollectionTemplate>(initialData || {
-        id: `tpl_${Date.now()}`, name: '', imageUrl: '', category: 'Khác', config: INITIAL_FRAME_CONFIG
+        id: `tpl_${Date.now()}`, 
+        name: '', 
+        imageUrl: '', 
+        category: defaultCategory && defaultCategory !== 'all' ? defaultCategory : 'Khác', 
+        config: INITIAL_FRAME_CONFIG
     });
     const [isUploading, setIsUploading] = useState(false);
     const [configJson, setConfigJson] = useState(JSON.stringify(initialData?.config || INITIAL_FRAME_CONFIG, null, 2));

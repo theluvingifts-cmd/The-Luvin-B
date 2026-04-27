@@ -25,13 +25,8 @@ export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
         // If fallback was used or order is missing, templates might not be sorted correctly here in JS
         // but we'll return them anyway
         
-        // Final JS sort as safety net if order field exists
+        // JS sort as safety net if order field exists
         templates.sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        // Cache to localStorage
-        try {
-            localStorage.setItem('templates_cache', JSON.stringify(templates));
-        } catch (e) {}
         
         return templates;
     } catch (error: any) {
@@ -48,7 +43,8 @@ export const addTemplate = async (template: CollectionTemplate) => {
     try {
         const cleaned = cleanForFirestore({
             ...template,
-            purchaseCount: template.purchaseCount || 0
+            purchaseCount: template.purchaseCount || 0,
+            order: template.order ?? 9999
         });
         await setDoc(doc(db, COLLECTION_NAME, template.id), cleaned);
         return true;
