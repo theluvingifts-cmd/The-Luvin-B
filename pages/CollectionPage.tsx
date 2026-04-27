@@ -550,7 +550,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <div className="px-4 py-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('collection.quick_customize_title')}</p>
+                            <div className="flex items-center gap-1.5 animate-bounce">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">
+                                    {t('collection.quick_customize_title')}
+                                </span>
+                                <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
                         <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors" title="Đóng">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

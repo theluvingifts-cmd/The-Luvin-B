@@ -150,7 +150,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             if (showToast) showToast("Lỗi khi tải mẫu thiết kế lên!", "error");
         }
     };
-    const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); onRefreshTemplates(); } };
+    const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); if (showToast) showToast("Đã xóa mẫu thiết kế", "success"); onRefreshTemplates(); } };
 
     // Quick Stock Edit Handlers
     const startQuickStockEdit = (id: string, currentStock: number | undefined) => {
@@ -314,7 +314,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         {showLowStockOnly ? 'Đang lọc: Sắp hết' : 'Lọc: Sắp hết'}
                                     </button>
                                     {productCategory === 'all' && productSearch === '' && (
-                                        <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                        <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
+                                            <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
                                     )}
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -431,7 +436,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                                     </div>
                                     {frameSearch === '' && (
-                                        <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                        <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
+                                            <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
                                     )}
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -561,7 +571,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             <option value="rectangle">Chữ nhật</option>
                                         </select>
                                         {bgSearch === '' && bgCategoryFilter === 'all' && bgTypeFilter === 'all' && (
-                                            <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                            <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
+                                                <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
                                         )}
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -666,7 +681,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             ))}
                                         </select>
                                         {templateSearch === '' && templateCategory === 'all' && (
-                                            <span className="text-[10px] text-blue-500 font-bold self-center italic">Tip: Kéo thả để sắp xếp</span>
+                                            <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
+                                                <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
                                         )}
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">

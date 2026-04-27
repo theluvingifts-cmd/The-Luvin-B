@@ -48,7 +48,7 @@ export const translations: any = {
             base_price: "Giá cơ bản từ",
             characters_count: "NV Lego",
             select_template: "Chọn mẫu này",
-            quick_customize_title: "Tùy chỉnh nhanh mẫu thiết kế",
+            quick_customize_title: "Cuộn xuống để tùy chỉnh mẫu",
             select_charms: "Chọn Charm Trang Trí",
             selected_count: "đã chọn"
         },
