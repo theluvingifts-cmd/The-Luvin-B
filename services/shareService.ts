@@ -16,9 +16,49 @@ import {
 } from 'firebase/firestore';
 import { FrameConfig, SavedDesign, Collaborator } from '../types';
 
+
+enum OperationType {
+    CREATE = 'create',
+    UPDATE = 'update',
+    DELETE = 'delete',
+    LIST = 'list',
+    GET = 'get',
+    WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+    error: string;
+    operationType: OperationType;
+    path: string | null;
+    authInfo: {
+        userId?: string | null;
+        email?: string | null;
+    }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+    const userId = auth.currentUser?.uid;
+    const email = auth.currentUser?.email;
+    
+    const errInfo: FirestoreErrorInfo = {
+        error: error instanceof Error ? error.message : String(error),
+        authInfo: {
+            userId,
+            email,
+        },
+        operationType,
+        path
+    };
+    console.error('Firestore Error Detailed: ', JSON.stringify(errInfo));
+    throw new Error(JSON.stringify(errInfo));
+}
+
+import { auth } from '../config/firebase';
+
 export const saveSharedDesign = async (config: FrameConfig, createdBy: string) => {
+    const path = 'shared_designs';
     try {
-        const docRef = await addDoc(collection(db, 'shared_designs'), {
+        const docRef = await addDoc(collection(db, path), {
             config,
             createdBy,
             createdAt: serverTimestamp()
@@ -31,6 +71,7 @@ export const saveSharedDesign = async (config: FrameConfig, createdBy: string) =
 };
 
 export const getSharedDesign = async (designId: string) => {
+    const path = `shared_designs/${designId}`;
     try {
         const docSnap = await getDoc(doc(db, 'shared_designs', designId));
         if (docSnap.exists()) {
@@ -44,6 +85,7 @@ export const getSharedDesign = async (designId: string) => {
 };
 
 export const saveCTVDesign = async (ctvUid: string, name: string, config: FrameConfig) => {
+    const path = `collaborators/${ctvUid}`;
     try {
         const designId = Math.random().toString(36).substring(2, 15);
         const newDesign: SavedDesign = {
@@ -64,19 +106,37 @@ export const saveCTVDesign = async (ctvUid: string, name: string, config: FrameC
         } catch (collabError: any) {
             console.warn("Could not save to collaborators document, trying ctv_designs collection:", collabError.message);
             
+            if (collabError.code === 'permission-denied') {
+                // Log detailed error but don't throw yet, try fallback
+                try {
+                   const errInfo = {
+                       error: collabError.message,
+                       operationType: OperationType.WRITE,
+                       path,
+                       authUid: auth.currentUser?.uid
+                   };
+                   console.error("Permission Denied on Collaborators:", JSON.stringify(errInfo));
+                } catch (e) {}
+            }
+
             // Secondary Attempt: Save as standalone document in ctv_designs
-            const docRef = await addDoc(collection(db, 'ctv_designs'), {
-                ctvUid,
-                name,
-                config,
-                createdAt: Date.now()
-            });
-            console.log("CTV design saved successfully in ctv_designs collection");
-            return docRef.id;
+            try {
+                const docRef = await addDoc(collection(db, 'ctv_designs'), {
+                    ctvUid,
+                    name,
+                    config,
+                    createdAt: Date.now()
+                });
+                console.log("CTV design saved successfully in ctv_designs collection");
+                return docRef.id;
+            } catch (fallbackError: any) {
+                console.error("Fallback saveCTVDesign failed:", fallbackError);
+                handleFirestoreError(fallbackError, OperationType.WRITE, 'ctv_designs');
+                return null;
+            }
         }
     } catch (error: any) {
         console.error("Critical error in saveCTVDesign:", error);
-        // Throw the error so the caller can handle it or show specific feedback
         throw error;
     }
 };

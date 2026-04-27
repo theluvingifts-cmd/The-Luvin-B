@@ -1418,10 +1418,16 @@ export const AdminDesign: React.FC = () => {
                                             overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
                                             formFields: config.formFields || []
                                         };
-                                        const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
+                                        // Use addBackground even for updates as it uses setDoc (safer for cross-saves)
+                                        const success = await addBackground(backgroundData);
                                         if (success) {
                                             alert("Đã lưu nền thành công!");
                                             setEditingBgId(newId);
+                                            setShowSaveModal(false); 
+                                            setIsNewCategory(false);
+                                            setNewCategoryName('');
+                                        } else {
+                                            alert("Lỗi khi lưu nền. Vui lòng kiểm tra quyền truy cập Firestore.");
                                         }
                                     } else {
                                         const newId = editingBgId || `tpl_${Date.now()}`;
@@ -1433,19 +1439,21 @@ export const AdminDesign: React.FC = () => {
                                             config: { ...config, previewImageUrl: previewUrl },
                                             purchaseCount: 0
                                         };
-                                        const success = editingBgId ? await updateTemplate(editingBgId, templateData) : await addTemplate(templateData);
+                                        // Use addTemplate even for updates as it uses setDoc (safer for cross-saves)
+                                        const success = await addTemplate(templateData);
                                         if (success) {
                                             alert("Đã lưu mẫu sản phẩm thành công!");
                                             setEditingBgId(newId);
+                                            setShowSaveModal(false); 
+                                            setIsNewCategory(false);
+                                            setNewCategoryName('');
+                                        } else {
+                                            alert("Lỗi khi lưu mẫu sản phẩm. Vui lòng kiểm tra Firestore.");
                                         }
                                     }
-
-                                    setShowSaveModal(false); 
-                                    setIsNewCategory(false);
-                                    setNewCategoryName('');
-                                } catch (err) {
-                                    console.error(err);
-                                    alert("Đã xảy ra lỗi không xác định!");
+                                } catch (err: any) {
+                                    console.error("Critical error saving design:", err);
+                                    alert(`Lỗi hệ thống: ${err.message || "Không xác định"}`);
                                 } finally {
                                     setIsUploading(false);
                                 }

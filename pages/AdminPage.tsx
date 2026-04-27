@@ -104,7 +104,7 @@ const AdminPage: React.FC = () => {
         if (!currentUser || !currentUser.email) return null;
         
         // 1. Super Admin Hardcode
-        if (currentUser.email === 'jinbduong@gmail.com' || currentUser.email.includes('admin')) {
+        if (currentUser.email === 'jinbduong@gmail.com' || currentUser.email === 'theluvin.gifts@gmail.com' || currentUser.email.includes('admin')) {
             return 'admin';
         }
 

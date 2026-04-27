@@ -8,6 +8,35 @@ import { cleanForFirestore } from '../utils/helpers';
 
 const COLLECTION_NAME = "templates";
 
+
+import { auth } from '../config/firebase';
+
+enum OperationType {
+    CREATE = 'create',
+    UPDATE = 'update',
+    DELETE = 'delete',
+    LIST = 'list',
+    GET = 'get',
+    WRITE = 'write',
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+    const userId = auth.currentUser?.uid;
+    const email = auth.currentUser?.email;
+    
+    const errInfo = {
+        error: error instanceof Error ? error.message : String(error),
+        authInfo: {
+            userId,
+            email,
+        },
+        operationType,
+        path
+    };
+    console.error('Firestore Error Detailed: ', JSON.stringify(errInfo));
+    throw new Error(JSON.stringify(errInfo));
+}
+
 export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
     try {
         const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
@@ -54,6 +83,9 @@ export const addTemplate = async (template: CollectionTemplate) => {
         return true;
     } catch (error) {
         console.error("Error adding template:", error);
+        try {
+            handleFirestoreError(error, OperationType.WRITE, `templates/${template.id}`);
+        } catch (e) {}
         return false;
     }
 };
@@ -64,6 +96,9 @@ export const updateTemplate = async (id: string, updates: Partial<CollectionTemp
         return true;
     } catch (error) {
         console.error("Error updating template:", error);
+        try {
+            handleFirestoreError(error, OperationType.WRITE, `templates/${id}`);
+        } catch (e) {}
         return false;
     }
 };
