@@ -428,7 +428,7 @@ const App: React.FC = () => {
                 <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} />} />
                 <Route path="/order-confirmation" element={<OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />} />
                 <Route path="/order-lookup" element={<OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />} />
-                <Route path="/admin/*" element={<AdminPage />} />
+                <Route path="/admin/*" element={<AdminPage showToast={showToast} />} />
                 <Route path="/ctv" element={<CollaboratorPage />} />
                 <Route path="/about" element={<AboutPage config={storeConfig} />} />
                 <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />

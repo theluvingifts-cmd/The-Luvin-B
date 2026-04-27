@@ -46,9 +46,50 @@
         "createdAt": { "type": "number" }
       },
       "required": ["ctvUid", "name", "config", "createdAt"]
+    },
+    "Template": {
+      "title": "Template",
+      "description": "A purchasable product template.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "price": { "type": "number" },
+        "config": { "type": "object" },
+        "purchaseCount": { "type": "number" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "imageUrl", "config"]
+    },
+    "Background": {
+      "title": "Background",
+      "description": "A preset background for the studio.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["square", "rectangle"] },
+        "imageUrl": { "type": "string" },
+        "url": { "type": "string" },
+        "config": { "type": "object" },
+        "formFields": { "type": "array" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "url"]
     }
   },
   "firestore": {
+    "/templates/{templateId}": {
+      "schema": "Template",
+      "description": "Collection of product templates."
+    },
+    "/backgrounds/{backgroundId}": {
+      "schema": "Background",
+      "description": "Collection of preset backgrounds."
+    },
     "/shared_designs/{designId}": {
       "schema": "SharedDesign",
       "description": "Collection of shared designs."

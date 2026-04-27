@@ -4,7 +4,7 @@ import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, Frame
 import { INITIAL_FRAME_CONFIG } from '../../../constants';
 import { uploadFile } from '../../../services/uploadService';
 
-const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Màu trơn'];
+const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Mẫu thiết kế yêu cầu', 'Màu trơn'];
 
 export const TemplateForm: React.FC<{
     initialData?: CollectionTemplate | null;
@@ -79,10 +79,15 @@ export const TemplateForm: React.FC<{
             setIsUploading(true);
             try {
                 const url = await uploadFile(file);
-                if (url) setFormData(prev => ({ ...prev, imageUrl: url }));
-                else alert("Lỗi tải ảnh");
+                if (url) {
+                    setFormData(prev => ({ ...prev, imageUrl: url }));
+                    // No toast here as it might be annoying, but keep it in mind
+                } else {
+                    alert("Lỗi tải ảnh");
+                }
             } catch (error) {
                 console.error(error);
+                alert("Lỗi hệ thống khi tải ảnh");
             } finally {
                 setIsUploading(false);
             }
@@ -174,6 +179,14 @@ export const TemplateForm: React.FC<{
 
     const handleSave = () => {
         try {
+            if (!formData.name) {
+                alert("Vui lòng nhập tên mẫu!");
+                return;
+            }
+            if (!formData.imageUrl) {
+                alert("Vui lòng tải ảnh xem trước!");
+                return;
+            }
             // Always use the visual 'config' state, even for simple templates
             // isSimple just determines how it's displayed to the customer
             onSave({ 

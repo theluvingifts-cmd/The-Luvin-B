@@ -20,12 +20,13 @@ interface AdminProductsProps {
     onRefreshFrames: () => void;
     onRefreshBackgrounds: () => void;
     onRefreshTemplates: () => void;
+    showToast?: (message: string, type: 'success' | 'error') => void;
 }
 
 type ProductSubTab = 'parts' | 'backgrounds' | 'frames' | 'templates';
 type ViewMode = 'list' | 'edit';
 
-export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, templates, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds, onRefreshTemplates }) => {
+export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, backgrounds, templates, onRefreshProducts, onRefreshFrames, onRefreshBackgrounds, onRefreshTemplates, showToast }) => {
     const [activeProductSubTab, setActiveProductSubTab] = useState<ProductSubTab>('parts');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     
@@ -114,32 +115,40 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     };
 
     // Handlers
-    const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); await seedDatabase(); setLoading(false); onRefreshProducts(); } };
-    const handleSeedFrames = async () => { if (confirm("Reset Frames về mặc định?")) { setLoading(true); await seedFrames(); setLoading(false); onRefreshFrames(); } };
-    const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); await seedBackgrounds(); setLoading(false); onRefreshBackgrounds(); } };
-    const handleSeedTemplates = async () => { if (confirm("Reset templates về mặc định?")) { setLoading(true); await seedTemplates(); setLoading(false); onRefreshTemplates(); } };
+    const handleSeedData = async () => { if (confirm("Thao tác này sẽ reset database về mặc định. Tiếp tục?")) { setLoading(true); const res = await seedDatabase(); setLoading(false); if (res && showToast) showToast("Đã nạp dữ liệu linh kiện!", "success"); onRefreshProducts(); } };
+    const handleSeedFrames = async () => { if (confirm("Reset Frames về mặc định?")) { setLoading(true); const res = await seedFrames(); setLoading(false); if (res && showToast) showToast("Đã nạp dữ liệu khung!", "success"); onRefreshFrames(); } };
+    const handleSeedBackgrounds = async () => { if (confirm("Reset backgrounds về mặc định?")) { setLoading(true); const res = await seedBackgrounds(); setLoading(false); if (res && showToast) showToast("Đã nạp dữ liệu hình nền!", "success"); onRefreshBackgrounds(); } };
+    const handleSeedTemplates = async () => { if (confirm("Reset templates về mặc định?")) { setLoading(true); const res = await seedTemplates(); setLoading(false); if (res && showToast) showToast("Đã nạp dữ liệu mẫu thiết kế!", "success"); onRefreshTemplates(); } };
 
     const handleSaveProduct = async (part: LegoPart) => { 
         if (editingPart) await updatePart(part.id, part); else await addPart(part); 
+        if (showToast) showToast("Đã lưu linh kiện thành công!", "success");
         onRefreshProducts(); switchToList(); 
     };
-    const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); onRefreshProducts(); } };
+    const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); if (showToast) showToast("Đã xóa linh kiện", "success"); onRefreshProducts(); } };
     
     const handleSaveBackground = async (bg: PresetBackground) => { 
         if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); 
+        if (showToast) showToast("Đã lưu hình nền thành công!", "success");
         onRefreshBackgrounds(); switchToList(); 
     };
-    const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); onRefreshBackgrounds(); } };
+    const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); if (showToast) showToast("Đã xóa hình nền", "success"); onRefreshBackgrounds(); } };
 
     const handleSaveFrame = async (frame: FrameOption) => { 
         if (editingFrame) await updateFrame(frame.id, frame); else await addFrame(frame); 
+        if (showToast) showToast("Đã lưu khung thành công!", "success");
         onRefreshFrames(); switchToList(); 
     };
-    const handleDeleteFrame = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFrame(id); onRefreshFrames(); } };
+    const handleDeleteFrame = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFrame(id); if (showToast) showToast("Đã xóa khung", "success"); onRefreshFrames(); } };
 
     const handleSaveTemplate = async (tpl: CollectionTemplate) => { 
-        if (editingTemplate) await updateTemplate(tpl.id, tpl); else await addTemplate(tpl); 
-        onRefreshTemplates(); switchToList(); 
+        const success = editingTemplate ? await updateTemplate(tpl.id, tpl) : await addTemplate(tpl); 
+        if (success) {
+            if (showToast) showToast("Đã tải mẫu thiết kế lên thành công!", "success");
+            onRefreshTemplates(); switchToList(); 
+        } else {
+            if (showToast) showToast("Lỗi khi tải mẫu thiết kế lên!", "error");
+        }
     };
     const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); onRefreshTemplates(); } };
 

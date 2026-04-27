@@ -25,7 +25,11 @@ import { Logo } from '../components/shared/Logo';
 
 type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'collaborators';
 
-const AdminPage: React.FC = () => {
+interface AdminPageProps {
+    showToast?: (message: string, type: 'success' | 'error') => void;
+}
+
+const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -194,12 +198,12 @@ const AdminPage: React.FC = () => {
             <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
                 {activeTab === 'dashboard' && role === 'admin' && <AdminDashboard orders={orders} products={products} frames={frames} />}
                 {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} backgrounds={backgrounds} templates={templates} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
-                {activeTab === 'products' && role === 'admin' && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} />}
+                {activeTab === 'products' && role === 'admin' && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} showToast={showToast} />}
                 {activeTab === 'config' && role === 'admin' && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
                 {activeTab === 'collaborators' && role === 'admin' && <AdminCollaborators orders={orders} />}
-                {activeTab === 'design' && role === 'admin' && <AdminDesign />}
+                {activeTab === 'design' && role === 'admin' && <AdminDesign showToast={showToast} />}
             </main>
         </div>
     );

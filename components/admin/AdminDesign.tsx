@@ -101,7 +101,11 @@ const FontSelector: React.FC<{
     );
 };
 
-export const AdminDesign: React.FC = () => {
+interface AdminDesignProps {
+    showToast?: (message: string, type: 'success' | 'error') => void;
+}
+
+export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
     const { t } = useLanguage();
 
     const TOOLS = [
@@ -151,6 +155,7 @@ export const AdminDesign: React.FC = () => {
     const categories = useMemo(() => {
         const uniqueCats = Array.from(new Set(existingBackgrounds.map(bg => bg.category)));
         if (!uniqueCats.includes('Tình yêu')) uniqueCats.unshift('Tình yêu');
+        if (!uniqueCats.includes('Mẫu thiết kế yêu cầu')) uniqueCats.push('Mẫu thiết kế yêu cầu');
         return uniqueCats;
     }, [existingBackgrounds]);
 
@@ -1420,7 +1425,7 @@ export const AdminDesign: React.FC = () => {
                                         };
                                         const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
                                         if (success) {
-                                            alert("Đã lưu nền thành công!");
+                                            if (showToast) showToast("Đã lưu hình nền thiết kế thành công!", "success"); else alert("Đã lưu nền thành công!");
                                             setEditingBgId(newId);
                                         }
                                     } else {
@@ -1435,7 +1440,7 @@ export const AdminDesign: React.FC = () => {
                                         };
                                         const success = editingBgId ? await updateTemplate(editingBgId, templateData) : await addTemplate(templateData);
                                         if (success) {
-                                            alert("Đã lưu mẫu sản phẩm thành công!");
+                                            if (showToast) showToast("Đã lưu mẫu thiết kế (mẫu sản phẩm) thành công!", "success"); else alert("Đã lưu mẫu sản phẩm thành công!");
                                             setEditingBgId(newId);
                                         }
                                     }
@@ -1443,9 +1448,9 @@ export const AdminDesign: React.FC = () => {
                                     setShowSaveModal(false); 
                                     setIsNewCategory(false);
                                     setNewCategoryName('');
-                                } catch (err) {
+                                } catch (err: any) {
                                     console.error(err);
-                                    alert("Đã xảy ra lỗi không xác định!");
+                                    if (showToast) showToast(`Lỗi: ${err.message || "Đã xảy ra lỗi không xác định!"}`, "error"); else alert("Đã xảy ra lỗi không xác định!");
                                 } finally {
                                     setIsUploading(false);
                                 }
