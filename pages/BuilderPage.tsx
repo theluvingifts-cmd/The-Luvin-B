@@ -25,6 +25,7 @@ import { Step4Summary } from '../components/builder/Step4';
 import { useLanguage } from '../src/contexts/LanguageContext';
 
 declare var html2canvas: any;
+declare var confetti: any;
 
 const DEFAULT_FONTS = ['Playfair Display', 'Montserrat', 'Roboto', 'Open Sans', 'Merriweather', 'Dancing Script', 'Lora', 'Nunito', 'Pacifico'];
 
@@ -550,14 +551,29 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       setIsSaving(true);
       const user = auth.currentUser;
       if (user) {
-          const designId = await saveCTVDesign(user.uid, designName, config);
-          if (designId) {
-              showToast("Đã lưu thiết kế thành công!", 'success');
-              setShowSaveModal(false);
-              setDesignName('');
-          } else {
-              showToast("Lỗi khi lưu thiết kế", 'error');
+          try {
+              const designId = await saveCTVDesign(user.uid, designName, config);
+              if (designId) {
+                  showToast("Đã lưu thiết kế thành công!", 'success');
+                  if (typeof confetti !== 'undefined') {
+                      confetti({
+                          particleCount: 100,
+                          spread: 70,
+                          origin: { y: 0.6 },
+                          colors: ['#efa3b5', '#e5a84b', '#ffffff']
+                      });
+                  }
+                  setShowSaveModal(false);
+                  setDesignName('');
+              } else {
+                  showToast("Không thể lưu thiết kế. Vui lòng thử lại.", 'error');
+              }
+          } catch (error: any) {
+              console.error("Save CTV design error:", error);
+              showToast(`Lỗi khi lưu: ${error.message || "Vui lòng kiểm tra kết nối"}`, 'error');
           }
+      } else {
+          showToast("Vui lòng đăng nhập để lưu thiết kế", 'error');
       }
       setIsSaving(false);
   };

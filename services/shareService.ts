@@ -1,6 +1,19 @@
 
 import { db } from '../config/firebase';
-import { collection, addDoc, getDoc, doc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { 
+    collection, 
+    addDoc, 
+    getDoc, 
+    doc, 
+    serverTimestamp, 
+    updateDoc, 
+    arrayUnion, 
+    setDoc, 
+    query, 
+    where, 
+    getDocs,
+    deleteDoc
+} from 'firebase/firestore';
 import { FrameConfig, SavedDesign, Collaborator } from '../types';
 
 export const saveSharedDesign = async (config: FrameConfig, createdBy: string) => {
@@ -41,27 +54,30 @@ export const saveCTVDesign = async (ctvUid: string, name: string, config: FrameC
             createdAt: Date.now()
         };
         
-        const { setDoc } = await import('firebase/firestore');
-        await setDoc(doc(db, 'collaborators', ctvUid), {
-            designs: arrayUnion(newDesign)
-        }, { merge: true });
-        
-        return designId;
-    } catch (error) {
-        console.error("Error saving CTV design (primary):", error);
-        // Fallback to ctv_designs if collaborators update fails
+        // Primary Attempt: Save inside collaborators document
         try {
+            await setDoc(doc(db, 'collaborators', ctvUid), {
+                designs: arrayUnion(newDesign)
+            }, { merge: true });
+            console.log("CTV design saved successfully in collaborators collection");
+            return designId;
+        } catch (collabError: any) {
+            console.warn("Could not save to collaborators document, trying ctv_designs collection:", collabError.message);
+            
+            // Secondary Attempt: Save as standalone document in ctv_designs
             const docRef = await addDoc(collection(db, 'ctv_designs'), {
                 ctvUid,
                 name,
                 config,
                 createdAt: Date.now()
             });
+            console.log("CTV design saved successfully in ctv_designs collection");
             return docRef.id;
-        } catch (e2) {
-            console.warn("Fallback saveCTVDesign failed:", e2);
-            return null;
         }
+    } catch (error: any) {
+        console.error("Critical error in saveCTVDesign:", error);
+        // Throw the error so the caller can handle it or show specific feedback
+        throw error;
     }
 };
 
@@ -79,7 +95,6 @@ export const getCTVDesigns = async (ctvUid: string): Promise<SavedDesign[]> => {
         // Fallback to ctv_designs collection - wrap in try-catch to avoid surfacing permission errors
         // if the collection rules aren't deployed
         try {
-            const { query, where, getDocs } = await import('firebase/firestore');
             // Remove orderBy to avoid index requirement in fallback
             const q = query(
                 collection(db, 'ctv_designs'),
@@ -119,7 +134,6 @@ export const deleteCTVDesign = async (designId: string, ctvUid?: string) => {
         
         // Fallback/Legacy delete - wrap in try-catch
         try {
-            const { deleteDoc } = await import('firebase/firestore');
             await deleteDoc(doc(db, 'ctv_designs', designId));
             return true;
         } catch (fallbackError) {
@@ -134,7 +148,6 @@ export const deleteCTVDesign = async (designId: string, ctvUid?: string) => {
 
 export const getCollaboratorByReferralCode = async (referralCode: string): Promise<Collaborator | null> => {
     try {
-        const { query, where, getDocs, collection } = await import('firebase/firestore');
         const q = query(
             collection(db, 'collaborators'),
             where('referralCode', '==', referralCode)
