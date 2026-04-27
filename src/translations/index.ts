@@ -33,7 +33,8 @@ export const translations: any = {
             buy_now: "Mua ngay",
             view_details: "Xem chi tiết",
             back: "Quay lại",
-            next: "Tiếp theo"
+            next: "Tiếp theo",
+            scroll_hint: "Cuộn để tùy chỉnh"
         },
         collection: {
             title: "Bộ sưu tập",
@@ -496,7 +497,8 @@ export const translations: any = {
             buy_now: "Buy Now",
             view_details: "View Details",
             back: "Back",
-            next: "Next"
+            next: "Next",
+            scroll_hint: "Scroll to customize"
         },
         collection: {
             title: "Our",
