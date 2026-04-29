@@ -1109,8 +1109,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             onClick={() => {
                                 const imageUrl = window.location.origin + selectedTemplate.image;
                                 const message = `Chào shop, mình cần tư vấn mẫu: ${selectedTemplate.name}\n- Giá: ${formatCurrency(currentPrice)}\n- Ảnh mẫu: ${imageUrl}`;
-                                const zaloUrl = `https://zalo.me/0964393115?text=${encodeURIComponent(message)}`;
-                                window.open(zaloUrl, '_blank');
+                                
+                                // Copy to clipboard
+                                navigator.clipboard.writeText(message).then(() => {
+                                    const zaloUrl = `https://zalo.me/0964393115`;
+                                    window.open(zaloUrl, '_blank');
+                                    alert('Đã copy thông tin mẫu. Bạn chỉ cần "Dán" vào ô chat Zalo để gửi shop tư vấn nhé!');
+                                });
                             }}
                             className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                         >
@@ -1358,8 +1363,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 e.stopPropagation();
                                                 const imageUrl = window.location.origin + template.image;
                                                 const message = `Chào shop, mình cần tư vấn mẫu: ${template.name}\n- Giá: ${formatCurrency(totalPrice)}\n- Ảnh mẫu: ${imageUrl}`;
-                                                const zaloUrl = `https://zalo.me/0964393115?text=${encodeURIComponent(message)}`;
-                                                window.open(zaloUrl, '_blank');
+                                                
+                                                // Copy to clipboard
+                                                navigator.clipboard.writeText(message).then(() => {
+                                                    const zaloUrl = `https://zalo.me/0964393115`;
+                                                    window.open(zaloUrl, '_blank');
+                                                    alert('Đã copy thông tin mẫu. Bạn chỉ cần "Dán" vào ô chat Zalo để gửi shop tư vấn nhé!');
+                                                });
                                             }}
                                             className="px-3 py-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5"
                                             title="Cần tư vấn mẫu này"
