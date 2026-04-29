@@ -33,7 +33,10 @@ export const translations: any = {
             buy_now: "Mua ngay",
             view_details: "Xem chi tiết",
             back: "Quay lại",
-            next: "Tiếp theo"
+            next: "Tiếp theo",
+            close: "Đóng",
+            editing: "Đang chỉnh sửa",
+            required: "bắt buộc"
         },
         collection: {
             title: "Bộ sưu tập",
@@ -52,7 +55,23 @@ export const translations: any = {
             advice: "Tư vấn",
             quick_customize_title: "Cuộn xuống để tùy chỉnh mẫu",
             select_charms: "Chọn Charm Trang Trí",
-            selected_count: "đã chọn"
+            selected_count: "đã chọn",
+            select_char_charm: "Vui lòng chọn nhân vật & charm",
+            start_customizing: "Bắt đầu Tùy chỉnh ngay",
+            scroll_to_customize: "Cuộn để tùy chỉnh chi tiết",
+            click_to_customize: "Nhấn để tùy chỉnh",
+            included_accessories: "Phụ kiện theo mẫu",
+            added_accessories: "Phụ kiện đã thêm",
+            add_more_accessories: "Thêm phụ kiện khác",
+            templates_disclaimer: "Tất cả mẫu có thể thay đổi tiêu đề, ảnh & thông tin theo ý muốn",
+            budget: "Ngân sách:",
+            sort_by: "Sắp xếp:",
+            zalo_message_prefix: "Chào shop, mình cần tư vấn mẫu: ",
+            sample_image: "Ảnh mẫu: ",
+            zalo_copy_success: "Shop đã copy thông tin mẫu này!\n\nBạn chỉ cần nhấn \"Dán\" (Paste) vào ô chat Zalo để gửi cho shop tư vấn ngay nhé.",
+            zalo_copy_error: "Zalo không hỗ trợ tự điền tin nhắn. Bạn vui lòng nhắn tên mẫu \"{name}\" để shop tư vấn nhé!",
+            zalo_fallback: "Bạn vui lòng nhắn cho shop tên mẫu \"{name}\" để được tư vấn nhé!",
+            enter_order_note: "Vui lòng nhập ghi chú (Ví dụ: Đổi tên, đổi ngày...)"
         },
         studio: {
             tools: {
@@ -499,7 +518,10 @@ export const translations: any = {
             buy_now: "Buy Now",
             view_details: "View Details",
             back: "Back",
-            next: "Next"
+            next: "Next",
+            close: "Close",
+            editing: "Editing",
+            required: "required"
         },
         collection: {
             title: "Our",
@@ -518,7 +540,23 @@ export const translations: any = {
             advice: "Advice",
             quick_customize_title: "Quick Customize Template",
             select_charms: "Select Decorative Charms",
-            selected_count: "selected"
+            selected_count: "selected",
+            select_char_charm: "Please select characters & charms",
+            start_customizing: "Start Customizing Now",
+            scroll_to_customize: "Scroll to customize details",
+            click_to_customize: "Click to customize",
+            included_accessories: "Included Accessories",
+            added_accessories: "Added Accessories",
+            add_more_accessories: "Add more accessories",
+            templates_disclaimer: "All templates can have titles, images & info changed as desired",
+            budget: "Budget:",
+            sort_by: "Sort by:",
+            zalo_message_prefix: "Hi shop, I need advice on template: ",
+            sample_image: "Sample image: ",
+            zalo_copy_success: "Template details copied!\n\nJust \"Paste\" into Zalo chat to send to the shop for advice.",
+            zalo_copy_error: "Zalo does not support auto-fill. Please message the shop with the template name \"{name}\" for advice!",
+            zalo_fallback: "Please message the shop with the template name \"{name}\" for advice!",
+            enter_order_note: "Please enter order note (e.g., change name, change date...)"
         },
         studio: {
             tools: {

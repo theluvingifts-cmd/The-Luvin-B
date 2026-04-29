@@ -322,7 +322,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const handleBuyNow = () => {
         if (!customConfig) return;
         if (!orderNote.trim()) {
-            alert("Vui lòng nhập ghi chú (Ví dụ: Đổi tên, đổi ngày...)");
+            alert(t('collection.enter_order_note'));
             return;
         }
         const finalConfig = {
@@ -342,7 +342,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const handleQuickAddToCart = () => {
         if (!customConfig) return;
         if (!orderNote.trim()) {
-            alert("Vui lòng nhập ghi chú (Ví dụ: Đổi tên, đổi ngày...)");
+            alert(t('collection.enter_order_note'));
             return;
         }
         const finalConfig = {
@@ -373,8 +373,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     }, [customConfig, selectedTemplate, allParts, frames, displayTemplates, isLoadingParts]);
 
     const handleContactZalo = (templateName: string, price: number, imageUrl: string) => {
-        const fullImageUrl = window.location.origin + imageUrl;
-        const message = `Chào shop, mình cần tư vấn mẫu: ${templateName}\n- Giá: ${formatCurrency(price)}\n- Ảnh mẫu: ${fullImageUrl}`;
+        let fullImageUrl = imageUrl;
+        if (imageUrl && !imageUrl.startsWith('http')) {
+            const origin = window.location.origin;
+            const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+            fullImageUrl = origin + path;
+        }
+        const message = `${t('collection.zalo_message_prefix')}${templateName}\n- ${t('studio.price')}: ${formatCurrency(price)}\n- ${t('collection.sample_image')}${fullImageUrl}`;
         
         const openZalo = () => {
             const zaloUrl = `https://zalo.me/0964393115`;
@@ -384,7 +389,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(message)
                 .then(() => {
-                    alert('Shop đã copy thông tin mẫu này!\n\nBạn chỉ cần nhấn "Dán" (Paste) vào ô chat Zalo để gửi cho shop tư vấn ngay nhé.');
+                    alert(t('collection.zalo_copy_success'));
                     openZalo();
                 })
                 .catch(() => {
@@ -399,17 +404,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     textArea.select();
                     try {
                         document.execCommand('copy');
-                        alert('Shop đã copy thông tin mẫu này!\n\nBạn chỉ cần nhấn "Dán" (Paste) vào ô chat Zalo để gửi cho shop tư vấn ngay nhé.');
+                        alert(t('collection.zalo_copy_success'));
                         openZalo();
                     } catch (err) {
                         openZalo();
-                        alert('Zalo không hỗ trợ tự điền tin nhắn. Bạn vui lòng nhắn tên mẫu "' + templateName + '" để shop tư vấn nhé!');
+                        alert(t('collection.zalo_copy_error').replace('{name}', templateName));
                     }
                     document.body.removeChild(textArea);
                 });
         } else {
             openZalo();
-            alert('Bạn vui lòng nhắn cho shop tên mẫu "' + templateName + '" để được tư vấn nhé!');
+            alert(t('collection.zalo_fallback').replace('{name}', templateName));
         }
     };
 
@@ -602,7 +607,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </svg>
                             </div>
                         </div>
-                        <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors" title="Đóng">
+                        <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors" title={t('common.close')}>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
@@ -622,7 +627,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 alt={selectedTemplate.name} 
                                                 className="max-h-48 mx-auto object-contain rounded-xl opacity-50 grayscale" 
                                             />
-                                            <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vui lòng chọn nhân vật & charm</p>
+                                            <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('collection.select_char_charm')}</p>
                                         </div>
                                     )}
                                     {customConfig.characters.map((char) => (
@@ -651,12 +656,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             onClick={scrollToCustomize}
                                             className="w-full py-4 bg-white text-gray-900 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-black/20 flex items-center justify-center gap-2 hover:bg-gray-50 transition-all active:scale-95 sm:hidden border border-gray-100"
                                         >
-                                            ✨ Bắt đầu Tùy chỉnh ngay
+                                            {t('collection.start_customizing')}
                                             <svg className="w-3.5 h-3.5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                                         </button>
                                         <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur rounded-full">
                                             <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                                            <span className="text-[9px] text-white font-black uppercase tracking-widest">Cuộn để tùy chỉnh chi tiết</span>
+                                            <span className="text-[9px] text-white font-black uppercase tracking-widest">{t('collection.scroll_to_customize')}</span>
                                         </div>
                                     </div>
                                 </>
@@ -709,7 +714,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         onClick={addDefaultCharacter}
                                         className="text-[9px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full hover:bg-primary/20 transition-colors"
                                     >
-                                        + Thêm nhân vật
+                                        {t('studio.add_character')}
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 gap-3">
@@ -722,9 +727,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             <div className="flex items-center gap-4 p-3">
                                                 <CharacterPreview character={char} hideHat={true} />
                                                 <div className="flex-grow">
-                                                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Nhân vật {idx + 1}</p>
+                                                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{t('studio.character_index').replace('{index}', (idx + 1).toString())}</p>
                                                     <p className="text-[9px] text-primary font-black uppercase tracking-tighter">
-                                                        {editingCharacterId === char.id ? 'Đang chỉnh sửa' : 'Nhấn để tùy chỉnh'}
+                                                        {editingCharacterId === char.id ? t('common.editing') : t('collection.click_to_customize')}
                                                     </p>
                                                 </div>
                                                 
@@ -732,7 +737,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                     <button 
                                                         onClick={() => removeSpecificCharacter(char.id)}
                                                         className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-all shadow-sm"
-                                                        title="Xóa nhân vật"
+                                                        title={t('studio.remove_char')}
                                                     >
                                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
@@ -843,7 +848,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        Phụ kiện theo mẫu
+                                        {t('collection.included_accessories')}
                                     </h3>
                                     <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                         {customConfig.draggableItems.filter(i => selectedTemplate.config.draggableItems.some(oi => oi.id === i.id)).length} / {selectedTemplate.config.draggableItems.length}
@@ -972,7 +977,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <div className="space-y-3">
                                 <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                    Phụ kiện đã thêm
+                                    {t('collection.added_accessories')}
                                 </h3>
                                 <div className="grid grid-cols-1 gap-2">
                                     {groupedAddedExtraCharms.map((group) => {
@@ -1086,7 +1091,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     ))}
                                     {filteredExtraCharms.length === 0 && (
                                         <div className="col-span-full py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                            Không tìm thấy charm phù hợp
+                                            {t('studio.no_accessories_found')}
                                         </div>
                                     )}
                                 </div>
@@ -1097,7 +1102,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         <div className="space-y-3">
                             <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                Ghi chú <span className="text-[10px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
+                                {t('common.order_note')} <span className="text-[10px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
                             </h3>
                             <div className="relative">
                                 <textarea 
@@ -1143,7 +1148,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 onClick={handleBuyNow}
                                 className="flex-[1.5] py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
-                                ⚡ Mua ngay
+                                ⚡ {t('common.buy_now')}
                             </button>
                         </div>
                         <button 
@@ -1185,7 +1190,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50/50 border border-yellow-100/50 rounded-full">
                         <span className="text-[10px] sm:text-xs text-yellow-600">✨</span>
                         <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
-                            Tất cả mẫu có thể thay đổi <span className="text-primary italic">tiêu đề, ảnh & thông tin</span> theo ý muốn
+                            {t('collection.templates_disclaimer')}
                         </p>
                     </div>
                 </div>
@@ -1216,12 +1221,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                     {/* Price Range */}
                     <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
-                        <span className="pl-2 opacity-50">Ngân sách:</span>
-                        {[
-                            { id: 'all', label: 'Tất cả' },
-                            { id: 'under300', label: '< 300k' },
-                            { id: '300to500', label: '300k - 500k' }
-                        ].map(range => (
+                         <span className="pl-2 opacity-50">{t('collection.budget')}</span>
+                         {[
+                             { id: 'all', label: t('common.all') },
+                             { id: 'under300', label: '< 300k' },
+                             { id: '300to500', label: '300k - 500k' }
+                         ].map(range => (
                             <button 
                                 key={range.id}
                                 onClick={() => setPriceRange(range.id as any)}
@@ -1233,13 +1238,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     </div>
 
                     {/* Character Count */}
-                    <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
-                        <span className="pl-2 opacity-50">Nhân vật:</span>
-                        {[
-                            { id: 'all', label: 'Tất cả' },
-                            { id: '1', label: '1 NV' },
-                            { id: '2', label: '2 NV' },
-                            { id: '3plus', label: '3+ NV' }
+                     <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                         <span className="pl-2 opacity-50">{t('studio.characters')}:</span>
+                         {[
+                             { id: 'all', label: t('common.all') },
+                             { id: '1', label: `1 ${t('studio.character_index').split(' ')[0]}` },
+                            { id: '2', label: `2 ${t('studio.character_index').split(' ')[0]}` },
+                            { id: '3plus', label: `3+ ${t('studio.character_index').split(' ')[0]}` }
                         ].map(count => (
                             <button 
                                 key={count.id}
@@ -1253,16 +1258,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                     {/* Sorting */}
                     <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100 ml-auto">
-                        <span className="pl-2 opacity-50">Sắp xếp:</span>
+                        <span className="pl-2 opacity-50">{t('collection.sort_by')}</span>
                         <select 
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as any)}
                             className="bg-transparent border-none outline-none pr-4 text-gray-900 cursor-pointer"
                         >
-                            <option value="default">Mặc định</option>
-                            <option value="mostPurchased">Bán chạy nhất</option>
-                            <option value="priceAsc">Giá thấp đến cao</option>
-                            <option value="priceDesc">Giá cao đến thấp</option>
+                            <option value="default">{t('studio.sort_default')}</option>
+                            <option value="mostPurchased">{t('collection.hot')}</option>
+                            <option value="priceAsc">{t('studio.sort_price_asc')}</option>
+                            <option value="priceDesc">{t('studio.sort_price_desc')}</option>
                         </select>
                     </div>
                 </div>
@@ -1309,16 +1314,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="absolute top-2 left-2 right-2 flex flex-col gap-1.5 pointer-events-none">
                                     <div className="flex flex-wrap gap-1">
-                                        {(template.isHot || purchaseCount > 20) && (
-                                            <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
-                                                🔥 Bán chạy
-                                            </div>
-                                        )}
-                                        {template.isNew && (
-                                            <div className="bg-blue-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
-                                                ✨ Mẫu mới
-                                            </div>
-                                        )}
+                                         {(template.isHot || purchaseCount > 20) && (
+                                             <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
+                                                 🔥 {t('collection.hot')}
+                                             </div>
+                                         )}
+                                         {template.isNew && (
+                                             <div className="bg-blue-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
+                                                 ✨ {t('common.new')}
+                                             </div>
+                                         )}
                                         {template.price && template.salePrice && template.salePrice < template.price && (
                                             <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md">
                                                 OFF {Math.round((1 - template.salePrice / template.price) * 100)}%
@@ -1343,15 +1348,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </h3>
                                 
                                 <div className="flex items-center gap-1.5 mb-4">
-                                    <div className="text-[10px] sm:text-[11px] text-gray-400 font-bold leading-tight">
-                                        {purchaseCount} lượt chọn
-                                    </div>
-                                    <div className="h-3 w-px bg-gray-200 mx-1"></div>
-                                    <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
-                                        <span className="text-[8px] font-black text-blue-600 uppercase tracking-tighter whitespace-nowrap">
-                                            + Full box, túi, thiệp
-                                        </span>
-                                    </div>
+                                     <div className="text-[10px] sm:text-[11px] text-gray-400 font-bold leading-tight">
+                                         {purchaseCount} {t('collection.orders')}
+                                     </div>
+                                     <div className="h-3 w-px bg-gray-200 mx-1"></div>
+                                     <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
+                                         <span className="text-[8px] font-black text-blue-600 uppercase tracking-tighter whitespace-nowrap">
+                                             + {t('studio.include_box')}, {t('studio.include_bag')}, {t('studio.include_card')}
+                                         </span>
+                                     </div>
                                 </div>
 
                                 <div className="mt-auto space-y-3">
