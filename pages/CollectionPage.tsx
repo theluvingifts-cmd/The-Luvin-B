@@ -1107,7 +1107,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </div>
                         <button 
                             onClick={() => {
-                                const message = `Chào shop, mình cần tư vấn mẫu này: ${selectedTemplate.name}`;
+                                const imageUrl = window.location.origin + selectedTemplate.image;
+                                const message = `Chào shop, mình cần tư vấn mẫu: ${selectedTemplate.name}\n- Giá: ${formatCurrency(currentPrice)}\n- Ảnh mẫu: ${imageUrl}`;
                                 const zaloUrl = `https://zalo.me/0964393115?text=${encodeURIComponent(message)}`;
                                 window.open(zaloUrl, '_blank');
                             }}
@@ -1355,7 +1356,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <button 
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                const message = `Chào shop, mình cần tư vấn mẫu này: ${template.name}`;
+                                                const imageUrl = window.location.origin + template.image;
+                                                const message = `Chào shop, mình cần tư vấn mẫu: ${template.name}\n- Giá: ${formatCurrency(totalPrice)}\n- Ảnh mẫu: ${imageUrl}`;
                                                 const zaloUrl = `https://zalo.me/0964393115?text=${encodeURIComponent(message)}`;
                                                 window.open(zaloUrl, '_blank');
                                             }}
