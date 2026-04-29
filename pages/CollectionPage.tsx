@@ -358,16 +358,18 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         setEditingCharacterId(null);
     };
 
-    const currentPrice = useMemo(() => {
-        if (!customConfig || !selectedTemplate) return 0;
+    const { currentPrice, originalPrice } = useMemo(() => {
+        if (!customConfig || !selectedTemplate) return { currentPrice: 0, originalPrice: 0 };
         
         // Stabilize price during initial load
         if (isLoadingParts && selectedTemplate.price) {
-            return selectedTemplate.price;
+            const current = selectedTemplate.salePrice && selectedTemplate.salePrice < selectedTemplate.price ? selectedTemplate.salePrice : selectedTemplate.price;
+            return { currentPrice: current, originalPrice: selectedTemplate.price };
         }
 
-        const { totalPrice } = calculatePrice(customConfig, allParts, frames, displayTemplates);
-        return totalPrice;
+        const { totalPrice, priceBreakdown } = calculatePrice(customConfig, allParts, frames, displayTemplates);
+        const originalPrice = priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0);
+        return { currentPrice: totalPrice, originalPrice };
     }, [customConfig, selectedTemplate, allParts, frames, displayTemplates, isLoadingParts]);
 
     const groupedCharacters = useMemo(() => {
@@ -650,7 +652,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        Nhân vật ({customConfig.characters.length})
+                                        Nhân vật ({customConfig.characters.length}) 
+                                        {(() => {
+                                            const draggableCharms = customConfig.draggableItems.filter(i => 
+                                                i.type === 'charm' || i.type === 'accessory' || i.type === 'pet' || i.type === 'hat'
+                                            ).length || 0;
+                                            const characterExtras = customConfig.characters.reduce((acc, char) => {
+                                                return acc + (char.hat ? 1 : 0) + (char.set ? 1 : 0);
+                                            }, 0);
+                                            const totalCharms = draggableCharms + characterExtras;
+                                            return totalCharms > 0 ? ` - Charm (${totalCharms})` : '';
+                                        })()}
                                     </h3>
                                     <button 
                                         onClick={addDefaultCharacter}
@@ -1069,10 +1081,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         <div className="flex justify-between items-end">
                             <div>
                                 <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('common.total')}</span>
-                                <span className="text-2xl font-black text-gray-900">{formatCurrency(currentPrice)}</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black text-gray-900">{formatCurrency(currentPrice)}</span>
+                                    {originalPrice > currentPrice && (
+                                        <span className="text-sm text-gray-400 line-through font-bold">
+                                            {formatCurrency(originalPrice)}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-2">
                             <button 
                                 onClick={handleQuickAddToCart}
                                 className="flex-1 py-4 bg-gray-100 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
@@ -1086,6 +1105,19 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 ⚡ Mua ngay
                             </button>
                         </div>
+                        <button 
+                            onClick={() => {
+                                const message = `Chào shop, mình cần tư vấn mẫu này: ${selectedTemplate.name}`;
+                                const zaloUrl = `https://zalo.me/0964393115?text=${encodeURIComponent(message)}`;
+                                window.open(zaloUrl, '_blank');
+                            }}
+                            className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            {t('collection.need_advice') || 'Cần tư vấn mẫu này'}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1220,7 +1252,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                   {filteredTemplates.map((template, index) => {
                     const hasParts = Object.keys(allParts).length > 0;
                     const calculated = calculatePrice(template.config, allParts, frames, displayTemplates);
-                    const totalPrice = hasParts ? calculated.totalPrice : (template.price || 290000); // 290k is common base price
+                    const totalPrice = hasParts 
+                        ? calculated.totalPrice 
+                        : (template.salePrice && template.salePrice < template.price ? template.salePrice : (template.price || 290000));
+                    const originalPrice = hasParts 
+                        ? calculated.priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0)
+                        : (template.price || 290000);
                     const purchaseCount = template.purchaseCount || 0;
                     
                     return ( 
@@ -1285,21 +1322,51 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <div>
                                             <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">{t('collection.base_price')}</span>
                                             <span className="text-sm sm:text-lg font-black text-gray-900 leading-none">
-                                                {isLoadingParts && template.price ? formatCurrency(template.price) : formatCurrency(totalPrice)}
+                                                {formatCurrency(totalPrice)}
                                             </span>
+                                            {originalPrice > totalPrice && (
+                                                <span className="text-[10px] sm:text-xs text-gray-400 line-through ml-1.5 font-bold">
+                                                    {formatCurrency(originalPrice)}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="bg-gray-100 px-1.5 py-0.5 rounded text-[8px] font-bold text-gray-500 mb-0.5">
                                             {template.config.characters.length} {t('collection.characters_count')}
+                                            {(() => {
+                                                const draggableCharms = template.config.draggableItems?.filter(item => 
+                                                    item.type === 'charm' || item.type === 'accessory' || item.type === 'pet' || item.type === 'hat'
+                                                ).length || 0;
+                                                const characterExtras = template.config.characters.reduce((acc, char) => {
+                                                    return acc + (char.hat ? 1 : 0) + (char.set ? 1 : 0);
+                                                }, 0);
+                                                const totalCharms = draggableCharms + characterExtras;
+                                                return totalCharms > 0 ? ` - ${totalCharms} Charm` : '';
+                                            })()}
                                         </div>
                                     </div>
                                     
-                                    <button 
-                                        onClick={() => handleSelectTemplate(template)} 
-                                        className="w-full py-2.5 bg-gray-900 text-white rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-primary transition-all active:scale-95 group/btn"
-                                    >
-                                        {t('collection.select_template')}
-                                        <svg className="w-3.5 h-3.5 transform group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleSelectTemplate(template)} 
+                                            className="flex-1 py-2.5 bg-gray-900 text-white rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-primary transition-all active:scale-95 group/btn"
+                                        >
+                                            {t('collection.select_template')}
+                                        </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const message = `Chào shop, mình cần tư vấn mẫu này: ${template.name}`;
+                                                const zaloUrl = `https://zalo.me/0964393115?text=${encodeURIComponent(message)}`;
+                                                window.open(zaloUrl, '_blank');
+                                            }}
+                                            className="px-3 py-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5"
+                                            title="Cần tư vấn mẫu này"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div> 
