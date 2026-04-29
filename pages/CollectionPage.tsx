@@ -620,6 +620,30 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             )}
                         </div>
 
+                        {/* Included Items Bar - Minimalist way */}
+                        <div className="flex items-center justify-center gap-4 py-2 px-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                </div>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tight">{t('studio.include_box')}</span>
+                            </div>
+                            <div className="w-px h-3 bg-blue-200/50"></div>
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                                </div>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tight">{t('studio.include_bag')}</span>
+                            </div>
+                            <div className="w-px h-3 bg-blue-200/50"></div>
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tight">{t('studio.include_card')}</span>
+                            </div>
+                        </div>
+
                         {/* Characters Section */}
                         {(selectedTemplate.isSimple || groupedCharacters.length > 0) && (
                             <div ref={customizeSectionRef} className="space-y-4 scroll-mt-6">
@@ -1247,6 +1271,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex items-center gap-1.5 mb-4">
                                     <div className="text-[10px] sm:text-[11px] text-gray-400 font-bold leading-tight">
                                         {purchaseCount} lượt chọn
+                                    </div>
+                                    <div className="h-3 w-px bg-gray-200 mx-1"></div>
+                                    <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
+                                        <span className="text-[8px] font-black text-blue-600 uppercase tracking-tighter whitespace-nowrap">
+                                            + Full box, túi, thiệp
+                                        </span>
                                     </div>
                                 </div>
 
