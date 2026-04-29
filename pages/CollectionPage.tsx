@@ -372,6 +372,47 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return { currentPrice: totalPrice, originalPrice };
     }, [customConfig, selectedTemplate, allParts, frames, displayTemplates, isLoadingParts]);
 
+    const handleContactZalo = (templateName: string, price: number, imageUrl: string) => {
+        const fullImageUrl = window.location.origin + imageUrl;
+        const message = `Chào shop, mình cần tư vấn mẫu: ${templateName}\n- Giá: ${formatCurrency(price)}\n- Ảnh mẫu: ${fullImageUrl}`;
+        
+        const openZalo = () => {
+            const zaloUrl = `https://zalo.me/0964393115`;
+            window.open(zaloUrl, '_blank');
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(message)
+                .then(() => {
+                    alert('Shop đã copy thông tin mẫu này!\n\nBạn chỉ cần nhấn "Dán" (Paste) vào ô chat Zalo để gửi cho shop tư vấn ngay nhé.');
+                    openZalo();
+                })
+                .catch(() => {
+                    // Fallback to manual prompt if clipboard fails
+                    const textArea = document.createElement("textarea");
+                    textArea.value = message;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    textArea.style.top = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        alert('Shop đã copy thông tin mẫu này!\n\nBạn chỉ cần nhấn "Dán" (Paste) vào ô chat Zalo để gửi cho shop tư vấn ngay nhé.');
+                        openZalo();
+                    } catch (err) {
+                        openZalo();
+                        alert('Zalo không hỗ trợ tự điền tin nhắn. Bạn vui lòng nhắn tên mẫu "' + templateName + '" để shop tư vấn nhé!');
+                    }
+                    document.body.removeChild(textArea);
+                });
+        } else {
+            openZalo();
+            alert('Bạn vui lòng nhắn cho shop tên mẫu "' + templateName + '" để được tư vấn nhé!');
+        }
+    };
+
     const groupedCharacters = useMemo(() => {
         if (!customConfig) return [];
         const groups: { char: LegoCharacterConfig, count: number, ids: number[] }[] = [];
@@ -1106,17 +1147,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             </button>
                         </div>
                         <button 
-                            onClick={() => {
-                                const imageUrl = window.location.origin + selectedTemplate.image;
-                                const message = `Chào shop, mình cần tư vấn mẫu: ${selectedTemplate.name}\n- Giá: ${formatCurrency(currentPrice)}\n- Ảnh mẫu: ${imageUrl}`;
-                                
-                                // Copy to clipboard
-                                navigator.clipboard.writeText(message).then(() => {
-                                    const zaloUrl = `https://zalo.me/0964393115`;
-                                    window.open(zaloUrl, '_blank');
-                                    alert('Đã copy thông tin mẫu. Bạn chỉ cần "Dán" vào ô chat Zalo để gửi shop tư vấn nhé!');
-                                });
-                            }}
+                            onClick={() => handleContactZalo(selectedTemplate.name, currentPrice, selectedTemplate.image)}
                             className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1361,15 +1392,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <button 
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                const imageUrl = window.location.origin + template.image;
-                                                const message = `Chào shop, mình cần tư vấn mẫu: ${template.name}\n- Giá: ${formatCurrency(totalPrice)}\n- Ảnh mẫu: ${imageUrl}`;
-                                                
-                                                // Copy to clipboard
-                                                navigator.clipboard.writeText(message).then(() => {
-                                                    const zaloUrl = `https://zalo.me/0964393115`;
-                                                    window.open(zaloUrl, '_blank');
-                                                    alert('Đã copy thông tin mẫu. Bạn chỉ cần "Dán" vào ô chat Zalo để gửi shop tư vấn nhé!');
-                                                });
+                                                handleContactZalo(template.name, totalPrice, template.image);
                                             }}
                                             className="px-3 py-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5"
                                             title="Cần tư vấn mẫu này"
