@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { db, auth } from '../config/firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { getAllParts } from '../services/productService';
 import { getAllBackgrounds } from '../services/backgroundService';
@@ -38,6 +38,8 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
     const [orders, setOrders] = useState<Order[]>([]);
+    const [lookbackDays, setLookbackDays] = useState<number>(2); // Default to 2 days for performance
+    const [isAllHistoryLoaded, setIsAllHistoryLoaded] = useState(false);
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
     const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
@@ -75,8 +77,16 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                     setCurrentUser(user);
                     fetchInitialData();
                     
-                    // Listen to orders real-time
-                    const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+                    // Listen to orders real-time - Default to last N days for performance
+                    const lookbackTs = isAllHistoryLoaded ? 0 : Date.now() - (lookbackDays * 24 * 60 * 60 * 1000);
+                    const ordersQuery = isAllHistoryLoaded 
+                        ? query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
+                        : query(
+                            collection(db, 'orders'), 
+                            where('createdAt', '>=', lookbackTs),
+                            orderBy('createdAt', 'desc')
+                          );
+
                     const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
                         const ordersData: Order[] = [];
                         snapshot.forEach((doc) => {
@@ -92,7 +102,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
             return unsubscribeAuth;
         };
         init();
-    }, []);
+    }, [lookbackDays, isAllHistoryLoaded]);
 
     const fetchInitialData = async () => {
         const [p, b, t, fb, fr] = await Promise.all([
@@ -158,6 +168,17 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                             </nav>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-4">
+                            {!isAllHistoryLoaded ? (
+                                <button 
+                                    onClick={() => setIsAllHistoryLoaded(true)}
+                                    className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors uppercase tracking-tight"
+                                    title="Tải toàn bộ lịch sử đơn hàng để xem báo cáo dài hạn"
+                                >
+                                    Tải toàn bộ data ⚡
+                                </button>
+                            ) : (
+                                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded">Full History Loaded</span>
+                            )}
                             <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${role === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>{role === 'admin' ? 'Admin' : 'Staff'}</span>
                             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-2 hover:bg-gray-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg></button>
                         </div>

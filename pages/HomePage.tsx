@@ -7,6 +7,7 @@ import { StoreConfig, getCachedConfig } from '../services/configService';
 import { formatCurrency } from '../utils/pricing';
 import { slugify } from '../utils/helpers';
 import { getTotalOrderCount } from '../services/orderService';
+import { trackFunnelStep } from '../services/analyticsService';
 import { useLanguage } from '../src/contexts/LanguageContext';
 
 interface HomePageProps {
@@ -39,6 +40,11 @@ const TextSkeleton: React.FC<{ className: string }> = ({ className }) => (
 export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConfig, feedbacks, templates }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    trackFunnelStep('view_home');
+  }, []);
+
   // 1. Initialize from Cache immediately for instant render
   const [localConfig, setLocalConfig] = useState<StoreConfig | null>(() => getCachedConfig());
 

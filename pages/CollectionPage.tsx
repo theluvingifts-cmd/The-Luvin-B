@@ -309,6 +309,23 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         setCustomConfig({ ...customConfig, draggableItems: newDraggableItems });
     };
 
+    const updateTemplateCharmColor = (partId: string, oldColor: OutfitColor | undefined, newColor: OutfitColor) => {
+        if (!customConfig || !selectedTemplate) return;
+        const templateItemIds = new Set(selectedTemplate.config.draggableItems.map(i => i.id));
+        const newItems = customConfig.draggableItems.map(item => {
+            // Match items that were part of the template AND share the same partId and current color
+            const isMatch = templateItemIds.has(item.id) && 
+                          item.partId === partId && 
+                          (oldColor ? item.selectedColor?.hex === oldColor.hex : !item.selectedColor);
+            
+            if (isMatch) {
+                return { ...item, selectedColor: newColor };
+            }
+            return item;
+        });
+        setCustomConfig({ ...customConfig, draggableItems: newItems });
+    };
+
     const removeSpecificCharacter = (charId: number) => {
         if (!customConfig) return;
         if (customConfig.characters.length <= 1) return;
@@ -443,23 +460,65 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return groups;
     }, [customConfig]);
 
-    const groupedTemplateCharms = useMemo(() => {
-        if (!selectedTemplate) return [];
-        const groups: Record<string, { partId: string, originalItems: DraggableItem[], part: LegoPart }> = {};
+    const partCounts = useMemo(() => {
+        if (!customConfig) return {};
+        const counts: Record<string, number> = {};
         
-        selectedTemplate.config.draggableItems.forEach(item => {
-            if (!groups[item.partId]) {
-                groups[item.partId] = { 
-                    partId: item.partId, 
+        const safeInc = (id?: string | number) => {
+            if (!id) return;
+            const sid = String(id).trim();
+            counts[sid] = (counts[sid] || 0) + 1;
+        };
+
+        // Count draggable items
+        customConfig.draggableItems.forEach(item => {
+            safeInc(item.partId);
+        });
+
+        // Count character parts (shirt, pants, hat, etc.)
+        customConfig.characters.forEach(char => {
+            safeInc(char.shirt?.id);
+            safeInc(char.pants?.id);
+            safeInc(char.hat?.id);
+            safeInc(char.hair?.id);
+            safeInc(char.face?.id);
+            safeInc(char.set?.id);
+        });
+
+        return counts;
+    }, [customConfig]);
+
+    const groupedTemplateCharms = useMemo(() => {
+        if (!selectedTemplate || !customConfig) return [];
+        const groups: Record<string, { key: string, partId: string, originalItems: DraggableItem[], part: LegoPart, selectedColor?: OutfitColor }> = {};
+        
+        // Create a map of current items in customConfig for quick lookup by ID
+        const currentItemsMap = new Map<string, DraggableItem>(customConfig.draggableItems.map(i => [i.id, i]));
+
+        selectedTemplate.config.draggableItems.forEach(templateItem => {
+            // Look up the current state of this template item in the active config
+            const currentItem = currentItemsMap.get(templateItem.id);
+            if (!currentItem) return;
+
+            // Grouping should consider the current color to differentiate slots if the template has different colors for the same part
+            const colorKey = currentItem.selectedColor?.hex || 'default';
+            const key = `${templateItem.partId}_${colorKey}`;
+            
+            if (!groups[key]) {
+                groups[key] = { 
+                    key,
+                    partId: templateItem.partId, 
                     originalItems: [], 
-                    part: allParts[item.partId] 
+                    part: allParts[templateItem.partId],
+                    selectedColor: currentItem.selectedColor
                 };
             }
-            groups[item.partId].originalItems.push(item);
+            // We store the template items here to know which IDs belong to this group
+            groups[key].originalItems.push(templateItem);
         });
         
         return Object.values(groups);
-    }, [selectedTemplate, allParts]);
+    }, [selectedTemplate, customConfig, allParts]);
 
     const extraCharms = useMemo(() => {
         if (!allParts) return [];
@@ -859,6 +918,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     {customConfig.characters.map((char, charIdx) => {
                                         if (!char.hat) return null;
                                         const hat = char.hat;
+                                        const totalHatCount = partCounts[String(hat.id).trim()] || 0;
+                                        const effPrice = getEffectivePrice(hat, totalHatCount, hat.bulkPricing);
+                                        
                                         return (
                                             <div 
                                                 key={`char-hat-${char.id}`}
@@ -869,7 +931,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 </div>
                                                 <div className="flex-grow text-left">
                                                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{hat.name} (NV {charIdx + 1})</p>
-                                                    <p className="text-[10px] text-primary font-bold">{formatCurrency(hat.price || 0)}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-[10px] text-primary font-bold">
+                                                            {formatCurrency(effPrice + (char.selectedHatColor?.price || 0))}
+                                                        </p>
+                                                        {effPrice < hat.price && (
+                                                            <p className="text-[8px] text-gray-400 line-through font-medium">
+                                                                {formatCurrency(hat.price)}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                     
                                                     {/* Color selection for the hat */}
                                                     {hat.colors && hat.colors.length > 0 && (
@@ -917,54 +988,81 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     })}
 
                                     {groupedTemplateCharms.map((group) => {
-                                        const { part, originalItems, partId } = group;
+                                        const { part, originalItems, partId, selectedColor, key } = group;
                                         const currentInConfig = customConfig.draggableItems.filter(i => originalItems.some(oi => oi.id === i.id));
                                         const currentCount = currentInConfig.length;
                                         const maxCount = originalItems.length;
                                         const isSelected = currentCount > 0;
 
+                                        const totalPartCount = partCounts[String(partId).trim()] || 0;
+
                                         return (
                                             <div 
-                                                key={partId}
-                                                className={`flex items-center gap-4 p-3 rounded-2xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                                key={key}
+                                                className={`flex flex-col p-3 rounded-2xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
                                             >
-                                                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
-                                                    <img src={part?.imageUrl || partId} alt="Charm" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                                </div>
-                                                <div className="flex-grow text-left">
-                                                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{part?.name || 'Phụ kiện'}</p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <p className="text-[10px] text-primary font-bold">
-                                                            {formatCurrency(getEffectivePrice(part, currentCount, part?.bulkPricing))}
-                                                        </p>
-                                                        {part && (getEffectivePrice(part, currentCount, part.bulkPricing) < part.price) && (
-                                                            <p className="text-[8px] text-gray-400 line-through font-medium">
-                                                                {formatCurrency(part.price)}
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
+                                                        <img src={selectedColor?.imageUrl || part?.imageUrl || partId} alt="Charm" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                    </div>
+                                                    <div className="flex-grow text-left">
+                                                        <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{part?.name || 'Phụ kiện'}</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="text-[10px] text-primary font-bold">
+                                                                {formatCurrency(getEffectivePrice(part, totalPartCount, part?.bulkPricing) + (selectedColor?.price || 0))}
                                                             </p>
-                                                        )}
+                                                            {part && (getEffectivePrice(part, totalPartCount, part.bulkPricing) < part.price) && (
+                                                                <p className="text-[8px] text-gray-400 line-through font-medium">
+                                                                    {formatCurrency(part.price)}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-1">
+                                                        <button 
+                                                            onClick={() => updateCharmQuantity(partId, -1)}
+                                                            disabled={currentCount === 0}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === 0 ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
+                                                        </button>
+                                                        <div className="flex flex-col items-center min-w-[20px]">
+                                                            <span className="text-xs font-black text-gray-900 leading-none">{currentCount}</span>
+                                                            <span className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">/{maxCount}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => updateCharmQuantity(partId, 1)}
+                                                            disabled={currentCount === maxCount}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === maxCount ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                
-                                                <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-1">
-                                                    <button 
-                                                        onClick={() => updateCharmQuantity(partId, -1)}
-                                                        disabled={currentCount === 0}
-                                                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === 0 ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
-                                                    >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
-                                                    </button>
-                                                    <div className="flex flex-col items-center min-w-[20px]">
-                                                        <span className="text-xs font-black text-gray-900 leading-none">{currentCount}</span>
-                                                        <span className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">/{maxCount}</span>
+
+                                                {/* Color selection for Template charm */}
+                                                {isSelected && part?.colors && part.colors.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-primary/5">
+                                                        {part.colors.map(color => (
+                                                            <button
+                                                                key={color.hex}
+                                                                onClick={() => updateTemplateCharmColor(partId, selectedColor, color)}
+                                                                className={`w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center ${
+                                                                    selectedColor?.hex === color.hex 
+                                                                    ? 'border-primary scale-110 shadow-sm' 
+                                                                    : 'border-white'
+                                                                }`}
+                                                                style={{ backgroundColor: color.hex }}
+                                                                title={color.name}
+                                                            >
+                                                                {selectedColor?.hex === color.hex && (
+                                                                    <div className="w-1 h-1 rounded-full bg-white shadow-sm"></div>
+                                                                )}
+                                                            </button>
+                                                        ))}
                                                     </div>
-                                                    <button 
-                                                        onClick={() => updateCharmQuantity(partId, 1)}
-                                                        disabled={currentCount === maxCount}
-                                                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === maxCount ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
-                                                    >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                                    </button>
-                                                </div>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -982,6 +1080,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="grid grid-cols-1 gap-2">
                                     {groupedAddedExtraCharms.map((group) => {
                                         const { part, items, partId, selectedColor, key } = group;
+                                        const totalPartCount = partCounts[String(partId).trim()] || 0;
+                                        
                                         return (
                                             <div key={key} className="flex flex-col p-3 rounded-2xl border border-primary/10 bg-primary/5 space-y-3">
                                                 <div className="flex items-center gap-4">
@@ -992,9 +1092,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                         <p className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{part?.name}</p>
                                                         <div className="flex items-center gap-1.5">
                                                             <p className="text-[9px] text-primary font-bold">
-                                                                {formatCurrency(getEffectivePrice(part, items.length, part?.bulkPricing))}
+                                                                {formatCurrency(getEffectivePrice(part, totalPartCount, part?.bulkPricing) + (selectedColor?.price || 0))}
                                                             </p>
-                                                            {part && (getEffectivePrice(part, items.length, part.bulkPricing) < part.price) && (
+                                                            {part && (getEffectivePrice(part, totalPartCount, part.bulkPricing) < part.price) && (
                                                                 <p className="text-[8px] text-gray-400 line-through font-medium">
                                                                     {formatCurrency(part.price)}
                                                                 </p>
@@ -1080,12 +1180,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 referrerPolicy="no-referrer"
                                             />
                                             <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black flex flex-col items-end">
-                                                {part.salePrice && getEffectivePrice(part) < part.price && (
+                                                {part.salePrice && getEffectivePrice(part, (partCounts[String(part.id).trim()] || 0) + 1, part.bulkPricing) < part.price && (
                                                     <span className="text-[6px] text-gray-400 line-through font-medium opacity-70 leading-none mb-0.5">
                                                         {formatCurrency(part.price).replace('₫', '')}
                                                     </span>
                                                 )}
-                                                <span>+{formatCurrency(getEffectivePrice(part)).replace('₫', '')}</span>
+                                                <span>+{formatCurrency(getEffectivePrice(part, (partCounts[String(part.id).trim()] || 0) + 1, part.bulkPricing)).replace('₫', '')}</span>
                                             </div>
                                         </button>
                                     ))}

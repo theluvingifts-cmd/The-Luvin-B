@@ -35,6 +35,9 @@ const VALID_REVENUE_STATUSES = [
 
 const ConversionFunnel = ({ stats }: { stats: any }) => {
     const steps = [
+        { key: 'view_home', label: 'Xem Trang Chủ', icon: '🏠' },
+        { key: 'view_collection', label: 'Xem Bộ Sưu Tập', icon: '🧧' },
+        { key: 'view_product', label: 'Xem Sản Phẩm', icon: '👁️' },
         { key: 'builder_start', label: 'Bắt đầu thiết kế', icon: '🎨' },
         { key: 'step2_info', label: 'Nhập thông tin', icon: '📝' },
         { key: 'step3_parts', label: 'Phối nhân vật', icon: '🧍' },
@@ -44,12 +47,12 @@ const ConversionFunnel = ({ stats }: { stats: any }) => {
         { key: 'order_complete', label: 'Đặt hàng thành công', icon: '🎉' },
     ];
 
-    const maxVal = stats?.builder_start_count || 1;
+    const maxVal = stats?.view_home_count || stats?.view_collection_count || stats?.view_product_count || stats?.builder_start_count || 1;
 
     return (
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-full">
             <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wider mb-6 flex items-center gap-2">
-                <span>📊</span> Phễu chuyển đổi (Tích lũy)
+                <span>📊</span> Phễu chuyển đổi (Bộ lọc)
             </h4>
             <div className="space-y-4">
                 {steps.map((step, idx) => {
@@ -292,7 +295,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             if (startDate && endDate) {
                 const [costs, funnel] = await Promise.all([
                     getAdsCosts(startDate, endDate),
-                    getFunnelStats()
+                    getFunnelStats(startDate, endDate)
                 ]);
                 setDailyAdsCosts(costs);
                 setFunnelStats(funnel);
@@ -521,7 +524,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             }
         }
 
-        return { revenue, profit: netProfit, profitGrowth, revenueGrowth, orderCount, validOrderCount, orderGrowth, inventory, chartData, totalAdsCost, totalCodPending };
+        const locationStats: Record<string, number> = {};
+        allCurrentOrders.forEach(order => {
+            let province = order.customer.province;
+            
+            // Try to extract from address if missing
+            if (!province && order.customer.address) {
+                const parts = order.customer.address.split(',').map(p => p.trim());
+                province = parts[parts.length - 1];
+            }
+            
+            const normalizedProvince = province || 'Chưa rõ';
+            locationStats[normalizedProvince] = (locationStats[normalizedProvince] || 0) + 1;
+        });
+
+        return { revenue, profit: netProfit, profitGrowth, revenueGrowth, orderCount, validOrderCount, orderGrowth, inventory, chartData, totalAdsCost, totalCodPending, locationStats };
     }, [orders, startDate, endDate, allKnownParts, frames, dailyAdsCosts, granularity]); 
 
     return (
@@ -620,16 +637,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
             </div>
 
             {lowStockItems.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm animate-pulse">
-                    <div className="p-2 bg-red-100 rounded-full text-red-600">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-4 items-start shadow-sm">
+                    <div className="p-2 bg-red-100 rounded-full text-red-600 flex-shrink-0">
+                        <svg className="w-5 h-5 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     </div>
-                    <div className="flex-grow">
-                        <h4 className="font-bold text-red-800 text-sm mb-1">Cảnh báo tồn kho thấp ({lowStockItems.length})</h4>
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <div className="flex-grow min-w-0">
+                        <h4 className="font-bold text-red-800 text-sm mb-2 flex items-center gap-2">
+                            Cảnh báo tồn kho thấp ({lowStockItems.length})
+                            <span className="text-[10px] bg-red-100 px-1.5 py-0.5 rounded text-red-700 font-black">STOCK {'<'} 10</span>
+                        </h4>
+                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto no-scrollbar py-1">
                             {lowStockItems.map((item, idx) => (
-                                <span key={idx} className="inline-flex items-center gap-1 bg-white border border-red-200 px-2 py-1 rounded text-xs text-red-600 font-medium whitespace-nowrap">
-                                    {item.name}: <b>{item.stock}</b>
+                                <span key={idx} className="inline-flex items-center gap-1.5 bg-white border border-red-200 px-2.5 py-1 rounded-lg text-[11px] text-red-600 font-bold shadow-sm hover:border-red-400 transition-colors">
+                                    <span className="opacity-50 text-[9px] uppercase">{item.type}</span>
+                                    {item.name}: <b className="text-red-700 bg-red-50 px-1 rounded">{item.stock}</b>
                                 </span>
                             ))}
                         </div>
@@ -645,7 +666,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                          <ConversionFunnel stats={funnelStats} />
-                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col items-center justify-center gap-4">
+                         
+                         <div className="space-y-6">
+                            {/* Location Stats */}
+                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                                <h4 className="font-bold text-sm text-gray-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+                                    <span>📍</span> Phân bổ khách hàng (Tỉnh thành)
+                                </h4>
+                                <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                                    {(Object.entries(analytics.locationStats) as [string, number][])
+                                        .filter(([province]) => province !== 'Chưa rõ' || orders.length > 0)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([province, count], idx) => {
+                                            const total = orders.length || 1;
+                                            const percent = Math.round((count / total) * 100);
+                                            return (
+                                                <div key={province} className="group">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[11px] font-bold text-gray-600 flex items-center gap-2">
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${province === 'Chưa rõ' ? 'bg-gray-300' : 'bg-blue-400'} group-hover:scale-125 transition-transform`}></span>
+                                                            {province}
+                                                        </span>
+                                                        <div className="text-right">
+                                                            <span className="text-[11px] font-black text-gray-900">{count} đơn</span>
+                                                            <span className="text-[10px] text-gray-400 ml-1">({percent}%)</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={`h-full ${province === 'Chưa rõ' ? 'bg-gray-200' : 'bg-gradient-to-r from-blue-300 to-blue-500'} rounded-full transition-all duration-1000`}
+                                                            style={{ width: `${percent}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                    {Object.keys(analytics.locationStats).length === 0 && (
+                                        <div className="text-center py-8 text-gray-400 text-xs italic">
+                                            Chưa có dữ liệu giao hàng
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col items-center justify-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
                             </div>
@@ -682,8 +747,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                          </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="space-y-4 h-full flex flex-col">
+            <div className="space-y-4 h-full flex flex-col">
                     <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Bán chạy nhất</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1" style={{maxHeight: 'calc(100vh - 200px)'}}>
                         <FullItemsCard title="Khung" data={analytics.inventory.frames} allKnownParts={allKnownParts} />

@@ -101,6 +101,27 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     }
     
     // 3. DETAILED PARTS BREAKDOWN
+    // Pre-calculate total part counts across both characters and draggable items for unified bulk pricing
+    const unifiedPartCounts: Record<string, number> = {};
+    const safeInc = (id?: string | number) => {
+        if (!id) return;
+        const sid = String(id).trim();
+        unifiedPartCounts[sid] = (unifiedPartCounts[sid] || 0) + 1;
+    };
+    
+    config.characters.forEach(char => {
+        safeInc(char.hair?.id);
+        safeInc(char.hat?.id);
+        safeInc(char.shirt?.id);
+        safeInc(char.pants?.id);
+        safeInc(char.set?.id);
+        safeInc(char.face?.id);
+    });
+
+    config.draggableItems.forEach(item => {
+        safeInc(item.partId);
+    });
+
     config.characters.forEach((char, index) => {
         const charLabel = `(NV${index + 1})`;
         if (char.customPrintPrice && char.customPrintPrice > 0) {
@@ -110,14 +131,15 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 
         const addPartCost = (part: LegoPart | undefined, typeLabel: string) => {
             if (!part) return;
-            const effPrice = getEffectivePrice(part);
+            const quantity = unifiedPartCounts[String(part.id).trim()] || 1;
+            const effPrice = getEffectivePrice(part, quantity, part.bulkPricing);
             if (effPrice > 0) {
                 total += effPrice;
                 breakdown.push({
                     label: `${part.name} ${charLabel}`,
                     value: effPrice,
                     originalValue: part.price > effPrice ? part.price : undefined,
-                    details: typeLabel
+                    details: (part.price > effPrice) ? `${typeLabel} (Combo ${quantity})` : typeLabel
                 });
             }
         };
@@ -152,17 +174,10 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     });
 
     // 4. DRAGGABLE ITEMS
-    const partCounts: Record<string, number> = {};
-    config.draggableItems.forEach((item) => {
-        if (item.partId) {
-            partCounts[item.partId] = (partCounts[item.partId] || 0) + 1;
-        }
-    });
-
     config.draggableItems.forEach((item) => {
         const part = allParts[item.partId];
         if (part) {
-            const quantity = partCounts[item.partId] || 1;
+            const quantity = unifiedPartCounts[String(item.partId).trim()] || 1;
             const effPrice = getEffectivePrice(part, quantity, part.bulkPricing);
             const colorPrice = item.selectedColor?.price || 0;
             if (effPrice > 0) {
