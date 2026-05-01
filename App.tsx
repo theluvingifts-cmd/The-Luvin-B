@@ -218,6 +218,15 @@ const App: React.FC = () => {
       }
   }, [storeConfig]);
 
+  const refreshTemplates = async () => {
+    try {
+        const tpls = await getAllTemplates();
+        if (tpls && tpls.length > 0) setTemplates(tpls);
+    } catch (error) {
+        console.error("Error refreshing templates:", error);
+    }
+  };
+
   useEffect(() => {
       const fetchData = async () => {
           try {
@@ -372,6 +381,8 @@ const App: React.FC = () => {
     const res = await createOrder(orderData);
     if (res.success && res.data) {
         setCurrentOrder(res.data);
+        // Refresh templates to show new purchase counts
+        refreshTemplates();
         try {
             const rawSaved = localStorage.getItem('my_orders');
             let saved = rawSaved ? JSON.parse(rawSaved) : [];

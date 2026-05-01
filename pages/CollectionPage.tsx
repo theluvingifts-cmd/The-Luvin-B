@@ -460,34 +460,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return groups;
     }, [customConfig]);
 
-    const partCounts = useMemo(() => {
-        if (!customConfig) return {};
-        const counts: Record<string, number> = {};
-        
-        const safeInc = (id?: string | number) => {
-            if (!id) return;
-            const sid = String(id).trim();
-            counts[sid] = (counts[sid] || 0) + 1;
-        };
-
-        // Count draggable items
-        customConfig.draggableItems.forEach(item => {
-            safeInc(item.partId);
-        });
-
-        // Count character parts (shirt, pants, hat, etc.)
-        customConfig.characters.forEach(char => {
-            safeInc(char.shirt?.id);
-            safeInc(char.pants?.id);
-            safeInc(char.hat?.id);
-            safeInc(char.hair?.id);
-            safeInc(char.face?.id);
-            safeInc(char.set?.id);
-        });
-
-        return counts;
-    }, [customConfig]);
-
     const groupedTemplateCharms = useMemo(() => {
         if (!selectedTemplate || !customConfig) return [];
         const groups: Record<string, { key: string, partId: string, originalItems: DraggableItem[], part: LegoPart, selectedColor?: OutfitColor }> = {};
@@ -918,9 +890,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     {customConfig.characters.map((char, charIdx) => {
                                         if (!char.hat) return null;
                                         const hat = char.hat;
-                                        const totalHatCount = partCounts[String(hat.id).trim()] || 0;
-                                        const effPrice = getEffectivePrice(hat, totalHatCount, hat.bulkPricing);
-                                        
                                         return (
                                             <div 
                                                 key={`char-hat-${char.id}`}
@@ -931,16 +900,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 </div>
                                                 <div className="flex-grow text-left">
                                                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{hat.name} (NV {charIdx + 1})</p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <p className="text-[10px] text-primary font-bold">
-                                                            {formatCurrency(effPrice + (char.selectedHatColor?.price || 0))}
-                                                        </p>
-                                                        {effPrice < hat.price && (
-                                                            <p className="text-[8px] text-gray-400 line-through font-medium">
-                                                                {formatCurrency(hat.price)}
-                                                            </p>
-                                                        )}
-                                                    </div>
+                                                    <p className="text-[10px] text-primary font-bold">{formatCurrency(hat.price || 0)}</p>
                                                     
                                                     {/* Color selection for the hat */}
                                                     {hat.colors && hat.colors.length > 0 && (
@@ -994,8 +954,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         const maxCount = originalItems.length;
                                         const isSelected = currentCount > 0;
 
-                                        const totalPartCount = partCounts[String(partId).trim()] || 0;
-
                                         return (
                                             <div 
                                                 key={key}
@@ -1009,9 +967,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                         <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{part?.name || 'Phụ kiện'}</p>
                                                         <div className="flex items-center gap-1.5">
                                                             <p className="text-[10px] text-primary font-bold">
-                                                                {formatCurrency(getEffectivePrice(part, totalPartCount, part?.bulkPricing) + (selectedColor?.price || 0))}
+                                                                {formatCurrency(getEffectivePrice(part, currentCount, part?.bulkPricing) + (selectedColor?.price || 0))}
                                                             </p>
-                                                            {part && (getEffectivePrice(part, totalPartCount, part.bulkPricing) < part.price) && (
+                                                            {part && (getEffectivePrice(part, currentCount, part.bulkPricing) < part.price) && (
                                                                 <p className="text-[8px] text-gray-400 line-through font-medium">
                                                                     {formatCurrency(part.price)}
                                                                 </p>
@@ -1080,8 +1038,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="grid grid-cols-1 gap-2">
                                     {groupedAddedExtraCharms.map((group) => {
                                         const { part, items, partId, selectedColor, key } = group;
-                                        const totalPartCount = partCounts[String(partId).trim()] || 0;
-                                        
                                         return (
                                             <div key={key} className="flex flex-col p-3 rounded-2xl border border-primary/10 bg-primary/5 space-y-3">
                                                 <div className="flex items-center gap-4">
@@ -1092,9 +1048,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                         <p className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{part?.name}</p>
                                                         <div className="flex items-center gap-1.5">
                                                             <p className="text-[9px] text-primary font-bold">
-                                                                {formatCurrency(getEffectivePrice(part, totalPartCount, part?.bulkPricing) + (selectedColor?.price || 0))}
+                                                                {formatCurrency(getEffectivePrice(part, items.length, part?.bulkPricing))}
                                                             </p>
-                                                            {part && (getEffectivePrice(part, totalPartCount, part.bulkPricing) < part.price) && (
+                                                            {part && (getEffectivePrice(part, items.length, part.bulkPricing) < part.price) && (
                                                                 <p className="text-[8px] text-gray-400 line-through font-medium">
                                                                     {formatCurrency(part.price)}
                                                                 </p>
@@ -1180,12 +1136,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 referrerPolicy="no-referrer"
                                             />
                                             <div className="absolute bottom-0 right-0 bg-primary/10 text-primary rounded-tl-xl px-1.5 py-0.5 text-[8px] font-black flex flex-col items-end">
-                                                {part.salePrice && getEffectivePrice(part, (partCounts[String(part.id).trim()] || 0) + 1, part.bulkPricing) < part.price && (
+                                                {part.salePrice && getEffectivePrice(part) < part.price && (
                                                     <span className="text-[6px] text-gray-400 line-through font-medium opacity-70 leading-none mb-0.5">
                                                         {formatCurrency(part.price).replace('₫', '')}
                                                     </span>
                                                 )}
-                                                <span>+{formatCurrency(getEffectivePrice(part, (partCounts[String(part.id).trim()] || 0) + 1, part.bulkPricing)).replace('₫', '')}</span>
+                                                <span>+{formatCurrency(getEffectivePrice(part)).replace('₫', '')}</span>
                                             </div>
                                         </button>
                                     ))}

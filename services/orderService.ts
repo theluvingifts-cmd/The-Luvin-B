@@ -106,7 +106,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         // CẬP NHẬT LƯỢT MUA CHO TEMPLATE
         for (const item of finalOrder.items) {
             if (item.templateId) {
-                await incrementTemplatePurchaseCount(item.templateId);
+                const qty = item.quantity || 1;
+                await incrementTemplatePurchaseCount(item.templateId, qty);
             }
         }
 
