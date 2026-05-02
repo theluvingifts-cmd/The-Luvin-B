@@ -158,7 +158,23 @@ const App: React.FC = () => {
   }, [cartItems]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(() => {
+    try {
+      const saved = localStorage.getItem('last_order_result');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (currentOrder) {
+      localStorage.setItem('last_order_result', safeJsonStringify(currentOrder));
+    } else {
+      localStorage.removeItem('last_order_result');
+    }
+  }, [currentOrder]);
+
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); 
   
