@@ -82,47 +82,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   useEffect(() => {
     getStoreConfig().then(cfg => setStoreConfig(cfg));
-    if (!initialOrder) {
-      trackFunnelStep('checkout_start');
-      
-      // Load draft from localStorage
-      const draft = localStorage.getItem('checkout_draft');
-      if (draft) {
-        try {
-          const data = JSON.parse(draft);
-          if (data.name) setName(data.name);
-          if (data.phone) setPhone(data.phone);
-          if (data.email) setEmail(data.email);
-          if (data.street) setStreet(data.street);
-          if (data.deliveryDate) setDeliveryDate(data.deliveryDate);
-          if (data.notes) setNotes(data.notes);
-          if (data.demoContact) setDemoContact(data.demoContact);
-          if (data.selectedProvince) setSelectedProvince(data.selectedProvince);
-          if (data.selectedDistrict) setSelectedDistrict(data.selectedDistrict);
-          if (data.selectedWard) setSelectedWard(data.selectedWard);
-          if (data.shippingOption) setShippingOption(data.shippingOption);
-          if (data.addGiftBox !== undefined) setAddGiftBox(data.addGiftBox);
-          if (data.paymentMethod) setPaymentMethod(data.paymentMethod);
-          if (data.voucherCode) setVoucherCode(data.voucherCode);
-          if (data.appliedVoucher) setAppliedVoucher(data.appliedVoucher);
-        } catch (e) {
-          console.error("Error loading checkout draft", e);
-        }
-      }
-    }
+    if (!initialOrder) trackFunnelStep('checkout_start');
   }, []);
-
-  // Save draft to localStorage
-  useEffect(() => {
-    if (!initialOrder) {
-      const draftData = {
-        name, phone, email, street, notes, demoContact,
-        deliveryDate, selectedProvince, selectedDistrict, selectedWard,
-        shippingOption, addGiftBox, paymentMethod, voucherCode, appliedVoucher
-      };
-      localStorage.setItem('checkout_draft', JSON.stringify(draftData));
-    }
-  }, [name, phone, email, street, notes, demoContact, deliveryDate, selectedProvince, selectedDistrict, selectedWard, shippingOption, addGiftBox, paymentMethod, voucherCode, appliedVoucher, initialOrder]);
 
   useEffect(() => {
       if (initialOrder) {
@@ -453,7 +414,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         // Save phone for referral system
         localStorage.setItem('last_customer_phone', phone);
         localStorage.removeItem('referred_by'); // Clear ref after use
-        localStorage.removeItem('checkout_draft'); // Clear draft after successful place
 
         if (appliedVoucher) {
             await incrementVoucherUsage(appliedVoucher.code);
