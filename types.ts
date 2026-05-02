@@ -217,6 +217,7 @@ export interface Order {
   commissionAmount?: number;
   commissionPaid?: boolean;
   imagesCleaned?: boolean;
+  countedInStats?: boolean; // Flag to prevent duplicate increments
 }
 
 export interface SavedDesign {

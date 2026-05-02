@@ -2,7 +2,7 @@
 // services/orderService.ts
 import { db } from '../config/firebase';
 // Standard modular imports from firebase/firestore
-import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer, runTransaction, increment as firestoreIncrement } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadFile } from './uploadService';
 import { adjustStock } from './productService';
@@ -86,10 +86,12 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
     }));
 };
 
-// 1. Hàm tạo đơn hàng mới
+// 1. Hàm tạo đơn hàng mới (VỚI TRANSACTION ĐỂ ĐẢM BẢO ATOMIC VÀ IDEMPOTENCY)
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
+        // A. CHUẨN BỊ ẢNH (Bên ngoài transaction vì upload là async ngoài DB)
         const itemsWithImages = await processOrderItemsImages(order.items);
+        
         const timestamp = Date.now();
         const finalOrder: Order = {
             ...order,
@@ -98,27 +100,48 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             status: "Chờ thanh toán",
             internalNotes: "",
             isUrgent: false,
-            adminDeadline: ""
+            adminDeadline: "",
+            countedInStats: true // Đánh dấu đơn hàng này đã được tính vào thống kê
         };
-        const sanitizedOrder = cleanForFirestore(finalOrder);
-        await setDoc(doc(db, "orders", order.id), sanitizedOrder);
-        
-        // CẬP NHẬT LƯỢT MUA CHO TEMPLATE
-        for (const item of finalOrder.items) {
-            if (item.templateId) {
-                const qty = item.quantity || 1;
-                await incrementTemplatePurchaseCount(item.templateId, qty);
+
+        const orderRef = doc(db, "orders", order.id);
+
+        await runTransaction(db, async (transaction) => {
+            const orderDoc = await transaction.get(orderRef);
+            
+            // KIỂM TRA TRÙNG LẶP: Nếu đơn đã tồn tại và đã được tính stats, thoát sớm
+            if (orderDoc.exists() && orderDoc.data()?.countedInStats) {
+                console.warn(`Order ${order.id} was already counted in stats. Skipping increments.`);
+                transaction.set(orderRef, cleanForFirestore(finalOrder));
+                return;
             }
-        }
 
-        const partsUsage = countPartsInOrder(finalOrder.items);
-        const stockAdjustments: Record<string, number> = {};
-        for (const [partId, qty] of Object.entries(partsUsage)) {
-            stockAdjustments[partId] = -qty;
-        }
-        adjustStock(stockAdjustments);
+            // 1. CẬP NHẬT LƯỢT MUA CHO TEMPLATE
+            for (const item of finalOrder.items) {
+                if (item.templateId) {
+                    const tplRef = doc(db, "templates", item.templateId);
+                    const qty = item.quantity || 1;
+                    transaction.update(tplRef, {
+                        purchaseCount: firestoreIncrement(qty)
+                    });
+                }
+            }
 
-        // ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH
+            // 2. CẬP NHẬT TỒN KHO LINH KIỆN
+            const partsUsage = countPartsInOrder(finalOrder.items);
+            for (const [partId, qty] of Object.entries(partsUsage)) {
+                if (!qty) continue;
+                const partRef = doc(db, "lego_parts", partId);
+                transaction.update(partRef, {
+                    stock: firestoreIncrement(-qty)
+                });
+            }
+
+            // 3. LƯU ĐƠN HÀNG VÀO FIRESTORE
+            transaction.set(orderRef, cleanForFirestore(finalOrder));
+        });
+
+        // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async, không cần transaction)
         try {
             const config = await getStoreConfig();
             if (config && config.enablePancakePush) {
@@ -145,7 +168,6 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             }
         } catch (pancakeError) {
             console.error("Lỗi khi đẩy đơn sang Pancake:", pancakeError);
-            // Không chặn quy trình tạo đơn nếu Pancake lỗi
         }
 
         return { success: true, data: finalOrder };
