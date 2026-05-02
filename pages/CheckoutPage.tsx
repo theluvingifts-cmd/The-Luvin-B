@@ -277,7 +277,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   const lastOrder = history[0];
                   
                   const hasConfirmedOrder = history.some(order => 
-                    !['Waiting for payment', 'Cancelled', 'Deleted'].includes(order.status)
+                    order.status === 'Đã giao hàng'
                   );
 
                   if (hasConfirmedOrder) {
