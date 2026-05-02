@@ -59,6 +59,7 @@
               'fade-in': 'fadeIn 0.5s ease-out forwards',
               'bounce-small': 'bounceSmall 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               'subtle-pulse': 'subtlePulse 2s infinite ease-in-out',
+              'bounce-slow': 'bounceSlow 3s infinite',
             },
             keyframes: {
               marquee: {
@@ -72,6 +73,10 @@
               bounceSmall: {
                 '0%, 100%': { transform: 'scale(1)' },
                 '50%': { transform: 'scale(0.95)' },
+              },
+              bounceSlow: {
+                '0%, 100%': { transform: 'translateY(-10%)', animationTimingFunction: 'cubic-bezier(0.8,0,1,1)' },
+                '50%': { transform: 'none', animationTimingFunction: 'cubic-bezier(0,0,0.2,1)' },
               },
               subtlePulse: {
                 '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 163, 181, 0.4)' },

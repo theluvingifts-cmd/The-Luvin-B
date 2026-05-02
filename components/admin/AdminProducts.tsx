@@ -315,7 +315,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     </button>
                                     {productCategory === 'all' && productSearch === '' && (
                                         <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
-                                            <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                            <span className="text-[10px]">Lướt xuống để chỉnh mẫu</span>
                                             <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -437,7 +437,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     </div>
                                     {frameSearch === '' && (
                                         <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
-                                            <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                            <span className="text-[10px]">Lướt xuống để chỉnh mẫu</span>
                                             <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -572,7 +572,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         </select>
                                         {bgSearch === '' && bgCategoryFilter === 'all' && bgTypeFilter === 'all' && (
                                             <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
-                                                <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                                <span className="text-[10px]">Lướt xuống để chỉnh mẫu</span>
                                                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                                 </svg>
@@ -682,7 +682,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         </select>
                                         {templateSearch === '' && templateCategory === 'all' && (
                                             <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
-                                                <span className="text-[10px]">Cuộn xuống để chỉnh mẫu</span>
+                                                <span className="text-[10px]">Lướt xuống để chỉnh mẫu</span>
                                                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                                 </svg>

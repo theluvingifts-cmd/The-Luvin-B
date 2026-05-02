@@ -629,11 +629,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <div className="px-4 py-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
-                            <div className="flex items-center gap-1.5 animate-bounce">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">
+                            <div className="flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-white/10 mt-1 self-start cursor-pointer hover:bg-black transition-all active:scale-95 group overflow-hidden" onClick={scrollToCustomize}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <span className="relative text-[9px] font-black uppercase tracking-[0.15em] text-white flex items-center gap-2">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-40"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary shadow-[0_0_8px_rgba(var(--color-primary),1)]"></span>
+                                    </span>
                                     {t('collection.quick_customize_title')}
                                 </span>
-                                <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3 h-3 text-white/70 animate-bounce group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
@@ -685,14 +690,19 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <div className="absolute bottom-6 inset-x-0 px-6 flex flex-col items-center gap-3">
                                         <button 
                                             onClick={scrollToCustomize}
-                                            className="w-full py-4 bg-white text-gray-900 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-black/20 flex items-center justify-center gap-2 hover:bg-gray-50 transition-all active:scale-95 sm:hidden border border-gray-100"
+                                            className="w-full py-4.5 bg-gray-900 text-white rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/30 flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95 sm:hidden border border-white/10"
                                         >
-                                            {t('collection.start_customizing')}
+                                            <span className="text-primary animate-pulse">✨</span> {t('collection.start_customizing')}
                                             <svg className="w-3.5 h-3.5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                                         </button>
-                                        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur rounded-full">
-                                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                                            <span className="text-[9px] text-white font-black uppercase tracking-widest">{t('collection.scroll_to_customize')}</span>
+                                        <div className="hidden sm:flex items-center gap-3 px-6 py-2.5 bg-black/60 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl">
+                                            <div className="flex items-center justify-center">
+                                                <div className="relative">
+                                                  <span className="absolute -inset-1 rounded-full bg-primary animate-ping opacity-20"></span>
+                                                  <span className="relative block w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--color-primary),0.8)]"></span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[9px] text-white font-black uppercase tracking-[0.25em]">{t('collection.scroll_to_customize')}</span>
                                         </div>
                                     </div>
                                 </>
