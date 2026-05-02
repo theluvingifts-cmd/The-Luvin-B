@@ -11,6 +11,7 @@ import { uploadFile } from '../../services/uploadService';
 import html2canvas from 'html2canvas';
 import { getStoreConfig } from '../../services/configService';
 import { getAllParts } from '../../services/productService';
+import { safeJsonStringify, cleanForFirestore } from '../../utils/helpers';
 
 const MUSEUM_FRAMES = [
     { id: 'gold_rect', nameKey: 'studio.museum.gold_rect', url: '' },
@@ -127,7 +128,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [existingBackgrounds, setExistingBackgrounds] = useState<PresetBackground[]>([]);
-    const [history, setHistory] = useState<string[]>([JSON.stringify(INITIAL_FRAME_CONFIG)]);
+    const [history, setHistory] = useState<string[]>(() => [safeJsonStringify(INITIAL_FRAME_CONFIG)]);
     const [historyIndex, setHistoryIndex] = useState(0);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
@@ -206,7 +207,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
             skipHistoryRef.current = false;
             return;
         }
-        const currentStr = JSON.stringify(config);
+        const currentStr = safeJsonStringify(config);
         if (currentStr !== history[historyIndex]) {
             setHistory(prev => {
                 const next = prev.slice(0, historyIndex + 1);
@@ -1435,7 +1436,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                             name: bgName,
                                             imageUrl: previewUrl,
                                             category: finalCategory,
-                                            config: { ...config, previewImageUrl: previewUrl },
+                                            config: cleanForFirestore({ ...config, previewImageUrl: previewUrl }),
                                             purchaseCount: 0
                                         };
                                         const success = editingBgId ? await updateTemplate(editingBgId, templateData) : await addTemplate(templateData);

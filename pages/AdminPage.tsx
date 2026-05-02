@@ -38,6 +38,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
     const [orders, setOrders] = useState<Order[]>([]);
+    const isInitialLoadRef = React.useRef(true);
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
     const [templates, setTemplates] = useState<CollectionTemplate[]>([]);
@@ -87,13 +88,28 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                     const ordersCollection = collection(db, 'orders');
                     const ordersQuery = query(ordersCollection, orderBy('createdAt', 'desc'));
 
+                    isInitialLoadRef.current = true; // Reset flag cho listener mới
                     unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
                         const ordersData: Order[] = [];
                         snapshot.forEach((doc) => {
                             ordersData.push(doc.data() as Order);
                         });
                         
+                        // Tự động load orders khi có đơn mới
+                        const hasNewAdded = snapshot.docChanges().some(change => change.type === 'added');
+                        if (hasNewAdded && !isInitialLoadRef.current) {
+                            handleTabChange('orders');
+                            if (showToast) showToast("🔔 CÓ ĐƠN HÀNG MỚI!", 'success');
+                            // Sound notification
+                            try {
+                                const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-20.mp3');
+                                audio.volume = 0.5;
+                                audio.play().catch(() => {});
+                            } catch (e) {}
+                        }
+
                         setOrders(ordersData);
+                        isInitialLoadRef.current = false;
                     }, (error) => {
                         console.error("Firestore onSnapshot Error:", error);
                         // Case: Missing index or permissions

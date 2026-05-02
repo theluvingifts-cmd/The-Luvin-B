@@ -35,7 +35,7 @@ import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
 import CollaboratorPage from './pages/CollaboratorPage';
-import { categorizeParts } from './utils/helpers';
+import { categorizeParts, safeJsonStringify } from './utils/helpers';
 
 declare var confetti: any;
 
@@ -134,7 +134,7 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem(CACHE_KEY_DESIGN, JSON.stringify(config));
+    localStorage.setItem(CACHE_KEY_DESIGN, safeJsonStringify(config));
   }, [config]);
 
   const [cartItems, setCartItems] = useState<FrameConfig[]>(() => {
@@ -151,7 +151,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
       try {
-          localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
+          localStorage.setItem('shopping_cart', safeJsonStringify(cartItems));
       } catch (error) {
           console.warn("LocalStorage is full, cannot save cart items.");
       }
@@ -263,7 +263,7 @@ const App: React.FC = () => {
               const updatedConfig = docSnap.data() as StoreConfig;
               setStoreConfig(updatedConfig);
               try {
-                  localStorage.setItem('store_config', JSON.stringify(updatedConfig));
+                  localStorage.setItem('store_config', safeJsonStringify(updatedConfig));
               } catch(e) {}
               updateMetaTags(updatedConfig);
               // FIX: Cập nhật font real-time khi admin thay đổi font
@@ -388,7 +388,7 @@ const App: React.FC = () => {
             let saved = rawSaved ? JSON.parse(rawSaved) : [];
             const newEntry = { id: res.data.id, date: Date.now() };
             const updated = [newEntry, ...saved.filter((o: any) => o.id !== res.data.id)].slice(0, 5);
-            localStorage.setItem('my_orders', JSON.stringify(updated));
+            localStorage.setItem('my_orders', safeJsonStringify(updated));
         } catch (e) {}
         setCartItems([]); 
         navigateTo('order-confirmation');

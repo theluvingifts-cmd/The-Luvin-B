@@ -14,7 +14,7 @@ import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../util
 import { ZoomIcon } from '../components/ZoomIcon';
 import { getRecentOrders } from '../services/orderService';
 import { trackFunnelStep } from '../services/analyticsService'; 
-import { dataURLToBlob, preloadImage } from '../utils/helpers';
+import { dataURLToBlob, preloadImage, safeJsonStringify } from '../utils/helpers';
 import { saveSharedDesign, getSharedDesign, saveCTVDesign } from '../services/shareService';
 
 // Sub-components
@@ -383,7 +383,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   const [urgencyTimeLeft, setUrgencyTimeLeft] = useState(900);
   const urgencyTimerRef = useRef<any>(null);
 
-  const [history, setHistory] = useState<string[]>([JSON.stringify(config)]);
+  const [history, setHistory] = useState<string[]>(() => [safeJsonStringify(config)]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const skipHistoryRef = useRef(false);
 
@@ -398,7 +398,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         return;
     }
     
-    const configStr = JSON.stringify(config);
+    const configStr = safeJsonStringify(config);
     if (configStr !== history[historyIndex]) {
         setHistory(prev => {
             const next = prev.slice(0, historyIndex + 1);

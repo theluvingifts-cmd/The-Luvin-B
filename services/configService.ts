@@ -3,7 +3,7 @@ import { db } from '../config/firebase';
 // Standard firestore imports for modular SDK
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ThemeConfig, CustomFont, StaffMember } from '../types';
-import { cleanForFirestore } from '../utils/helpers';
+import { cleanForFirestore, safeJsonStringify } from '../utils/helpers';
 
 const CONFIG_DOC_ID = 'general';
 const CACHE_KEY = 'store_config_cache';
@@ -141,7 +141,7 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (data.b2bDiscountPercent === undefined) data.b2bDiscountPercent = 5;
             
             // Persist to cache
-            localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+            localStorage.setItem(CACHE_KEY, safeJsonStringify(data));
             return data;
         }
         return getCachedConfig() || { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
@@ -157,7 +157,7 @@ export const updateStoreConfig = async (config: Partial<StoreConfig>) => {
         await setDoc(doc(db, 'config', CONFIG_DOC_ID), cleaned, { merge: true });
         // Update cache
         const current = getCachedConfig() || {};
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ...current, ...config }));
+        localStorage.setItem(CACHE_KEY, safeJsonStringify({ ...current, ...config }));
         return true;
     } catch (error) {
         console.error("Error saving config:", error);
@@ -214,7 +214,7 @@ export const saveAdsCost = async (date: string, cost: number) => {
         const stored = localStorage.getItem('ads_costs');
         const allCosts: Record<string, number> = stored ? JSON.parse(stored) : {};
         allCosts[date] = cost;
-        localStorage.setItem('ads_costs', JSON.stringify(allCosts));
+        localStorage.setItem('ads_costs', safeJsonStringify(allCosts));
         
         return true;
     } catch (e) {

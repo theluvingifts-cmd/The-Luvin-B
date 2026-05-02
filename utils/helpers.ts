@@ -117,18 +117,48 @@ export const formatFullAddress = (customer: { address: string; ward?: string; di
 };
 
 /**
- * Removes undefined values from an object recursively to prevent Firestore errors.
+ * Chuyển đổi một đối tượng thành chuỗi JSON một cách an toàn,
+ * xử lý được các cấu trúc vòng (circular structure).
+ */
+export const safeJsonStringify = (obj: any): string => {
+    const cache = new Set();
+    return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) {
+                return '[Circular]';
+            }
+            cache.add(value);
+        }
+        return value;
+    });
+};
+
+/**
+ * Removes undefined values and handles complex/circular objects.
  */
 export const cleanForFirestore = (obj: any): any => {
     if (obj === null || obj === undefined) return obj;
     if (typeof obj !== 'object') return obj;
     
+    // Nếu là Array
     if (Array.isArray(obj)) {
         return obj
             .map(cleanForFirestore)
             .filter(item => item !== undefined);
     }
-    
+
+    // Kiểm tra xem có phải plain object không
+    const prototype = Object.getPrototypeOf(obj);
+    const isPlainObject = prototype === null || prototype === Object.prototype;
+
+    if (!isPlainObject) {
+        // Trả về type hoặc string representation cho các class lạ
+        if (typeof obj.toString === 'function' && obj.toString() !== '[object Object]') {
+            return obj.toString();
+        }
+        return undefined; // Bỏ qua các đối tượng phức tạp
+    }
+
     const newObj: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
