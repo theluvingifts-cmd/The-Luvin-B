@@ -1,9 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StoreConfig, getStoreConfig } from '../services/configService';
 import { getAllFrames } from '../services/frameService';
 import { FrameOption, LegoPart } from '../types';
 import { formatCurrency, CHARACTER_BASE_PRICE } from '../utils/pricing';
+import { ChevronRight } from 'lucide-react';
 
 interface BusinessPageProps {
     config?: StoreConfig;
@@ -16,6 +18,7 @@ interface BusinessPageProps {
 const B2B_HERO_IMG = "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=1974&auto=format&fit=crop";
 
 export const BusinessPage: React.FC<BusinessPageProps> = ({ config: propConfig, legoParts }) => {
+    const navigate = useNavigate();
     const [frames, setFrames] = useState<FrameOption[]>([]);
     const [selectedFrameId, setSelectedFrameId] = useState<string>('');
     const [charCount, setCharCount] = useState<number>(1);
@@ -171,7 +174,16 @@ export const BusinessPage: React.FC<BusinessPageProps> = ({ config: propConfig, 
 
                                     {/* Characters per Frame */}
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">2. Số nhân vật LEGO mỗi bộ</label>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block">2. Số nhân vật LEGO mỗi bộ</label>
+                                            <button 
+                                                onClick={() => navigate('/catalog')}
+                                                className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group"
+                                            >
+                                                Xem Kho Linh Kiện
+                                                <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                        </div>
                                         <div className="flex gap-3">
                                             {[1, 2, 3, 4].map(num => (
                                                 <button 

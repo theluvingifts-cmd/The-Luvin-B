@@ -1,7 +1,7 @@
 
 // types.ts
 
-export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv';
+export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv' | 'catalog';
 
 export type StaffRole = 'admin' | 'warehouse';
 
@@ -159,7 +159,7 @@ export interface FrameConfig {
 }
 
 export interface LegoCharacterConfig {
-  id: number;
+  id: number | string;
   hair?: LegoPart;
   face?: LegoPart;
   shirt?: LegoPart;

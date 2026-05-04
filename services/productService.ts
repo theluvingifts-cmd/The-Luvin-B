@@ -5,6 +5,7 @@ import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, increment, getDoc, query, orderBy } from 'firebase/firestore';
 import { LEGO_PARTS } from '../constants'; // Lấy dữ liệu mẫu ban đầu
 import type { LegoPart } from '../types';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 // Tên collection trong Firebase
 const COLLECTION_NAME = "lego_parts";
@@ -15,7 +16,10 @@ export const getAllParts = async (): Promise<LegoPart[]> => {
         const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
         let querySnapshot = await getDocs(q).catch(async (err) => {
             console.warn("Index not found or error, falling back to unordered fetch:", err);
-            return await getDocs(collection(db, COLLECTION_NAME));
+            return await getDocs(collection(db, COLLECTION_NAME)).catch(e => {
+                handleFirestoreError(e, OperationType.LIST, COLLECTION_NAME);
+                throw e;
+            });
         });
 
         const parts: LegoPart[] = [];
@@ -28,6 +32,7 @@ export const getAllParts = async (): Promise<LegoPart[]> => {
         
         return parts;
     } catch (error: any) {
+        if (error.message && error.message.includes('{')) throw error; // Already handled
         console.error("Lỗi lấy danh sách sản phẩm:", error);
         return [];
     }
@@ -36,12 +41,10 @@ export const getAllParts = async (): Promise<LegoPart[]> => {
 // 2. Hàm thêm sản phẩm mới
 export const addPart = async (part: LegoPart) => {
     try {
-        // Dùng part.id làm ID document luôn cho dễ quản lý
-        // Initialize order with a high number or based on count
         await setDoc(doc(db, COLLECTION_NAME, part.id), { ...part, order: 9999 });
         return true;
     } catch (error) {
-        console.error("Lỗi thêm sản phẩm:", error);
+        handleFirestoreError(error, OperationType.CREATE, `${COLLECTION_NAME}/${part.id}`);
         return false;
     }
 };
@@ -53,7 +56,7 @@ export const updatePart = async (partId: string, updates: Partial<LegoPart>) => 
         await updateDoc(partRef, updates);
         return true;
     } catch (error) {
-        console.error("Lỗi cập nhật sản phẩm:", error);
+        handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${partId}`);
         return false;
     }
 };
@@ -64,7 +67,7 @@ export const deletePart = async (partId: string) => {
         await deleteDoc(doc(db, COLLECTION_NAME, partId));
         return true;
     } catch (error) {
-        console.error("Lỗi xóa sản phẩm:", error);
+        handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${partId}`);
         return false;
     }
 };

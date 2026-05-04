@@ -890,7 +890,26 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             <div className="flex items-start gap-2 w-full">
                                 <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 mr-2 p-2 -ml-2 hover:bg-gray-100 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg></button>
                                 <div className="flex-grow">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1"><h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2">{selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}</h2><div className="mt-1 sm:mt-0"><StatusDropdown currentStatus={selectedOrder.status} onStatusChange={(status) => handleUpdate(selectedOrder.id, { status })} onDelete={handleDeleteOrder} canCancel={canCancelOrder} canDelete={canDeleteOrder} /></div></div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                                        <h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                            {selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
+                                        </h2>
+                                        <div className="mt-1 sm:mt-0">
+                                            <StatusDropdown 
+                                                currentStatus={selectedOrder.status} 
+                                                onStatusChange={(status) => {
+                                                    handleUpdate(selectedOrder.id, { status });
+                                                    if (status === 'Đã giao hàng' && !selectedOrder.thankYouEmailSent && selectedOrder.customer.email) {
+                                                        sendThankYouEmail(selectedOrder);
+                                                        handleUpdate(selectedOrder.id, { thankYouEmailSent: true }, false);
+                                                    }
+                                                }} 
+                                                onDelete={handleDeleteOrder} 
+                                                canCancel={canCancelOrder} 
+                                                canDelete={canDeleteOrder} 
+                                            />
+                                        </div>
+                                    </div>
                                     <p className="text-xs sm:text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
                                 </div>
                             </div>

@@ -34,6 +34,7 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
+import { CharacterCatalogPage } from './pages/CharacterCatalogPage';
 import CollaboratorPage from './pages/CollaboratorPage';
 import { categorizeParts, safeJsonStringify } from './utils/helpers';
 
@@ -444,6 +445,7 @@ const App: React.FC = () => {
                 <Route path="/about" element={<AboutPage config={storeConfig} />} />
                 <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />
                 <Route path="/business" element={<BusinessPage config={storeConfig} legoParts={legoParts} />} />
+                <Route path="/catalog" element={<CharacterCatalogPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>

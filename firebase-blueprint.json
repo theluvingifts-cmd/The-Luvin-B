@@ -79,9 +79,45 @@
         "order": { "type": "number" }
       },
       "required": ["id", "name", "url"]
+    },
+    "LegoPart": {
+      "title": "LegoPart",
+      "description": "A single LEGO part in the catalog.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female", "unisex"] }
+      },
+      "required": ["id", "name", "type", "imageUrl"]
+    },
+    "Order": {
+        "title": "Order",
+        "description": "A customer order.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "status": { "type": "string" },
+            "total": { "type": "number" },
+            "customer": { "type": "object" },
+            "createdAt": { "type": "number" }
+        },
+        "required": ["id", "status", "total"]
     }
   },
   "firestore": {
+    "/lego_parts/{partId}": {
+      "schema": "LegoPart",
+      "description": "Collection of LEGO parts."
+    },
+    "/orders/{orderId}": {
+        "schema": "Order",
+        "description": "Collection of orders."
+    },
     "/templates/{templateId}": {
       "schema": "Template",
       "description": "Collection of product templates."

@@ -9,6 +9,7 @@ export const translations: any = {
             checkout: "Thanh toán",
             admin: "Quản trị",
             business: "Doanh nghiệp",
+            catalog: "Linh kiện",
             lookup: "Tra cứu",
         },
         common: {
@@ -494,6 +495,7 @@ export const translations: any = {
             checkout: "Checkout",
             admin: "Admin",
             business: "Business",
+            catalog: "Catalog",
             lookup: "Order Lookup",
         },
         common: {
