@@ -11,6 +11,7 @@ import { getStoreConfig } from './configService';
 import { pushOrderToPancake, PancakeOrderData } from './pancakeService';
 import { sendOrderEmail, sendThankYouEmail } from './emailService';
 import { cleanForFirestore } from '../utils/helpers';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
@@ -105,42 +106,40 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             countedInStats: true // Đánh dấu đơn hàng này đã được tính vào thống kê
         };
 
-        const orderRef = doc(db, "orders", order.id);
+        // 1. LƯU ĐƠN HÀNG VÀO FIRESTORE (Primary Action)
+        const orderRef = doc(db, "orders", finalOrder.id);
+        await setDoc(orderRef, cleanForFirestore(finalOrder)).catch(err => {
+            handleFirestoreError(err, OperationType.WRITE, `orders/${finalOrder.id}`);
+        });
 
-        await runTransaction(db, async (transaction) => {
-            const orderDoc = await transaction.get(orderRef);
+        // 2. CẬP NHẬT LƯỢT MUA VÀ TỒN KHO (Secondary Actions - Wrapped in try-catch to not block order)
+        try {
+            const partsUsage = countPartsInOrder(finalOrder.items);
             
-            // KIỂM TRA TRÙNG LẶP: Nếu đơn đã tồn tại và đã được tính stats, thoát sớm
-            if (orderDoc.exists() && orderDoc.data()?.countedInStats) {
-                console.warn(`Order ${order.id} was already counted in stats. Skipping increments.`);
-                transaction.set(orderRef, cleanForFirestore(finalOrder));
-                return;
-            }
+            await runTransaction(db, async (transaction) => {
+                // Update templates purchase count
+                for (const item of finalOrder.items) {
+                    if (item.templateId) {
+                        const tplRef = doc(db, "templates", item.templateId);
+                        const qty = item.quantity || 1;
+                        transaction.update(tplRef, {
+                            purchaseCount: firestoreIncrement(qty)
+                        });
+                    }
+                }
 
-            // 1. CẬP NHẬT LƯỢT MUA CHO TEMPLATE
-            for (const item of finalOrder.items) {
-                if (item.templateId) {
-                    const tplRef = doc(db, "templates", item.templateId);
-                    const qty = item.quantity || 1;
-                    transaction.update(tplRef, {
-                        purchaseCount: firestoreIncrement(qty)
+                // Update lego parts stock
+                for (const [partId, qty] of Object.entries(partsUsage)) {
+                    if (!qty) continue;
+                    const partRef = doc(db, "lego_parts", partId);
+                    transaction.update(partRef, {
+                        stock: firestoreIncrement(-qty)
                     });
                 }
-            }
-
-            // 2. CẬP NHẬT TỒN KHO LINH KIỆN
-            const partsUsage = countPartsInOrder(finalOrder.items);
-            for (const [partId, qty] of Object.entries(partsUsage)) {
-                if (!qty) continue;
-                const partRef = doc(db, "lego_parts", partId);
-                transaction.update(partRef, {
-                    stock: firestoreIncrement(-qty)
-                });
-            }
-
-            // 3. LƯU ĐƠN HÀNG VÀO FIRESTORE
-            transaction.set(orderRef, cleanForFirestore(finalOrder));
-        });
+            });
+        } catch (secondaryError) {
+            console.warn("Could not update stock or template stats (likely permission restriction for guest), but order was placed successfully:", secondaryError);
+        }
 
         // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async, không cần transaction)
         try {

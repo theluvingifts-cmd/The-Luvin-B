@@ -64,6 +64,7 @@ export interface LegoPart {
   colors?: OutfitColor[];
   bulkPricing?: BulkPriceTier[]; 
   stock?: number;
+  gender?: 'male' | 'female' | 'unisex';
   order?: number;
   category?: string;
   isHot?: boolean;
