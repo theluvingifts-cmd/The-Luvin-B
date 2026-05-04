@@ -56,7 +56,9 @@ service cloud.firestore {
 
     match /templates/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      // Allow public to update ONLY the 'purchaseCount' field (for popularity tracking)
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['purchaseCount']));
     }
 
     match /feedbacks/{document=**} {

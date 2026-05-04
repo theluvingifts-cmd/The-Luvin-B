@@ -9,6 +9,7 @@ import { adjustStock } from './productService';
 import { incrementTemplatePurchaseCount } from './templateService';
 import { getStoreConfig } from './configService';
 import { pushOrderToPancake, PancakeOrderData } from './pancakeService';
+import { sendOrderEmail, sendThankYouEmail } from './emailService';
 import { cleanForFirestore } from '../utils/helpers';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
@@ -264,7 +265,27 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         if (updates.items && Array.isArray(updates.items)) {
             updates.items = await processOrderItemsImages(updates.items);
         }
+        
         const orderRef = doc(db, "orders", orderId);
+        
+        // KIỂM TRA TRẠNG THÁI GIAO HÀNG ĐỂ GỬI MAIL CẢM ƠN
+        if (updates.status === 'Đã giao hàng') {
+            const currentDoc = await getDoc(orderRef);
+            if (currentDoc.exists()) {
+                const currentData = currentDoc.data() as Order;
+                // Chỉ gửi nếu trạng thái trước đó chưa phải là đã giao và chưa gửi mail cảm ơn
+                if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
+                    // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
+                    updates.thankYouEmailSent = true;
+                    
+                    // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
+                    sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
+                        console.error("Lỗi khi gửi email cảm ơn tự động:", err);
+                    });
+                }
+            }
+        }
+
         const cleanUpdates = cleanForFirestore(updates);
         await updateDoc(orderRef, cleanUpdates);
         return true;

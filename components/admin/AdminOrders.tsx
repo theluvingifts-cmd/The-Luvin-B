@@ -4,6 +4,7 @@ import { Order, LegoPart, FrameOption, LegoCharacterConfig, DraggableItem, Frame
 import { db } from '../../config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../services/orderService';
+import { sendThankYouEmail } from '../../services/emailService';
 import { uploadFile } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
 import { calculatePrice, formatCurrency } from '../../utils/pricing';
@@ -200,6 +201,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
     const [adminDeadlineInput, setAdminDeadlineInput] = useState('');
     const [addingAccessoryToItemIndex, setAddingAccessoryToItemIndex] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSendingMail, setIsSendingMail] = useState(false);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -403,6 +405,24 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 alert("Đã xác nhận đóng gói thành công!");
             } else {
                 alert("LỖI: Không thể cập nhật trạng thái đơn hàng.");
+            }
+        }
+    };
+
+    const handleSendTestMail = async () => {
+        if (!selectedOrder) return;
+        if (!selectedOrder.customer.email) return alert("Đơn hàng này không có địa chỉ email để gửi!");
+        
+        if (confirm(`Gửi thử email cảm ơn & giới thiệu CTV đến: ${selectedOrder.customer.email}?`)) {
+            setIsSendingMail(true);
+            try {
+                const success = await sendThankYouEmail(selectedOrder);
+                if (success) alert("Đã gửi email test thành công! Hãy kiểm tra hộp thư (bao gồm cả thư rác).");
+                else alert("Gửi email thất bại. Vui lòng kiểm tra cấu hình SMTP.");
+            } catch (err) {
+                alert("Lỗi khi gọi API gửi mail.");
+            } finally {
+                setIsSendingMail(false);
             }
         }
     };
@@ -880,6 +900,13 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                      {role === 'warehouse' && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (<button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white p-2 sm:px-4 sm:py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"><span>✅</span> <span className="hidden sm:inline">Xong</span></button>)}
                                  </div>
                                  <div className="flex gap-2 mt-1">
+                                    <button 
+                                        onClick={handleSendTestMail} 
+                                        disabled={isSendingMail}
+                                        className="text-[10px] font-bold bg-pink-50 text-pink-600 px-2 py-1 rounded hover:bg-pink-100 flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                        {isSendingMail ? '...' : '📧 Gửi test mail cảm ơn'}
+                                    </button>
                                     {!isEditingOrder ? (<button onClick={startEditingOrder} disabled={isOrderPacked} className={`text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap ${isOrderPacked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{isOrderPacked ? 'Đã khoá' : 'Sửa chi tiết'}</button>) : (<div className="flex gap-2"><button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button><button onClick={saveOrderChanges} className="text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Lưu</button></div>)}
                                  </div>
                                  <label className="flex items-center gap-2 cursor-pointer select-none"><span className="text-xs font-medium text-gray-500">Gấp</span><input type="checkbox" className="accent-red-600 w-4 h-4" checked={selectedOrder.isUrgent || false} onChange={(e) => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} /></label>
