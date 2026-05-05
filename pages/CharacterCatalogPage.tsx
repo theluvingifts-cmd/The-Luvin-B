@@ -288,7 +288,7 @@ export const CharacterCatalogPage: React.FC = () => {
                             )}
                         </div>
                         <h1 className="text-4xl font-heading font-black text-gray-900 mb-4 leading-tight uppercase">
-                            Thư viện <span className="text-primary italic">Linh kiện LEGO</span>
+                            Thư viện <span className="text-primary italic">Phụ kiện LEGO</span>
                         </h1>
                         <p className="text-xs text-gray-400 font-bold max-w-xl leading-relaxed mb-8">
                             Dành riêng cho khách hàng sỉ và doanh nghiệp. Thiết kế nhanh danh sách nhân vật nam/nữ số lượng lớn và xem preview trực quan.
@@ -507,7 +507,7 @@ export const CharacterCatalogPage: React.FC = () => {
                         <table className="w-full text-left">
                             <thead>
                                  <tr className="bg-gray-50 border-b border-gray-100">
-                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Linh kiện</th>
+                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sản phẩm</th>
                                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:table-cell">Loại</th>
                                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mã ID</th>
                                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tồn kho</th>

@@ -9,7 +9,7 @@ export const translations: any = {
             checkout: "Thanh toán",
             admin: "Quản trị",
             business: "Doanh nghiệp",
-            catalog: "Linh kiện",
+            catalog: "Thư viện",
             lookup: "Tra cứu",
         },
         common: {

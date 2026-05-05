@@ -41,7 +41,6 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
     { label: t('nav.studio'), page: 'builder' }, 
     { label: t('nav.collection'), page: 'collection' }, 
     { label: t('nav.business'), page: 'business' },
-    { label: t('nav.catalog'), page: 'catalog' },
     { label: t('nav.lookup'), page: 'order-lookup' },
   ];
   

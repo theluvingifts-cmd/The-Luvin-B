@@ -176,13 +176,6 @@ export const BusinessPage: React.FC<BusinessPageProps> = ({ config: propConfig, 
                                     <div>
                                         <div className="flex items-center justify-between mb-4">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block">2. Số nhân vật LEGO mỗi bộ</label>
-                                            <button 
-                                                onClick={() => navigate('/catalog')}
-                                                className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group"
-                                            >
-                                                Xem Kho Linh Kiện
-                                                <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                                            </button>
                                         </div>
                                         <div className="flex gap-3">
                                             {[1, 2, 3, 4].map(num => (

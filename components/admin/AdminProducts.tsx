@@ -362,7 +362,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 }`}
                             >
-                                {tab === 'parts' ? '🧩 Linh kiện' : 
+                                {tab === 'parts' ? '🧩 Nhân vật & Phụ kiện' : 
                                  tab === 'frames' ? '🖼️ Khung' : 
                                  tab === 'backgrounds' ? '🌄 Hình nền' : '📋 Mẫu thiết kế'}
                             </button>
