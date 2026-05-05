@@ -1255,7 +1255,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                     ))}
                                     {config.draggableItems.map(i => (
                                         <div key={i.id} onClick={() => setSelectedItemId(`item-${i.id}`)} className={`p-2 border rounded-lg text-xs flex justify-between items-center cursor-pointer ${selectedItemId === `item-${i.id}` ? 'border-blue-500 bg-blue-50' : ''}`}>
-                                            <span>{i.type === 'charm' ? 'Sticker/Ảnh' : 'Phụ kiện/Nhân vật'}</span>
+                                            <span>{i.type === 'charm' ? 'Sticker/Ảnh' : 'Linh kiện'}</span>
                                         </div>
                                     ))}
                                     {(config.shapes || []).map(s => (

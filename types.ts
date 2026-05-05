@@ -1,7 +1,7 @@
 
 // types.ts
 
-export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv' | 'catalog';
+export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv';
 
 export type StaffRole = 'admin' | 'warehouse';
 
@@ -64,7 +64,6 @@ export interface LegoPart {
   colors?: OutfitColor[];
   bulkPricing?: BulkPriceTier[]; 
   stock?: number;
-  gender?: 'male' | 'female' | 'unisex';
   order?: number;
   category?: string;
   isHot?: boolean;
@@ -160,7 +159,7 @@ export interface FrameConfig {
 }
 
 export interface LegoCharacterConfig {
-  id: number | string;
+  id: number;
   hair?: LegoPart;
   face?: LegoPart;
   shirt?: LegoPart;
@@ -218,8 +217,6 @@ export interface Order {
   commissionAmount?: number;
   commissionPaid?: boolean;
   imagesCleaned?: boolean;
-  countedInStats?: boolean; 
-  thankYouEmailSent?: boolean; // Flag to prevent duplicate thank you emails
 }
 
 export interface SavedDesign {

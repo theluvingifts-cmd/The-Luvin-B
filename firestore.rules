@@ -3,121 +3,108 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 0. Global Safety Net
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper functions
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'jinbduong@gmail.com' ||
+        request.auth.token.email == 'theluvin.gifts@gmail.com' ||
+        request.auth.token.email.matches('.*admin.*')
+      );
     }
-
-    // --- Helper Functions ---
     
-    function isSignedIn() {
+    function isStaff() {
       return request.auth != null;
     }
 
-    function isVerifiedAdmin() {
-      return isSignedIn() && (
-        request.auth.token.get('email', '') == 'jinbduong@gmail.com' ||
-        request.auth.token.get('email', '') == 'theluvin.gifts@gmail.com' ||
-        request.auth.token.get('email', '') == 'theluvingifts@gmail.com' ||
-        (request.auth.token.get('email', '').matches('.*admin.*') && request.auth.token.get('email_verified', false) == true)
-      );
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    // --- Validation Helpers ---
-
-    function isValidLegoPart(data) {
-      return data.keys().hasAll(['id', 'name', 'type', 'imageUrl']) &&
-             data.id is string && data.id.size() <= 50 &&
-             data.name is string && data.name.size() <= 200 &&
-             data.type is string && data.type.size() <= 50 &&
-             data.imageUrl is string && data.imageUrl.size() <= 1000 &&
-             (!('stock' in data) || data.stock is number) &&
-             (!('gender' in data) || data.gender in ['male', 'female', 'unisex']);
-    }
-
-    // --- Collection Rules ---
-
-    // 1. LEGO PARTS
-    match /lego_parts/{partId} {
-      allow get: if true;
-      allow list: if true; // Public catalog
-      allow create, delete: if isVerifiedAdmin() && isValidId(partId);
-      
-      allow update: if (
-        isVerifiedAdmin() ||
-        // Action: Stock Adjustment (Public/Checkout)
-        (incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'lastUpdated']) && incoming().stock is number)
-      ) && isValidLegoPart(incoming());
-    }
-
-    // 2. ORDERS
+    // RULES FOR ORDERS
     match /orders/{orderId} {
-      allow get: if true; // Allow customer to see their order if they have the ID
-      allow list: if isVerifiedAdmin() || (resource.data.customer.phone != null); // Allow listing if results are filtered by phone (Firestore handles the filter enforcement)
-      allow create: if true; // Guest order
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'paymentProofUrl', 'paymentProofUploadedAt']));
-      allow delete: if isVerifiedAdmin();
-    }
-
-    // 3. ANALYTICS
-    match /analytics/{docId} {
-      allow read: if isVerifiedAdmin();
-      allow write: if true; // Guest funnel tracking
-    }
-
-    // 4. SHARED DESIGNS
-    match /shared_designs/{designId} {
-      allow get: if true;
-      allow list: if isVerifiedAdmin();
+      allow read: if true;
       allow create: if true;
-      allow update, delete: if isVerifiedAdmin();
+      
+      // Allow customers to update their own orders (e.g. status, items, address)
+      // Since we don't have customer auth, we allow public updates for now based on Order ID knowledge.
+      allow update: if true; 
+      
+      allow delete: if isAdmin();
     }
 
-    // 5. COLLABORATORS (CTVs)
+    // RULES FOR PRODUCTS (Inventory)
+    match /lego_parts/{document=**} {
+      allow read: if true;
+      
+      // Allow admin to do anything
+      allow create, delete: if isAdmin();
+      
+      // Allow public to update ONLY the 'stock' field (for inventory adjustment)
+      // OR allow admin to update everything
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+    }
+
+    // RULES FOR FRAMES (Inventory)
+    match /frames/{document=**} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+    }
+
+    // OTHER COLLECTIONS (Admin Only Write)
+    match /backgrounds/{document=**} {
+      allow read: if true;
+      // Explicitly allow write for admin to save background templates with overlayConfig
+      allow write: if isAdmin();
+    }
+
+    match /templates/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /feedbacks/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /vouchers/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /assets/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // NEW: Analytics collection - Allow public write for tracking
+    match /analytics/{document=**} {
+      allow read: if true; // Or restrict to admin only if preferred
+      allow write: if true; // Allow anyone to increment stats
+    }
+
+    // NEW: Shared Designs - Allow public read and create
+    match /shared_designs/{designId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // NEW: Collaborators - Allow users to manage their own profile
     match /collaborators/{uid} {
-      allow get: if true; 
-      allow list: if isVerifiedAdmin();
-      allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if (isSignedIn() && request.auth.uid == uid) || isVerifiedAdmin();
-      allow delete: if isVerifiedAdmin();
+      allow read: if true; // Allow public to check referral codes
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // 6. CTV DESIGNS
+    // NEW: CTV Designs - Allow CTVs to manage their own designs
     match /ctv_designs/{designId} {
-      allow get: if true;
-      allow list: if isSignedIn() && request.auth.uid == resource.data.ctvUid;
-      allow create: if isSignedIn() && incoming().ctvUid == request.auth.uid;
-      allow update, delete: if isSignedIn() && existing().ctvUid == request.auth.uid;
+      allow read: if true; // Allow anyone to view the design if they have the link
+      allow create: if request.auth != null && request.resource.data.ctvUid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.ctvUid == request.auth.uid;
     }
-
-    // 7. ASSETS, CONFIG, VOUCHERS, BACKGROUNDS, TEMPLATES
-    match /backgrounds/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /templates/{docId} { 
-      allow read: if true; 
-      allow create, delete: if isVerifiedAdmin();
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount']) && incoming().purchaseCount is number);
-    }
-    match /config/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /vouchers/{docId} { 
-      allow get: if true; // Allow guests to validate vouchers
-      allow list: if isVerifiedAdmin(); 
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['usageCount', 'usedBy']));
-      allow write: if isVerifiedAdmin(); 
-    }
-    match /assets/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /frames/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /feedbacks/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
   }
 }

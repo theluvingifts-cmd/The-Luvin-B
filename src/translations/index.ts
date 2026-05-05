@@ -9,7 +9,6 @@ export const translations: any = {
             checkout: "Thanh toán",
             admin: "Quản trị",
             business: "Doanh nghiệp",
-            catalog: "Thư viện",
             lookup: "Tra cứu",
         },
         common: {
@@ -337,6 +336,10 @@ export const translations: any = {
             cta_desc: "Chỉ mất 5 phút để thiết kế một khung tranh LEGO độc đáo. Gửi gắm thông điệp của bạn ngay hôm nay.",
             design_now: "Thiết kế ngay",
             unique_design: "Thiết kế độc bản",
+            recent_order_found: "Bạn có 1 đơn hàng vừa đặt: {id}",
+            view_now: "Xem ngay",
+            continue_checkout: "Bạn đang thanh toán dở, tiếp tục nhé?",
+            continue_now: "Tiếp tục",
             our_feedbacks: "Our feedbacks",
             what_customers_say: "Khách hàng nói gì về The Luvin",
             features: {
@@ -495,7 +498,6 @@ export const translations: any = {
             checkout: "Checkout",
             admin: "Admin",
             business: "Business",
-            catalog: "Catalog",
             lookup: "Order Lookup",
         },
         common: {
@@ -821,6 +823,10 @@ export const translations: any = {
             cta_desc: "It only takes 5 minutes to design a unique LEGO frame. Send your message today.",
             design_now: "Design Now",
             unique_design: "Unique Design",
+            recent_order_found: "You have a recent order: {id}",
+            view_now: "View now",
+            continue_checkout: "You have an unfinished checkout. Continue?",
+            continue_now: "Continue",
             our_feedbacks: "Our Feedbacks",
             what_customers_say: "What our customers say about The Luvin",
             features: {

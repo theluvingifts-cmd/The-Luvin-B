@@ -2,16 +2,14 @@
 // services/orderService.ts
 import { db } from '../config/firebase';
 // Standard modular imports from firebase/firestore
-import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer, runTransaction, increment as firestoreIncrement } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadFile } from './uploadService';
 import { adjustStock } from './productService';
 import { incrementTemplatePurchaseCount } from './templateService';
 import { getStoreConfig } from './configService';
 import { pushOrderToPancake, PancakeOrderData } from './pancakeService';
-import { sendOrderEmail, sendThankYouEmail } from './emailService';
 import { cleanForFirestore } from '../utils/helpers';
-import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 // Helper: Đếm số lượng từng part trong đơn hàng
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
@@ -88,12 +86,10 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
     }));
 };
 
-// 1. Hàm tạo đơn hàng mới (VỚI TRANSACTION ĐỂ ĐẢM BẢO ATOMIC VÀ IDEMPOTENCY)
+// 1. Hàm tạo đơn hàng mới
 export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) => {
     try {
-        // A. CHUẨN BỊ ẢNH (Bên ngoài transaction vì upload là async ngoài DB)
         const itemsWithImages = await processOrderItemsImages(order.items);
-        
         const timestamp = Date.now();
         const finalOrder: Order = {
             ...order,
@@ -102,46 +98,27 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             status: "Chờ thanh toán",
             internalNotes: "",
             isUrgent: false,
-            adminDeadline: "",
-            countedInStats: true // Đánh dấu đơn hàng này đã được tính vào thống kê
+            adminDeadline: ""
         };
-
-        // 1. LƯU ĐƠN HÀNG VÀO FIRESTORE (Primary Action)
-        const orderRef = doc(db, "orders", finalOrder.id);
-        await setDoc(orderRef, cleanForFirestore(finalOrder)).catch(err => {
-            handleFirestoreError(err, OperationType.WRITE, `orders/${finalOrder.id}`);
-        });
-
-        // 2. CẬP NHẬT LƯỢT MUA VÀ TỒN KHO (Secondary Actions - Wrapped in try-catch to not block order)
-        try {
-            const partsUsage = countPartsInOrder(finalOrder.items);
-            
-            await runTransaction(db, async (transaction) => {
-                // Update templates purchase count
-                for (const item of finalOrder.items) {
-                    if (item.templateId) {
-                        const tplRef = doc(db, "templates", item.templateId);
-                        const qty = item.quantity || 1;
-                        transaction.update(tplRef, {
-                            purchaseCount: firestoreIncrement(qty)
-                        });
-                    }
-                }
-
-                // Update lego parts stock
-                for (const [partId, qty] of Object.entries(partsUsage)) {
-                    if (!qty) continue;
-                    const partRef = doc(db, "lego_parts", partId);
-                    transaction.update(partRef, {
-                        stock: firestoreIncrement(-qty)
-                    });
-                }
-            });
-        } catch (secondaryError) {
-            console.warn("Could not update stock or template stats (likely permission restriction for guest), but order was placed successfully:", secondaryError);
+        const sanitizedOrder = cleanForFirestore(finalOrder);
+        await setDoc(doc(db, "orders", order.id), sanitizedOrder);
+        
+        // CẬP NHẬT LƯỢT MUA CHO TEMPLATE
+        for (const item of finalOrder.items) {
+            if (item.templateId) {
+                const qty = item.quantity || 1;
+                await incrementTemplatePurchaseCount(item.templateId, qty);
+            }
         }
 
-        // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async, không cần transaction)
+        const partsUsage = countPartsInOrder(finalOrder.items);
+        const stockAdjustments: Record<string, number> = {};
+        for (const [partId, qty] of Object.entries(partsUsage)) {
+            stockAdjustments[partId] = -qty;
+        }
+        adjustStock(stockAdjustments);
+
+        // ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH
         try {
             const config = await getStoreConfig();
             if (config && config.enablePancakePush) {
@@ -168,6 +145,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             }
         } catch (pancakeError) {
             console.error("Lỗi khi đẩy đơn sang Pancake:", pancakeError);
+            // Không chặn quy trình tạo đơn nếu Pancake lỗi
         }
 
         return { success: true, data: finalOrder };
@@ -264,27 +242,7 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         if (updates.items && Array.isArray(updates.items)) {
             updates.items = await processOrderItemsImages(updates.items);
         }
-        
         const orderRef = doc(db, "orders", orderId);
-        
-        // KIỂM TRA TRẠNG THÁI GIAO HÀNG ĐỂ GỬI MAIL CẢM ƠN
-        if (updates.status === 'Đã giao hàng') {
-            const currentDoc = await getDoc(orderRef);
-            if (currentDoc.exists()) {
-                const currentData = currentDoc.data() as Order;
-                // Chỉ gửi nếu trạng thái trước đó chưa phải là đã giao và chưa gửi mail cảm ơn
-                if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
-                    // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
-                    updates.thankYouEmailSent = true;
-                    
-                    // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
-                    sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
-                        console.error("Lỗi khi gửi email cảm ơn tự động:", err);
-                    });
-                }
-            }
-        }
-
         const cleanUpdates = cleanForFirestore(updates);
         await updateDoc(orderRef, cleanUpdates);
         return true;

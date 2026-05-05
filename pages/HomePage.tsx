@@ -41,8 +41,31 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
   const { t } = useLanguage();
   const navigate = useNavigate();
   
+  const [recentOrder, setRecentOrder] = useState<{id: string, date: number} | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
+
   useEffect(() => {
     trackFunnelStep('view_home');
+    
+    try {
+        const orders = JSON.parse(localStorage.getItem('my_orders') || '[]');
+        if (orders.length > 0) {
+            // Only show if placed in the last 24 hours
+            const last = orders[0];
+            if (Date.now() - last.date < 24 * 60 * 60 * 1000) {
+                setRecentOrder(last);
+            }
+        }
+        
+        const draft = localStorage.getItem('checkout_draft');
+        if (draft) {
+            const draftData = JSON.parse(draft);
+            // Drafting is meaningful if at least phone or name is entered
+            if (draftData.name || draftData.phone || draftData.voucherCode) {
+                setHasDraft(true);
+            }
+        }
+    } catch (e) {}
   }, []);
 
   // 1. Initialize from Cache immediately for instant render
@@ -121,6 +144,40 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
 
   return (
     <div className="font-body text-gray-800 overflow-x-hidden">
+      {/* Notifications Bar */}
+      {(recentOrder || hasDraft) && (
+          <div className="bg-luvin-pink text-white animate-fade-in divide-x divide-white/20">
+              <div className="container mx-auto flex flex-wrap justify-center sm:divide-x divide-white/20">
+                {recentOrder && (
+                    <div className="py-2 px-4 flex items-center gap-3">
+                        <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-bold">{t('home.recent_order_found', { id: recentOrder.id })}</span>
+                        <button 
+                            onClick={() => { navigate(`/order-lookup?id=${recentOrder.id.replace('#', '')}`); }}
+                            className="bg-white text-luvin-pink px-3 py-1 rounded-full text-[9px] font-black hover:bg-opacity-90 transition-all uppercase"
+                        >
+                            {t('home.view_now')}
+                        </button>
+                    </div>
+                )}
+                {hasDraft && (
+                    <div className="py-2 px-4 flex items-center gap-3">
+                        <span className="text-[10px] sm:text-xs font-bold">{t('home.continue_checkout')}</span>
+                        <button 
+                            onClick={() => navigateTo('checkout')}
+                            className="bg-white/20 backdrop-blur border border-white text-white px-3 py-1 rounded-full text-[9px] font-black hover:bg-white hover:text-luvin-pink transition-all uppercase"
+                        >
+                            {t('home.continue_now')}
+                        </button>
+                    </div>
+                )}
+              </div>
+          </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative min-h-[85vh] flex flex-col lg:flex-row bg-[#fffbf0]">
         <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 lg:py-0 z-10 order-2 lg:order-1">

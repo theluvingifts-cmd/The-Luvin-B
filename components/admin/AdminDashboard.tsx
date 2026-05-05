@@ -319,7 +319,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
     const lowStockItems = useMemo(() => {
         const threshold = 10;
-        const lowStockParts = products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= threshold).map(p => ({ name: p.name, stock: p.stock, type: 'Phụ kiện' }));
+        const lowStockParts = products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= threshold).map(p => ({ name: p.name, stock: p.stock, type: 'Linh kiện' }));
         const lowStockFrames = frames.filter(f => f.stock !== undefined && f.stock !== null && f.stock <= threshold).map(f => ({ name: f.name, stock: f.stock, type: 'Khung' }));
         return [...lowStockParts, ...lowStockFrames];
     }, [products, frames]);

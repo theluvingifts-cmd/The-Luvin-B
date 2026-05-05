@@ -340,7 +340,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         if (!customConfig) return;
         if (!orderNote.trim()) {
             alert(t('collection.enter_order_note'));
-            scrollToNote();
             return;
         }
         const finalConfig = {
@@ -361,7 +360,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         if (!customConfig) return;
         if (!orderNote.trim()) {
             alert(t('collection.enter_order_note'));
-            scrollToNote();
             return;
         }
         const finalConfig = {
@@ -607,7 +605,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     };
 
     const customizeSectionRef = React.useRef<HTMLDivElement>(null);
-    const noteSectionRef = React.useRef<HTMLDivElement>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
     const scrollToCustomize = () => {
@@ -615,15 +612,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             customizeSectionRef.current.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
-            });
-        }
-    };
-
-    const scrollToNote = () => {
-        if (noteSectionRef.current) {
-            noteSectionRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
             });
         }
     };
@@ -638,41 +626,26 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="relative px-5 py-6 border-b border-gray-100 bg-white">
-                        {/* Close Button - Absolute for better spacing */}
-                        <button 
-                            onClick={handleCloseModal} 
-                            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all z-10"
-                            title={t('common.close')}
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-
-                        <div className="flex flex-col items-center text-center px-6">
-                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight leading-tight mb-3">
-                                {selectedTemplate.name}
-                            </h2>
-                            
-                            {/* Prominent Scroll-down Guide */}
-                            <button 
-                                onClick={scrollToCustomize}
-                                className="bg-gray-900 text-white px-6 py-2.5 rounded-full shadow-xl border border-white/10 flex items-center gap-3 hover:bg-black transition-all active:scale-95 group relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary shadow-[0_0_10px_rgba(var(--color-primary),1)]"></span>
+                    <div className="px-4 py-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div>
+                            <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{selectedTemplate.name}</h2>
+                            <div className="flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-white/10 mt-1 self-start cursor-pointer hover:bg-black transition-all active:scale-95 group overflow-hidden" onClick={scrollToCustomize}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <span className="relative text-[9px] font-black uppercase tracking-[0.15em] text-white flex items-center gap-2">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-40"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary shadow-[0_0_8px_rgba(var(--color-primary),1)]"></span>
+                                    </span>
+                                    {t('collection.quick_customize_title')}
                                 </span>
-                                <span className="relative text-[11px] font-black uppercase tracking-[0.12em] flex items-center gap-2">
-                                    {t('collection.quick_customize_title') || 'Lướt xuống để tùy chỉnh mẫu'}
-                                    <svg className="w-4 h-4 animate-bounce text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </span>
-                            </button>
+                                <svg className="w-3 h-3 text-white/70 animate-bounce group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
+                        <button onClick={handleCloseModal} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors" title={t('common.close')}>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
 
                     <div 
@@ -736,27 +709,27 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             )}
                         </div>
 
-                        {/* Included Gifts Notification */}
-                        <div className="bg-blue-50/50 border border-blue-100/50 rounded-3xl p-4 mt-2 animate-fade-in text-left">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                        {/* Included Items Bar - Minimalist way */}
+                        <div className="flex items-center justify-center gap-4 py-2 px-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                                 </div>
-                                <h4 className="font-black text-[11px] text-blue-900 uppercase tracking-widest">Sản phẩm bao gồm:</h4>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tight">{t('studio.include_box')}</span>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm">
-                                    <span className="text-lg mb-1">🎁</span>
-                                    <span className="text-[9px] font-black text-blue-800 uppercase text-center">{t('studio.include_box')}</span>
+                            <div className="w-px h-3 bg-blue-200/50"></div>
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                                 </div>
-                                <div className="flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm">
-                                    <span className="text-lg mb-1">🛍️</span>
-                                    <span className="text-[9px] font-black text-blue-800 uppercase text-center">{t('studio.include_bag')}</span>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tight">{t('studio.include_bag')}</span>
+                            </div>
+                            <div className="w-px h-3 bg-blue-200/50"></div>
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                                 </div>
-                                <div className="flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm">
-                                    <span className="text-lg mb-1">✉️</span>
-                                    <span className="text-[9px] font-black text-blue-800 uppercase text-center">{t('studio.include_card')}</span>
-                                </div>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tight">{t('studio.include_card')}</span>
                             </div>
                         </div>
 
@@ -1192,7 +1165,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         )}
 
                         {/* Order Notes */}
-                        <div ref={noteSectionRef} className="space-y-3 scroll-mt-20">
+                        <div className="space-y-3">
                             <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
                                 {t('common.order_note')} <span className="text-[10px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
@@ -1426,6 +1399,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-black text-primary uppercase tracking-tight shadow-sm border border-primary/10 w-fit">
                                         🎨 {t('collection.customizable')}
                                     </div>
+                                    {template.category && (
+                                        <div className="bg-gray-900/80 backdrop-blur px-2 py-1 rounded-lg text-[8px] font-bold text-white uppercase tracking-tight shadow-sm w-fit">
+                                            {template.category}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
