@@ -104,7 +104,9 @@
             "status": { "type": "string" },
             "total": { "type": "number" },
             "customer": { "type": "object" },
-            "createdAt": { "type": "number" }
+            "createdAt": { "type": "number" },
+            "paymentProofUrl": { "type": "string" },
+            "paymentProofUploadedAt": { "type": "string" }
         },
         "required": ["id", "status", "total"]
     }

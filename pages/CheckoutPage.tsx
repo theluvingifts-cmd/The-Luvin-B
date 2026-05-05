@@ -266,13 +266,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       setVoucherError('');
   };
 
-  const handlePhoneBlur = async () => {
-      setIsLoyalCustomer(false); 
-      
-      if (phone.length >= 10 && !initialOrder) {
+  const checkLoyaltyAndAutofill = async (phoneNumber: string) => {
+      if (phoneNumber.length === 10 && !initialOrder) {
           setIsCheckingPhone(true);
           try {
-              const history = await getOrdersByPhone(phone);
+              const history = await getOrdersByPhone(phoneNumber);
               if (history && history.length > 0) {
                   const lastOrder = history[0];
                   
@@ -286,8 +284,29 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
                   if (!name) setName(lastOrder.customer.name);
                   if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
+                  if (!demoContact && lastOrder.customer.demoContact) setDemoContact(lastOrder.customer.demoContact);
+                  
+                  // Auto-fill address components if not already set
+                  // Try to match names with codes for dropdowns if API is working
+                  if (!selectedProvince && lastOrder.customer.province) {
+                      const p = provinces.find(p => p.name === lastOrder.customer.province);
+                      if (p) {
+                          setSelectedProvince(p.code.toString());
+                      } else {
+                          setSelectedProvince(lastOrder.customer.province);
+                          setIsApiError(true); // Fallback to text inputs ONLY if name doesn't match a code
+                      }
+                  }
+                  
+                  if (!selectedDistrict && lastOrder.customer.district && !isApiError) {
+                      // We can't easily match district/ward here because they depend on province selection
+                      // which triggers an effect. So we might just set the name and hope for the best
+                      // or let the user select since province is filled.
+                      // For now, we'll try to stick to defaults.
+                  }
+
                   if (!street && lastOrder.customer.address) {
-                      setStreet(lastOrder.customer.address);
+                      setStreet(lastOrder.customer.address.split(',')[0].trim());
                   }
               }
           } catch (e) {
@@ -295,6 +314,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           } finally {
               setIsCheckingPhone(false);
           }
+      }
+  };
+
+  const handlePhoneChange = (val: string) => {
+      const numericVal = val.replace(/\D/g, '').slice(0, 10);
+      setPhone(numericVal);
+      setPhoneError('');
+      setIsLoyalCustomer(false);
+      if (numericVal.length === 10) {
+          checkLoyaltyAndAutofill(numericVal);
+      }
+  };
+
+  const handlePhoneBlur = () => {
+      if (phone.length === 10) {
+          checkLoyaltyAndAutofill(phone);
       }
   };
 
@@ -461,7 +496,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         type="tel" 
                         placeholder={t('checkout.phone')} 
                         value={phone} 
-                        onChange={e => { setPhone(e.target.value); setPhoneError(''); if(e.target.value.length < 10) setIsLoyalCustomer(false); }} 
+                        onChange={e => handlePhoneChange(e.target.value)} 
                         onBlur={handlePhoneBlur}
                         className={`w-full p-3 border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'} rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`} 
                         required 
@@ -879,7 +914,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   </label>
                 </div>
               </div>
-              
+
               {submissionError && (
                   <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2 animate-bounce-small">
                       <span className="text-xl">⚠️</span>

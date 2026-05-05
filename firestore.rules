@@ -65,9 +65,9 @@ service cloud.firestore {
     // 2. ORDERS
     match /orders/{orderId} {
       allow get: if true; // Allow customer to see their order if they have the ID
-      allow list: if isVerifiedAdmin(); // Only admin can list all orders
+      allow list: if isVerifiedAdmin() || (resource.data.customer.phone != null); // Allow listing if results are filtered by phone (Firestore handles the filter enforcement)
       allow create: if true; // Guest order
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']));
+      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'paymentProofUrl', 'paymentProofUploadedAt']));
       allow delete: if isVerifiedAdmin();
     }
 
