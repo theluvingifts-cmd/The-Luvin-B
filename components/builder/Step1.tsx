@@ -89,17 +89,6 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
             </div>
         )}
       </div>
-       {selectedFrame && (
-        <div className="p-4 border border-gray-200 rounded-lg text-left">
-            <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">{t('studio.base_price_includes')}</h4>
-            <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
-                <li>{t('studio.include_frame')}</li>
-                <li>{t('studio.include_bg')}</li>
-                <li>{t('studio.include_box')}</li>
-                <li>{t('studio.include_card')}</li>
-            </ul>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // allow guest to upload payment proof to temp folder
+    match /uploads/temp/{allPaths=**} {
+      allow read: if request.auth != null; // Admin/CTV can view
+      allow write: if true; // Guests can upload receipts
+    }
+    
+    // assets are manageable by admin
+    match /uploads/assets/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.token.email.matches('(?i).*admin.*') ||
+        request.auth.token.email in ['theluvin.gifts@gmail.com', 'jinbduong@gmail.com']
+      );
+    }
+
+    // Default: Authenticated users can write, all can read uploads by default if public
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

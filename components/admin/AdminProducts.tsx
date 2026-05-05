@@ -121,33 +121,119 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const handleSeedTemplates = async () => { if (confirm("Reset templates về mặc định?")) { setLoading(true); const res = await seedTemplates(); setLoading(false); if (res && showToast) showToast("Đã nạp dữ liệu mẫu thiết kế!", "success"); onRefreshTemplates(); } };
 
     const handleSaveProduct = async (part: LegoPart) => { 
-        if (editingPart) await updatePart(part.id, part); else await addPart(part); 
-        if (showToast) showToast("Đã lưu linh kiện thành công!", "success");
-        onRefreshProducts(); switchToList(); 
+        try {
+            setLoading(true);
+            const success = editingPart ? await updatePart(part.id, part) : await addPart(part); 
+            if (success) {
+                if (showToast) showToast("Đã lưu linh kiện thành công!", "success");
+                onRefreshProducts(); switchToList(); 
+            } else {
+                if (showToast) showToast("Lỗi khi lưu linh kiện. Kiểm tra console.", "error");
+            }
+        } catch (err: any) {
+            console.error("Save product error:", err);
+            if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+        } finally {
+            setLoading(false);
+        }
     };
-    const handleDeleteProduct = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deletePart(id); if (showToast) showToast("Đã xóa linh kiện", "success"); onRefreshProducts(); } };
+    const handleDeleteProduct = async (id: string) => { 
+        if (confirm("Bạn chắc chắn muốn xóa?")) { 
+            try {
+                setLoading(true);
+                const success = await deletePart(id); 
+                if (success) {
+                    if (showToast) showToast("Đã xóa linh kiện", "success");
+                    onRefreshProducts(); 
+                } else if (showToast) showToast("Lỗi khi xóa linh kiện", "error");
+            } catch (err: any) {
+                console.error("Delete product error:", err);
+                if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
+        } 
+    };
     
     const handleSaveBackground = async (bg: PresetBackground) => { 
-        if (editingBg) await updateBackground(bg.id, bg); else await addBackground(bg); 
-        if (showToast) showToast("Đã lưu hình nền thành công!", "success");
-        onRefreshBackgrounds(); switchToList(); 
+        try {
+            setLoading(true);
+            const success = editingBg ? await updateBackground(bg.id, bg) : await addBackground(bg); 
+            if (success) {
+                if (showToast) showToast("Đã lưu hình nền thành công!", "success");
+                onRefreshBackgrounds(); switchToList(); 
+            } else if (showToast) showToast("Lỗi khi lưu hình nền", "error");
+        } catch (err: any) {
+            console.error("Save background error:", err);
+            if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+        } finally {
+            setLoading(false);
+        }
     };
-    const handleDeleteBackground = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteBackground(id); if (showToast) showToast("Đã xóa hình nền", "success"); onRefreshBackgrounds(); } };
+    const handleDeleteBackground = async (id: string) => { 
+        if (confirm("Bạn chắc chắn muốn xóa?")) { 
+            try {
+                setLoading(true);
+                const success = await deleteBackground(id); 
+                if (success) {
+                    if (showToast) showToast("Đã xóa hình nền", "success");
+                    onRefreshBackgrounds(); 
+                } else if (showToast) showToast("Lỗi khi xóa hình nền", "error");
+            } catch (err: any) {
+                console.error("Delete background error:", err);
+                if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
+        } 
+    };
 
     const handleSaveFrame = async (frame: FrameOption) => { 
-        if (editingFrame) await updateFrame(frame.id, frame); else await addFrame(frame); 
-        if (showToast) showToast("Đã lưu khung thành công!", "success");
-        onRefreshFrames(); switchToList(); 
+        try {
+            setLoading(true);
+            const success = editingFrame ? await updateFrame(frame.id, frame) : await addFrame(frame); 
+            if (success) {
+                if (showToast) showToast("Đã lưu khung thành công!", "success");
+                onRefreshFrames(); switchToList(); 
+            } else if (showToast) showToast("Lỗi khi lưu khung", "error");
+        } catch (err: any) {
+            console.error("Save frame error:", err);
+            if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+        } finally {
+            setLoading(false);
+        }
     };
-    const handleDeleteFrame = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteFrame(id); if (showToast) showToast("Đã xóa khung", "success"); onRefreshFrames(); } };
+    const handleDeleteFrame = async (id: string) => { 
+        if (confirm("Bạn chắc chắn muốn xóa?")) { 
+            try {
+                setLoading(true);
+                const success = await deleteFrame(id); 
+                if (success) {
+                    if (showToast) showToast("Đã xóa khung", "success");
+                    onRefreshFrames(); 
+                } else if (showToast) showToast("Lỗi khi xóa khung", "error");
+            } catch (err: any) {
+                console.error("Delete frame error:", err);
+                if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
+        } 
+    };
 
     const handleSaveTemplate = async (tpl: CollectionTemplate) => { 
-        const success = editingTemplate ? await updateTemplate(tpl.id, tpl) : await addTemplate(tpl); 
-        if (success) {
-            if (showToast) showToast("Đã tải mẫu thiết kế lên thành công!", "success");
-            onRefreshTemplates(); switchToList(); 
-        } else {
-            if (showToast) showToast("Lỗi khi tải mẫu thiết kế lên!", "error");
+        try {
+            setLoading(true);
+            const success = editingTemplate ? await updateTemplate(tpl.id, tpl) : await addTemplate(tpl); 
+            if (success) {
+                if (showToast) showToast("Đã tải mẫu thiết kế lên thành công!", "success");
+                onRefreshTemplates(); switchToList(); 
+            } else if (showToast) showToast("Lỗi khi tải mẫu thiết kế lên!", "error");
+        } catch (err: any) {
+            console.error("Save template error:", err);
+            if (showToast) showToast(`Lỗi: ${err.message}`, "error");
+        } finally {
+            setLoading(false);
         }
     };
     const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); if (showToast) showToast("Đã xóa mẫu thiết kế", "success"); onRefreshTemplates(); } };
@@ -276,7 +362,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 }`}
                             >
-                                {tab === 'parts' ? '🧩 Linh kiện' : 
+                                {tab === 'parts' ? '🧩 Nhân vật & Phụ kiện' : 
                                  tab === 'frames' ? '🖼️ Khung' : 
                                  tab === 'backgrounds' ? '🌄 Hình nền' : '📋 Mẫu thiết kế'}
                             </button>

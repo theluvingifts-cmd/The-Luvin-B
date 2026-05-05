@@ -118,30 +118,6 @@ export const Step4Summary: React.FC<{
             </div>
         </div>
 
-        {/* Included Gifts Notification */}
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mt-4 animate-fade-in text-left">
-            <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-blue-500 shadow-sm">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                </div>
-                <h4 className="font-black text-[11px] text-blue-900 uppercase tracking-widest">Sản phẩm bao gồm:</h4>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-                <div className="flex flex-col items-center p-2 bg-white/60 rounded-xl border border-blue-50">
-                    <span className="text-lg mb-1">🎁</span>
-                    <span className="text-[9px] font-black text-blue-800 uppercase text-center">{t('studio.include_box')}</span>
-                </div>
-                <div className="flex flex-col items-center p-2 bg-white/60 rounded-xl border border-blue-50">
-                    <span className="text-lg mb-1">🛍️</span>
-                    <span className="text-[9px] font-black text-blue-800 uppercase text-center">{t('studio.include_bag')}</span>
-                </div>
-                <div className="flex flex-col items-center p-2 bg-white/60 rounded-xl border border-blue-50">
-                    <span className="text-lg mb-1">✉️</span>
-                    <span className="text-[9px] font-black text-blue-800 uppercase text-center">{t('studio.include_card')}</span>
-                </div>
-            </div>
-        </div>
-
         {hasCustomPrint && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4 flex gap-3 items-start animate-fade-in text-left">
                 <span className="text-xl">⚠️</span>

@@ -36,3 +36,31 @@ export const sendOrderEmail = async (order: Order) => {
         return false;
     }
 };
+
+export const sendThankYouEmail = async (order: Order) => {
+    try {
+        const response = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                to_name: order.customer.name,
+                to_email: order.customer.email,
+                order_id: order.id,
+                type: 'thank_you'
+            }),
+        });
+
+        if (response.ok) {
+            console.log('Email cảm ơn đã gửi thành công!');
+            return true;
+        } else {
+            console.error('Lỗi gửi email cảm ơn:', await response.text());
+            return false;
+        }
+    } catch (error) {
+        console.error('Lỗi khi gửi email cảm ơn:', error);
+        return false;
+    }
+};

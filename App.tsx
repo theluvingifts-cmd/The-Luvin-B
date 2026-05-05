@@ -34,6 +34,7 @@ import { OrderLookupPage } from './pages/OrderLookupPage';
 import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
+import { CharacterCatalogPage } from './pages/CharacterCatalogPage';
 import CollaboratorPage from './pages/CollaboratorPage';
 import { categorizeParts, safeJsonStringify } from './utils/helpers';
 
@@ -158,23 +159,7 @@ const App: React.FC = () => {
   }, [cartItems]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(() => {
-    try {
-      const saved = localStorage.getItem('last_order_result');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  });
-
-  useEffect(() => {
-    if (currentOrder) {
-      localStorage.setItem('last_order_result', safeJsonStringify(currentOrder));
-    } else {
-      localStorage.removeItem('last_order_result');
-    }
-  }, [currentOrder]);
-
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null); 
   
@@ -460,6 +445,7 @@ const App: React.FC = () => {
                 <Route path="/about" element={<AboutPage config={storeConfig} />} />
                 <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />
                 <Route path="/business" element={<BusinessPage config={storeConfig} legoParts={legoParts} />} />
+                <Route path="/catalog" element={<CharacterCatalogPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>

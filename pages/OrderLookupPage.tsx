@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
 import { Order, FrameOption } from '../types';
 import { getOrderById, getOrdersByPhone, updateOrder } from '../services/orderService';
 import { uploadFile } from '../services/uploadService';
@@ -14,10 +13,8 @@ const PACKED_STATUSES = ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi h�
 
 export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEditOrder: (order: Order) => void}> = ({onZoomImage, onEditOrder}) => {
     const { t } = useLanguage();
-    const location = useLocation();
     const [orderCode, setOrderCode] = useState('');
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
-
     const [isLoading, setIsLoading] = useState(false);
     const [savedOrders, setSavedOrders] = useState<{id: string, date: number}[]>([]);
     const [frames, setFrames] = useState<FrameOption[]>(FRAME_OPTIONS);
@@ -88,14 +85,6 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
             setIsLoading(false);
         }
     };
-
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const id = params.get('id');
-        if (id) {
-            handleSearch(undefined, id);
-        }
-    }, [location.search]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0] && foundOrder && typeof foundOrder === 'object') {

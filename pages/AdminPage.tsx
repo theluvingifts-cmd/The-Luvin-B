@@ -21,9 +21,11 @@ import { AdminVouchers } from '../components/admin/AdminVouchers';
 import { AdminCustomers } from '../components/admin/AdminCustomers'; 
 import { AdminDesign } from '../components/admin/AdminDesign';
 import { AdminCollaborators } from '../components/admin/AdminCollaborators';
+import { AdminSecurity } from '../components/admin/AdminSecurity';
 import { Logo } from '../components/shared/Logo';
+import { trackSession, subscribeToSession } from '../services/adminSessionService';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'collaborators';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'collaborators' | 'security';
 
 interface AdminPageProps {
     showToast?: (message: string, type: 'success' | 'error') => void;
@@ -77,6 +79,13 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                 if (user) {
                     setCurrentUser(user);
                     fetchInitialData();
+                    trackSession();
+                    
+                    // Listen to revocation
+                    const unsubSession = subscribeToSession(() => {
+                        if (showToast) showToast("Phiên đăng nhập đã bị thu hồi bởi quản trị viên cấp cao.", 'error');
+                        signOut(auth);
+                    });
                     
                     // Cleanup previous listener if any
                     if (unsubscribeOrders) {
@@ -169,6 +178,11 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
         return isConfigLoaded ? 'warehouse' : null;
     }, [currentUser, storeConfig, isConfigLoaded]);
 
+    const isSuperAdmin = useMemo(() => {
+        const superAdmins = ['theluvin.gifts@gmail.com', 'jinbduong@gmail.com'];
+        return currentUser && superAdmins.includes(currentUser.email);
+    }, [currentUser]);
+
     // Redirect duy nhất cho nhân viên kho (chỉ được xem Đơn hàng)
     useEffect(() => {
         if (role === 'warehouse') {
@@ -200,11 +214,16 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                                         <button onClick={() => handleTabChange('collaborators')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'collaborators' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cộng tác viên</button>
                                         <button onClick={() => handleTabChange('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
                                         <button onClick={() => handleTabChange('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
+                                        {isSuperAdmin && <button onClick={() => handleTabChange('security')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'security' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Bảo mật</button>}
                                     </>
                                 )}
                             </nav>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-4">
+                            <div className="hidden lg:flex flex-col items-end mr-2">
+                                <span className="text-[9px] text-gray-400 font-mono leading-none">{currentUser.uid}</span>
+                                <span className="text-[10px] text-gray-500 font-bold leading-none">{currentUser.email}</span>
+                            </div>
                             <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${role === 'admin' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>{role === 'admin' ? 'Admin' : 'Staff'}</span>
                             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-2 hover:bg-gray-100 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg></button>
                         </div>
@@ -236,6 +255,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                                 <button onClick={() => handleTabChange('collaborators')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'collaborators' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>CTV</button>
                                 <button onClick={() => handleTabChange('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Design</button>
                                 <button onClick={() => handleTabChange('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Cấu hình</button>
+                                {isSuperAdmin && <button onClick={() => handleTabChange('security')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'security' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Bảo mật</button>}
                             </>
                         )}
                     </nav>
@@ -251,6 +271,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
                 {activeTab === 'collaborators' && role === 'admin' && <AdminCollaborators orders={orders} />}
                 {activeTab === 'design' && role === 'admin' && <AdminDesign showToast={showToast} />}
+                {activeTab === 'security' && isSuperAdmin && <AdminSecurity showToast={showToast} />}
             </main>
         </div>
     );

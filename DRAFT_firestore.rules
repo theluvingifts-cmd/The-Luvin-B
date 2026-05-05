@@ -15,19 +15,11 @@ service cloud.firestore {
     }
 
     function isVerifiedAdmin() {
-      return isSignedIn() && 
-             request.auth.token.get('email', '') != '' && (
-        request.auth.token.email.matches('(?i)jinbduong@gmail\\.com') ||
-        request.auth.token.email.matches('(?i)theluvin\\.gifts@gmail\\.com') ||
-        request.auth.token.email.matches('(?i)theluvingifts@gmail\\.com') ||
-        (request.auth.token.email.matches('(?i).*admin.*') && request.auth.token.get('email_verified', false) == true)
-      );
-    }
-
-    function isSuperAdmin() {
-      return isVerifiedAdmin() && (
-        request.auth.token.get('email', '').matches('(?i)theluvin\\.gifts@gmail\\.com') ||
-        request.auth.token.get('email', '').matches('(?i)jinbduong@gmail\\.com')
+      return isSignedIn() && (
+        request.auth.token.email == 'jinbduong@gmail.com' ||
+        request.auth.token.email == 'theluvin.gifts@gmail.com' ||
+        request.auth.token.email == 'theluvingifts@gmail.com' ||
+        (request.auth.token.email.matches('.*admin.*') && request.auth.token.email_verified == true)
       );
     }
 
@@ -67,24 +59,23 @@ service cloud.firestore {
         isVerifiedAdmin() ||
         // Action: Stock Adjustment (Public/Checkout)
         (incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'lastUpdated']) && incoming().stock is number)
-      ) && (isVerifiedAdmin() || isValidLegoPart(incoming()));
+      ) && isValidLegoPart(incoming());
     }
 
     // 2. ORDERS
     match /orders/{orderId} {
       allow get: if true; // Allow customer to see their order if they have the ID
-      allow list: if isVerifiedAdmin() || (request.query.limit <= 20); // Searchable by phone (Firestore handles the data-level phone constraint if queried correctly)
+      allow list: if isVerifiedAdmin(); // Only admin can list all orders
       allow create: if true; // Guest order
-      allow update: if isVerifiedAdmin() || (
-        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'paymentProofUrl', 'paymentProofUploadedAt'])
-      );
+      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']));
       allow delete: if isVerifiedAdmin();
     }
 
     // 3. ANALYTICS
     match /analytics/{docId} {
       allow read: if isVerifiedAdmin();
-      allow write: if true; // Guest funnel tracking
+      allow create, update: if true; // Required for guest tracking
+      allow delete: if isVerifiedAdmin();
     }
 
     // 4. SHARED DESIGNS
@@ -114,44 +105,11 @@ service cloud.firestore {
 
     // 7. ASSETS, CONFIG, VOUCHERS, BACKGROUNDS, TEMPLATES
     match /backgrounds/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /templates/{docId} { 
-      allow read: if true; 
-      allow create, delete: if isVerifiedAdmin();
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount']) && incoming().purchaseCount is number);
-    }
-    match /config/{docId} { 
-      allow read: if true; 
-      allow write: if isVerifiedAdmin(); 
-      match /ads_costs/{date} {
-        allow read, write: if isVerifiedAdmin();
-      }
-    }
-    match /vouchers/{docId} { 
-      allow get: if true; // Allow guests to validate vouchers
-      allow list: if isVerifiedAdmin(); 
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['usageCount', 'usedBy']));
-      allow write: if isVerifiedAdmin(); 
-    }
+    match /templates/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
+    match /config/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
+    match /vouchers/{docId} { allow read: if isVerifiedAdmin(); allow write: if isVerifiedAdmin(); }
     match /assets/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
     match /frames/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
     match /feedbacks/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-
-    // 8. AUDIT LOGS
-    match /audit_logs/{logId} {
-      allow read: if isSuperAdmin();
-      allow create: if isVerifiedAdmin();
-    }
-
-    // 9. ADMIN SESSIONS
-    match /admin_sessions/{sessionId} {
-      allow get: if isVerifiedAdmin();
-      allow list: if isSuperAdmin();
-      allow create: if isVerifiedAdmin() && incoming().uid == request.auth.uid;
-      allow update: if isVerifiedAdmin() && (
-        (isSignedIn() && request.auth.uid == existing().uid && !incoming().isRevoked) || 
-        isSuperAdmin()
-      );
-      allow delete: if isSuperAdmin();
-    }
   }
 }
