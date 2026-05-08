@@ -202,7 +202,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             pancakeShopId,
             pancakeAccessToken,
             enablePancakePush,
-            b2bDiscountPercent: b2bDiscount
+            b2bDiscountPercent: b2bDiscount,
+            disableThankYouEmail: storeConfig.disableThankYouEmail
         });
         if (success) {
             setStoreConfig(prev => ({ 
@@ -213,7 +214,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 pancakeShopId,
                 pancakeAccessToken,
                 enablePancakePush,
-                b2bDiscountPercent: b2bDiscount
+                b2bDiscountPercent: b2bDiscount,
+                disableThankYouEmail: storeConfig.disableThankYouEmail
             }));
             alert("Đã lưu cấu hình thành công!");
         } else {
@@ -467,7 +469,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                             onClick={() => setActiveTab(tab as ConfigTab)} 
                             className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Bot' : tab === 'pancake' ? 'Kết nối POS' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : 'Khôi phục ảnh'}
+                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Thông báo' : tab === 'pancake' ? 'Kết nối POS' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : 'Khôi phục ảnh'}
                             {tab === 'cleanup' && (isScanning || isDeleting || isCleaningOldOrders) && (
                                 <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                             )}
@@ -827,7 +829,21 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
                     {activeTab === 'staff' && (
                         <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Nhân sự & Bot</h3>
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Nhân sự & Thông báo</h3>
+                            
+                            <div className="p-4 bg-orange-50 rounded-lg border border-orange-100 flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-sm font-bold text-orange-800">Mail cảm ơn khi giao hàng</h4>
+                                    <p className="text-[10px] text-orange-600">Gửi mail tự động khi trạng thái chuyển sang "Đã giao hàng"</p>
+                                </div>
+                                <button 
+                                    onClick={() => setStoreConfig(prev => ({ ...prev, disableThankYouEmail: !prev.disableThankYouEmail }))}
+                                    className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.disableThankYouEmail ? 'bg-gray-300' : 'bg-orange-500'}`}
+                                >
+                                    <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.disableThankYouEmail ? '' : 'translate-x-6'}`}></div>
+                                </button>
+                            </div>
+
                             <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 space-y-3">
                                 <label className="block text-xs font-bold text-indigo-700">Bot Token</label>
                                 <input type="password" className="w-full p-2 border rounded text-xs font-mono" value={telegramToken} onChange={(e) => setTelegramToken(e.target.value)} />

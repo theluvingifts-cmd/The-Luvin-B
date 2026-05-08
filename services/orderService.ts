@@ -270,18 +270,22 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         
         // KIỂM TRA TRẠNG THÁI GIAO HÀNG ĐỂ GỬI MAIL CẢM ƠN
         if (updates.status === 'Đã giao hàng') {
-            const currentDoc = await getDoc(orderRef);
-            if (currentDoc.exists()) {
-                const currentData = currentDoc.data() as Order;
-                // Chỉ gửi nếu trạng thái trước đó chưa phải là đã giao và chưa gửi mail cảm ơn
-                if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
-                    // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
-                    updates.thankYouEmailSent = true;
-                    
-                    // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
-                    sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
-                        console.error("Lỗi khi gửi email cảm ơn tự động:", err);
-                    });
+            const config = await getStoreConfig();
+            if (config && !config.disableThankYouEmail) {
+                const orderRef = doc(db, "orders", orderId);
+                const currentDoc = await getDoc(orderRef);
+                if (currentDoc.exists()) {
+                    const currentData = currentDoc.data() as Order;
+                    // Chỉ gửi nếu trạng thái trước đó chưa phải là đã giao và chưa gửi mail cảm ơn
+                    if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
+                        // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
+                        updates.thankYouEmailSent = true;
+                        
+                        // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
+                        sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
+                            console.error("Lỗi khi gửi email cảm ơn tự động:", err);
+                        });
+                    }
                 }
             }
         }

@@ -138,9 +138,25 @@
         "sessionId": { "type": "string" }
       },
       "required": ["uid", "email", "sessionId", "lastActive"]
-    }
+    },
+    "StoreConfig": {
+        "title": "StoreConfig",
+        "description": "Global store configuration.",
+        "type": "object",
+        "properties": {
+          "siteName": { "type": "string" },
+          "disableThankYouEmail": { "type": "boolean" },
+          "theme": { "type": "object" },
+          "heroTitle": { "type": "string" },
+          "heroSubtitle": { "type": "string" }
+        }
+      }
   },
   "firestore": {
+    "/config/{docId}": {
+      "schema": "StoreConfig",
+      "description": "Global configuration documents."
+    },
     "/lego_parts/{partId}": {
       "schema": "LegoPart",
       "description": "Collection of LEGO parts."

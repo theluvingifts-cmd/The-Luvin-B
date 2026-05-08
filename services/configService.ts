@@ -69,6 +69,9 @@ export interface StoreConfig {
     enableAutoCleanup?: boolean;
     autoCleanupDays?: number;
     lastAutoCleanupAt?: number;
+
+    // Email Config
+    disableThankYouEmail?: boolean;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
