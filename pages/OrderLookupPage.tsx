@@ -307,7 +307,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         <h2 className="font-heading font-bold text-2xl text-gray-900">{foundOrder.id}</h2>
                                         {foundOrder.isUrgent && <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">{t('order_lookup.urgent_order')}</span>}
                                     </div>
-                                    <p className="text-sm text-gray-500 mt-1">{t('order_lookup.order_date', { date: foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString() : '---' })}</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('order_lookup.order_date', { date: foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---' })}</p>
                                 </div>
                                 
                                 {!PACKED_STATUSES.includes(foundOrder.status) && (

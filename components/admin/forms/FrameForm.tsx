@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { FrameOption } from '../../../types';
+import { DateInput } from '../../ui/DateInput';
 
 export const FrameForm: React.FC<{
     initialData?: FrameOption | null;
@@ -78,7 +79,11 @@ export const FrameForm: React.FC<{
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 mb-1">Kết thúc KM</label>
-                                    <input type="date" name="saleEndDate" value={formData.saleEndDate || ''} onChange={handleChange} className="w-full p-2.5 border border-blue-200 rounded bg-white text-sm" />
+                                    <DateInput 
+                                        label="Hạn KM"
+                                        value={formData.saleEndDate || ''} 
+                                        onChange={(val) => setFormData(prev => ({ ...prev, saleEndDate: val }))} 
+                                    />
                                 </div>
                             </div>
                         </div>

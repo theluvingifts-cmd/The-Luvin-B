@@ -95,14 +95,14 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const [restoreResult, setRestoreResult] = useState<{updatedCount: number} | null>(null);
 
     const addRestoreLog = (msg: string, type: 'info' | 'success' | 'error' = 'info') => {
-        setRestoreLogs(prev => [{time: new Date().toLocaleTimeString(), msg, type}, ...prev].slice(0, 50));
+        setRestoreLogs(prev => [{time: new Date().toLocaleTimeString('vi-VN'), msg, type}, ...prev].slice(0, 50));
     };
 
     const addLog = (msg: string, type: 'info' | 'success' | 'error' = 'info') => {
         setCleanupLogs(prev => [{
             msg,
             type,
-            time: new Date().toLocaleTimeString()
+            time: new Date().toLocaleTimeString('vi-VN')
         }, ...prev].slice(0, 10)); // Giữ 10 log gần nhất
     };
 

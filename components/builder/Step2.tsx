@@ -4,6 +4,7 @@ import type { FrameConfig, PresetBackground, FrameOption, FormField } from '../.
 import { ZoomIcon } from '../ZoomIcon';
 import { resizeImage } from '../../utils/helpers';
 import { SmartImage } from '../shared/SmartImage';
+import { DateInput } from '../ui/DateInput';
 import { useLanguage } from '../../src/contexts/LanguageContext';
 
 const PresetBackgroundButton: React.FC<{
@@ -295,11 +296,9 @@ export const Step2BackgroundAndDecorations: React.FC<{
                                 />
                             )}
                             {field.type === 'date' && (
-                                <input 
-                                    type="date" 
+                                <DateInput 
                                     value={config.customFormData?.[field.id] || ''} 
-                                    onChange={(e) => handleUpdateFormData(field.id, e.target.value)} 
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
+                                    onChange={(val) => handleUpdateFormData(field.id, val)} 
                                 />
                             )}
                             {field.type === 'number' && (

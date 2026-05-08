@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { LegoPart, OutfitColor, BulkPriceTier } from '../../../types';
 import { uploadFile } from '../../../services/uploadService';
 import { formatCurrency } from '../../../utils/pricing';
+import { DateInput } from '../../ui/DateInput';
 
 export const ProductForm: React.FC<{ 
     initialData?: LegoPart | null; 
@@ -253,7 +254,11 @@ export const ProductForm: React.FC<{
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">Kết thúc khuyến mãi</label>
-                                            <input type="date" name="saleEndDate" value={formData.saleEndDate || ''} onChange={handleChange} className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                        <DateInput 
+                                            label="Ngày kết thúc giảm giá"
+                                            value={formData.saleEndDate || ''} 
+                                            onChange={(val) => setFormData(prev => ({ ...prev, saleEndDate: val }))} 
+                                        />
                                         </div>
                                     </div>
                                 </div>

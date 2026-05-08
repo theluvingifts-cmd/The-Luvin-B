@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Order, LegoPart, FrameOption } from '../../types';
 import { FRAME_OPTIONS, LEGO_PARTS } from '../../constants';
 import { formatCurrency } from '../../utils/pricing';
+import { DateInput } from '../ui/DateInput';
 import { getAdsCosts, saveAdsCost } from '../../services/configService';
 import { getFunnelStats } from '../../services/analyticsService';
 
@@ -586,9 +587,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                         </div>
                     )}
                     {filterType === 'custom' && (
-                        <div className="flex gap-1">
-                            <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-medium outline-none" />
-                            <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="p-1.5 text-xs border border-gray-200 rounded-lg bg-white font-medium outline-none" />
+                        <div className="flex gap-2">
+                            <DateInput 
+                                value={customStartDate} 
+                                onChange={setCustomStartDate} 
+                                className="!flex-row items-center gap-1"
+                            />
+                            <span className="text-gray-400 self-center">-</span>
+                            <DateInput 
+                                value={customEndDate} 
+                                onChange={setCustomEndDate} 
+                                className="!flex-row items-center gap-1"
+                            />
                         </div>
                     )}
                 </div>
@@ -717,14 +727,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                             <div className="text-center">
                                 <h4 className="font-bold text-sm text-gray-800">Cập nhật chi phí Ads</h4>
                                 <p className="text-[10px] text-gray-500 mb-4">Nhập tay chi phí theo ngày</p>
-                                <div className="flex flex-col gap-2">
-                                    <input 
-                                        type="date" 
-                                        className="bg-gray-50 border border-gray-300 rounded text-xs p-2 focus:outline-none focus:border-gray-500"
+                                <div className="flex flex-col gap-2 w-full">
+                                    <DateInput 
                                         value={adsDateInput}
-                                        onChange={(e) => {
-                                            setAdsDateInput(e.target.value);
-                                            if (dailyAdsCosts[e.target.value]) setAdsCostInput(dailyAdsCosts[e.target.value]);
+                                        onChange={(val) => {
+                                            setAdsDateInput(val);
+                                            if (dailyAdsCosts[val]) setAdsCostInput(dailyAdsCosts[val]);
                                             else setAdsCostInput(0);
                                         }}
                                     />

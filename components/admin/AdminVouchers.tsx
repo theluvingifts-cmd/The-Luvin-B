@@ -4,6 +4,8 @@ import { Voucher } from '../../types';
 import { getAllVouchers, addVoucher, updateVoucher, deleteVoucher } from '../../services/voucherService';
 import { formatCurrency } from '../../utils/pricing';
 
+import { DateInput } from '../ui/DateInput';
+
 export const AdminVouchers: React.FC = () => {
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
     const [viewMode, setViewMode] = useState<'list' | 'edit'>('list');
@@ -210,15 +212,11 @@ export const AdminVouchers: React.FC = () => {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ngày hết hạn (Để trống = Vĩnh viễn)</label>
-                            <input 
-                                type="date"
-                                className="w-full p-2.5 border border-gray-300 rounded"
-                                value={formData.expiryDate}
-                                onChange={e => setFormData({...formData, expiryDate: e.target.value})}
-                            />
-                        </div>
+                        <DateInput 
+                            label="Ngày hết hạn (Để trống = Vĩnh viễn)"
+                            value={formData.expiryDate}
+                            onChange={val => setFormData({...formData, expiryDate: val})}
+                        />
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mô tả</label>
                             <textarea 

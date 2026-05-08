@@ -276,7 +276,7 @@ export const BusinessPage: React.FC<BusinessPageProps> = ({ config: propConfig, 
                                 <div className="relative z-10 space-y-10 animate-fade-in">
                                     <div className="flex justify-between items-start">
                                         <h3 className="text-2xl font-heading font-bold text-gray-900 italic">Dự toán ngân sách</h3>
-                                        <span className="text-[10px] font-mono text-gray-300 uppercase">Ver. {new Date().toLocaleDateString()}</span>
+                                        <span className="text-[10px] font-mono text-gray-300 uppercase">Ver. {new Date().toLocaleDateString('vi-VN')}</span>
                                     </div>
 
                                     <div className="space-y-6">

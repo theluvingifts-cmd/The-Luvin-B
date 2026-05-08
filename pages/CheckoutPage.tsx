@@ -10,6 +10,7 @@ import { trackFunnelStep } from '../services/analyticsService';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { getCollaboratorByReferralCode } from '../services/shareService';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
+import { DateInput } from '../components/ui/DateInput';
 
 // Popular provinces as fallback if API fails
 const POPULAR_PROVINCES = [
@@ -597,12 +598,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <label className="text-sm font-semibold text-gray-700 block mb-1">{t('checkout.delivery_date')}</label>
-                          <input 
-                            type="date" 
+                          <DateInput 
+                            label={t('checkout.delivery_date')}
                             value={deliveryDate} 
-                            onChange={e => setDeliveryDate(e.target.value)} 
-                            className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                            onChange={setDeliveryDate} 
                             required 
                             min={new Date().toISOString().split("T")[0]} 
                           />
