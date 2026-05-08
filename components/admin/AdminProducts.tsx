@@ -46,6 +46,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     // Template Filters
     const [templateSearch, setTemplateSearch] = useState('');
     const [templateCategory, setTemplateCategory] = useState('all');
+    const [showLowStockTemplatesOnly, setShowLowStockTemplatesOnly] = useState(false);
 
     // Editing States (Objects)
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
@@ -93,9 +94,10 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         templates.filter(t => {
             const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase());
             const matchesCategory = templateCategory === 'all' || t.category === templateCategory;
-            return matchesSearch && matchesCategory;
+            const matchesStock = showLowStockTemplatesOnly ? (t.stock === 0) : true;
+            return matchesSearch && matchesCategory && matchesStock;
         }),
-    [templates, templateSearch, templateCategory]);
+    [templates, templateSearch, templateCategory, showLowStockTemplatesOnly]);
 
     // Switch View Handler
     const switchToEdit = (item: any = null, type: ProductSubTab) => {
@@ -766,6 +768,15 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <option key={cat} value={cat}>{cat}</option>
                                             ))}
                                         </select>
+                                        <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 border rounded-lg hover:bg-gray-100 transition-colors self-start sm:self-auto">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={showLowStockTemplatesOnly} 
+                                                onChange={(e) => setShowLowStockTemplatesOnly(e.target.checked)} 
+                                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                                            />
+                                            <span className="text-[10px] font-black text-gray-700 uppercase tracking-tight">Chỉ hiện hết hàng</span>
+                                        </label>
                                         {templateSearch === '' && templateCategory === 'all' && (
                                             <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
                                                 <span className="text-[10px]">Lướt xuống để chỉnh mẫu</span>
@@ -810,6 +821,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <div className="flex flex-col gap-1">
                                                     <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase w-fit">{tpl.category || 'Mẫu thiết kế'}</span>
                                                     <div className="flex gap-1">
+                                                        {(tpl.stock !== undefined && tpl.stock <= 0) && <span className="text-[9px] bg-gray-800 text-white px-1 rounded font-bold">🚫 HẾT HÀNG</span>}
                                                         {tpl.isHot && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded font-bold">🔥 HOT</span>}
                                                         {tpl.isNew && <span className="text-[9px] bg-blue-100 text-blue-600 px-1 rounded font-bold">✨ NEW</span>}
                                                     </div>

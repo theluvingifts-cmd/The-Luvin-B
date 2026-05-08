@@ -10,6 +10,29 @@ import { useLanguage } from '../src/contexts/LanguageContext';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { getCachedTemplates } from '../services/configService';
 
+const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string, LegoPart>) => {
+    if (!config) return [];
+    const oos: string[] = [];
+    
+    // Check characters
+    config.characters.forEach(char => {
+        if (char.hair && allParts[char.hair.id] && (allParts[char.hair.id].stock ?? 1) <= 0) oos.push(char.hair.name);
+        if (char.face && allParts[char.face.id] && (allParts[char.face.id].stock ?? 1) <= 0) oos.push(char.face.name);
+        if (char.shirt && allParts[char.shirt.id] && (allParts[char.shirt.id].stock ?? 1) <= 0) oos.push(char.shirt.name);
+        if (char.pants && allParts[char.pants.id] && (allParts[char.pants.id].stock ?? 1) <= 0) oos.push(char.pants.name);
+        if (char.hat && allParts[char.hat.id] && (allParts[char.hat.id].stock ?? 1) <= 0) oos.push(char.hat.name);
+        if (char.set && allParts[char.set.id] && (allParts[char.set.id].stock ?? 1) <= 0) oos.push(char.set.name);
+    });
+    
+    // Check draggable items
+    config.draggableItems.forEach(item => {
+        const part = allParts[item.partId];
+        if (part && (part.stock ?? 1) <= 0) oos.push(part.name);
+    });
+    
+    return Array.from(new Set(oos)); // Unique names
+};
+
 interface CollectionPageProps {
     navigateTo: (page: Page) => void, 
     onCustomize: (template: CollectionTemplate) => void, 
@@ -84,8 +107,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
         };
         (Object.values(allParts) as LegoPart[]).forEach(p => {
-            // Filter out out-of-stock items
-            if (result[p.type] && (p.stock === undefined || p.stock > 0)) {
+            // Keep all parts in the map, but we'll handle the visual display of OOS elsewhere
+            // or filter them for the user selection if desired. 
+            // Change: Don't filter out negative stock here, treat it as OOS but available to see.
+            if (result[p.type]) {
                 result[p.type].push(p);
             }
         });
@@ -338,6 +363,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const handleBuyNow = () => {
         if (!customConfig) return;
+
+        const oosParts = getOutOfStockParts(customConfig, allParts);
+        if ((selectedTemplate?.stock === 0) || oosParts.length > 0) {
+            alert(selectedTemplate?.stock === 0 
+                ? "Mẫu này hiện đang hết hàng." 
+                : `Một số phụ kiện trong mẫu này hiện đang hết hàng: ${oosParts.join(', ')}. Vui lòng thay thế phụ kiện khác.`);
+            return;
+        }
+
         if (!orderNote.trim()) {
             alert(t('collection.enter_order_note'));
             scrollToNote();
@@ -359,6 +393,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const handleQuickAddToCart = () => {
         if (!customConfig) return;
+
+        const oosParts = getOutOfStockParts(customConfig, allParts);
+        if ((selectedTemplate?.stock === 0) || oosParts.length > 0) {
+            alert(selectedTemplate?.stock === 0 
+                ? "Mẫu này hiện đang hết hàng." 
+                : `Một số phụ kiện trong mẫu này hiện đang hết hàng: ${oosParts.join(', ')}. Vui lòng thay thế phụ kiện khác.`);
+            return;
+        }
+
         if (!orderNote.trim()) {
             alert(t('collection.enter_order_note'));
             scrollToNote();
@@ -679,6 +722,30 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         ref={scrollContainerRef}
                         className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain scroll-smooth"
                     >
+                        {/* Out of Stock Warning */}
+                        {(() => {
+                            const isOutOfStock = (selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0);
+                            const missingParts = getOutOfStockParts(customConfig, allParts);
+                            if (isOutOfStock || missingParts.length > 0) {
+                                return (
+                                    <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-5 mb-2 animate-pulse">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className="text-xl">🚫</span>
+                                            <h4 className="font-black text-[12px] text-red-900 uppercase tracking-widest">
+                                                {isOutOfStock ? "Mẫu này tạm hết hàng" : "Một số phụ kiện tạm hết"}
+                                            </h4>
+                                        </div>
+                                        <p className="text-[10px] text-red-700 font-bold leading-relaxed">
+                                            {isOutOfStock 
+                                                ? "Rất tiếc, mẫu thiết kế này hiện không còn hàng. Vui lòng quay lại sau hoặc chọn mẫu khác."
+                                                : `Các linh kiện sau hiện đang hết hàng: ${missingParts.join(', ')}. Bạn vẫn có thể xem mẫu, nhưng không thể đặt hàng lúc này.`}
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+
                         {/* Preview Image with Scroll Hint */}
                         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center">
                             {selectedTemplate.isSimple ? (
@@ -830,6 +897,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                 {partsByType[type].map(part => (
                                                                     <button 
                                                                         key={part.id}
+                                                                        disabled={(part.stock !== undefined && part.stock <= 0)}
                                                                         onClick={() => {
                                                                             const newChars = customConfig.characters.map(c => {
                                                                                 if (c.id === char.id) {
@@ -839,11 +907,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                     if (type === 'hair') updated.selectedHairColor = part.colors?.[0];
                                                                                     if (type === 'set') {
                                                                                         updated.selectedSetColor = part.colors?.[0];
-                                                                                        // If set is selected, we might want to clear individual shirt/pants
                                                                                         updated.shirt = undefined;
                                                                                         updated.pants = undefined;
                                                                                     } else {
-                                                                                        // If shirt or pants selected, clear set
                                                                                         updated.set = undefined;
                                                                                     }
                                                                                     return updated;
@@ -852,9 +918,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                             });
                                                                             setCustomConfig({ ...customConfig, characters: newChars });
                                                                         }}
-                                                                        className={`w-10 h-10 rounded-lg border-2 flex-shrink-0 p-1 transition-all ${char[type]?.id === part.id ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+                                                                        className={`w-10 h-10 rounded-lg border-2 flex-shrink-0 p-1 transition-all relative ${char[type]?.id === part.id ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'} ${(part.stock !== undefined && part.stock <= 0) ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
                                                                     >
                                                                         <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                                        {(part.stock !== undefined && part.stock <= 0) && (
+                                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                                <span className="bg-red-500 text-white text-[5px] font-black px-0.5 rounded rotate-12">HẾT</span>
+                                                                            </div>
+                                                                        )}
                                                                     </button>
                                                                 ))}
                                                             </div>
@@ -1233,13 +1304,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         <div className="flex gap-2">
                             <button 
                                 onClick={handleQuickAddToCart}
-                                className="flex-1 py-4 bg-gray-100 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                disabled={(selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0) || getOutOfStockParts(customConfig, allParts).length > 0}
+                                className="flex-1 py-4 bg-gray-100 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 🛒 {t('common.add_to_cart')}
                             </button>
                             <button 
                                 onClick={handleBuyNow}
-                                className="flex-[1.5] py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                disabled={(selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0) || getOutOfStockParts(customConfig, allParts).length > 0}
+                                className="flex-[1.5] py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 ⚡ {t('common.buy_now')}
                             </button>
@@ -1394,9 +1467,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         ? calculated.priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0)
                         : (template.price || 290000);
                     const purchaseCount = template.purchaseCount || 0;
+                    const isOutOfStock = template.stock === 0;
+                    const oosParts = getOutOfStockParts(template.config, allParts);
+                    const hasOosParts = oosParts.length > 0;
                     
                     return ( 
-                        <div key={template.id || index} className="group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full">
+                        <div key={template.id || index} className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}>
                             {/* Image Container */}
                             <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 cursor-pointer" onClick={() => handleSelectTemplate(template)}>
                                 <SmartImage 
@@ -1407,17 +1483,29 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="absolute top-2 left-2 right-2 flex flex-col gap-1.5 pointer-events-none">
                                     <div className="flex flex-wrap gap-1">
-                                         {(template.isHot || purchaseCount > 20) && (
-                                             <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
-                                                 🔥 {t('collection.hot')}
+                                         {isOutOfStock ? (
+                                             <div className="bg-gray-800 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
+                                                 🚫 Hết hàng
                                              </div>
-                                         )}
-                                         {template.isNew && (
-                                             <div className="bg-blue-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
-                                                 ✨ {t('common.new')}
+                                         ) : hasOosParts ? (
+                                             <div className="bg-amber-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
+                                                 ⚠️ Thiếu phụ kiện
                                              </div>
+                                         ) : (
+                                             <>
+                                                 {(template.isHot || purchaseCount > 20) && (
+                                                     <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
+                                                         🔥 {t('collection.hot')}
+                                                     </div>
+                                                 )}
+                                                 {template.isNew && (
+                                                     <div className="bg-blue-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
+                                                         ✨ {t('common.new')}
+                                                     </div>
+                                                 )}
+                                             </>
                                          )}
-                                        {template.price && template.salePrice && template.salePrice < template.price && (
+                                        {template.price && template.salePrice && template.salePrice < template.price && !isOutOfStock && (
                                             <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md">
                                                 OFF {Math.round((1 - template.salePrice / template.price) * 100)}%
                                             </div>

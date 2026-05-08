@@ -274,6 +274,7 @@ export interface CollectionTemplate {
     isHot?: boolean;
     isNew?: boolean;
     order?: number;
+    stock?: number;
 }
 
 export interface FeedbackItem {

@@ -33,8 +33,7 @@ export const TemplateForm: React.FC<{
             hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
         };
         allParts.forEach(p => {
-            // Only include parts that are in stock
-            if (result[p.type] && (p.stock === undefined || p.stock > 0)) {
+            if (result[p.type]) {
                 result[p.type].push(p);
             }
         });
@@ -74,8 +73,18 @@ export const TemplateForm: React.FC<{
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
-        setFormData(prev => ({ ...prev, [e.target.name]: value }));
+        const { name, value, type } = e.target;
+        
+        let finalValue: any = value;
+        if (type === 'number') {
+            if (value === '') {
+                finalValue = name === 'stock' ? undefined : 0;
+            } else {
+                finalValue = parseFloat(value);
+            }
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,6 +277,18 @@ export const TemplateForm: React.FC<{
                             placeholder="VD: 100" 
                         />
                         <p className="text-[10px] text-gray-400 mt-1">Số lượng này sẽ hiển thị trên web để tăng độ uy tín.</p>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Tồn kho mẫu (Hết hàng sẽ không thể đặt)</label>
+                        <input 
+                            type="number"
+                            name="stock" 
+                            value={formData.stock === undefined ? '' : formData.stock} 
+                            onChange={handleChange} 
+                            className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
+                            placeholder="Để trống là còn hàng" 
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Nhập 0 để đánh dấu hết hàng mẫu sẵn này.</p>
                     </div>
                 </div>
 
@@ -556,10 +577,15 @@ export const TemplateForm: React.FC<{
                                                             <button 
                                                                 key={part.id}
                                                                 onClick={() => handleUpdateChar(activeCharacter.id, type, part.id)}
-                                                                className={`w-12 h-12 rounded-xl border-2 flex-shrink-0 p-1 transition-all ${selectedPart?.id === part.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
-                                                                title={part.name}
+                                                                className={`w-12 h-12 rounded-xl border-2 flex-shrink-0 p-1 transition-all relative ${selectedPart?.id === part.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'} ${part.stock === 0 ? 'opacity-60' : ''}`}
+                                                                title={part.name + (part.stock === 0 ? ' (HẾT HÀNG)' : '')}
                                                             >
                                                                 <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                                                {part.stock === 0 && (
+                                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                        <span className="bg-red-500 text-white text-[6px] font-black px-0.5 rounded shadow-sm uppercase rotate-12">Hết</span>
+                                                                    </div>
+                                                                )}
                                                             </button>
                                                         ))}
                                                     </div>
@@ -604,10 +630,15 @@ export const TemplateForm: React.FC<{
                                                 <button 
                                                     key={p.id}
                                                     onClick={() => handleAddCharm(p.id)}
-                                                    className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1.5 hover:border-primary hover:shadow-sm transition-all group"
-                                                    title={p.name}
+                                                    className={`w-12 h-12 bg-white rounded-xl border p-1.5 hover:border-primary hover:shadow-sm transition-all group relative ${p.stock === 0 ? 'opacity-60 border-red-200' : 'border-gray-200'}`}
+                                                    title={p.name + (p.stock === 0 ? ' (HẾT HÀNG)' : '')}
                                                 >
                                                     <img src={p.imageUrl} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                                    {p.stock === 0 && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <span className="bg-red-500 text-white text-[6px] font-black px-0.5 rounded shadow-sm uppercase rotate-12">Hết</span>
+                                                        </div>
+                                                    )}
                                                 </button>
                                             ))}
                                         </div>
@@ -620,10 +651,15 @@ export const TemplateForm: React.FC<{
                                                 <button 
                                                     key={p.id}
                                                     onClick={() => handleAddCharm(p.id)}
-                                                    className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1.5 hover:border-primary hover:shadow-sm transition-all group"
-                                                    title={p.name}
+                                                    className={`w-12 h-12 bg-white rounded-xl border p-1.5 hover:border-primary hover:shadow-sm transition-all group relative ${p.stock === 0 ? 'opacity-60 border-red-200' : 'border-gray-200'}`}
+                                                    title={p.name + (p.stock === 0 ? ' (HẾT HÀNG)' : '')}
                                                 >
                                                     <img src={p.imageUrl} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                                    {p.stock === 0 && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <span className="bg-red-500 text-white text-[6px] font-black px-0.5 rounded shadow-sm uppercase rotate-12">Hết</span>
+                                                        </div>
+                                                    )}
                                                 </button>
                                             ))}
                                         </div>

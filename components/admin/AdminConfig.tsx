@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FeedbackItem, ThemeConfig, CustomFont, StaffMember } from '../../types';
 import { StoreConfig, updateStoreConfig, DEFAULT_THEME } from '../../services/configService';
 import { addFeedback, updateFeedback, deleteFeedback } from '../../services/feedbackService';
+import { addVoucher } from '../../services/voucherService';
 import { uploadFile } from '../../services/uploadService';
 import { ConfigImageUpload } from './shared/ConfigImageUpload';
 import { FeedbackForm } from './forms/FeedbackForm';
@@ -843,6 +844,27 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.disableThankYouEmail ? '' : 'translate-x-6'}`}></div>
                                 </button>
                             </div>
+
+                            <button 
+                                onClick={async () => {
+                                    const success = await addVoucher({
+                                        id: 'THELUVIN5',
+                                        code: 'THELUVIN5',
+                                        type: 'percent',
+                                        value: 5,
+                                        minOrderValue: 0,
+                                        usedCount: 0,
+                                        isActive: true,
+                                        description: 'Voucher 5% tặng kèm mail cảm ơn'
+                                    });
+                                    if (success) alert('Đã kích hoạt mã THELUVIN5 (giảm 5%) thành công!');
+                                    else alert('Lỗi khi kích hoạt voucher.');
+                                }}
+                                className="w-full py-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 flex items-center justify-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                                Kích hoạt mã THELUVIN5 (Voucher 5%)
+                            </button>
 
                             <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 space-y-3">
                                 <label className="block text-xs font-bold text-indigo-700">Bot Token</label>
