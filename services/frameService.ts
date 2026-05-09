@@ -5,6 +5,7 @@ import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
 import { FRAME_OPTIONS } from '../constants';
 import type { FrameOption } from '../types';
+import { cleanForFirestore } from '../utils/helpers';
 
 const COLLECTION_NAME = "frames";
 
@@ -50,7 +51,8 @@ export const getAllFrames = async (): Promise<FrameOption[]> => {
 
 export const addFrame = async (frame: FrameOption) => {
     try {
-        await setDoc(doc(db, COLLECTION_NAME, frame.id), frame);
+        const cleaned = cleanForFirestore(frame);
+        await setDoc(doc(db, COLLECTION_NAME, frame.id), cleaned);
         return true;
     } catch (error) {
         console.error("Error adding frame:", error);
@@ -60,7 +62,8 @@ export const addFrame = async (frame: FrameOption) => {
 
 export const updateFrame = async (id: string, updates: Partial<FrameOption>) => {
     try {
-        await updateDoc(doc(db, COLLECTION_NAME, id), updates);
+        const cleaned = cleanForFirestore(updates);
+        await updateDoc(doc(db, COLLECTION_NAME, id), cleaned);
         return true;
     } catch (error) {
         console.error("Error updating frame:", error);

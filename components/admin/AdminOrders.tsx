@@ -374,7 +374,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         if (res.success && res.data) {
             setOrders(prev => [res.data as Order, ...prev]);
             setShowQuickOrderModal(false);
-            alert("Đã tạo đơn hàng thành công!");
+            alert("Đã tạo đơn hàng thành công! Mã đơn: " + res.data.id);
         } else {
             alert("Lỗi khi tạo đơn: " + (res.error?.message || "Không rõ"));
         }

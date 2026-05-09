@@ -7,6 +7,7 @@ import { LEGO_PARTS } from '../constants'; // Lấy dữ liệu mẫu ban đầu
 import type { LegoPart } from '../types';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { createAuditLog } from './auditService';
+import { cleanForFirestore } from '../utils/helpers';
 
 // Tên collection trong Firebase
 const COLLECTION_NAME = "lego_parts";
@@ -42,7 +43,8 @@ export const getAllParts = async (): Promise<LegoPart[]> => {
 // 2. Hàm thêm sản phẩm mới
 export const addPart = async (part: LegoPart) => {
     try {
-        await setDoc(doc(db, COLLECTION_NAME, part.id), { ...part, order: 9999 });
+        const cleaned = cleanForFirestore({ ...part, order: 9999 });
+        await setDoc(doc(db, COLLECTION_NAME, part.id), cleaned);
         await createAuditLog('create_part', 'lego_part', part.id, { name: part.name });
         return true;
     } catch (error) {
@@ -55,7 +57,8 @@ export const addPart = async (part: LegoPart) => {
 export const updatePart = async (partId: string, updates: Partial<LegoPart>) => {
     try {
         const partRef = doc(db, COLLECTION_NAME, partId);
-        await updateDoc(partRef, updates);
+        const cleaned = cleanForFirestore(updates);
+        await updateDoc(partRef, cleaned);
         await createAuditLog('update_part', 'lego_part', partId, updates);
         return true;
     } catch (error) {

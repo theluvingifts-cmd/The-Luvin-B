@@ -24,11 +24,15 @@ export const DateInput: React.FC<DateInputProps> = ({
   const getDisplayDate = (dateStr: string) => {
     if (!dateStr) return placeholder;
     try {
+      // Input date is always YYYY-MM-DD
       const parts = dateStr.split('-');
       if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        const day = parts[2];
+        const month = parts[1];
+        const year = parts[0];
+        return `${day}/${month}/${year}`;
       }
-      return new Date(dateStr).toLocaleDateString('vi-VN');
+      return dateStr;
     } catch (e) {
       return dateStr;
     }
@@ -39,6 +43,7 @@ export const DateInput: React.FC<DateInputProps> = ({
       {label && (
         <label className="text-sm font-semibold text-gray-700 block mb-1">
           {label} {required && <span className="text-red-500">*</span>}
+          <span className="text-[10px] text-gray-400 font-normal ml-2">(Ngày/Tháng/Năm)</span>
         </label>
       )}
       <div className="relative group">

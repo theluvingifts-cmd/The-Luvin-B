@@ -391,7 +391,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     
     const fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
 
-    const orderId = initialOrder ? initialOrder.id : `#LUVIN${Date.now().toString().slice(-6)}`;
+    const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
     let autoTags = '';
     if (isEarlyBird) autoTags += t('checkout.early_bird_tag');

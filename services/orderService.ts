@@ -126,21 +126,19 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                         const tplRef = doc(db, "templates", item.templateId);
                         const qty = item.quantity || 1;
                         
-                        // We always increment purchaseCount
+                        const tplSnap = await transaction.get(tplRef);
                         const updates: any = {
                             purchaseCount: firestoreIncrement(qty)
                         };
                         
-                        // BUT: We only want to decrement stock if it's actually being tracked (not undefined)
-                        // However, firestoreIncrement will create the field if it doesn't exist.
-                        // Since we only want to track stock for templates that explicitly have a stock value set,
-                        // we should ideally read the template first to see if it has stock.
-                        // But for simplicity and based on user request, we'll just increment it.
-                        // If it becomes negative, it's OOS. 
-                        transaction.update(tplRef, {
-                            ...updates,
-                            stock: firestoreIncrement(-qty)
-                        });
+                        if (tplSnap.exists()) {
+                            const tplData = tplSnap.data();
+                            if (typeof tplData.stock === 'number') {
+                                updates.stock = firestoreIncrement(-qty);
+                            }
+                        }
+                        
+                        transaction.update(tplRef, updates);
                     }
                 }
 
@@ -148,9 +146,16 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                 for (const [partId, qty] of Object.entries(partsUsage)) {
                     if (!qty) continue;
                     const partRef = doc(db, "lego_parts", partId);
-                    transaction.update(partRef, {
-                        stock: firestoreIncrement(-qty)
-                    });
+                    const partSnap = await transaction.get(partRef);
+                    
+                    if (partSnap.exists()) {
+                        const partData = partSnap.data();
+                        if (typeof partData.stock === 'number') {
+                            transaction.update(partRef, {
+                                stock: firestoreIncrement(-qty)
+                            });
+                        }
+                    }
                 }
             });
         } catch (secondaryError) {

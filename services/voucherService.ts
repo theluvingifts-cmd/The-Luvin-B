@@ -3,6 +3,7 @@ import { db } from '../config/firebase';
 // Standard firestore modular SDK imports
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, getDoc, increment } from 'firebase/firestore';
 import type { Voucher } from '../types';
+import { cleanForFirestore } from '../utils/helpers';
 
 const COLLECTION_NAME = "vouchers";
 
@@ -24,7 +25,8 @@ export const addVoucher = async (voucher: Voucher) => {
     try {
         // Dùng code làm ID luôn để đảm bảo duy nhất
         const id = voucher.code.toUpperCase().trim();
-        await setDoc(doc(db, COLLECTION_NAME, id), { ...voucher, id, code: id });
+        const cleaned = cleanForFirestore({ ...voucher, id, code: id });
+        await setDoc(doc(db, COLLECTION_NAME, id), cleaned);
         return true;
     } catch (error) {
         console.error("Error adding voucher:", error);
@@ -34,7 +36,8 @@ export const addVoucher = async (voucher: Voucher) => {
 
 export const updateVoucher = async (id: string, updates: Partial<Voucher>) => {
     try {
-        await updateDoc(doc(db, COLLECTION_NAME, id), updates);
+        const cleaned = cleanForFirestore(updates);
+        await updateDoc(doc(db, COLLECTION_NAME, id), cleaned);
         return true;
     } catch (error) {
         console.error("Error updating voucher:", error);

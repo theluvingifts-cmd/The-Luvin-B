@@ -152,8 +152,8 @@ export const CharacterCatalogPage: React.FC = () => {
         await new Promise(r => setTimeout(r, 600));
 
         try {
-            // ONLY parts in stock
-            const inStockParts = allParts.filter(p => p.stock === undefined || p.stock > 0);
+            // ONLY parts in stock (ignore negative corruption)
+            const inStockParts = allParts.filter(p => p.stock === undefined || p.stock === null || p.stock !== 0);
             
             const hairs = inStockParts.filter(p => p.type === 'hair');
             const faces = inStockParts.filter(p => p.type === 'face');
@@ -482,8 +482,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                                             </span>
                                                         </div>
                                                         {part.stock !== undefined && (
-                                                            <span className={`text-[8px] font-bold ${part.stock > 10 ? 'text-green-400' : part.stock > 0 ? 'text-orange-400' : 'text-red-400'}`}>
-                                                                • {part.stock > 0 ? `Còn ${part.stock}` : 'Hết'}
+                                                            <span className={`text-[8px] font-bold ${part.stock > 10 ? 'text-green-400' : part.stock !== 0 ? 'text-orange-400' : 'text-red-400'}`}>
+                                                                • {part.stock !== 0 ? `Tồn ${part.stock}` : 'Hết'}
                                                             </span>
                                                         )}
                                                     </div>
@@ -542,7 +542,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`text-[10px] font-black uppercase ${part.stock === 0 ? 'text-red-500' : 'text-gray-900'}`}>
-                                                {part.stock !== undefined ? (part.stock > 0 ? `${part.stock} món` : 'Hết hàng') : 'Liên hệ'}
+                                                {part.stock !== undefined ? (part.stock !== 0 ? `${part.stock} món` : 'Hết hàng') : 'Liên hệ'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">

@@ -4,6 +4,7 @@ import { db } from '../config/firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { FEEDBACK_ITEMS } from '../constants';
 import type { FeedbackItem } from '../types';
+import { cleanForFirestore } from '../utils/helpers';
 
 const COLLECTION_NAME = "feedbacks";
 
@@ -27,7 +28,8 @@ export const getAllFeedbacks = async (): Promise<FeedbackItem[]> => {
 
 export const addFeedback = async (feedback: FeedbackItem) => {
     try {
-        await setDoc(doc(db, COLLECTION_NAME, feedback.id), feedback);
+        const cleaned = cleanForFirestore(feedback);
+        await setDoc(doc(db, COLLECTION_NAME, feedback.id), cleaned);
         return true;
     } catch (error) {
         console.error("Error adding feedback:", error);
@@ -37,7 +39,8 @@ export const addFeedback = async (feedback: FeedbackItem) => {
 
 export const updateFeedback = async (id: string, updates: Partial<FeedbackItem>) => {
     try {
-        await updateDoc(doc(db, COLLECTION_NAME, id), updates);
+        const cleaned = cleanForFirestore(updates);
+        await updateDoc(doc(db, COLLECTION_NAME, id), cleaned);
         return true;
     } catch (error) {
         console.error("Error updating feedback:", error);

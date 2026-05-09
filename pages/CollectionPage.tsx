@@ -16,18 +16,18 @@ const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string,
     
     // Check characters
     config.characters.forEach(char => {
-        if (char.hair && allParts[char.hair.id] && (allParts[char.hair.id].stock ?? 1) <= 0) oos.push(char.hair.name);
-        if (char.face && allParts[char.face.id] && (allParts[char.face.id].stock ?? 1) <= 0) oos.push(char.face.name);
-        if (char.shirt && allParts[char.shirt.id] && (allParts[char.shirt.id].stock ?? 1) <= 0) oos.push(char.shirt.name);
-        if (char.pants && allParts[char.pants.id] && (allParts[char.pants.id].stock ?? 1) <= 0) oos.push(char.pants.name);
-        if (char.hat && allParts[char.hat.id] && (allParts[char.hat.id].stock ?? 1) <= 0) oos.push(char.hat.name);
-        if (char.set && allParts[char.set.id] && (allParts[char.set.id].stock ?? 1) <= 0) oos.push(char.set.name);
+        if (char.hair && allParts[char.hair.id] && allParts[char.hair.id].stock === 0) oos.push(char.hair.name);
+        if (char.face && allParts[char.face.id] && allParts[char.face.id].stock === 0) oos.push(char.face.name);
+        if (char.shirt && allParts[char.shirt.id] && allParts[char.shirt.id].stock === 0) oos.push(char.shirt.name);
+        if (char.pants && allParts[char.pants.id] && allParts[char.pants.id].stock === 0) oos.push(char.pants.name);
+        if (char.hat && allParts[char.hat.id] && allParts[char.hat.id].stock === 0) oos.push(char.hat.name);
+        if (char.set && allParts[char.set.id] && allParts[char.set.id].stock === 0) oos.push(char.set.name);
     });
     
     // Check draggable items
     config.draggableItems.forEach(item => {
         const part = allParts[item.partId];
-        if (part && (part.stock ?? 1) <= 0) oos.push(part.name);
+        if (part && part.stock === 0) oos.push(part.name);
     });
     
     return Array.from(new Set(oos)); // Unique names
@@ -545,7 +545,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return (Object.values(allParts) as LegoPart[]).filter(p => 
             (p.type === 'accessory' || p.type === 'pet' || p.type === 'hat') && 
             !templatePartIds.has(p.id) &&
-            (p.stock === undefined || p.stock > 0)
+            (p.stock === undefined || p.stock === null || p.stock !== 0)
         );
     }, [allParts, selectedTemplate]);
 
@@ -724,7 +724,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     >
                         {/* Out of Stock Warning */}
                         {(() => {
-                            const isOutOfStock = (selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0);
+                            const isOutOfStock = (selectedTemplate.stock === 0);
                             const missingParts = getOutOfStockParts(customConfig, allParts);
                             if (isOutOfStock || missingParts.length > 0) {
                                 return (

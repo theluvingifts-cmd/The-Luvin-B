@@ -56,7 +56,8 @@ export const addTemplate = async (template: CollectionTemplate) => {
 
 export const updateTemplate = async (id: string, updates: Partial<CollectionTemplate>) => {
     try {
-        await updateDoc(doc(db, COLLECTION_NAME, id), updates);
+        const cleaned = cleanForFirestore(updates);
+        await updateDoc(doc(db, COLLECTION_NAME, id), cleaned);
         return true;
     } catch (error) {
         console.error("Error updating template:", error);

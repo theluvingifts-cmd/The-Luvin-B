@@ -156,7 +156,9 @@ export const Step3Characters: React.FC<{
     const [accessorySearch, setAccessorySearch] = useState<string>('');
 
     const getAvailableParts = (list: LegoPart[]) => {
-        return list.filter(p => p.stock === undefined || p.stock > 0);
+        // Only hide if stock is strictly 0. 
+        // If stock is undefined/null (not tracked) or > 0 (in stock) or < 0 (corrupted but likely intended to be unlimited), show it.
+        return list.filter(p => p.stock === undefined || p.stock === null || p.stock !== 0);
     };
 
      useEffect(() => {
