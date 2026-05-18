@@ -142,12 +142,13 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (!data.uploadedFonts) data.uploadedFonts = [];
             if (!data.staff) data.staff = [];
             if (data.b2bDiscountPercent === undefined) data.b2bDiscountPercent = 5;
+            if (data.disableThankYouEmail === undefined) data.disableThankYouEmail = true;
             
             // Persist to cache
             localStorage.setItem(CACHE_KEY, safeJsonStringify(data));
             return data;
         }
-        return getCachedConfig() || { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5 };
+        return getCachedConfig() || { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5, disableThankYouEmail: true };
     } catch (error: any) {
         console.warn("Firestore: Unable to fetch config. Using cache fallback.");
         return getCachedConfig();

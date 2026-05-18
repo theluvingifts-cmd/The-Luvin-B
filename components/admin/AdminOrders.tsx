@@ -900,10 +900,6 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                 currentStatus={selectedOrder.status} 
                                                 onStatusChange={(status) => {
                                                     handleUpdate(selectedOrder.id, { status });
-                                                    if (status === 'Đã giao hàng' && !selectedOrder.thankYouEmailSent && selectedOrder.customer.email) {
-                                                        sendThankYouEmail(selectedOrder);
-                                                        handleUpdate(selectedOrder.id, { thankYouEmailSent: true }, false);
-                                                    }
                                                 }} 
                                                 onDelete={handleDeleteOrder} 
                                                 canCancel={canCancelOrder} 
