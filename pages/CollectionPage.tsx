@@ -894,10 +894,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                             </div>
                                                             
                                                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                                                {partsByType[type].map(part => (
+                                                                {partsByType[type]
+                                                                    .filter(p => p.stock === undefined || p.stock === null || p.stock !== 0)
+                                                                    .map(part => (
                                                                     <button 
                                                                         key={part.id}
-                                                                        disabled={(part.stock !== undefined && part.stock <= 0)}
                                                                         onClick={() => {
                                                                             const newChars = customConfig.characters.map(c => {
                                                                                 if (c.id === char.id) {
@@ -918,14 +919,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                             });
                                                                             setCustomConfig({ ...customConfig, characters: newChars });
                                                                         }}
-                                                                        className={`w-10 h-10 rounded-lg border-2 flex-shrink-0 p-1 transition-all relative ${char[type]?.id === part.id ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'} ${(part.stock !== undefined && part.stock <= 0) ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
+                                                                        className={`w-10 h-10 rounded-lg border-2 flex-shrink-0 p-1 transition-all relative ${char[type]?.id === part.id ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
                                                                     >
                                                                         <img src={part.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                                                        {(part.stock !== undefined && part.stock <= 0) && (
-                                                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                                                <span className="bg-red-500 text-white text-[5px] font-black px-0.5 rounded rotate-12">HẾT</span>
-                                                                            </div>
-                                                                        )}
                                                                     </button>
                                                                 ))}
                                                             </div>

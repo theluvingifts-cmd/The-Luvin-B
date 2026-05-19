@@ -77,7 +77,8 @@ export const CharacterCatalogPage: React.FC = () => {
             const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesTab = activeTab === 'all' || p.type === activeTab;
             const matchesGender = activeGender === 'all' || inferGender(p) === activeGender || inferGender(p) === 'unisex';
-            return matchesSearch && matchesTab && matchesGender;
+            const isInStock = p.stock === undefined || p.stock === null || p.stock !== 0;
+            return matchesSearch && matchesTab && matchesGender && isInStock;
         });
     }, [allParts, searchTerm, activeTab, activeGender]);
 
@@ -425,13 +426,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                     <SmartImage 
                                         src={part.imageUrl} 
                                         fallback="https://placehold.co/400x400?text=LEGO"
-                                        className={`max-h-full max-w-full object-contain ${part.stock === 0 ? 'grayscale opacity-50' : ''}`}
+                                        className={`max-h-full max-w-full object-contain`}
                                     />
-                                    {part.stock === 0 && (
-                                        <div className="absolute inset-0 bg-white/40 flex items-center justify-center p-4">
-                                            <span className="bg-red-500 text-white text-[8px] font-black uppercase px-2 py-1 rounded-full shadow-lg">Hết hàng</span>
-                                        </div>
-                                    )}
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); setZoomedImage(part.imageUrl); }}
                                         className="absolute bottom-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
@@ -518,13 +514,13 @@ export const CharacterCatalogPage: React.FC = () => {
                                 {filteredParts.map(part => (
                                     <tr 
                                         key={part.id}
-                                        className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedIds.includes(part.id) ? 'bg-primary/5' : 'hover:bg-gray-50/50'} ${part.stock === 0 ? 'opacity-50' : ''}`}
+                                        className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedIds.includes(part.id) ? 'bg-primary/5' : 'hover:bg-gray-50/50'}`}
                                         onClick={() => toggleSelect(part.id)}
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-lg bg-gray-50 p-1 flex items-center justify-center shrink-0 overflow-hidden">
-                                                    <img src={part.imageUrl} className={`max-w-full max-h-full object-contain ${part.stock === 0 ? 'grayscale' : ''}`} alt="" />
+                                                    <img src={part.imageUrl} className={`max-w-full max-h-full object-contain`} alt="" />
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-gray-900 uppercase leading-none mb-1">{part.name}</span>
@@ -541,8 +537,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                             <span className="text-xs font-mono font-bold text-gray-500">#{part.id}</span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`text-[10px] font-black uppercase ${part.stock === 0 ? 'text-red-500' : 'text-gray-900'}`}>
-                                                {part.stock !== undefined ? (part.stock !== 0 ? `${part.stock} món` : 'Hết hàng') : 'Liên hệ'}
+                                            <span className={`text-[10px] font-black uppercase text-gray-900`}>
+                                                {part.stock !== undefined ? `${part.stock} món` : 'Liên hệ'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
