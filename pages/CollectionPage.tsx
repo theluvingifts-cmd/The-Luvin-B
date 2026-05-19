@@ -44,6 +44,59 @@ interface CollectionPageProps {
     isLoadingParts?: boolean
 }
 
+const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPart>): FrameConfig => {
+    const partsByType: Record<string, LegoPart[]> = {};
+    Object.values(allParts).forEach(p => {
+        if (p.stock !== 0) {
+            if (!partsByType[p.type]) partsByType[p.type] = [];
+            partsByType[p.type].push(p);
+        }
+    });
+
+    const findFallback = (type: string) => {
+        const available = partsByType[type] || [];
+        return available.length > 0 ? available[0] : null;
+    };
+
+    const newCharacters = config.characters.map(char => {
+        const updatedChar = { ...char };
+        ['hair', 'face', 'shirt', 'pants', 'hat', 'set'].forEach((type) => {
+            const part = (char as any)[type];
+            if (part && allParts[part.id] && allParts[part.id].stock === 0) {
+                const fallback = findFallback(type);
+                if (fallback) {
+                    (updatedChar as any)[type] = fallback;
+                    const colorKey = type === 'hair' ? 'selectedHairColor' : 
+                                   type === 'shirt' ? 'selectedShirtColor' : 
+                                   type === 'pants' ? 'selectedPantsColor' : 
+                                   type === 'hat' ? 'selectedHatColor' : null;
+                    if (colorKey) {
+                        (updatedChar as any)[colorKey] = fallback.colors?.[0];
+                    }
+                }
+            }
+        });
+        return updatedChar;
+    });
+
+    const newDraggableItems = config.draggableItems.map(item => {
+        const part = allParts[item.partId];
+        if (part && part.stock === 0) {
+            const fallback = findFallback(item.type === 'accessory' || item.type === 'pet' || item.type === 'hat' ? item.type : 'accessory');
+            if (fallback) {
+                return { 
+                    ...item, 
+                    partId: fallback.id, 
+                    selectedColor: fallback.colors?.[0] 
+                };
+            }
+        }
+        return item;
+    });
+
+    return { ...config, characters: newCharacters, draggableItems: newDraggableItems };
+};
+
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts }) => {
     const { t } = useLanguage();
     const { category: urlCategory, templateId: urlTemplateId } = useParams();
@@ -78,11 +131,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     // Handle initial template selection from URL
     useEffect(() => {
-        if (urlTemplateId && displayTemplates.length > 0) {
+        if (urlTemplateId && displayTemplates.length > 0 && Object.keys(allParts).length > 0) {
             const template = displayTemplates.find(t => t.id === urlTemplateId);
             if (template) {
                 setSelectedTemplate(template);
-                setCustomConfig({ ...template.config, templateId: template.id });
+                const fixedConfig = fixOutOfStockParts(template.config, allParts);
+                setCustomConfig({ ...fixedConfig, templateId: template.id });
                 
                 // Also set active category if it matches
                 if (template.category) {
@@ -90,7 +144,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 }
             }
         }
-    }, [urlTemplateId, displayTemplates]);
+    }, [urlTemplateId, displayTemplates, allParts]);
 
     const categories = useMemo(() => {
         const dynamicCats = new Set<string>();
@@ -175,6 +229,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         let result = displayTemplates.filter(template => {
             const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesCategory = activeCategory === t('common.all') || template.category === activeCategory;
+            const isInStock = template.stock !== 0;
             
             // Price Filter
             const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
@@ -190,7 +245,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             else if (charCount === '2') matchesChars = numChars === 2;
             else if (charCount === '3plus') matchesChars = numChars >= 3;
 
-            return matchesSearch && matchesCategory && matchesPrice && matchesChars;
+            return matchesSearch && matchesCategory && matchesPrice && matchesChars && isInStock;
         });
 
         // Sorting
@@ -231,7 +286,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         const categorySlug = slugify(template.category || 'all');
         navigate(`/collection/${categorySlug}/${template.id}`, { replace: true });
         setSelectedTemplate(template);
-        setCustomConfig({ ...template.config, templateId: template.id });
+        const fixedConfig = fixOutOfStockParts(template.config, allParts);
+        setCustomConfig({ ...fixedConfig, templateId: template.id });
         setOrderNote('');
     };
 
@@ -364,14 +420,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const handleBuyNow = () => {
         if (!customConfig) return;
 
-        const oosParts = getOutOfStockParts(customConfig, allParts);
-        if ((selectedTemplate?.stock === 0) || oosParts.length > 0) {
-            alert(selectedTemplate?.stock === 0 
-                ? "Mẫu này hiện đang hết hàng." 
-                : `Một số phụ kiện trong mẫu này hiện đang hết hàng: ${oosParts.join(', ')}. Vui lòng thay thế phụ kiện khác.`);
-            return;
-        }
-
         if (!orderNote.trim()) {
             alert(t('collection.enter_order_note'));
             scrollToNote();
@@ -393,14 +441,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const handleQuickAddToCart = () => {
         if (!customConfig) return;
-
-        const oosParts = getOutOfStockParts(customConfig, allParts);
-        if ((selectedTemplate?.stock === 0) || oosParts.length > 0) {
-            alert(selectedTemplate?.stock === 0 
-                ? "Mẫu này hiện đang hết hàng." 
-                : `Một số phụ kiện trong mẫu này hiện đang hết hàng: ${oosParts.join(', ')}. Vui lòng thay thế phụ kiện khác.`);
-            return;
-        }
 
         if (!orderNote.trim()) {
             alert(t('collection.enter_order_note'));
@@ -722,30 +762,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         ref={scrollContainerRef}
                         className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain scroll-smooth"
                     >
-                        {/* Out of Stock Warning */}
-                        {(() => {
-                            const isOutOfStock = (selectedTemplate.stock === 0);
-                            const missingParts = getOutOfStockParts(customConfig, allParts);
-                            if (isOutOfStock || missingParts.length > 0) {
-                                return (
-                                    <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-5 mb-2 animate-pulse">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className="text-xl">🚫</span>
-                                            <h4 className="font-black text-[12px] text-red-900 uppercase tracking-widest">
-                                                {isOutOfStock ? "Mẫu này tạm hết hàng" : "Một số phụ kiện tạm hết"}
-                                            </h4>
-                                        </div>
-                                        <p className="text-[10px] text-red-700 font-bold leading-relaxed">
-                                            {isOutOfStock 
-                                                ? "Rất tiếc, mẫu thiết kế này hiện không còn hàng. Vui lòng quay lại sau hoặc chọn mẫu khác."
-                                                : `Các linh kiện sau hiện đang hết hàng: ${missingParts.join(', ')}. Bạn vẫn có thể xem mẫu, nhưng không thể đặt hàng lúc này.`}
-                                        </p>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })()}
-
                         {/* Preview Image with Scroll Hint */}
                         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center">
                             {selectedTemplate.isSimple ? (
@@ -1463,12 +1479,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         ? calculated.priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0)
                         : (template.price || 290000);
                     const purchaseCount = template.purchaseCount || 0;
-                    const isOutOfStock = template.stock === 0;
-                    const oosParts = getOutOfStockParts(template.config, allParts);
-                    const hasOosParts = oosParts.length > 0;
                     
                     return ( 
-                        <div key={template.id || index} className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}>
+                        <div key={template.id || index} className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full`}>
                             {/* Image Container */}
                             <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 cursor-pointer" onClick={() => handleSelectTemplate(template)}>
                                 <SmartImage 
@@ -1479,29 +1492,17 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="absolute top-2 left-2 right-2 flex flex-col gap-1.5 pointer-events-none">
                                     <div className="flex flex-wrap gap-1">
-                                         {isOutOfStock ? (
-                                             <div className="bg-gray-800 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
-                                                 🚫 Hết hàng
-                                             </div>
-                                         ) : hasOosParts ? (
-                                             <div className="bg-amber-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
-                                                 ⚠️ Thiếu phụ kiện
-                                             </div>
-                                         ) : (
-                                             <>
-                                                 {(template.isHot || purchaseCount > 20) && (
-                                                     <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
-                                                         🔥 {t('collection.hot')}
-                                                     </div>
-                                                 )}
+                                        {(template.isHot || purchaseCount > 20) && (
+                                            <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
+                                                🔥 {t('collection.hot')}
+                                            </div>
+                                        )}
                                                  {template.isNew && (
                                                      <div className="bg-blue-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1">
                                                          ✨ {t('common.new')}
                                                      </div>
                                                  )}
-                                             </>
-                                         )}
-                                        {template.price && template.salePrice && template.salePrice < template.price && !isOutOfStock && (
+                                        {template.price && template.salePrice && template.salePrice < template.price && (
                                             <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md">
                                                 OFF {Math.round((1 - template.salePrice / template.price) * 100)}%
                                             </div>
