@@ -20,6 +20,8 @@ export const DateInput: React.FC<DateInputProps> = ({
   required,
   min 
 }) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
   // Format YYYY-MM-DD to DD/MM/YYYY for display
   const getDisplayDate = (dateStr: string) => {
     if (!dateStr) return placeholder;
@@ -38,6 +40,22 @@ export const DateInput: React.FC<DateInputProps> = ({
     }
   };
 
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // If the click is on the container but not on the input itself (though input is absolute)
+    // we try to trigger the picker.
+    try {
+      if (inputRef.current) {
+        if (typeof (inputRef.current as any).showPicker === 'function') {
+          (inputRef.current as any).showPicker();
+        } else {
+          inputRef.current.focus();
+        }
+      }
+    } catch (err) {
+      console.warn('showPicker not supported', err);
+    }
+  };
+
   return (
     <div className={`relative flex flex-col ${className}`}>
       {label && (
@@ -46,17 +64,27 @@ export const DateInput: React.FC<DateInputProps> = ({
           <span className="text-[10px] text-gray-400 font-normal ml-2">(Ngày/Tháng/Năm)</span>
         </label>
       )}
-      <div className="relative group">
+      <div 
+        className="relative group cursor-pointer"
+        onClick={handleContainerClick}
+      >
         <input 
+          ref={inputRef}
           type="date" 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
           required={required}
           min={min}
-          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-20"
-          style={{ appearance: 'none' }}
+          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-30 block"
+          style={{ 
+            fontSize: '16px', // Precents zooming on iOS
+            border: 'none',
+            outline: 'none',
+            background: 'transparent'
+          }}
+          onClick={(e) => e.stopPropagation()} // Let the native input handle its own click
         />
-        <div className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm flex justify-between items-center h-10 group-hover:border-gray-400 transition-colors">
+        <div className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm flex justify-between items-center h-10 group-hover:border-gray-400 transition-colors z-10 relative">
           <span className={value ? 'text-gray-900 font-medium' : 'text-gray-400'}>
             {getDisplayDate(value)}
           </span>

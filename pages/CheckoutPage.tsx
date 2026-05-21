@@ -81,6 +81,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; 
   const LOYALTY_DISCOUNT_PERCENT = 0.05; 
 
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   useEffect(() => {
     getStoreConfig().then(cfg => setStoreConfig(cfg));
     if (!initialOrder) trackFunnelStep('checkout_start');
@@ -603,7 +611,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             value={deliveryDate} 
                             onChange={setDeliveryDate} 
                             required 
-                            min={new Date().toISOString().split("T")[0]} 
+                            min={today} 
                           />
                           {isEarlyBird ? (
                               <p className="text-xs text-green-600 font-bold mt-1 animate-pulse">
