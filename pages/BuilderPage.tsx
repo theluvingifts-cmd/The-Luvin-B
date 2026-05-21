@@ -16,6 +16,7 @@ import { getRecentOrders } from '../services/orderService';
 import { trackFunnelStep } from '../services/analyticsService'; 
 import { dataURLToBlob, preloadImage, safeJsonStringify } from '../utils/helpers';
 import { saveSharedDesign, getSharedDesign, saveCTVDesign } from '../services/shareService';
+import { fixOutOfStockParts } from '../utils/legoUtils';
 
 // Sub-components
 import { Step1Frame } from '../components/builder/Step1';
@@ -423,13 +424,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
   // RECOVERY CHECK (ABANDONED CART LOGIC)
   useEffect(() => {
     const savedDraft = localStorage.getItem('active_design_draft');
-    if (savedDraft && !isEditingOrder && step === 1) {
+    if (savedDraft && !isEditingOrder && step === 1 && Object.keys(allParts).length > 0) {
         try {
             const parsed = JSON.parse(savedDraft);
             if (parsed.characters.length > 0 || parsed.background.value !== INITIAL_FRAME_CONFIG.background.value) {
                 const recover = confirm(t('studio.recover_draft_confirm'));
                 if (recover) {
-                    setConfig(parsed);
+                    const fixed = fixOutOfStockParts(parsed, allParts);
+                    setConfig(fixed);
                     setStep(3);
                 } else {
                     setConfig(INITIAL_FRAME_CONFIG);
@@ -438,7 +440,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             }
         } catch(e) {}
     }
-  }, []);
+}, [allParts]);
 
   useEffect(() => {
     backgrounds.slice(0, 5).forEach(bg => preloadImage(bg.previewUrl || bg.url));
@@ -604,8 +606,10 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             setIsDesignLoading(true);
             const sharedConfig = await getSharedDesign(designId);
             if (sharedConfig) {
-                setConfig(sharedConfig);
-                setHistory([JSON.stringify(sharedConfig)]);
+                // Tự động sửa các bộ phận hết hàng khi tải thiết kế mẫu
+                const fixedConfig = fixOutOfStockParts(sharedConfig, allParts);
+                setConfig(fixedConfig);
+                setHistory([JSON.stringify(fixedConfig)]);
                 setHistoryIndex(0);
                 showToast(t('studio.design_loaded'), 'success');
             } else {

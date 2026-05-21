@@ -109,62 +109,74 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             countedInStats: true // Đánh dấu đơn hàng này đã được tính vào thống kê
         };
 
-        // 1. LƯU ĐƠN HÀNG VÀO FIRESTORE (Primary Action)
+        // 1. LƯU ĐƠN HÀNG VÀ CẬP NHẬT THỐNG KÊ TRONG 1 TRANSACTION (Atomic)
         const orderRef = doc(db, "orders", finalOrder.id);
-        await setDoc(orderRef, cleanForFirestore(finalOrder)).catch(err => {
-            handleFirestoreError(err, OperationType.WRITE, `orders/${finalOrder.id}`);
-        });
+        const partsUsage = countPartsInOrder(finalOrder.items);
 
-        // 2. CẬP NHẬT LƯỢT MUA VÀ TỒN KHO (Secondary Actions - Wrapped in try-catch to not block order)
-        try {
-            const partsUsage = countPartsInOrder(finalOrder.items);
-            
-            await runTransaction(db, async (transaction) => {
-                // Update templates purchase count and stock
-                for (const item of finalOrder.items) {
-                    if (item.templateId) {
+        await runTransaction(db, async (transaction) => {
+            // A. Kiểm tra và cập nhật tồn kho từng part lẻ
+            for (const [partId, qty] of Object.entries(partsUsage)) {
+                if (!qty) continue;
+                const partRef = doc(db, "lego_parts", partId);
+                const partSnap = await transaction.get(partRef);
+                
+                if (partSnap.exists()) {
+                    const partData = partSnap.data();
+                    if (typeof partData.stock === 'number') {
+                        const currentStock = partData.stock;
+                        // Mặc dù chúng ta để khách đặt kể cả hết hàng (theo yêu cầu),
+                        // nhưng chúng ta vẫn trừ kho nếu có thể
+                        transaction.update(partRef, {
+                            stock: firestoreIncrement(-qty),
+                            lastUpdated: Date.now()
+                        });
+                    }
+                }
+            }
+
+            // B. Cập nhật lượt mua và tồn kho cho Template
+            for (const item of finalOrder.items) {
+                if (item.templateId) {
+                    try {
                         const tplRef = doc(db, "templates", item.templateId);
                         const qty = item.quantity || 1;
                         
                         const tplSnap = await transaction.get(tplRef);
-                        const updates: any = {
-                            purchaseCount: firestoreIncrement(qty)
-                        };
-                        
                         if (tplSnap.exists()) {
                             const tplData = tplSnap.data();
+                            // Chú ý: Rules hiện tại chỉ cho phép ['purchaseCount', 'stock'] đối với guest
+                            const updates: any = {
+                                purchaseCount: firestoreIncrement(qty)
+                            };
+                            
                             if (typeof tplData.stock === 'number') {
                                 updates.stock = firestoreIncrement(-qty);
                             }
+                            
+                            transaction.update(tplRef, updates);
+                            console.log(`Incremented purchase count for template ${item.templateId} by ${qty}`);
                         }
-                        
-                        transaction.update(tplRef, updates);
+                    } catch (tplErr) {
+                        console.error(`Error processing template increment for item ${item.templateId}:`, tplErr);
                     }
                 }
+            }
 
-                // Update lego parts stock
-                for (const [partId, qty] of Object.entries(partsUsage)) {
-                    if (!qty) continue;
-                    const partRef = doc(db, "lego_parts", partId);
-                    const partSnap = await transaction.get(partRef);
-                    
-                    if (partSnap.exists()) {
-                        const partData = partSnap.data();
-                        if (typeof partData.stock === 'number') {
-                            transaction.update(partRef, {
-                                stock: firestoreIncrement(-qty)
-                            });
-                        }
-                    }
-                }
-            });
-        } catch (secondaryError) {
-            console.warn("Could not update stock or template stats (likely permission restriction for guest), but order was placed successfully:", secondaryError);
-        }
+            // C. Cuối cùng mới lưu đơn hàng
+            transaction.set(orderRef, cleanForFirestore(finalOrder));
+        }).catch(err => {
+            console.error("Transaction failed:", err);
+            // Nếu transaction thất bại toàn bộ, chúng ta báo lỗi cho người dùng biết
+            throw new Error("Không thể xử lý đơn hàng do lỗi hệ thống. Vui lòng thử lại sau giây lát.");
+        });
 
         // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async, không cần transaction)
         try {
             const config = await getStoreConfig();
+            
+            // Gửi email xác nhận đơn hàng (Luôn gửi theo yêu cầu)
+            sendOrderEmail(finalOrder).catch(e => console.error("Error sending order email:", e));
+
             if (config && config.enablePancakePush) {
                 const pancakeData: PancakeOrderData = {
                     customer_name: finalOrder.customer.name,

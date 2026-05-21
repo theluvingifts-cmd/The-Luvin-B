@@ -9,6 +9,7 @@ import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { getCachedTemplates } from '../services/configService';
+import { fixOutOfStockParts } from '../utils/legoUtils';
 
 const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string, LegoPart>) => {
     if (!config) return [];
@@ -43,59 +44,6 @@ interface CollectionPageProps {
     frames: FrameOption[],
     isLoadingParts?: boolean
 }
-
-const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPart>): FrameConfig => {
-    const partsByType: Record<string, LegoPart[]> = {};
-    Object.values(allParts).forEach(p => {
-        if (p.stock !== 0) {
-            if (!partsByType[p.type]) partsByType[p.type] = [];
-            partsByType[p.type].push(p);
-        }
-    });
-
-    const findFallback = (type: string) => {
-        const available = partsByType[type] || [];
-        return available.length > 0 ? available[0] : null;
-    };
-
-    const newCharacters = config.characters.map(char => {
-        const updatedChar = { ...char };
-        ['hair', 'face', 'shirt', 'pants', 'hat', 'set'].forEach((type) => {
-            const part = (char as any)[type];
-            if (part && allParts[part.id] && allParts[part.id].stock === 0) {
-                const fallback = findFallback(type);
-                if (fallback) {
-                    (updatedChar as any)[type] = fallback;
-                    const colorKey = type === 'hair' ? 'selectedHairColor' : 
-                                   type === 'shirt' ? 'selectedShirtColor' : 
-                                   type === 'pants' ? 'selectedPantsColor' : 
-                                   type === 'hat' ? 'selectedHatColor' : null;
-                    if (colorKey) {
-                        (updatedChar as any)[colorKey] = fallback.colors?.[0];
-                    }
-                }
-            }
-        });
-        return updatedChar;
-    });
-
-    const newDraggableItems = config.draggableItems.map(item => {
-        const part = allParts[item.partId];
-        if (part && part.stock === 0) {
-            const fallback = findFallback(item.type === 'accessory' || item.type === 'pet' || item.type === 'hat' ? item.type : 'accessory');
-            if (fallback) {
-                return { 
-                    ...item, 
-                    partId: fallback.id, 
-                    selectedColor: fallback.colors?.[0] 
-                };
-            }
-        }
-        return item;
-    });
-
-    return { ...config, characters: newCharacters, draggableItems: newDraggableItems };
-};
 
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts }) => {
     const { t } = useLanguage();

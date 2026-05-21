@@ -19,14 +19,23 @@ export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
 
         const templates: CollectionTemplate[] = [];
         querySnapshot.forEach((doc) => {
-            templates.push(doc.data() as CollectionTemplate);
+            const data = doc.data() as CollectionTemplate;
+            templates.push({
+                ...data,
+                id: doc.id, // Đảm bảo ID luôn khớp với doc ID
+                purchaseCount: data.purchaseCount || 0
+            });
         });
 
-        // If fallback was used or order is missing, templates might not be sorted correctly here in JS
-        // but we'll return them anyway
-        
         // JS sort as safety net if order field exists
         templates.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Persist to cache for instant recovery on other pages
+        try {
+            localStorage.setItem('templates_cache', JSON.stringify(templates));
+        } catch (e) {
+            console.warn("Unable to cache templates in localStorage:", e);
+        }
         
         return templates;
     } catch (error: any) {
