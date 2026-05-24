@@ -220,6 +220,10 @@ export interface Order {
   imagesCleaned?: boolean;
   countedInStats?: boolean; 
   thankYouEmailSent?: boolean; // Flag to prevent duplicate thank you emails
+  source?: 'collection' | 'builder';
+  templateId?: string;
+  templateName?: string;
+  templateOrderCounted?: boolean;
 }
 
 export interface SavedDesign {
@@ -266,6 +270,7 @@ export interface CollectionTemplate {
     config: FrameConfig;
     category?: string; 
     purchaseCount?: number;
+    orders?: number;
     price?: number;
     salePrice?: number;
     saleEndDate?: string;

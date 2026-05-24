@@ -106,7 +106,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             internalNotes: "",
             isUrgent: false,
             adminDeadline: "",
-            countedInStats: true // Đánh dấu đơn hàng này đã được tính vào thống kê
+            countedInStats: true, // Đánh dấu đơn hàng này đã được tính vào thống kê
+            templateOrderCounted: true
         };
 
         // 1. LƯU ĐƠN HÀNG VÀO FIRESTORE (Primary Action)
@@ -128,7 +129,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                         
                         const tplSnap = await transaction.get(tplRef);
                         const updates: any = {
-                            purchaseCount: firestoreIncrement(qty)
+                            purchaseCount: firestoreIncrement(qty),
+                            orders: firestoreIncrement(qty)
                         };
                         
                         if (tplSnap.exists()) {

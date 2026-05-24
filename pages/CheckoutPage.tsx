@@ -393,12 +393,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         }
     }
 
-    const provinceName = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';
-    const districtName = districts.find(d => String(d.code) === String(selectedDistrict))?.name || selectedDistrict || '';
-    const wardName = wards.find(w => String(w.code) === String(selectedWard))?.name || selectedWard || '';
-    
-    const fullAddress = [street, wardName, districtName, provinceName].filter(Boolean).join(', ');
+    const provinceVal = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';
+    const districtVal = districts.find(d => String(d.code) === String(selectedDistrict))?.name || selectedDistrict || '';
+    const wardVal = wards.find(w => String(w.code) === String(selectedWard))?.name || selectedWard || '';
 
+    const fullAddress = [street, wardVal, districtVal, provinceVal].filter(Boolean).join(', ');
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
     
     let autoTags = '';
@@ -406,7 +405,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     if (isLoyalCustomer) autoTags += t('checkout.loyal_customer_tag');
     if (appliedVoucher) autoTags += t('checkout.voucher_tag', { code: appliedVoucher.code });
     
-    // Aggregating notes from individual cart items (especially from CollectionPage)
     const itemNotes = cartItems
         .map((item, index) => {
             const note = item.customFormData?.order_note;
@@ -418,13 +416,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
     const finalNotes = [autoTags, itemNotes, notes].filter(n => n && n.trim()).join(' --- ');
 
-    try {
-        const provinceVal = provinces.find(p => String(p.code) === String(selectedProvince))?.name || selectedProvince || '';
-        const districtVal = districts.find(d => String(d.code) === String(selectedDistrict))?.name || selectedDistrict || '';
-        const wardVal = wards.find(w => String(w.code) === String(selectedWard))?.name || selectedWard || '';
+    // Identify if the order comes from collection
+    const mainTemplateItem = cartItems.find(item => item.templateId);
+    let templateSource: 'collection' | 'builder' = 'builder';
+    let firstTemplateId = '';
+    let firstTemplateName = '';
 
+    if (mainTemplateItem) {
+        templateSource = 'collection';
+        firstTemplateId = mainTemplateItem.templateId || '';
+        firstTemplateName = mainTemplateItem.customFormData?.template_name || '';
+    }
+
+    try {
         await onPlaceOrder({
           id: orderId,
+          source: templateSource,
+          templateId: firstTemplateId || undefined,
+          templateName: firstTemplateName || undefined,
+          templateOrderCounted: false,
           customer: { 
             name, 
             phone, 
