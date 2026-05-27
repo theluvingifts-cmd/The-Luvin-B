@@ -262,7 +262,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 return priceB - priceA;
             });
         } else if (sortBy === 'mostPurchased') {
-            result.sort((a, b) => (b.orders || b.purchaseCount || 0) - (a.orders || a.purchaseCount || 0));
+            result.sort((a, b) => ((b.orders || 0) + (b.purchaseCount || 0)) - ((a.orders || 0) + (a.purchaseCount || 0)));
         }
 
         return result;
@@ -1480,7 +1480,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     const originalPrice = hasParts 
                         ? calculated.priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0)
                         : (template.price || 290000);
-                    const orders = template.orders || template.purchaseCount || 0;
+                    const ordersCount = (template.orders || 0) + (template.purchaseCount || 0);
                     
                     return ( 
                         <div key={template.id || index} className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full`}>
@@ -1524,7 +1524,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="flex items-center gap-1.5 mb-4">
                                      <div className="text-[10px] sm:text-[11px] text-gray-400 font-bold leading-tight">
-                                         {orders} {t('collection.orders')}
+                                         {ordersCount} {t('collection.orders')}
                                      </div>
                                      <div className="h-3 w-px bg-gray-200 mx-1"></div>
                                      <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">

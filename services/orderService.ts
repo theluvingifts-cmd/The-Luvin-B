@@ -121,47 +121,66 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             const partsUsage = countPartsInOrder(finalOrder.items);
             
             await runTransaction(db, async (transaction) => {
-                // Update templates purchase count and stock
-                for (const item of finalOrder.items) {
+                // A. Collect all unique IDs to fetch
+                const templateIncrements = new Map<string, number>();
+
+                // Only count items for quantity-based purchase tracking
+                finalOrder.items.forEach(item => {
                     if (item.templateId) {
-                        const tplRef = doc(db, "templates", item.templateId);
-                        const qty = item.quantity || 1;
-                        
-                        const tplSnap = await transaction.get(tplRef);
-                        const updates: any = {
-                            purchaseCount: firestoreIncrement(qty),
-                            orders: firestoreIncrement(qty)
-                        };
-                        
-                        if (tplSnap.exists()) {
-                            const tplData = tplSnap.data();
-                            if (typeof tplData.stock === 'number') {
-                                updates.stock = firestoreIncrement(-qty);
-                            }
-                        }
-                        
-                        transaction.update(tplRef, updates);
+                        const current = templateIncrements.get(item.templateId) || 0;
+                        templateIncrements.set(item.templateId, current + (item.quantity || 1));
                     }
+                });
+                
+                // If the order has a top-level templateId but no items were template-based, 
+                // we still want to count the order itself.
+                if (finalOrder.templateId && !templateIncrements.has(finalOrder.templateId)) {
+                    templateIncrements.set(finalOrder.templateId, 1);
                 }
 
-                // Update lego parts stock
-                for (const [partId, qty] of Object.entries(partsUsage)) {
-                    if (!qty) continue;
-                    const partRef = doc(db, "lego_parts", partId);
-                    const partSnap = await transaction.get(partRef);
-                    
-                    if (partSnap.exists()) {
-                        const partData = partSnap.data();
+                const templateIds = Array.from(templateIncrements.keys());
+                const partIds = Object.keys(partsUsage).filter(id => partsUsage[id] > 0);
+
+                // B. Perform ALL READS first
+                const templateSnaps = await Promise.all(templateIds.map(id => transaction.get(doc(db, "templates", id))));
+                const partSnaps = await Promise.all(partIds.map(id => transaction.get(doc(db, "lego_parts", id))));
+
+                // C. Perform ALL WRITES next
+                templateSnaps.forEach((snap, index) => {
+                    if (snap.exists()) {
+                        const tplId = templateIds[index];
+                        const tplQty = templateIncrements.get(tplId) || 1;
+                        const tplData = snap.data();
+                        
+                        const updates: any = {
+                            purchaseCount: firestoreIncrement(tplQty),
+                            orders: firestoreIncrement(tplQty)
+                        };
+
+                        if (typeof tplData.stock === 'number') {
+                            updates.stock = firestoreIncrement(-tplQty);
+                        }
+                        
+                        transaction.update(snap.ref, updates);
+                    }
+                });
+
+                partSnaps.forEach((snap, index) => {
+                    if (snap.exists()) {
+                        const partId = partIds[index];
+                        const qty = partsUsage[partId];
+                        const partData = snap.data();
+                        
                         if (typeof partData.stock === 'number') {
-                            transaction.update(partRef, {
+                            transaction.update(snap.ref, {
                                 stock: firestoreIncrement(-qty)
                             });
                         }
                     }
-                }
+                });
             });
         } catch (secondaryError) {
-            console.warn("Could not update stock or template stats (likely permission restriction for guest), but order was placed successfully:", secondaryError);
+            console.error("Critical error updating template stats or stock:", secondaryError);
         }
 
         // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async, không cần transaction)

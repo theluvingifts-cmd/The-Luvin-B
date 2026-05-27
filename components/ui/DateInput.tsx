@@ -73,12 +73,16 @@ export const DateInput: React.FC<DateInputProps> = ({
   const handleIconClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    openPicker();
+  };
+
+  const openPicker = () => {
     try {
       if (hiddenInputRef.current) {
         if (typeof (hiddenInputRef.current as any).showPicker === 'function') {
           (hiddenInputRef.current as any).showPicker();
         } else {
-          hiddenInputRef.current.focus();
+          hiddenInputRef.current.click(); // Standard fallback
         }
       }
     } catch (err) {
@@ -100,27 +104,35 @@ export const DateInput: React.FC<DateInputProps> = ({
           type="text"
           value={inputValue}
           onChange={handleInputChange}
+          onClick={(e) => {
+            // Only open picker if clicking on the right side (icon area) OR if empty
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            if (clickX > rect.width * 0.7 || !inputValue) {
+              openPicker();
+            }
+          }}
           placeholder="VD: 01/06/2026"
           required={required}
           maxLength={10}
-          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm h-11 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/5 outline-none transition-all pr-12 font-medium"
+          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm h-11 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/5 outline-none transition-all pr-12 font-medium cursor-text"
         />
 
-        {/* Hidden Native Date Input triggered by icon */}
+        {/* Hidden Native Date Input triggered by various actions */}
         <input 
           ref={hiddenInputRef}
           type="date" 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
           min={min}
-          className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+          className="absolute inset-0 opacity-0 w-8 h-8 -z-10 pointer-events-none"
         />
 
         {/* Calendar Icon Button - Triggers picker */}
         <button
           type="button"
           onClick={handleIconClick}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-900 group-hover:text-gray-600"
+          className="absolute right-0 top-0 h-full w-12 flex items-center justify-center hover:bg-gray-100 rounded-r-xl transition-colors text-gray-400 hover:text-gray-900 group-hover:text-gray-600 border-l border-gray-100"
           title="Mở lịch chọn ngày"
         >
           <svg 

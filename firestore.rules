@@ -117,7 +117,7 @@ service cloud.firestore {
     match /templates/{docId} { 
       allow read: if true; 
       allow create, delete: if isVerifiedAdmin();
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount']) && incoming().purchaseCount is number);
+      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasAny(['purchaseCount', 'orders', 'stock']));
     }
     match /config/{docId} { 
       allow read: if true; 

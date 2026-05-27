@@ -79,7 +79,8 @@ export const incrementTemplatePurchaseCount = async (templateId: string, amount:
     try {
         const docRef = doc(db, COLLECTION_NAME, templateId);
         await updateDoc(docRef, {
-            purchaseCount: increment(amount)
+            purchaseCount: increment(amount),
+            orders: increment(amount)
         });
     } catch (error) {
         console.error("Error incrementing purchase count:", error);
