@@ -1494,7 +1494,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="absolute top-2 left-2 right-2 flex flex-col gap-1.5 pointer-events-none">
                                     <div className="flex flex-wrap gap-1">
-                                        {(template.isHot || orders > 20) && (
+                                        {(template.isHot || ordersCount > 20) && (
                                             <div className="bg-orange-500 text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tight shadow-md flex items-center gap-1 animate-pulse">
                                                 🔥 {t('collection.hot')}
                                             </div>
