@@ -117,6 +117,7 @@ export const GENERAL_ASSETS = {
   hero: '',
   inspire: '',
   giftbox: 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1766048421302_063vyq_b1a21245_e6e4_4087_bef7_890329278810.jpg?alt=media&token=e7da2f4e-00d3-4f49-b60f-11b21ae161c4', // Icon hộp quà nhẹ
+  light: 'https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1767258320491_spotlight.png?alt=media&token=placeholder', // Spotlight icon placeholder
   vietqr: '',
   watermark: '' // Thay link ảnh watermark của bạn vào đây
 }

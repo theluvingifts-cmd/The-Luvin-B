@@ -153,7 +153,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                         const tplData = snap.data();
                         
                         const updates: any = {
-                            purchaseCount: firestoreIncrement(tplQty),
+                            realOrderCount: firestoreIncrement(tplQty),
                             orders: firestoreIncrement(tplQty)
                         };
 

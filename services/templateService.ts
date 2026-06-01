@@ -43,7 +43,8 @@ export const addTemplate = async (template: CollectionTemplate) => {
     try {
         const cleaned = cleanForFirestore({
             ...template,
-            purchaseCount: template.purchaseCount || 0,
+            fakeOrderCount: Number(template.fakeOrderCount || template.purchaseCount || 0),
+            realOrderCount: Number(template.realOrderCount || template.orders || 0),
             order: template.order ?? 9999
         });
         await setDoc(doc(db, COLLECTION_NAME, template.id), cleaned);
@@ -79,7 +80,7 @@ export const incrementTemplatePurchaseCount = async (templateId: string, amount:
     try {
         const docRef = doc(db, COLLECTION_NAME, templateId);
         await updateDoc(docRef, {
-            purchaseCount: increment(amount),
+            realOrderCount: increment(amount),
             orders: increment(amount)
         });
     } catch (error) {

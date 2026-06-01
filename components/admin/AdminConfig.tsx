@@ -204,7 +204,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             pancakeAccessToken,
             enablePancakePush,
             b2bDiscountPercent: b2bDiscount,
-            disableThankYouEmail: storeConfig.disableThankYouEmail
+            disableThankYouEmail: storeConfig.disableThankYouEmail,
+            lightPrice: storeConfig.lightPrice
         });
         if (success) {
             setStoreConfig(prev => ({ 
@@ -216,7 +217,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 pancakeAccessToken,
                 enablePancakePush,
                 b2bDiscountPercent: b2bDiscount,
-                disableThankYouEmail: storeConfig.disableThankYouEmail
+                disableThankYouEmail: storeConfig.disableThankYouEmail,
+                lightPrice: storeConfig.lightPrice
             }));
             alert("Đã lưu cấu hình thành công!");
         } else {
@@ -330,6 +332,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         const newValue = !storeConfig.giftBoxOutOfStock;
         setStoreConfig(prev => ({ ...prev, giftBoxOutOfStock: newValue }));
         await updateStoreConfig({ giftBoxOutOfStock: newValue });
+    };
+
+    const handleToggleLight = async () => {
+        const newValue = !storeConfig.lightOutOfStock;
+        setStoreConfig(prev => ({ ...prev, lightOutOfStock: newValue }));
+        await updateStoreConfig({ lightOutOfStock: newValue });
     };
 
     const handleAddNewFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -542,6 +550,33 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                         </div>
                                     </div>
                                     <ConfigImageUpload label="Ảnh Gói Quà" description="Tải ảnh hiển thị khi khách chọn Thêm Gói Quà" currentUrl={storeConfig.giftBoxImageUrl} onUpload={(f) => handleConfigUpload(f, 'giftBoxImageUrl')} isUploading={uploadingField === 'giftBoxImageUrl'} />
+                                </div>
+
+                                <div ref={(el) => { inputRefs.current['lightImageUrl'] = el; }} className="p-4 border-2 border-dashed border-gray-200 rounded-xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="text-sm font-bold text-gray-700">Tùy chọn Đèn khung tranh</h4>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-black uppercase ${storeConfig.lightOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
+                                                {storeConfig.lightOutOfStock ? 'Hết hàng' : 'Còn hàng'}
+                                            </span>
+                                            <button 
+                                                onClick={handleToggleLight}
+                                                className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.lightOutOfStock ? 'bg-gray-300' : 'bg-green-500'}`}
+                                            >
+                                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.lightOutOfStock ? '' : 'translate-x-6'}`}></div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Giá đèn (+VND)</label>
+                                        <input 
+                                            type="number" 
+                                            className="w-full p-2 border rounded text-sm" 
+                                            value={storeConfig.lightPrice || 0} 
+                                            onChange={(e) => setStoreConfig({...storeConfig, lightPrice: Number(e.target.value)})} 
+                                        />
+                                    </div>
+                                    <ConfigImageUpload label="Ảnh mẫu Đèn" description="Tải ảnh mẫu hiển thị ở trang Checkout" currentUrl={storeConfig.lightImageUrl} onUpload={(f) => handleConfigUpload(f, 'lightImageUrl')} isUploading={uploadingField === 'lightImageUrl'} />
                                 </div>
                             </div>
                         </div>

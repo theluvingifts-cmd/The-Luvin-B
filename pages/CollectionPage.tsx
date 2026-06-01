@@ -9,6 +9,7 @@ import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { getCachedTemplates } from '../services/configService';
+import { trackViewContent, trackAddToCart } from '../utils/analytics';
 
 const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string, LegoPart>) => {
     if (!config) return [];
@@ -31,6 +32,12 @@ const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string,
     });
     
     return Array.from(new Set(oos)); // Unique names
+};
+
+const getDisplayOrderCount = (template: CollectionTemplate) => {
+    const fake = Number(template.fakeOrderCount ?? template.purchaseCount ?? 0);
+    const real = Number(template.realOrderCount ?? template.orders ?? 0);
+    return fake + real;
 };
 
 interface CollectionPageProps {
@@ -262,7 +269,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 return priceB - priceA;
             });
         } else if (sortBy === 'mostPurchased') {
-            result.sort((a, b) => ((b.orders || 0) + (b.purchaseCount || 0)) - ((a.orders || 0) + (a.purchaseCount || 0)));
+            result.sort((a, b) => getDisplayOrderCount(b) - getDisplayOrderCount(a));
         }
 
         return result;
@@ -289,6 +296,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         const fixedConfig = fixOutOfStockParts(template.config, allParts);
         setCustomConfig({ ...fixedConfig, templateId: template.id });
         setOrderNote('');
+
+        // Track ViewContent
+        trackViewContent(template.id, template.name, template.price || 0);
     };
 
     const handleCloseModal = () => {
@@ -435,6 +445,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             }
         };
         onAddToCart(finalConfig, false);
+        
+        // Track AddToCart for Buy Now
+        if (selectedTemplate) {
+            trackAddToCart(selectedTemplate.id, selectedTemplate.name, currentPrice);
+        }
+
         navigateTo('checkout');
         setSelectedTemplate(null);
         setEditingCharacterId(null);
@@ -458,6 +474,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             }
         };
         onAddToCart(finalConfig, true);
+
+        // Track AddToCart
+        if (selectedTemplate) {
+            trackAddToCart(selectedTemplate.id, selectedTemplate.name, currentPrice);
+        }
+
         setSelectedTemplate(null);
         setEditingCharacterId(null);
     };
@@ -1480,7 +1502,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     const originalPrice = hasParts 
                         ? calculated.priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0)
                         : (template.price || 290000);
-                    const ordersCount = (template.orders || 0) + (template.purchaseCount || 0);
+                    const ordersCount = getDisplayOrderCount(template);
                     
                     return ( 
                         <div key={template.id || index} className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full`}>

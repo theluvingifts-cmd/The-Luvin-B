@@ -199,6 +199,7 @@ export interface Order {
   items: FrameConfig[];
   extraCharms?: LegoPart[];
   addGiftBox: boolean;
+  addLight: boolean;
   shipping: { method: 'standard' | 'express' | 'bookship'; fee: number; };
   payment: { method: 'deposit' | 'full'; };
   totalPrice: number;
@@ -269,6 +270,8 @@ export interface CollectionTemplate {
     imageUrl: string;
     config: FrameConfig;
     category?: string; 
+    fakeOrderCount?: number;
+    realOrderCount?: number;
     purchaseCount?: number;
     orders?: number;
     price?: number;

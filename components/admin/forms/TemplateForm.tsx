@@ -270,8 +270,8 @@ export const TemplateForm: React.FC<{
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Lượt chọn ảo (Social Proof)</label>
                         <input 
                             type="number"
-                            name="purchaseCount" 
-                            value={formData.purchaseCount || 0} 
+                            name="fakeOrderCount" 
+                            value={formData.fakeOrderCount || formData.purchaseCount || 0} 
                             onChange={handleChange} 
                             className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
                             placeholder="VD: 100" 

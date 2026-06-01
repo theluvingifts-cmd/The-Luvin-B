@@ -17,6 +17,10 @@ export interface StoreConfig {
     giftBoxImageUrl?: string;
     giftBoxOutOfStock?: boolean; // THAY THẾ hideGiftBoxOption
     
+    lightImageUrl?: string;
+    lightPrice?: number;
+    lightOutOfStock?: boolean;
+    
     // Content Fields
     heroImageUrl?: string;
     inspireImageUrl?: string;

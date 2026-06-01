@@ -1437,7 +1437,8 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                             imageUrl: previewUrl,
                                             category: finalCategory,
                                             config: cleanForFirestore({ ...config, previewImageUrl: previewUrl }),
-                                            purchaseCount: 0
+                                            fakeOrderCount: 0,
+                                            realOrderCount: 0
                                         };
                                         const success = editingBgId ? await updateTemplate(editingBgId, templateData) : await addTemplate(templateData);
                                         if (success) {

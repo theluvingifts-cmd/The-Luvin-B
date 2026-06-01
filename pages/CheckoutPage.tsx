@@ -11,6 +11,7 @@ import { useLanguage } from '../src/contexts/LanguageContext';
 import { getCollaboratorByReferralCode } from '../services/shareService';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { DateInput } from '../components/ui/DateInput';
+import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
 
 // Popular provinces as fallback if API fails
 const POPULAR_PROVINCES = [
@@ -53,6 +54,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   const [shippingOption, setShippingOption] = useState<'standard' | 'express' | 'bookship'>('standard');
   const [addGiftBox, setAddGiftBox] = useState(false);
+  const [addLight, setAddLight] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,7 +93,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   useEffect(() => {
     getStoreConfig().then(cfg => setStoreConfig(cfg));
-    if (!initialOrder) trackFunnelStep('checkout_start');
+    if (!initialOrder) {
+      trackFunnelStep('checkout_start');
+      trackInitiateCheckout(totalPrice, totalQuantity);
+    }
   }, []);
 
   useEffect(() => {
@@ -119,6 +124,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setDemoContact(initialOrder.customer.demoContact || '');
           setShippingOption(initialOrder.shipping.method);
           setAddGiftBox(initialOrder.addGiftBox);
+          setAddLight(initialOrder.addLight || false);
           setPaymentMethod(initialOrder.payment.method);
       }
   }, [initialOrder]);
@@ -218,6 +224,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   // Gift box fee only if in stock and selected, based on quantity
   const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE * totalQuantity : 0;
   
+  const lightFee = (!storeConfig?.lightOutOfStock && addLight) ? (storeConfig?.lightPrice || 0) * totalQuantity : 0;
+  
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
       const today = new Date();
@@ -243,7 +251,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
 
   const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount + loyaltyDiscountAmount;
-  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee - totalDiscount);
+  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee + lightFee - totalDiscount);
   const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
 
   // Warning based on warehouse location (Dong Anh, Ha Noi)
@@ -452,6 +460,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             return { ...item, price: itemPrice };
           }),
           addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
+          addLight: !storeConfig?.lightOutOfStock && addLight,
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },
           totalPrice,
@@ -463,7 +472,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           commissionPaid: false
         });
 
-        if (!initialOrder) trackFunnelStep('order_complete');
+        if (!initialOrder) {
+            trackFunnelStep('order_complete');
+            trackPurchase(orderId, totalPrice, cartItems);
+        }
 
         // Save phone for referral system
         localStorage.setItem('last_customer_phone', phone);
@@ -737,6 +749,37 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     </p>
                 )}
             </div>
+
+            <div className={`bg-gray-50 p-4 rounded-lg border transition-all ${storeConfig?.lightOutOfStock ? 'opacity-70 grayscale-[0.5]' : ''} mt-4`}>
+                <label className={`flex items-center p-3 rounded-lg bg-white border transition-all ${storeConfig?.lightOutOfStock ? 'cursor-not-allowed border-gray-200' : 'cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50'}`}>
+                    <img src={storeConfig?.lightImageUrl || GENERAL_ASSETS.light} alt="Đèn Spotlight" className="w-12 h-12 object-contain mr-4"/>
+                    <div className="flex-grow">
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-800">{t('checkout.add_light', { count: totalQuantity })}</span>
+                            {storeConfig?.lightOutOfStock && (
+                                <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">{t('checkout.out_of_stock')}</span>
+                            )}
+                        </div>
+                        <p className="text-xs text-gray-500">{t('checkout.light_desc')}</p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <span className="font-bold text-luvin-pink">+{formatCurrency(storeConfig?.lightPrice || 0)}</span>
+                        {!storeConfig?.lightOutOfStock && (
+                            <input 
+                                type="checkbox" 
+                                checked={addLight} 
+                                onChange={e => setAddLight(e.target.checked)} 
+                                className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink mt-1"
+                            />
+                        )}
+                    </div>
+                </label>
+                {storeConfig?.lightOutOfStock && (
+                    <p className="text-[10px] text-gray-400 mt-2 italic px-1">
+                        {t('checkout.light_out_of_stock_note')}
+                    </p>
+                )}
+            </div>
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
@@ -834,6 +877,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>{t('cart.subtotal')}</span><span>{formatCurrency(subtotal)}</span></div>
                 {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && <div className="flex justify-between"><span>{t('checkout.gift_box')}</span><span>{formatCurrency(giftBoxFee)}</span></div>}
+                {(!storeConfig?.lightOutOfStock && addLight) && <div className="flex justify-between"><span>{t('checkout.light_box')}</span><span>{formatCurrency(lightFee)}</span></div>}
                 <div className="flex justify-between">
                     <span>{t('checkout.shipping_fee')}</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (
