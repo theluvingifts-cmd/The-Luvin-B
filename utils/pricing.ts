@@ -70,25 +70,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         const currentStd = calculatePrice({ ...config, templateId: undefined }, allParts, frames);
         const templateStd = calculatePrice({ ...template.config, templateId: undefined }, allParts, frames);
 
-        let diff = currentStd.totalPrice - templateStd.totalPrice;
-        
-        // Final fallback for Khung bảo tàng to fix stale bundle diffs
-        if (template.name?.toLowerCase().trim().includes('bảo tàng') || template.id?.toLowerCase().includes('bao-tang')) {
-             // If diff matches roughly the cost of the bundled parts (2 chars + piano + frame fee ~ 90-120k)
-             // then we assume the user hasn't added EXTRA items beyond the bundle
-             if (diff >= 90000 && diff <= 130000) {
-                 diff = 0;
-             }
-             // Also if character count corresponds to bundle
-             if (config.characters.length <= 2 && diff < 150000) {
-                 // Double check no expensive custom items added
-                 const hasExpensiveItems = config.draggableItems.some(i => (allParts[i.partId]?.price || 0) > 50000);
-                 if (!hasExpensiveItems) {
-                     diff = 0;
-                 }
-             }
-        }
-
+        const diff = currentStd.totalPrice - templateStd.totalPrice;
         let total = bundlePrice + diff;
 
         // Use the current config's breakdown but adjust the base item

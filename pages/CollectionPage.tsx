@@ -550,27 +550,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         }
 
         const { totalPrice, priceBreakdown } = calculatePrice(customConfig, allParts, frames, displayTemplates, selectedTemplate.id);
-        const originalPriceValue = priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0);
-
-        // DEBUG LOGGING AS REQUESTED
-        if (selectedTemplate.name?.toLowerCase().includes('bảo tàng')) {
-            const modalBasePrice = selectedTemplate.price;
-            const selectedFramePrice = priceBreakdown.find(i => i.isBase && !i.label.includes('nhân vật') && !i.label.includes('Trọn gói'))?.value || 0;
-            const selectedCharactersPrice = priceBreakdown.filter(i => i.label.includes('nhân vật') || i.details === 'NV').reduce((s, i) => s + i.value, 0);
-            const selectedAccessoriesPrice = priceBreakdown.filter(i => !i.isBase && !i.label.includes('màu')).reduce((s, i) => s + i.value, 0);
-            
-            console.table({
-                productName: selectedTemplate.name,
-                productFinalPrice: selectedTemplate.price,
-                modalBasePrice,
-                selectedFramePrice,
-                selectedCharactersPrice,
-                selectedAccessoriesPrice,
-                renderedModalTotal: totalPrice
-            });
-        }
-
-        return { currentPrice: totalPrice, originalPrice: originalPriceValue };
+        const originalPrice = priceBreakdown.reduce((sum, item) => sum + (item.originalValue ?? item.value), 0);
+        return { currentPrice: totalPrice, originalPrice };
     }, [customConfig, selectedTemplate, allParts, frames, displayTemplates, isLoadingParts]);
 
     const handleContactZalo = (templateName: string, price: number, imageUrl: string) => {
