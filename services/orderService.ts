@@ -171,11 +171,16 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                         const qty = partsUsage[partId];
                         const partData = snap.data();
                         
+                        const updates: any = {
+                            orders: firestoreIncrement(qty),
+                            realOrderCount: firestoreIncrement(qty)
+                        };
+
                         if (typeof partData.stock === 'number') {
-                            transaction.update(snap.ref, {
-                                stock: firestoreIncrement(-qty)
-                            });
+                            updates.stock = firestoreIncrement(-qty);
                         }
+                        
+                        transaction.update(snap.ref, updates);
                     }
                 });
             });

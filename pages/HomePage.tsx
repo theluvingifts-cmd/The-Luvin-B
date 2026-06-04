@@ -55,7 +55,14 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
     }
   }, [propConfig]);
 
-  const displayTemplates = (templates && templates.length > 0) ? templates.slice(0, 4) : COLLECTION_TEMPLATES.slice(0, 4);
+  const legoTemplates = useMemo(() => 
+    templates?.filter(t => t.productLine !== 'gallery').slice(0, 4) || COLLECTION_TEMPLATES.filter(t => t.productLine !== 'gallery').slice(0, 4)
+  , [templates]);
+
+  const galleryTemplates = useMemo(() => 
+    templates?.filter(t => t.productLine === 'gallery').slice(0, 4) || COLLECTION_TEMPLATES.filter(t => t.productLine === 'gallery').slice(0, 4)
+  , [templates]);
+
   const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
 
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -222,22 +229,66 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
           </div>
       </section>
 
-      {/* Featured Collection Section */}
+      {/* Khung Gallery Section */}
+      {galleryTemplates.length > 0 && (
+        <section className="py-24 bg-white">
+            <div className="container mx-auto px-6">
+                <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+                    <div className="text-left">
+                        <span className="text-primary font-bold tracking-widest text-[10px] uppercase mb-2 block">— New Collection</span>
+                        <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-2">Khung Gallery</h2>
+                        <p className="text-gray-500 text-sm max-w-lg">Bộ sưu tập khung trang trí nghệ thuật, tinh tế và sang trọng cho không gian sống của bạn.</p>
+                    </div>
+                    <button 
+                        onClick={() => navigate('/collection/gallery/all')} 
+                        className="group flex items-center gap-2 text-sm font-bold text-gray-900 border-b-2 border-gray-900 pb-1 hover:text-primary hover:border-primary transition-all whitespace-nowrap"
+                    >
+                        Khám phá tất cả Gallery <span>→</span>
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+                    {galleryTemplates.map((item, index) => (
+                        <div 
+                          key={item.id || index} 
+                          className="group flex flex-col bg-gray-50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-700 cursor-pointer" 
+                          onClick={() => {
+                              const categorySlug = slugify(item.category || 'all');
+                              navigate(`/collection/gallery/${categorySlug}/${item.id}`);
+                          }}
+                        >
+                            <div className="relative aspect-[4/5] overflow-hidden">
+                                <FadeInImage src={item.imageUrl} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-700"></div>
+                            </div>
+                            <div className="p-6 text-center">
+                                <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{item.name}</h3>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2 italic">Minimalist Art</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+      )}
+
+      {/* Featured Collection Section (Lego) */}
       <section className="py-24 bg-gray-50">
           <div className="container mx-auto px-6">
               <div className="text-center mb-16">
-                  <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">{t('home.featured_collection')}</h2>
+                  <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">{t('home.featured_collection')} (LEGO)</h2>
                   <p className="text-gray-500">{t('home.orders_count').replace('{count}', (totalOrders || '1.500').toString())}</p>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                  {displayTemplates.map((item, index) => (
+                  {legoTemplates.map((item, index) => (
                       <div 
                         key={item.id || index} 
                         className="group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 cursor-pointer" 
                         onClick={() => {
                             const categorySlug = slugify(item.category || 'all');
-                            navigate(`/collection/${categorySlug}/${item.id}`);
+                            const productLine = item.productLine || 'lego';
+                            navigate(`/collection/${productLine}/${categorySlug}/${item.id}`);
                         }}
                       >
                           <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
@@ -253,7 +304,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
               </div>
 
               <div className="text-center mt-16">
-                  <button onClick={() => navigateTo('collection')} className="px-12 py-4 border-2 border-gray-900 rounded-full text-xs font-black uppercase tracking-widest text-gray-900 hover:bg-gray-900 hover:text-white transition-all shadow-md">{t('home.view_all_collection')}</button>
+                  <button onClick={() => navigate('/collection/lego/all')} className="px-12 py-4 border-2 border-gray-900 rounded-full text-xs font-black uppercase tracking-widest text-gray-900 hover:bg-gray-900 hover:text-white transition-all shadow-md">{t('home.view_all_collection')}</button>
               </div>
           </div>
       </section>

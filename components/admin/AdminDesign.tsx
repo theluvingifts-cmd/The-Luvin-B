@@ -109,18 +109,29 @@ interface AdminDesignProps {
 export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
     const { t } = useLanguage();
 
-    const TOOLS = [
-        { id: 'templates', icon: '📂', label: t('studio.tools.templates') }, 
-        { id: 'khung', icon: '🖼️', label: 'Khung' },
-        { id: 'character', icon: '👤', label: 'Nhân vật' },
-        { id: 'background', icon: '🎨', label: t('studio.tools.background') },
-        { id: 'museum', icon: '🏛️', label: t('studio.tools.museum') },
-        { id: 'shape', icon: '🟥', label: t('studio.tools.shape') },
-        { id: 'text', icon: 'abc', label: t('studio.tools.text') },
-        { id: 'upload', icon: '🖼️', label: t('studio.tools.upload') },
-        { id: 'form', icon: '📝', label: t('studio.tools.form') }, 
-        { id: 'layers', icon: '📚', label: t('studio.tools.layers') },
-    ];
+    const [templateLine, setTemplateLine] = useState<'lego' | 'gallery'>('lego');
+    const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
+
+    const TOOLS = useMemo(() => {
+        const baseTools = [
+            { id: 'templates', icon: '📂', label: t('studio.tools.templates') }, 
+            { id: 'khung', icon: '🖼️', label: 'Khung' },
+            { id: 'background', icon: '🎨', label: t('studio.tools.background') },
+            { id: 'museum', icon: '🏛️', label: t('studio.tools.museum') },
+            { id: 'shape', icon: '🟥', label: t('studio.tools.shape') },
+            { id: 'text', icon: 'abc', label: t('studio.tools.text') },
+            { id: 'upload', icon: '🖼️', label: t('studio.tools.upload') },
+            { id: 'form', icon: '📝', label: t('studio.tools.form') }, 
+            { id: 'layers', icon: '📚', label: t('studio.tools.layers') },
+        ];
+
+        if (templateLine === 'lego') {
+            // Insert character tool at index 2
+            baseTools.splice(2, 0, { id: 'character', icon: '👤', label: 'Nhân vật' });
+        }
+
+        return baseTools;
+    }, [templateLine, t]);
 
     const [activeTool, setActiveTool] = useState('templates');
     const [activePartType, setActivePartType] = useState<'hair' | 'face' | 'shirt' | 'pants' | 'hat' | 'set'>('hair');
@@ -135,7 +146,6 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
     const [editingBgId, setEditingBgId] = useState<string | null>(null);
     const [bgName, setBgName] = useState('');
     const [bgCategory, setBgCategory] = useState('Tình yêu');
-    const [bgType, setBgType] = useState<'square' | 'rectangle'>('square');
     const [saveType, setSaveType] = useState<'background' | 'template'>('background');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [isNewCategory, setIsNewCategory] = useState(false);
@@ -912,7 +922,12 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                     <div>
                                         <label className="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-widest">KÍCH THƯỚC KHUNG</label>
                                         <div className="grid grid-cols-1 gap-2">
-                                            {frames.map(f => (
+                                            {frames
+                                                .filter(f => {
+                                                    if (templateLine === 'gallery') return f.id === 'gallery-1520';
+                                                    return f.id !== 'gallery-1520';
+                                                })
+                                                .map(f => (
                                                 <button 
                                                     key={f.id}
                                                     onClick={() => setConfig(prev => ({ ...prev, frameId: f.id }))}
@@ -1349,21 +1364,52 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                 <input className="w-full p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgName} onChange={e => setBgName(e.target.value)} placeholder={saveType === 'background' ? "Ví dụ: Nền hoa hồng..." : "Ví dụ: Mẫu kỷ niệm 1 năm..."} />
                             </div>
                             
+                            {templateLine !== 'gallery' && (
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Dịp / Chủ đề (Bộ lọc)</label>
+                                    {!isNewCategory ? (
+                                        <div className="flex gap-2">
+                                            <select className="flex-grow p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
+                                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                            </select>
+                                            <button onClick={() => setIsNewCategory(true)} className="px-4 bg-gray-100 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all">Mới</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <input className="flex-grow p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Nhập dịp mới..." autoFocus />
+                                            <button onClick={() => setIsNewCategory(false)} className="px-4 bg-gray-100 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all">Hủy</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Dịp / Chủ đề (Bộ lọc)</label>
-                                {!isNewCategory ? (
-                                    <div className="flex gap-2">
-                                        <select className="flex-grow p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={bgCategory} onChange={e => setBgCategory(e.target.value)}>
-                                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                        </select>
-                                        <button onClick={() => setIsNewCategory(true)} className="px-4 bg-gray-100 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all">Mới</button>
-                                    </div>
-                                ) : (
-                                    <div className="flex gap-2">
-                                        <input className="flex-grow p-3 border rounded-xl font-bold focus:ring-2 focus:ring-black outline-none" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Nhập dịp mới..." autoFocus />
-                                        <button onClick={() => setIsNewCategory(false)} className="px-4 bg-gray-100 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all">Hủy</button>
-                                    </div>
-                                )}
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Dòng sản phẩm</label>
+                                <div className="flex bg-gray-100 p-1 rounded-xl">
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setTemplateLine('lego');
+                                            setConfig(prev => ({ ...prev, frameId: 'lg' }));
+                                            setBgType('square');
+                                        }}
+                                        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${templateLine === 'lego' ? 'bg-white text-luvin-pink shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        Khung Lego
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setTemplateLine('gallery');
+                                            setConfig(prev => ({ ...prev, frameId: 'gallery-1520', characters: [] }));
+                                            setBgType('rectangle');
+                                            if (activeTool === 'character') setActiveTool('templates');
+                                        }}
+                                        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${templateLine === 'gallery' ? 'bg-white text-luvin-pink shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        Khung Gallery
+                                    </button>
+                                </div>
                             </div>
 
                             <div>
@@ -1436,6 +1482,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                             name: bgName,
                                             imageUrl: previewUrl,
                                             category: finalCategory,
+                                            productLine: templateLine,
                                             config: cleanForFirestore({ ...config, previewImageUrl: previewUrl }),
                                             fakeOrderCount: 0,
                                             realOrderCount: 0

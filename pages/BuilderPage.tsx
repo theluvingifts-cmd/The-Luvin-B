@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { auth, db } from '../config/firebase';
 import { getDoc, doc } from 'firebase/firestore';
-import type { Page, FrameConfig, LegoPart, TextConfig, FrameOption, CustomFont } from '../types';
+import type { Page, FrameConfig, LegoPart, TextConfig, FrameOption, CustomFont, CollectionTemplate } from '../types';
 import { 
     LEGO_PARTS, 
     INITIAL_FRAME_CONFIG,
@@ -350,9 +350,10 @@ interface BuilderPageProps {
     isEditingOrder?: boolean;
     uploadedFonts: CustomFont[];
     isLoadingParts?: boolean;
+    templates: CollectionTemplate[];
 }
 
-export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, isEditingOrder, uploadedFonts, isLoadingParts }) => {
+export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, navigateTo, onAddToCart, onUpdateCart, showToast, legoParts, backgrounds, frames, editingCartIndex, onCancelEdit, onZoomImage, logoUrl, isEditingOrder, uploadedFonts, isLoadingParts, templates }) => {
   const { t } = useLanguage();
   const { stepId } = useParams();
   const navigate = useNavigate();
@@ -453,7 +454,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     });
   }, [backgrounds, hotPartIds, allParts, legoParts]);
 
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames), [config, allParts, frames]);
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames, templates), [config, allParts, frames, templates]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 

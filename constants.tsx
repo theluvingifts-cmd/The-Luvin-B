@@ -6,6 +6,7 @@ export const FRAME_OPTIONS: FrameOption[] = [
   { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: '', description: 'Sang trọng, ấn tượng', colors: ['black', 'white'], stock: 100 },
   { id: 'sm', name: '15x15cm', frameWidthCm: 15, frameHeightCm: 15, backgroundWidthCm: 12, backgroundHeightCm: 12, price: 210000, imageUrl: '', description: 'Nhỏ gọn, tinh tế', colors: ['black', 'white'], stock: 100 },
   { id: 'md', name: '14.8x21cm', frameWidthCm: 14.8, frameHeightCm: 21, backgroundWidthCm: 11.8, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Thanh lịch, đứng dáng', colors: ['black', 'white'], stock: 100 },
+  { id: 'gallery-1520', name: '15x20cm', frameWidthCm: 15, frameHeightCm: 20, backgroundWidthCm: 13, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Phù hợp Khung Gallery', colors: ['black', 'white'], stock: 100 },
 ];
 
 export const defaultShirtColors: OutfitColor[] = [
@@ -46,7 +47,11 @@ export const LEGO_PARTS: {
     { id: 'pants-1', name: 'Quần Trơn', type: 'pants', price: 20000, imageUrl: 'https://placehold.co/200x200?text=Pants+1', colors: defaultPantsColors, stock: 100, widthCm: 0, heightCm: 0 },
   ],
   hat: [],
-  accessory: [],
+  accessory: [
+    { id: 'acc-1', name: 'Hoa Gallery', type: 'accessory', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Gallery+Charm', stock: 100, widthCm: 0, heightCm: 0, supportedProductLines: ['gallery'] },
+    { id: 'acc-2', name: 'Charm Lego', type: 'accessory', price: 5000, imageUrl: 'https://placehold.co/200x200?text=Lego+Charm', stock: 100, widthCm: 0, heightCm: 0, supportedProductLines: ['lego'] },
+    { id: 'acc-3', name: 'Charm Chung', type: 'accessory', price: 8000, imageUrl: 'https://placehold.co/200x200?text=Both+Charm', stock: 100, widthCm: 0, heightCm: 0, supportedProductLines: ['lego', 'gallery'] },
+  ],
   pet: [],
   set: [], 
 };
@@ -78,6 +83,7 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
   texts: [],
   draggableItems: [],
   shapes: [], // Initialize shapes array
+  productLine: 'lego',
 };
 
 /**

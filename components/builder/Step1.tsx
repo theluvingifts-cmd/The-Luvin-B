@@ -21,7 +21,11 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
       <div className="p-4 border border-gray-200 rounded-lg text-left">
         <h4 className="font-bold text-gray-800 mb-3 uppercase text-sm">{t('studio.select_size')}</h4>
         <div className="grid grid-cols-3 gap-3">
-          {frames.map(frame => {
+          {frames.filter(f => {
+            const supported = f.supportedProductLines || ['lego'];
+            const currentLine = config.productLine || 'lego';
+            return supported.includes(currentLine);
+          }).map(frame => {
             const effectivePrice = getEffectivePrice(frame);
             const isSale = effectivePrice < frame.price;
 

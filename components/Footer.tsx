@@ -62,6 +62,13 @@ export const Footer: React.FC<{ navigateTo: (page: Page) => void, config?: Store
                     <p className="opacity-80">Email: {config?.email || 'theluvin.gifts@gmail.com'}</p>
                 </div>
                 <div>
+                    <h3 className="font-bold text-base mb-3 uppercase tracking-wider">Bộ sưu tập</h3>
+                    <ul className="space-y-2 opacity-80">
+                        <li><button onClick={() => navigateTo('lego-collection')} className="hover:text-primary transition-colors">Khung Lego</button></li>
+                        <li><button onClick={() => navigateTo('gallery-collection')} className="hover:text-primary transition-colors">Khung Gallery</button></li>
+                    </ul>
+                </div>
+                <div>
                     <h3 className="font-bold text-base mb-3 uppercase tracking-wider">{t('footer.support')}</h3>
                     <ul className="space-y-2 opacity-80">
                         <li><button onClick={() => navigateTo('order-lookup')} className="hover:text-primary transition-colors">{t('nav.lookup')}</button></li>

@@ -11,7 +11,7 @@ export const ProductForm: React.FC<{
     onCancel: () => void 
 }> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<LegoPart>(initialData || {
-        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: '', bulkPricing: [], preventScarf: false
+        id: `part_${Date.now()}`, name: '', price: 0, costPrice: 0, salePrice: 0, saleEndDate: '', imageUrl: '', type: 'accessory', widthCm: 1, heightCm: 1, colors: [], category: '', bulkPricing: [], preventScarf: false, supportedProductLines: ['lego', 'gallery']
     });
     const [isUploading, setIsUploading] = useState(false);
     
@@ -36,9 +36,22 @@ export const ProductForm: React.FC<{
         } else {
             setFormData(prev => ({ 
                 ...prev, 
-                [name]: ['price', 'costPrice', 'salePrice', 'widthCm', 'heightCm'].includes(name) ? Number(value) : value 
+                [name]: ['price', 'costPrice', 'salePrice', 'widthCm', 'heightCm', 'purchaseCount'].includes(name) ? Number(value) : value 
             }));
         }
+    };
+
+    const handleLineToggle = (line: 'lego' | 'gallery') => {
+        const currentSelected = formData.supportedProductLines || ['lego', 'gallery'];
+        let updatedLines: ('lego' | 'gallery')[] = [];
+        
+        if (currentSelected.includes(line)) {
+            updatedLines = currentSelected.filter(l => l !== line);
+        } else {
+            updatedLines = [...currentSelected, line];
+        }
+        
+        setFormData(prev => ({ ...prev, supportedProductLines: updatedLines }));
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,12 +276,58 @@ export const ProductForm: React.FC<{
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-2 gap-6 col-span-2">
+                                    <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
+                                            <input type="number" name="stock" value={formData.stock === undefined ? '' : formData.stock} onChange={handleChange} placeholder="Vô hạn" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                    </div>
+                                    <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Đã bán (Ảo) <span className="text-gray-400 font-normal text-xs">(Dùng để sắp xếp độ hot)</span></label>
+                                            <input type="number" name="purchaseCount" value={formData.purchaseCount || 0} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                    </div>
+                                </div>
+
                                 <div className="col-span-2">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
-                                        <input type="number" name="stock" value={formData.stock === undefined ? '' : formData.stock} onChange={handleChange} placeholder="Vô hạn" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                    <label className="flex items-center gap-2 cursor-pointer bg-orange-50/50 p-3 rounded-xl border border-orange-100">
+                                        <input 
+                                            type="checkbox" 
+                                            name="isHot" 
+                                            checked={formData.isHot || false} 
+                                            onChange={(e) => setFormData(prev => ({ ...prev, isHot: e.target.checked }))}
+                                            className="w-5 h-5 accent-orange-500" 
+                                        />
+                                        <div>
+                                            <span className="text-sm font-bold text-orange-800 flex items-center gap-1.5">🔥 Sản phẩm nổi bật (Hot)</span>
+                                            <p className="text-[10px] text-orange-400 font-bold uppercase tracking-widest leading-none mt-1">Sẽ được ưu tiên hiển thị lên đầu danh sách</p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Section 2: Product Line Visibility */}
+                        {['accessory', 'pet', 'set', 'hat', 'shirt', 'pants', 'hair', 'face'].includes(formData.type) && (
+                            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 text-base flex items-center gap-2">
+                                    👁️ Hiển thị theo loại khung
+                                </h4>
+                                <div className="flex gap-6">
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${(!formData.supportedProductLines || formData.supportedProductLines.includes('lego')) ? 'bg-blue-600 border-blue-600' : 'border-gray-200'}`} onClick={() => handleLineToggle('lego')}>
+                                            {(!formData.supportedProductLines || formData.supportedProductLines.includes('lego')) && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">Khung LEGO Tranh</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${(!formData.supportedProductLines || formData.supportedProductLines.includes('gallery')) ? 'bg-pink-600 border-pink-600' : 'border-gray-200'}`} onClick={() => handleLineToggle('gallery')}>
+                                             {(!formData.supportedProductLines || formData.supportedProductLines.includes('gallery')) && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-700 group-hover:text-pink-600 transition-colors">Khung Gallery (1520)</span>
+                                    </label>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2 italic">Mặc định chọn cả hai nếu không rõ. Một số charm to chỉ nên dùng cho Khung Gallery.</p>
+                            </div>
+                        )}
 
                         {/* Section 2: Colors Variants */}
                         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">

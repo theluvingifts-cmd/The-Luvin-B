@@ -71,6 +71,12 @@ const PartButton = React.memo<{
                 </div>
             )}
             
+            {part.supportedProductLines && part.supportedProductLines.length === 1 && (
+                <div className={`absolute top-0 ${isHot || isSale || isBulk ? 'right-0' : 'left-0'} z-20 ${part.supportedProductLines[0] === 'gallery' ? 'bg-pink-600' : 'bg-blue-600'} text-white text-[7px] px-1 font-bold uppercase shadow-sm`}>
+                    {part.supportedProductLines[0]}
+                </div>
+            )}
+            
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100/50">
                 <SmartImage 
                     src={part.imageUrl} 
@@ -110,11 +116,23 @@ const PartButton = React.memo<{
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc', hotIds: string[] = []) => {
     if (mode === 'default') {
         return [...parts].sort((a, b) => {
-            const aHot = hotIds.includes(a.id);
-            const bHot = hotIds.includes(b.id);
-            if (aHot && !bHot) return -1;
-            if (!aHot && bHot) return 1;
-            return 0;
+            // Priority 1: Multi-factor Popularity (purchaseCount + orders + realOrderCount)
+            const popA = (a.purchaseCount || 0) + (a.orders || 0) + (Number((a as any).realOrderCount) || 0);
+            const popB = (b.purchaseCount || 0) + (b.orders || 0) + (Number((b as any).realOrderCount) || 0);
+            if (popA !== popB) return popB - popA;
+
+            // Priority 2: isHot flag
+            if (a.isHot && !b.isHot) return -1;
+            if (!a.isHot && b.isHot) return 1;
+
+            // Priority 3: hotIds from recent orders analytics
+            const aAnalyticsHot = hotIds.includes(a.id);
+            const bAnalyticsHot = hotIds.includes(b.id);
+            if (aAnalyticsHot && !bAnalyticsHot) return -1;
+            if (!aAnalyticsHot && bAnalyticsHot) return 1;
+
+            // Priority 4: Manual order attribute
+            return (a.order || 9999) - (b.order || 9999);
         });
     }
     return [...parts].sort((a, b) => {
@@ -148,7 +166,6 @@ export const Step3Characters: React.FC<{
     const { t } = useLanguage();
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
-    const [printDialogCharId, setPrintDialogCharId] = useState<number | null>(null);
     
     const [sortMode, setSortMode] = useState<'default' | 'price_asc' | 'price_desc'>('default');
     const [accessorySortMode, setAccessorySortMode] = useState<'default' | 'price_asc' | 'price_desc' | 'hot_trend'>('default');
@@ -330,17 +347,6 @@ export const Step3Characters: React.FC<{
       }
     };
     
-    const handleCustomPrintSelect = (price: number) => {
-      if (!printDialogCharId) return;
-      setConfig(prev => ({
-        ...prev,
-        characters: prev.characters.map(c => 
-          c.id === printDialogCharId ? { ...c, customPrintPrice: price } : c
-        )
-      }));
-      setPrintDialogCharId(null);
-    };
-
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
         
@@ -399,9 +405,17 @@ export const Step3Characters: React.FC<{
     ];
 
     const currentPartList = useMemo(() => {
-        const list = getAvailableParts(legoParts[activePartType] || []);
+        let list = getAvailableParts(legoParts[activePartType] || []);
+        
+        // Filter by product line compatibility
+        const currentLine = config.productLine || 'lego';
+        list = list.filter(p => {
+            if (!p.supportedProductLines || p.supportedProductLines.length === 0) return true;
+            return p.supportedProductLines.includes(currentLine);
+        });
+
         return sortParts(list, sortMode, hotPartIds);
-    }, [legoParts, activePartType, sortMode, hotPartIds]);
+    }, [legoParts, activePartType, sortMode, hotPartIds, config.frameId, config.productLine]);
 
     const uniqueAccessoryCategories = useMemo(() => {
         const cats = new Set<string>();
@@ -414,6 +428,13 @@ export const Step3Characters: React.FC<{
     const filteredAccessories = useMemo(() => {
         let list = getAvailableParts(legoParts.accessory || []);
         
+        // Filter by product line compatibility
+        const currentLine = config.productLine || 'lego';
+        list = list.filter(p => {
+            if (!p.supportedProductLines || p.supportedProductLines.length === 0) return true;
+            return p.supportedProductLines.includes(currentLine);
+        });
+
         if (accessoryCategory !== t('studio.all')) {
             list = list.filter(p => p.category === accessoryCategory);
         }
@@ -424,36 +445,27 @@ export const Step3Characters: React.FC<{
         }
 
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds]);
+    }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds, config.frameId, config.productLine]);
 
     const availablePets = useMemo(() => {
         let list = getAvailableParts(legoParts.pet || []);
+
+        // Filter by product line compatibility
+        const currentLine = config.productLine || 'lego';
+        list = list.filter(p => {
+            if (!p.supportedProductLines || p.supportedProductLines.length === 0) return true;
+            return p.supportedProductLines.includes(currentLine);
+        });
+
         if (accessorySearch.trim()) {
             const query = accessorySearch.toLowerCase().trim();
             list = list.filter(p => p.name.toLowerCase().includes(query));
         }
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
-    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch]);
+    }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch, config.frameId, config.productLine]);
 
     return (
         <div className="space-y-4 text-left">
-            {printDialogCharId && (
-              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
-                  <h3 className="font-bold text-lg mb-2">{t('studio.select_print_quality')}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{t('studio.print_quality_desc')}</p>
-                  <p className="text-xs font-bold text-amber-600 mb-4 bg-amber-50 p-2 rounded border border-amber-100">{t('studio.custom_print_notice')}</p>
-                  <div className="space-y-2">
-                    <button onClick={() => handleCustomPrintSelect(150000)} className="w-full bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-300">{t('studio.standard_print')} - {formatCurrency(150000)}</button>
-                    <button onClick={() => handleCustomPrintSelect(300000)} className="w-full bg-luvin-pink text-gray-800 font-semibold py-2 rounded-lg hover:opacity-90">{t('studio.premium_print')} - {formatCurrency(300000)}</button>
-                    {config.characters.find(c => c.id === printDialogCharId)?.customPrintPrice && 
-                      <button onClick={() => handleCustomPrintSelect(0)} className="w-full bg-red-100 text-red-700 font-semibold py-2 rounded-lg hover:bg-red-200">{t('studio.remove_custom_print')}</button>
-                    }
-                  </div>
-                  <button onClick={() => setPrintDialogCharId(null)} className="text-xs text-gray-500 mt-4 hover:underline">{t('studio.cancel')}</button>
-                </div>
-              </div>
-            )}
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">{t('studio.character_management')}</h4>
@@ -481,13 +493,54 @@ export const Step3Characters: React.FC<{
                     ))}
                     <button onClick={handleAddChar} className="bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-green-600 transition-colors active:scale-95">{t('studio.add_char')} ({formatCurrency(CHARACTER_BASE_PRICE)})</button>
                 </div>
-                {activeCharacter && 
-                  <div className="mt-4 pt-4 border-t flex items-center justify-start">
-                    <button onClick={() => setPrintDialogCharId(activeCharacter.id)} className="text-sm text-blue-600 hover:underline font-semibold">
-                      {activeCharacter.customPrintPrice ? `${t('studio.custom_print')} (${formatCurrency(activeCharacter.customPrintPrice)})` : t('studio.add_custom_print')}
-                    </button>
+                {activeCharacter && (
+                  <div className="mt-4 pt-4 border-t space-y-3">
+                    <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                            {t('studio.custom_print') || 'In theo yêu cầu'}
+                        </label>
+                        <div className="text-[9px] font-bold text-gray-400 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            7-10 {t('common.days') || 'ngày'}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                        {[
+                            { id: 'none', label: t('studio.none') || 'Không chọn', price: 0 },
+                            { id: 'standard', label: t('studio.standard_print') || 'In thường', price: 100000 },
+                            { id: 'premium', label: t('studio.premium_print') || 'In cao cấp', price: 300000 }
+                        ].map(opt => (
+                            <button
+                                key={opt.id}
+                                onClick={() => {
+                                    setConfig(prev => ({
+                                        ...prev,
+                                        characters: prev.characters.map(c => 
+                                            c.id === activeCharacter.id ? { ...c, customPrintOption: opt.id as any, customPrintPrice: opt.price } : c
+                                        )
+                                    }));
+                                }}
+                                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all ${
+                                    (activeCharacter.customPrintOption || 'none') === opt.id 
+                                        ? 'border-luvin-pink bg-pink-50 shadow-sm' 
+                                        : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
+                                }`}
+                            >
+                                <span className={`text-[9px] font-black uppercase tracking-tight mb-1 ${(activeCharacter.customPrintOption || 'none') === opt.id ? 'text-luvin-pink' : 'text-gray-500'}`}>{opt.label}</span>
+                                <span className="text-[8px] font-bold text-luvin-pink">{opt.price === 0 ? '0 ₫' : formatCurrency(opt.price)}</span>
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50">
+                        <p className="text-[9px] text-orange-800 leading-relaxed font-bold">
+                            {t('studio.custom_print_tip')}
+                        </p>
+                    </div>
                   </div>
-                }
+                )}
             </div>
 
             {activeCharacter && (
@@ -553,6 +606,13 @@ export const Step3Characters: React.FC<{
                 <div className="flex flex-col gap-4 mb-4">
                     <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">{t('studio.add_accessories_charms')}</h4>
                     
+                    {config.productLine !== 'gallery' && (
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 leading-relaxed shadow-sm animate-fade-in flex items-start gap-2.5">
+                            <span className="text-sm mt-[-2px]">ℹ️</span>
+                            <span className="font-medium">{t('studio.gallery_only_notice')}</span>
+                        </div>
+                    )}
+
                     {/* Search bar for accessories */}
                     <div className="relative group">
                         <input 

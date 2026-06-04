@@ -7,6 +7,7 @@ import { updateOrder, deleteOrder, countPartsInOrder, createOrder } from '../../
 import { sendThankYouEmail } from '../../services/emailService';
 import { uploadFile } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
+import { StoreConfig } from '../../services/configService';
 import { calculatePrice, formatCurrency } from '../../utils/pricing';
 import { DateInput } from '../ui/DateInput';
 import { StatusDropdown } from './shared/StatusDropdown';
@@ -85,6 +86,8 @@ const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, fram
     const [address, setAddress] = useState('');
     const [selectedFrameId, setSelectedFrameId] = useState(frames[0]?.id || 'lg');
     const [qty, setQty] = useState(1);
+    const [photoFrames, setPhotoFrames] = useState(8);
+    const [lights, setLights] = useState(3);
     const [priceOverride, setPriceOverride] = useState<number | ''>('');
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -106,7 +109,11 @@ const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, fram
                     ...INITIAL_FRAME_CONFIG,
                     frameId: selectedFrameId,
                     quantity: qty,
-                    characters: []
+                    characters: [],
+                    galleryOptions: selectedFrameId === 'gallery-1520' ? {
+                        photoFrameCount: photoFrames,
+                        lightCount: lights
+                    } : undefined
                 }
             ],
             addGiftBox: false,
@@ -149,6 +156,18 @@ const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ onClose, onSave, fram
                             <input type="number" placeholder="SL" className="p-2.5 border rounded-lg text-sm" value={qty} onChange={e => setQty(Number(e.target.value))} />
                         </div>
                     </div>
+                    {selectedFrameId === 'gallery-1520' && (
+                        <div className="grid grid-cols-2 gap-3 bg-pink-50 p-3 rounded-xl border border-pink-100">
+                            <div>
+                                <label className="text-[10px] font-black text-pink-400 uppercase block mb-1">Số khung ảnh</label>
+                                <input type="number" className="w-full p-2 border rounded-lg text-sm" value={photoFrames} onChange={e => setPhotoFrames(Number(e.target.value))} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-pink-400 uppercase block mb-1">Số đèn led</label>
+                                <input type="number" className="w-full p-2 border rounded-lg text-sm" value={lights} onChange={e => setLights(Number(e.target.value))} />
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Giá bán (Ghi đè nếu cần)</label>
                         <input type="number" placeholder="Mặc định theo khung" className="w-full p-2.5 border rounded-lg text-sm font-bold text-blue-600" value={priceOverride} onChange={e => setPriceOverride(e.target.value === '' ? '' : Number(e.target.value))} />
@@ -176,11 +195,23 @@ interface AdminOrdersProps {
     currentUser: any;
     role: 'admin' | 'warehouse' | null;
     onRefreshProducts: () => void;
+    storeConfig?: StoreConfig;
 }
 
 type OrderTab = 'active' | 'history';
 
-export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, products, frames, backgrounds, templates, currentUser, role, onRefreshProducts }) => {
+export const AdminOrders: React.FC<AdminOrdersProps> = ({ 
+    orders, 
+    setOrders, 
+    products, 
+    frames, 
+    backgrounds, 
+    templates, 
+    currentUser, 
+    role, 
+    onRefreshProducts,
+    storeConfig
+}) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     const [editForm, setEditForm] = useState<Order | null>(null);
@@ -471,9 +502,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                         ${selectedOrder.items.map((item, idx) => {
                             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
                             const frameName = frame ? frame.name : item.frameId;
-                            return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>Khung LEGO ${frameName}</strong></td><td style="font-size: 12px;">${item.characters.map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${item.draggableItems.length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${item.draggableItems.length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
+                            const galleryInfo = item.galleryOptions ? ` <span style="background: #fdf2f8; color: #db2777; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">${item.galleryOptions.photoFrameCount || 0} khung, ${item.galleryOptions.lightCount || 0} đèn</span>` : '';
+                            return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>Khung LEGO ${frameName}</strong>${galleryInfo}</td><td style="font-size: 12px;">${item.characters.map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${item.draggableItems.length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${item.draggableItems.length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
                         }).join('')}
-                        ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">1</td></tr>` : ''}
+                        ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
+                        ${selectedOrder.addLight ? `<tr><td style="text-align: center">${selectedOrder.items.length + (selectedOrder.addGiftBox ? 2 : 1)}</td><td>Đèn Spotlight</td><td>Đèn Led chiếu sáng</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
                     </tbody>
                 </table>
                 <div class="footer"><p>Cảm ơn quý khách đã tin tưởng The Luvin!</p><p>Vui lòng quay video khi mở hàng để được hỗ trợ đổi trả tốt nhất.</p></div>
@@ -573,9 +606,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         const subtotal = calculateOrderPriceDetails(newOrder.items);
         const totalQuantity = newOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
         const giftBoxFee = newOrder.addGiftBox ? 30000 * totalQuantity : 0;
+        const lightFee = newOrder.addLight ? (storeConfig?.lightPrice || 0) * totalQuantity : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
-        const finalPrice = Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
+        const finalPrice = Math.max(0, subtotal + giftBoxFee + lightFee + shippingFee - discount);
         return { ...newOrder, totalPrice: finalPrice };
     };
 
@@ -602,6 +636,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                 newOrder = updateEditFormWithPrice(newOrder);
             } else if (field === 'addGiftBox') {
                 newOrder.addGiftBox = value;
+                newOrder = updateEditFormWithPrice(newOrder);
+            } else if (field === 'addLight') {
+                newOrder.addLight = value;
                 newOrder = updateEditFormWithPrice(newOrder);
             } else if (field === 'discountAmount') {
                 newOrder.discountAmount = Number(value);
@@ -742,6 +779,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
         const subtotal = calculateOrderPriceDetails(order.items);
         const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
         const giftBoxFee = order.addGiftBox ? 30000 * totalQuantity : 0;
+        const lightFee = order.addLight ? (storeConfig?.lightPrice || 25000) * totalQuantity : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 
@@ -750,15 +788,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
 
         return (
             <div className="bg-white border border-gray-200 rounded-lg p-4 mt-6">
-                <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider flex justify-between items-center">
+                <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider flex justify-between items-center flex-wrap gap-2">
                     <span>Chi tiết thanh toán</span>
-                    {order.addGiftBox && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ HỘP QUÀ ({totalQuantity})</span>}
+                    <div className="flex gap-1">
+                        {order.addGiftBox && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ HỘP QUÀ ({totalQuantity})</span>}
+                        {order.addLight && <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ ĐÈN ({totalQuantity})</span>}
+                    </div>
                 </h3>
                 <div className="space-y-2 text-sm text-gray-700">
                     <div className="flex justify-between"><span className="text-gray-500">Tiền hàng:</span><span className="font-medium">{formatCurrency(subtotal, 'admin')}</span></div>
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2"><span className="text-gray-500">Hộp quà ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addGiftBox} onChange={(e) => handleEditFormChange('addGiftBox', e.target.checked)} className="w-4 h-4 accent-pink-600"/>)}</div>
                         <span className={`font-medium ${order.addGiftBox ? 'text-gray-900' : 'text-gray-400'}`}>{formatCurrency(giftBoxFee, 'admin')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2"><span className="text-gray-500">Đèn Spotlight ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addLight} onChange={(e) => handleEditFormChange('addLight', e.target.checked)} className="w-4 h-4 accent-yellow-600"/>)}</div>
+                        <span className={`font-medium ${order.addLight ? 'text-gray-900' : 'text-gray-400'}`}>{formatCurrency(lightFee, 'admin')}</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-gray-500">Phí vận chuyển:</span>
@@ -867,9 +912,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <p className="text-sm text-gray-600 truncate max-w-[120px]">{order.customer.name}</p>
-                                        {order.addGiftBox && (
-                                            <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
-                                        )}
+                                        <div className="flex gap-0.5">
+                                            {order.addGiftBox && (
+                                                <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
+                                            )}
+                                            {order.addLight && (
+                                                <span className="flex-shrink-0 text-yellow-500 text-sm" title="Đơn có đèn spotlight">💡</span>
+                                            )}
+                                        </div>
                                     </div>
                                     <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalPrice, 'admin')}</p>
                                 </div>
@@ -950,7 +1000,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
                                         <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Demo:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.demoContact || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'demoContact')} placeholder="SĐT/Zalo gửi demo..." /></div>
-                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <input type="text" className="border rounded p-1 w-full" value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><p className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> {selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Gói quà</span>}</p><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <input type="text" className="border rounded p-1 w-full" value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><div className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> <div className="flex gap-1">{selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Hộp quà</span>}{selectedOrder.addLight && <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">💡 Đèn</span>}</div></div><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
                                         <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
                                         {selectedOrder.referredBy && (
                                             <div className="mt-2 space-y-1">
@@ -1176,6 +1226,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, setOrders, pro
                                                             ) : (
                                                                 <>
                                                                     <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
+                                                                    {item.galleryOptions && (
+                                                                        <div className="flex gap-2 mb-1">
+                                                                            {item.galleryOptions.photoFrameCount && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.photoFrameCount} khung ảnh</span>}
+                                                                            {item.galleryOptions.lightCount && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.lightCount} đèn led</span>}
+                                                                        </div>
+                                                                    )}
                                                                     <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
                                                                 </>
                                                             )}

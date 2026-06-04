@@ -1,7 +1,7 @@
 
 // types.ts
 
-export type Page = 'home' | 'builder' | 'collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv' | 'catalog';
+export type Page = 'home' | 'builder' | 'collection' | 'lego-collection' | 'gallery-collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv' | 'catalog';
 
 export type StaffRole = 'admin' | 'warehouse';
 
@@ -40,6 +40,7 @@ export interface FrameOption {
   stock?: number;
   colors: string[];
   order?: number;
+  supportedProductLines?: ('lego' | 'gallery')[];
 }
 
 export interface OutfitColor {
@@ -68,7 +69,10 @@ export interface LegoPart {
   order?: number;
   category?: string;
   isHot?: boolean;
+  purchaseCount?: number;
+  orders?: number;
   preventScarf?: boolean;
+  supportedProductLines?: ('lego' | 'gallery')[];
 }
 
 export interface ShapeConfig {
@@ -149,6 +153,7 @@ export interface FrameConfig {
   texts: TextConfig[];
   shapes: ShapeConfig[];
   draggableItems: DraggableItem[];
+  productLine?: 'lego' | 'gallery';
   previewImageUrl?: string;
   quantity?: number;
   price?: number;
@@ -157,6 +162,10 @@ export interface FrameConfig {
   isMuseumStyle?: boolean;
   customFormData?: Record<string, string>; 
   formFields?: FormField[]; 
+  galleryOptions?: {
+      photoFrameCount?: number;
+      lightCount?: number;
+  };
 }
 
 export interface LegoCharacterConfig {
@@ -172,6 +181,7 @@ export interface LegoCharacterConfig {
   selectedHairColor?: OutfitColor;
   selectedHatColor?: OutfitColor;
   selectedSetColor?: OutfitColor;
+  customPrintOption?: 'none' | 'standard' | 'premium';
   customPrintPrice?: number;
   x: number; y: number; rotation: number; scale: number; 
   opacity?: number;
@@ -281,8 +291,15 @@ export interface CollectionTemplate {
     isSimple?: boolean;
     isHot?: boolean;
     isNew?: boolean;
+    productLine?: 'lego' | 'gallery';
     order?: number;
     stock?: number;
+    galleryOptions?: {
+        photoFrameCount?: number;
+        lightCount?: number;
+        showPhotoOptions?: boolean;
+        showLightOptions?: boolean;
+    };
 }
 
 export interface FeedbackItem {

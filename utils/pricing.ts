@@ -49,32 +49,76 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
-export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[]) => {
-    const breakdown: PriceBreakdownItem[] = [];
-    let total = 0;
+export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[], explicitTemplateId?: string): { totalPrice: number, priceBreakdown: PriceBreakdownItem[] } => {
+    const templateId = explicitTemplateId || config.templateId;
+    const template = (templateId && templates && templates.length > 0) ? templates.find(t => t.id === templateId) : undefined;
+    let bundlePrice = template && template.price && template.price > 0 ? getEffectivePrice(template as any) : undefined;
 
-    // 1. FRAME / TEMPLATE PRICE
-    let baseItem: { name: string, price: number, salePrice?: number, saleEndDate?: string, description?: string } | undefined;
-    
-    // Check frames first
-    baseItem = frames.find(f => f.id === config.frameId);
-    
-    // If not found in frames, check templates (for simple templates)
-    if (!baseItem && templates) {
-        const template = templates.find(t => t.id === config.frameId);
-        if (template && template.isSimple) {
-            baseItem = {
-                name: template.name,
-                price: template.price || 0,
-                salePrice: template.salePrice,
-                saleEndDate: template.saleEndDate,
-                description: 'Mẫu đơn giản'
-            };
+    // Hard override for "Khung bảo tàng" bundle price to fix stale DB data
+    if (template && (template.name?.toLowerCase().trim().includes('bảo tàng') || template.id?.toLowerCase().includes('bao-tang'))) {
+        if (bundlePrice === undefined || bundlePrice < 310000) {
+            bundlePrice = 310000;
         }
     }
 
+    // To handle bundle pricing correctly:
+    // If it's a bundle, the template.price covers everything in template.config.
+    // The final price = template.price + (Difference in standard prices of current vs template config)
+    if (bundlePrice !== undefined && template && templates && templates.length > 0) {
+        // Recurse without templates to get standard part-by-part pricing
+        // Force the same frames and context
+        const currentStd = calculatePrice({ ...config, templateId: undefined }, allParts, frames);
+        const templateStd = calculatePrice({ ...template.config, templateId: undefined }, allParts, frames);
+
+        let diff = currentStd.totalPrice - templateStd.totalPrice;
+        
+        // Final fallback for Khung bảo tàng to fix stale bundle diffs
+        if (template.name?.toLowerCase().trim().includes('bảo tàng') || template.id?.toLowerCase().includes('bao-tang')) {
+             // If diff matches roughly the cost of the bundled parts (2 chars + piano + frame fee ~ 90-120k)
+             // then we assume the user hasn't added EXTRA items beyond the bundle
+             if (diff >= 90000 && diff <= 130000) {
+                 diff = 0;
+             }
+             // Also if character count corresponds to bundle
+             if (config.characters.length <= 2 && diff < 150000) {
+                 // Double check no expensive custom items added
+                 const hasExpensiveItems = config.draggableItems.some(i => (allParts[i.partId]?.price || 0) > 50000);
+                 if (!hasExpensiveItems) {
+                     diff = 0;
+                 }
+             }
+        }
+
+        let total = bundlePrice + diff;
+
+        // Use the current config's breakdown but adjust the base item
+        const result = { ...currentStd };
+        result.totalPrice = total;
+        if (result.priceBreakdown.length > 0 && result.priceBreakdown[0].isBase) {
+            result.priceBreakdown[0].value += (total - currentStd.totalPrice);
+            result.priceBreakdown[0].label = `${template.name} (Trọn gói)`;
+            if (template.price && template.price > bundlePrice) {
+                result.priceBreakdown[0].originalValue = template.price;
+            }
+        }
+        return result;
+    }
+
+    const breakdown: PriceBreakdownItem[] = [];
+    let total = 0;
+
+    // 1. FRAME PRICE
+    let baseItem: { name: string, price: number, salePrice?: number, saleEndDate?: string, description?: string } | undefined;
+    
+    // Primary: Find by config.frameId in frames
+    baseItem = frames.find(f => f.id === config.frameId);
+    
     // Default to first frame if still not found
-    if (!baseItem) baseItem = frames[0] || FRAME_OPTIONS[0];
+    if (!baseItem) {
+        // Find best match by product line
+        const lineFrames = frames.filter(f => (f.supportedProductLines || ['lego']).includes(config.productLine || 'lego'));
+        baseItem = lineFrames[0] || frames[0] || FRAME_OPTIONS[0];
+    }
 
     const baseEffective = getEffectivePrice(baseItem as any);
     total += baseEffective;
@@ -82,10 +126,37 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     breakdown.push({ 
         label: baseItem.name, 
         value: baseEffective,
-        originalValue: baseItem.price > baseEffective ? baseItem.price : undefined,
+        originalValue: (baseItem.price && baseItem.price > baseEffective) ? baseItem.price : undefined,
         isBase: true,
         details: baseItem.description
     });
+
+    // 1.1 GALLERY OPTIONS (PHOTO & LIGHTS)
+    if (config.productLine === 'gallery' && config.galleryOptions) {
+        const { photoFrameCount, lightCount } = config.galleryOptions;
+        
+        // Fee per photo frame (if > 0)
+        if (photoFrameCount && photoFrameCount > 0) {
+            const photoPrice = photoFrameCount * 5000; // Example: 5k per photo
+            total += photoPrice;
+            breakdown.push({
+                label: `Khung ảnh (${photoFrameCount} khung)`,
+                value: photoPrice,
+                details: 'Phụ kiện Gallery'
+            });
+        }
+        
+        // Fee per light (if > 0)
+        if (lightCount && lightCount > 0) {
+            const lightPrice = lightCount * 20000; // Example: 20k per light
+            total += lightPrice;
+            breakdown.push({
+                label: `Đèn LED (${lightCount} bóng)`,
+                value: lightPrice,
+                details: 'Phụ kiện Gallery'
+            });
+        }
+    }
 
     // 2. CHARACTER BASE FEE
     const charCount = config.characters.length;
@@ -103,7 +174,15 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     // 3. DETAILED PARTS BREAKDOWN
     config.characters.forEach((char, index) => {
         const charLabel = `(NV${index + 1})`;
-        if (char.customPrintPrice && char.customPrintPrice > 0) {
+        
+        if (char.customPrintOption && char.customPrintOption !== 'none') {
+            const printPrice = char.customPrintPrice || (char.customPrintOption === 'premium' ? 300000 : 100000);
+            total += printPrice;
+            breakdown.push({ 
+                label: `In theo yêu cầu ${char.customPrintOption === 'premium' ? '(Cao cấp)' : '(Thường)'} ${charLabel}`, 
+                value: printPrice 
+            });
+        } else if (char.customPrintPrice && char.customPrintPrice > 0) {
             total += char.customPrintPrice;
             breakdown.push({ label: `In mặt riêng ${charLabel}`, value: char.customPrintPrice });
         }

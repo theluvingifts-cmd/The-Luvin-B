@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FrameConfig, LegoPart, Order, Voucher } from '../types';
+import { FrameConfig, LegoPart, Order, Voucher, CollectionTemplate } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
@@ -28,9 +28,10 @@ interface CheckoutPageProps {
   onPlaceOrder: (order: Omit<Order, 'status' | 'createdAt'>) => Promise<void>;
   onZoomImage: (url: string) => void;
   initialOrder?: Order | null;
+  templates: CollectionTemplate[];
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, initialOrder }) => {
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts, onPlaceOrder, onZoomImage, initialOrder, templates }) => {
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -201,17 +202,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }, [manualReferralCode, phone]);
 
   const subtotal = useMemo(() => {
-      return cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
-  }, [cartItems, allParts]);
+      return cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
+  }, [cartItems, allParts, templates]);
 
   const totalQuantity = useMemo(() => cartItems.reduce((total, item) => total + (item.quantity || 1), 0), [cartItems]);
   
   const hasCustomPrint = useMemo(() => {
     return cartItems.some(item => {
-      const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS);
+      const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
       return priceBreakdown.some(pb => pb.label.includes('In mặt riêng') || pb.label.includes(t('studio.custom_print')));
     });
-  }, [cartItems, allParts, t]);
+  }, [cartItems, allParts, t, templates]);
 
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
   const isFreeShippingEligible = subtotal >= FREE_SHIPPING_THRESHOLD;
@@ -456,7 +457,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           },
           delivery: { date: deliveryDate, notes: finalNotes },
           items: cartItems.map(item => {
-            const { totalPrice: itemPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+            const { totalPrice: itemPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
             return { ...item, price: itemPrice };
           }),
           addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
@@ -807,7 +808,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               <h2 className="font-bold text-lg mb-4 border-b pb-2">{t('checkout.your_order')}</h2>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {cartItems.map((item, index) => {
-                  const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+                  const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
                   const quantity = item.quantity || 1;
                   
                   return (
@@ -860,13 +861,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
                       {/* Item Breakdown (Optional/Toggleable or always show if space allows) */}
                       <div className="bg-white/60 rounded-lg p-2 space-y-1">
-                          {calculatePrice(item, allParts, FRAME_OPTIONS).priceBreakdown.slice(0, 6).map((pb, pbIdx) => (
+                          {calculatePrice(item, allParts, FRAME_OPTIONS, templates).priceBreakdown.slice(0, 6).map((pb, pbIdx) => (
                               <div key={pbIdx} className="flex justify-between text-[10px]">
                                   <span className="text-gray-500">{pb.label}</span>
                                   <span className="text-gray-700 font-medium">{formatCurrency(pb.value)}</span>
                               </div>
                           ))}
-                          {calculatePrice(item, allParts, FRAME_OPTIONS).priceBreakdown.length > 6 && (
+                          {calculatePrice(item, allParts, FRAME_OPTIONS, templates).priceBreakdown.length > 6 && (
                               <div className="text-[9px] text-gray-400 italic text-center pt-1">... and more details</div>
                           )}
                       </div>

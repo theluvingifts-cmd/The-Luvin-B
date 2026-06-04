@@ -26,11 +26,19 @@ export const getAllParts = async (): Promise<LegoPart[]> => {
 
         const parts: LegoPart[] = [];
         querySnapshot.forEach((doc) => {
-            parts.push(doc.data() as LegoPart);
+            const data = doc.data() as LegoPart;
+            parts.push({ ...data, id: doc.id });
         });
         
-        // Safety sort
-        parts.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+        // Safety sort: Popularity (sold items) descending, then Hot, then manual order
+        parts.sort((a, b) => {
+            const popA = (a.purchaseCount || 0) + (a.orders || 0) + (Number((a as any).realOrderCount) || 0);
+            const popB = (b.purchaseCount || 0) + (b.orders || 0) + (Number((b as any).realOrderCount) || 0);
+            if (popA !== popB) return popB - popA;
+            if (a.isHot && !b.isHot) return -1;
+            if (!a.isHot && b.isHot) return 1;
+            return (a.order ?? 9999) - (b.order ?? 9999);
+        });
         
         return parts;
     } catch (error: any) {
@@ -152,6 +160,30 @@ export const reorderPartsList = async (parts: LegoPart[]) => {
         return true;
     } catch (error) {
         console.error("Lỗi sắp xếp sản phẩm:", error);
+        return false;
+    }
+};
+
+// 8. Hàm tăng số lượng đơn hàng cho sản phẩm
+export const incrementPartPurchaseCount = async (partIds: Record<string, number>) => {
+    try {
+        const batch = writeBatch(db);
+        let hasUpdates = false;
+
+        for (const [id, amount] of Object.entries(partIds)) {
+            if (amount <= 0) continue;
+            const ref = doc(db, COLLECTION_NAME, id);
+            batch.update(ref, { 
+                orders: increment(amount),
+                realOrderCount: increment(amount) // Sync for stats
+            });
+            hasUpdates = true;
+        }
+
+        if (hasUpdates) await batch.commit();
+        return true;
+    } catch (error) {
+        console.error("Lỗi tăng lượt mua sản phẩm:", error);
         return false;
     }
 };

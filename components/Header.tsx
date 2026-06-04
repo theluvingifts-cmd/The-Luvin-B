@@ -39,7 +39,8 @@ export const Header: React.FC<HeaderProps> = ({ navigateTo, cartCount, onCartCli
   const navItems: { label: string; page: Page }[] = [
     { label: t('nav.home'), page: 'home' }, 
     { label: t('nav.studio'), page: 'builder' }, 
-    { label: t('nav.collection'), page: 'collection' }, 
+    { label: 'Khung Lego', page: 'lego-collection' }, 
+    { label: 'Khung Gallery', page: 'gallery-collection' },
     { label: t('nav.business'), page: 'business' },
     { label: t('nav.lookup'), page: 'order-lookup' },
   ];

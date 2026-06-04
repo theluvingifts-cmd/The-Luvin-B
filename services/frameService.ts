@@ -26,19 +26,15 @@ export const reorderFramesList = async (items: FrameOption[]) => {
 
 export const getAllFrames = async (): Promise<FrameOption[]> => {
     try {
-        const q = query(collection(db, COLLECTION_NAME), orderBy('order', 'asc'));
-        let querySnapshot = await getDocs(q).catch(async (err) => {
-            console.warn("Index not found or error, falling back to unordered fetch:", err);
-            return await getDocs(collection(db, COLLECTION_NAME));
-        });
-        
+        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
         const frames: FrameOption[] = [];
         querySnapshot.forEach((doc) => {
-            frames.push(doc.data() as FrameOption);
+            const data = doc.data() as FrameOption;
+            frames.push({ ...data, id: doc.id });
         });
         
         // Final JS sort as safety net
-        return frames.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        return frames.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
     } catch (error: any) {
         if (error.code === 'permission-denied') {
             console.warn("Firestore: Permission denied for frames. Using default.");

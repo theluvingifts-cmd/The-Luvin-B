@@ -42,10 +42,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
 
     // Frame Filters
     const [frameSearch, setFrameSearch] = useState('');
+    const [frameProductLine, setFrameProductLine] = useState<'all' | 'lego' | 'gallery'>('all');
 
     // Template Filters
     const [templateSearch, setTemplateSearch] = useState('');
     const [templateCategory, setTemplateCategory] = useState('all');
+    const [templateProductLine, setTemplateProductLine] = useState<'all' | 'lego' | 'gallery'>('all');
     const [showLowStockTemplatesOnly, setShowLowStockTemplatesOnly] = useState(false);
 
     // Editing States (Objects)
@@ -54,6 +56,14 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const [editingFrame, setEditingFrame] = useState<FrameOption | null>(null);
     const [editingTemplate, setEditingTemplate] = useState<CollectionTemplate | null>(null);
     const [loading, setLoading] = useState(false);
+
+    // Custom Delete Confirmation State
+    const [deleteConfirm, setDeleteConfirm] = useState<{
+        id: string;
+        type: ProductSubTab;
+        title: string;
+        message: string;
+    } | null>(null);
 
     // Quick Stock Edit State
     const [quickStockEditId, setQuickStockEditId] = useState<string | null>(null);
@@ -83,8 +93,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     [backgrounds, bgTypeFilter, bgCategoryFilter, bgSearch]);
 
     const filteredFrames = useMemo(() => 
-        frames.filter(f => f.name.toLowerCase().includes(frameSearch.toLowerCase())),
-    [frames, frameSearch]);
+        frames.filter(f => {
+            const matchesSearch = f.name.toLowerCase().includes(frameSearch.toLowerCase());
+            const matchesLine = frameProductLine === 'all' || (f.supportedProductLines || ['lego']).includes(frameProductLine);
+            return matchesSearch && matchesLine;
+        }),
+    [frames, frameSearch, frameProductLine]);
 
     const templateCategories = useMemo(() => {
         return ['all', ...Array.from(new Set(templates.map(t => t.category).filter(Boolean)))];
@@ -94,10 +108,11 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
         templates.filter(t => {
             const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase());
             const matchesCategory = templateCategory === 'all' || t.category === templateCategory;
+            const matchesLine = templateProductLine === 'all' || (t.productLine || 'lego') === templateProductLine;
             const matchesStock = showLowStockTemplatesOnly ? (t.stock === 0) : true;
-            return matchesSearch && matchesCategory && matchesStock;
+            return matchesSearch && matchesCategory && matchesLine && matchesStock;
         }),
-    [templates, templateSearch, templateCategory, showLowStockTemplatesOnly]);
+    [templates, templateSearch, templateCategory, templateProductLine, showLowStockTemplatesOnly]);
 
     // Switch View Handler
     const switchToEdit = (item: any = null, type: ProductSubTab) => {
@@ -139,22 +154,19 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             setLoading(false);
         }
     };
-    const handleDeleteProduct = async (id: string) => { 
-        if (confirm("Bạn chắc chắn muốn xóa?")) { 
-            try {
-                setLoading(true);
-                const success = await deletePart(id); 
-                if (success) {
-                    if (showToast) showToast("Đã xóa linh kiện", "success");
-                    onRefreshProducts(); 
-                } else if (showToast) showToast("Lỗi khi xóa linh kiện", "error");
-            } catch (err: any) {
-                console.error("Delete product error:", err);
-                if (showToast) showToast(`Lỗi: ${err.message}`, "error");
-            } finally {
-                setLoading(false);
-            }
-        } 
+    const handleDeleteProduct = async (e: React.MouseEvent, id: string) => { 
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        console.log("ADMIN: Requesting delete for Part:", id);
+        setDeleteConfirm({
+            id,
+            type: 'parts',
+            title: "Xóa Linh Kiện",
+            message: "Bạn có chắc chắn muốn xóa linh kiện này? Hành động này không thể hoàn tác."
+        });
     };
     
     const handleSaveBackground = async (bg: PresetBackground) => { 
@@ -172,28 +184,29 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             setLoading(false);
         }
     };
-    const handleDeleteBackground = async (id: string) => { 
-        if (confirm("Bạn chắc chắn muốn xóa?")) { 
-            try {
-                setLoading(true);
-                const success = await deleteBackground(id); 
-                if (success) {
-                    if (showToast) showToast("Đã xóa hình nền", "success");
-                    onRefreshBackgrounds(); 
-                } else if (showToast) showToast("Lỗi khi xóa hình nền", "error");
-            } catch (err: any) {
-                console.error("Delete background error:", err);
-                if (showToast) showToast(`Lỗi: ${err.message}`, "error");
-            } finally {
-                setLoading(false);
-            }
-        } 
+    const handleDeleteBackground = async (e: React.MouseEvent, id: string) => { 
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        console.log("ADMIN: Requesting delete for Background:", id);
+        setDeleteConfirm({
+            id,
+            type: 'backgrounds',
+            title: "Xóa Hình Nền",
+            message: "Bạn có chắc chắn muốn xóa hình nền này?"
+        });
     };
 
     const handleSaveFrame = async (frame: FrameOption) => { 
         try {
             setLoading(true);
-            const success = editingFrame ? await updateFrame(frame.id, frame) : await addFrame(frame); 
+            const frameToSave = { ...frame };
+            if (!editingFrame && (frameToSave.order === undefined || frameToSave.order === null)) {
+                frameToSave.order = frames.length;
+            }
+            const success = editingFrame ? await updateFrame(frameToSave.id, frameToSave) : await addFrame(frameToSave); 
             if (success) {
                 if (showToast) showToast("Đã lưu khung thành công!", "success");
                 onRefreshFrames(); switchToList(); 
@@ -205,22 +218,25 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             setLoading(false);
         }
     };
-    const handleDeleteFrame = async (id: string) => { 
-        if (confirm("Bạn chắc chắn muốn xóa?")) { 
-            try {
-                setLoading(true);
-                const success = await deleteFrame(id); 
-                if (success) {
-                    if (showToast) showToast("Đã xóa khung", "success");
-                    onRefreshFrames(); 
-                } else if (showToast) showToast("Lỗi khi xóa khung", "error");
-            } catch (err: any) {
-                console.error("Delete frame error:", err);
-                if (showToast) showToast(`Lỗi: ${err.message}`, "error");
-            } finally {
-                setLoading(false);
-            }
-        } 
+    const handleDeleteFrame = async (e: React.MouseEvent, id: string) => { 
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        if (!id) {
+            console.error("ADMIN: Frame ID is missing!");
+            if (showToast) showToast("Lỗi: Không tìm thấy ID khung để xóa", "error");
+            return;
+        }
+
+        console.log("ADMIN: Requesting delete for Frame:", id);
+        setDeleteConfirm({
+            id,
+            type: 'frames',
+            title: "XÁC NHẬN XÓA KHUNG",
+            message: "BẠN CÓ CHẮC CHẮN MUỐN XÓA KHUNG NÀY?\n\nHành động này sẽ xóa vĩnh viễn khỏi hệ thống và không thể hoàn tác."
+        });
     };
 
     const handleSaveTemplate = async (tpl: CollectionTemplate) => { 
@@ -238,7 +254,76 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
             setLoading(false);
         }
     };
-    const handleDeleteTemplate = async (id: string) => { if (confirm("Bạn chắc chắn muốn xóa?")) { await deleteTemplate(id); if (showToast) showToast("Đã xóa mẫu thiết kế", "success"); onRefreshTemplates(); } };
+    const handleDeleteTemplate = async (e: React.MouseEvent, id: string) => { 
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        console.log("ADMIN: Requesting delete for Template:", id);
+        setDeleteConfirm({
+            id,
+            type: 'templates',
+            title: "Xóa Mẫu Thiết Kế",
+            message: "Bạn có chắc chắn muốn xóa mẫu thiết kế này?"
+        });
+    };
+
+    // Centralized Delete Execution
+    const executeDelete = async () => {
+        if (!deleteConfirm) return;
+        const { id, type } = deleteConfirm;
+        setDeleteConfirm(null); // Close modal
+        
+        try {
+            setLoading(true);
+            console.log(`ADMIN: EXECUTE DELETE [${type}] for ID:`, id);
+            
+            let success = false;
+            switch (type) {
+                case 'parts':
+                    success = await deletePart(id);
+                    if (success) {
+                        if (showToast) showToast("Đã xóa linh kiện", "success");
+                        onRefreshProducts();
+                    }
+                    break;
+                case 'backgrounds':
+                    success = await deleteBackground(id);
+                    if (success) {
+                        if (showToast) showToast("Đã xóa hình nền", "success");
+                        onRefreshBackgrounds();
+                    }
+                    break;
+                case 'frames':
+                    success = await deleteFrame(id);
+                    if (success) {
+                        console.log("ADMIN: deleteFrame SUCCESS", id);
+                        if (showToast) showToast("Đã xóa khung thành công", "success");
+                        // UI will refetch via parent if using polling or state refresh
+                        onRefreshFrames(); 
+                    }
+                    break;
+                case 'templates':
+                    success = await deleteTemplate(id);
+                    if (success) {
+                        if (showToast) showToast("Đã xóa mẫu thiết kế", "success");
+                        onRefreshTemplates();
+                    }
+                    break;
+            }
+
+            if (!success) {
+                console.error(`ADMIN: Delete ${type} API returned false`);
+                if (showToast) showToast(`Không thể xóa ${type}, vui lòng thử lại`, "error");
+            }
+        } catch (err: any) {
+            console.error(`ADMIN: Delete ${type} error exception:`, err);
+            if (showToast) showToast(`Lỗi hệ thống: ${err.message}`, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Quick Stock Edit Handlers
     const startQuickStockEdit = (id: string, currentStock: number | undefined) => {
@@ -500,10 +585,36 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             )}
                                         </div>
                                         {isSale && <div className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[8px] px-1 rounded font-bold shadow-sm">SALE</div>}
-                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => switchToEdit(part, 'parts')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
-                                            <button onClick={() => handleDeleteProduct(part.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
-                                        </div>
+                                            <div 
+                                                className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-50 pointer-events-auto"
+                                                onClick={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                                <button 
+                                                    type="button" 
+                                                    onClick={(e) => { 
+                                                        e.preventDefault();
+                                                        e.stopPropagation(); 
+                                                        console.log("ADMIN: Edit part clicked", part.id);
+                                                        switchToEdit(part, 'parts'); 
+                                                    }} 
+                                                    className="p-2 bg-blue-600 text-white rounded shadow-lg hover:bg-blue-700 transition-all cursor-pointer active:scale-95"
+                                                    title="Sửa"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={(e) => {
+                                                        console.log("ADMIN: Delete part clicked", part.id);
+                                                        handleDeleteProduct(e, part.id);
+                                                    }} 
+                                                    className="p-2 bg-red-600 text-white rounded shadow-lg hover:bg-red-700 transition-all cursor-pointer active:scale-95"
+                                                    title="Xóa"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </div>
                                     </div>
                                 )})}
                             </div>
@@ -523,7 +634,16 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         />
                                         <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                                     </div>
-                                    {frameSearch === '' && (
+                                    <select 
+                                        value={frameProductLine} 
+                                        onChange={e => setFrameProductLine(e.target.value as any)} 
+                                        className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="all">Tất cả sản phẩm</option>
+                                        <option value="lego">Dòng LEGO</option>
+                                        <option value="gallery">Dòng GALLERY</option>
+                                    </select>
+                                    {frameSearch === '' && frameProductLine === 'all' && (
                                         <div className="flex items-center gap-1 text-blue-500 font-bold self-center italic animate-pulse">
                                             <span className="text-[10px]">Lướt xuống để chỉnh mẫu</span>
                                             <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,11 +654,20 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto justify-end">
                                     <button 
-                                        onClick={() => { if(window.confirm('Bạn có chắc chắn muốn reset toàn bộ khung về mặc định?')) handleSeedFrames(); }} 
-                                        className="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition-colors"
-                                        title="Reset Frames"
+                                        onClick={onRefreshFrames}
+                                        className="p-2 text-blue-500 hover:text-blue-700 bg-blue-50 border border-blue-100 rounded-lg transition-colors"
+                                        title="Làm mới danh sách"
                                     >
-                                        🔄
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        onClick={() => { if(window.confirm('DỮ LIỆU SẼ BỊ RESET VỀ MẶC ĐỊNH. Thao tác này sẽ xóa sạch các khung bạn đã thêm! Bạn có chắc chắn?')) handleSeedFrames(); }} 
+                                        className="p-2 text-gray-300 hover:text-red-500 bg-white border border-gray-200 rounded-lg transition-colors"
+                                        title="Reset Data"
+                                    >
+                                        🗑️
                                     </button>
                                     <button 
                                         onClick={() => switchToEdit(null, 'frames')} 
@@ -626,12 +755,46 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 )}
                                             </div>
                                             <div className="flex gap-1 mt-1">
-                                                {frame.colors.map(c => <span key={c} className="w-3 h-3 rounded-full border" style={{backgroundColor: c === 'wood' ? '#d2b48c' : c}}></span>)}
+                                                {frame.colors.map(c => <span key={c} className="w-3 h-3 rounded-full border" style={{backgroundColor: c === 'wood' ? '#d2b48c' : (c === 'black' ? '#111' : (c === 'white' ? '#fff' : c))}}></span>)}
+                                            </div>
+                                            
+                                            <div className="flex gap-1.5 mt-3 pt-3 border-t border-gray-50">
+                                                {(frame.supportedProductLines || ['lego']).map(line => (
+                                                    <span key={line} className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                                        line === 'gallery' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+                                                    }`}>
+                                                        {line}
+                                                    </span>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="absolute top-4 right-4 flex gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => switchToEdit(frame, 'frames')} className="px-3 py-1 bg-blue-100 text-blue-600 rounded text-xs font-bold">Sửa</button>
-                                            <button onClick={() => handleDeleteFrame(frame.id)} className="px-3 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">Xóa</button>
+                                        <div 
+                                            className="absolute top-4 right-4 flex gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-50 pointer-events-auto"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                            <button 
+                                                type="button" 
+                                                onClick={(e) => { 
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log("ADMIN: Edit button clicked", frame.id);
+                                                    switchToEdit(frame, 'frames'); 
+                                                }} 
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-black shadow-lg hover:bg-blue-700 transition-all cursor-pointer uppercase active:scale-95"
+                                            >
+                                                Sửa
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={(e) => {
+                                                    console.log("ADMIN: Delete button clicked", frame.id);
+                                                    handleDeleteFrame(e, frame.id);
+                                                }} 
+                                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-black shadow-lg hover:bg-red-700 transition-all cursor-pointer uppercase active:scale-95"
+                                            >
+                                                Xóa
+                                            </button>
                                         </div>
                                     </div>
                                 )})}
@@ -738,9 +901,35 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                         </div>
                                         <h4 className="font-bold text-xs sm:text-sm truncate" title={bg.name}>{bg.name}</h4>
                                         <p className="text-[10px] sm:text-xs text-gray-500">{bg.category}</p>
-                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => switchToEdit(bg, 'backgrounds')} className="p-1.5 bg-blue-100 text-blue-600 rounded shadow-sm">✏️</button>
-                                            <button onClick={() => handleDeleteBackground(bg.id)} className="p-1.5 bg-red-100 text-red-600 rounded shadow-sm">🗑️</button>
+                                        <div 
+                                            className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-50 pointer-events-auto"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                            <button 
+                                                type="button" 
+                                                onClick={(e) => { 
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log("ADMIN: Edit background clicked", bg.id);
+                                                    switchToEdit(bg, 'backgrounds'); 
+                                                }} 
+                                                className="p-2 bg-blue-600 text-white rounded shadow-lg hover:bg-blue-700 transition-all cursor-pointer active:scale-95"
+                                                title="Sửa"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={(e) => {
+                                                    console.log("ADMIN: Delete background clicked", bg.id);
+                                                    handleDeleteBackground(e, bg.id);
+                                                }} 
+                                                className="p-2 bg-red-600 text-white rounded shadow-lg hover:bg-red-700 transition-all cursor-pointer active:scale-95"
+                                                title="Xóa"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -762,11 +951,18 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             />
                                             <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                                         </div>
-                                        <select value={templateCategory} onChange={e => setTemplateCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none">
-                                            <option value="all">Tất cả danh mục</option>
-                                            {templateCategories.filter(c => c !== 'all').map(cat => (
-                                                <option key={cat} value={cat}>{cat}</option>
-                                            ))}
+                                        {templateProductLine !== 'gallery' && (
+                                            <select value={templateCategory} onChange={e => setTemplateCategory(e.target.value)} className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none">
+                                                <option value="all">Tất cả danh mục</option>
+                                                {templateCategories.filter(c => c !== 'all').map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <select value={templateProductLine} onChange={e => setTemplateProductLine(e.target.value as any)} className="p-2 border rounded-lg text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 outline-none">
+                                            <option value="all">Tất cả dòng SP</option>
+                                            <option value="lego">Khung Lego</option>
+                                            <option value="gallery">Khung Gallery</option>
                                         </select>
                                         <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 border rounded-lg hover:bg-gray-100 transition-colors self-start sm:self-auto">
                                             <input 
@@ -834,9 +1030,33 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                            <button onClick={() => switchToEdit(tpl, 'templates')} className="px-3 py-1 bg-white text-gray-900 rounded font-bold text-sm hover:bg-gray-100">Sửa</button>
-                                            <button onClick={() => handleDeleteTemplate(tpl.id)} className="px-3 py-1 bg-red-600 text-white rounded font-bold text-sm hover:bg-red-700">Xóa</button>
+                                        <div 
+                                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-50 pointer-events-auto"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                            <button 
+                                                type="button" 
+                                                onClick={(e) => { 
+                                                    e.preventDefault();
+                                                    e.stopPropagation(); 
+                                                    console.log("ADMIN: Edit template clicked", tpl.id);
+                                                    switchToEdit(tpl, 'templates'); 
+                                                }} 
+                                                className="px-4 py-2 bg-white text-gray-900 rounded-lg font-black text-sm hover:bg-gray-100 shadow-xl transition-all cursor-pointer active:scale-95"
+                                            >
+                                                Sửa
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={(e) => {
+                                                    console.log("ADMIN: Delete template clicked", tpl.id);
+                                                    handleDeleteTemplate(e, tpl.id);
+                                                }} 
+                                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-black text-sm hover:bg-red-700 shadow-xl transition-all cursor-pointer active:scale-95"
+                                            >
+                                                Xóa
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -849,6 +1069,39 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                         </>
                     )}
                 </>
+            )}
+
+            {/* Custom Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center gap-3 text-red-600 mb-2">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                <h3 className="text-xl font-black uppercase tracking-tight">{deleteConfirm.title}</h3>
+                            </div>
+                            <p className="text-gray-600 font-medium whitespace-pre-wrap leading-relaxed">
+                                {deleteConfirm.message}
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 px-6 py-4 flex gap-3">
+                            <button 
+                                onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-all active:scale-95 shadow-sm"
+                            >
+                                Hủy Bỏ
+                            </button>
+                            <button 
+                                onClick={executeDelete}
+                                className="flex-1 py-3 px-4 bg-red-600 text-white rounded-xl font-black hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-200 uppercase"
+                            >
+                                Xác Nhận Xóa
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

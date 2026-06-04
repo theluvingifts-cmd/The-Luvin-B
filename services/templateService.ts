@@ -19,7 +19,8 @@ export const getAllTemplates = async (): Promise<CollectionTemplate[]> => {
 
         const templates: CollectionTemplate[] = [];
         querySnapshot.forEach((doc) => {
-            templates.push(doc.data() as CollectionTemplate);
+            const data = doc.data() as CollectionTemplate;
+            templates.push({ ...data, id: doc.id });
         });
 
         // If fallback was used or order is missing, templates might not be sorted correctly here in JS

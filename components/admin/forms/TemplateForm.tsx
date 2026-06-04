@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, FrameConfig, FrameOption } from '../../../types';
-import { INITIAL_FRAME_CONFIG } from '../../../constants';
+import { INITIAL_FRAME_CONFIG, FRAME_OPTIONS } from '../../../constants';
 import { uploadFile } from '../../../services/uploadService';
 
 const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Mẫu thiết kế yêu cầu', 'Màu trơn'];
@@ -201,11 +201,18 @@ export const TemplateForm: React.FC<{
                 alert("Vui lòng tải ảnh xem trước!");
                 return;
             }
+            
+            // Sync gallery options into config for better persistence
+            const finalConfig = {
+                ...config,
+                galleryOptions: formData.galleryOptions
+            };
+
             // Always use the visual 'config' state, even for simple templates
             // isSimple just determines how it's displayed to the customer
             onSave({ 
                 ...formData, 
-                config: config 
+                config: finalConfig 
             });
         } catch (e) {
             console.error(e);
@@ -236,36 +243,151 @@ export const TemplateForm: React.FC<{
                             placeholder="VD: Kỷ niệm ngày cưới..." 
                         />
                     </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Danh mục (Gõ mới để thêm dịp)</label>
-                        <div className="relative">
-                            <input 
-                                list="category-suggestions"
-                                name="category" 
-                                value={formData.category} 
-                                onChange={handleChange} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none"
-                                placeholder="Chọn hoặc nhập dịp mới..."
-                            />
-                            <datalist id="category-suggestions">
-                                {SUGGESTED_CATEGORIES.map(cat => (
-                                    <option key={cat} value={cat} />
-                                ))}
-                            </datalist>
+                    {formData.productLine !== 'gallery' && (
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Danh mục (Gõ mới để thêm dịp)</label>
+                            <div className="relative">
+                                <input 
+                                    list="category-suggestions"
+                                    name="category" 
+                                    value={formData.category} 
+                                    onChange={handleChange} 
+                                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none"
+                                    placeholder="Chọn hoặc nhập dịp mới..."
+                                />
+                                <datalist id="category-suggestions">
+                                    {SUGGESTED_CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat} />
+                                    ))}
+                                </datalist>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1.5">Trang chủ sẽ tự động hiển thị tab theo các tên bạn nhập ở đây.</p>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1.5">Trang chủ sẽ tự động hiển thị tab theo các tên bạn nhập ở đây.</p>
-                    </div>
+                    )}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Giá bán (VNĐ)</label>
-                        <input 
-                            type="number"
-                            name="price" 
-                            value={formData.price || ''} 
-                            onChange={handleChange} 
-                            className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none font-bold text-red-600" 
-                            placeholder="VD: 350000" 
-                        />
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Dòng sản phẩm (Phân loại chính)</label>
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({ 
+                                    ...formData, 
+                                    productLine: 'lego', 
+                                    config: { 
+                                        ...formData.config, 
+                                        frameId: formData.config.frameId === 'gallery-1520' ? 'lg' : formData.config.frameId,
+                                        background: { ...formData.config.background, type: 'color' } 
+                                    } 
+                                })}
+                                className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${(!formData.productLine || formData.productLine === 'lego') ? 'bg-white text-luvin-pink shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Khung Lego
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    const newConfig = { 
+                                        ...formData.config, 
+                                        frameId: 'gallery-1520',
+                                        frameColor: 'black'
+                                    };
+                                    setFormData({ 
+                                        ...formData, 
+                                        productLine: 'gallery', 
+                                        isSimple: false,
+                                        config: newConfig 
+                                    });
+                                    setConfig(prev => ({ ...prev, frameId: 'gallery-1520', frameColor: 'black' }));
+                                }}
+                                className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${formData.productLine === 'gallery' ? 'bg-white text-luvin-pink shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Khung Gallery
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1.5">Dòng sản phẩm sẽ giúp tách biệt các bộ sưu tập trên trang web.</p>
                     </div>
+
+                    {formData.productLine === 'gallery' && (
+                        <div className="col-span-full bg-pink-50/50 p-6 rounded-3xl border-2 border-pink-100 shadow-sm space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-pink-100 rounded-lg text-lg">⚙️</div>
+                                <div>
+                                    <h3 className="text-sm font-black text-pink-900 uppercase tracking-tight">Cấu hình Gallery</h3>
+                                    <p className="text-[10px] text-pink-400 font-bold uppercase tracking-widest">Thiết lập đèn và khung ảnh hiển thị cho khách</p>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="bg-white/60 p-4 rounded-2xl border border-pink-100 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.galleryOptions?.showPhotoOptions || false} 
+                                                onChange={(e) => setFormData({ 
+                                                    ...formData, 
+                                                    galleryOptions: { ...formData.galleryOptions, showPhotoOptions: e.target.checked } 
+                                                })}
+                                                className="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-600" 
+                                            />
+                                            <span className="text-xs font-bold text-gray-700">Khách được chọn số khung ảnh</span>
+                                        </label>
+                                        <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest">Khung ảnh</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-pink-50">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Số khung ảnh (Mặc định)</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number"
+                                                value={formData.galleryOptions?.photoFrameCount || 0}
+                                                onChange={(e) => setFormData({ 
+                                                    ...formData, 
+                                                    galleryOptions: { ...formData.galleryOptions, photoFrameCount: parseInt(e.target.value) || 0 } 
+                                                })}
+                                                className="w-full p-2.5 pl-9 border border-pink-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-pink-200 focus:border-pink-300 outline-none transition-all font-bold"
+                                                placeholder="VD: 8"
+                                            />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg opacity-50">📸</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/60 p-4 rounded-2xl border border-pink-100 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.galleryOptions?.showLightOptions || false} 
+                                                onChange={(e) => setFormData({ 
+                                                    ...formData, 
+                                                    galleryOptions: { ...formData.galleryOptions, showLightOptions: e.target.checked } 
+                                                })}
+                                                className="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-600" 
+                                            />
+                                            <span className="text-xs font-bold text-gray-700">Khách được chọn số đèn</span>
+                                        </label>
+                                        <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest">Đèn LED</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-pink-50">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Số đèn LED (Mặc định)</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number"
+                                                value={formData.galleryOptions?.lightCount || 0}
+                                                onChange={(e) => setFormData({ 
+                                                    ...formData, 
+                                                    galleryOptions: { ...formData.galleryOptions, lightCount: parseInt(e.target.value) || 0 } 
+                                                })}
+                                                className="w-full p-2.5 pl-9 border border-pink-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-pink-200 focus:border-pink-300 outline-none transition-all font-bold"
+                                                placeholder="VD: 3"
+                                            />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg opacity-50">💡</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Lượt chọn ảo (Social Proof)</label>
                         <input 
@@ -303,29 +425,42 @@ export const TemplateForm: React.FC<{
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">Kích thước khung</label>
-                            <div className="grid grid-cols-1 gap-2">
-                                {allFrames.map(f => (
-                                    <button 
-                                        key={f.id}
-                                        type="button"
-                                        onClick={() => setConfig({ ...config, frameId: f.id })}
-                                        className={`p-3 border-2 rounded-xl flex items-center justify-between transition-all ${config.frameId === f.id ? 'border-blue-500 bg-white shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'}`}
-                                    >
-                                        <div className="text-left">
-                                            <p className="text-xs font-black uppercase text-gray-800">{f.name}</p>
-                                            <p className="text-[9px] text-gray-400 italic lowercase">{f.description}</p>
-                                        </div>
-                                        {config.frameId === f.id && <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Màu khung mặc định</label>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Kích thước khung</label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {(allFrames.length > 0 ? allFrames : FRAME_OPTIONS)
+                                        .filter(f => {
+                                            const supported = f.supportedProductLines || ['lego'];
+                                            if (formData.productLine === 'gallery') return supported.includes('gallery');
+                                            return supported.includes('lego');
+                                        })
+                                        .map(f => (
+                                        <button 
+                                            key={f.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setConfig({ ...config, frameId: f.id });
+                                                // If price is 0 or empty, suggest the frame's default price
+                                                if (!formData.price) {
+                                                    setFormData(prev => ({ ...prev, price: f.price }));
+                                                }
+                                            }}
+                                            className={`p-3 border-2 rounded-xl flex items-center justify-between transition-all ${config.frameId === f.id ? 'border-blue-500 bg-white shadow-md' : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'}`}
+                                        >
+                                            <div className="text-left">
+                                                <p className="text-xs font-black uppercase text-gray-800">{f.name}</p>
+                                                <p className="text-[10px] text-blue-600 font-bold">{f.backgroundWidthCm}x{f.backgroundHeightCm}cm</p>
+                                                <p className="text-[9px] text-gray-400 italic lowercase">{f.description}</p>
+                                            </div>
+                                            {config.frameId === f.id && <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Màu khung mặc định</label>
                                 <div className="flex gap-3">
                                     <button 
                                         type="button"
@@ -345,11 +480,47 @@ export const TemplateForm: React.FC<{
                                     </button>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                                <p className="text-[9px] text-amber-700 leading-relaxed">
-                                    <span className="font-black">LƯU Ý:</span> Đây là cấu hình mặc định khi khách hàng mở mẫu này. Họ vẫn có thể thay đổi kích thước/màu khung nếu mẫu ở chế độ Canvas.
+                        <div className="space-y-4">
+                            <div className="bg-white p-4 rounded-2xl border-2 border-blue-100 shadow-sm">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">💰 Giá bán cho mẫu này</label>
+                                <div className="relative">
+                                    <input 
+                                        type="number"
+                                        name="price" 
+                                        value={formData.price || ''} 
+                                        onChange={handleChange} 
+                                        className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 text-base focus:bg-white focus:border-blue-500 outline-none font-black text-red-600 shadow-inner" 
+                                        placeholder="VD: 350000" 
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-gray-400 text-xs">VN ĐỒNG</span>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Giá khuyến mãi (Tùy chọn)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="number"
+                                            name="salePrice" 
+                                            value={formData.salePrice || ''} 
+                                            onChange={handleChange} 
+                                            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none font-bold text-green-600" 
+                                            placeholder="VD: 290000" 
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-300 text-[10px]">VNĐ</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 h-fit">
+                                <p className="text-[10px] text-amber-700 leading-relaxed mb-2">
+                                    <span className="font-black">💰 CHÚ Ý VỀ GIÁ:</span>
                                 </p>
+                                <ul className="text-[9px] text-amber-600 space-y-1 list-disc pl-4">
+                                    <li>Nếu bạn <b>nhập giá</b> ở trên: Giá này sẽ được dùng làm <b>giá trọn gói (Bundle)</b> của mẫu, không quan tâm có bao nhiêu linh kiện bên trong.</li>
+                                    <li>Nếu bạn <b>để trống hoặc nhập 0</b>: Giá sẽ được <b>tính tự động</b> = Giá khung + Nhân vật + Phụ kiện.</li>
+                                    <li>Đối với "Khung Gallery", hệ thống sẽ cộng thêm phí khung ảnh và đèn LED nếu có cấu hình.</li>
+                                </ul>
                             </div>
                         </div>
                     </div>

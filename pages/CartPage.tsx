@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FrameConfig, LegoPart, Page } from '../types';
+import { FrameConfig, LegoPart, Page, CollectionTemplate } from '../types';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
@@ -16,11 +16,12 @@ interface CartPageProps {
     onUpdateQuantity: (index: number, newQuantity: number) => void;
     onZoomImage: (url: string) => void;
     isEditingOrder?: boolean;
+    templates: CollectionTemplate[];
 }
 
-export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder }) => {
+export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder, templates }) => {
     const { t } = useLanguage();
-    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
+    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
@@ -31,7 +32,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
                         {cartItems.map((item, index) => {
-                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
                             const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
                             const quantity = item.quantity || 1;
                             
@@ -61,6 +62,12 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         <h3 className="font-bold text-lg font-body text-luvin-pink">{t('order_lookup.frame_lego', { name: frame.name })}</h3>
                                         <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
                                         <p className="text-sm text-gray-600">{t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}</p>
+                                        {item.galleryOptions && (
+                                            <div className="flex gap-3 mt-1">
+                                                {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold">📸 {item.galleryOptions.photoFrameCount} Khung ảnh</span>}
+                                                {item.galleryOptions.lightCount && <span className="text-xs text-blue-600 font-bold">💡 {item.galleryOptions.lightCount} Đèn led</span>}
+                                            </div>
+                                        )}
                                         
                                         {/* Character & Charm Previews */}
                                         <div className="flex flex-wrap gap-2 mt-2">

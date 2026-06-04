@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FrameConfig, LegoPart, Page } from '../types';
+import { FrameConfig, LegoPart, Page, CollectionTemplate } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from './ZoomIcon';
@@ -16,16 +16,17 @@ interface CartPanelProps {
   navigateTo: (page: Page) => void;
   onUpdateQuantity: (index: number, newQuantity: number) => void;
   onZoomImage: (url: string) => void;
+  templates: CollectionTemplate[];
 }
 
-export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage }) => {
+export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, templates }) => {
   const { t } = useLanguage();
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS).totalPrice * (item.quantity || 1), 0);
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
   const hasCustomPrint = cartItems.some(item => {
-    const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS);
+    const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
     return priceBreakdown.some(pb => pb.label.includes('In mặt riêng') || pb.label.includes(t('studio.custom_print')));
   });
 
@@ -76,7 +77,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {cartItems.map((item, index) => {
-              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS);
+              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
               const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
               const quantity = item.quantity || 1;
 
@@ -105,6 +106,12 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                   <div className="flex-grow min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-gray-800 truncate">{t('cart.custom_lego_frame')}</h3>
                     <p className="text-[10px] sm:text-xs text-gray-500 truncate mb-1">{frame.name}</p>
+                    {item.galleryOptions && (
+                        <div className="flex gap-2 mb-1">
+                            {item.galleryOptions.photoFrameCount && <span className="text-[9px] bg-pink-50 text-pink-600 px-1.5 rounded-md font-bold">{item.galleryOptions.photoFrameCount} Khung ảnh</span>}
+                            {item.galleryOptions.lightCount && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 rounded-md font-bold">{item.galleryOptions.lightCount} Đèn led</span>}
+                        </div>
+                    )}
                     <div className="flex justify-between items-center mt-1">
                         <p className="text-sm font-black text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
                         <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">

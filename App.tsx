@@ -12,13 +12,13 @@ import { createOrder, updateOrder, countPartsInOrder } from './services/orderSer
 import { getAllParts, adjustStock } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
 import { getStoreConfig, DEFAULT_THEME, StoreConfig } from './services/configService'; 
-import { getAllTemplates } from './services/templateService'; 
+import { getAllTemplates, updateTemplate } from './services/templateService'; 
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
 import { sendOrderTelegram } from './services/telegramService'; 
 import { db } from './config/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 
 import AdminPage from './pages/AdminPage'; 
 import { Header } from './components/Header';
@@ -121,7 +121,7 @@ const App: React.FC = () => {
   // Determine currentPage from location for Header/Footer visibility
   const currentPage = useMemo<Page>(() => {
     const path = location.pathname.split('/')[1] || 'home';
-    const validPages: Page[] = ['home', 'builder', 'collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv'];
+    const validPages: Page[] = ['home', 'builder', 'collection', 'lego-collection', 'gallery-collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv'];
     return validPages.includes(path as Page) ? (path as Page) : 'home';
   }, [location]);
   
@@ -258,23 +258,97 @@ const App: React.FC = () => {
               setIsLoadingParts(false);
           }
       };
-      fetchData();
-      const unsubscribe = onSnapshot(doc(db, 'config', 'general'), (docSnap) => {
-          if (docSnap.exists()) {
-              const updatedConfig = docSnap.data() as StoreConfig;
-              setStoreConfig(updatedConfig);
-              try {
-                  localStorage.setItem('store_config', safeJsonStringify(updatedConfig));
-              } catch(e) {}
-              updateMetaTags(updatedConfig);
-              // FIX: Cập nhật font real-time khi admin thay đổi font
-              if (updatedConfig.uploadedFonts) {
-                  loadUploadedFonts(updatedConfig.uploadedFonts);
-              }
-          }
+    fetchData();
+    
+    // Config listener
+    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'general'), (docSnap) => {
+        if (docSnap.exists()) {
+            const updatedConfig = docSnap.data() as StoreConfig;
+            setStoreConfig(updatedConfig);
+            try {
+                localStorage.setItem('store_config', safeJsonStringify(updatedConfig));
+            } catch(e) {}
+            updateMetaTags(updatedConfig);
+            if (updatedConfig.uploadedFonts) {
+                loadUploadedFonts(updatedConfig.uploadedFonts);
+            }
+        }
+    });
+
+    // Templates listener - Cập nhật mẫu mới real-time
+    const unsubscribeTemplates = onSnapshot(query(collection(db, 'templates'), orderBy('order', 'asc')), (querySnapshot) => {
+        const tpls: CollectionTemplate[] = [];
+        querySnapshot.forEach((doc) => {
+            tpls.push(doc.data() as CollectionTemplate);
+        });
+        if (tpls.length > 0) {
+            setTemplates(tpls);
+            // Cập nhật cache local
+            try {
+                localStorage.setItem('cached_templates', safeJsonStringify(tpls));
+            } catch(e) {}
+        }
+    }, (error) => {
+        console.error("Templates snapshot error:", error);
+    });
+
+    // Real-time parts listener
+    const unsubscribeParts = onSnapshot(collection(db, 'lego_parts'), (querySnapshot) => {
+        const parts: LegoPart[] = [];
+        querySnapshot.forEach((doc) => {
+            parts.push(doc.data() as LegoPart);
+        });
+        if (parts.length > 0) {
+            setLegoParts(categorizeParts(parts));
+        }
+    }, (error) => {
+        console.error("Parts snapshot error:", error);
+    });
+
+    // Real-time frames listener
+    const unsubscribeFrames = onSnapshot(collection(db, 'frames'), (querySnapshot) => {
+        const framesData: FrameOption[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data() as FrameOption;
+            framesData.push({ ...data, id: doc.id });
+        });
+        if (framesData.length > 0) {
+            framesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+            setFrames(framesData);
+        }
+    }, (error) => {
+        console.error("Frames snapshot error:", error);
+    });
+
+    return () => {
+        unsubscribeConfig();
+        unsubscribeTemplates();
+        unsubscribeParts();
+        unsubscribeFrames();
+    };
+}, []);
+
+  // Migration logic for "Khung bảo tàng" price
+  useEffect(() => {
+    if (templates.length > 0) {
+      const baoTangTemplates = templates.filter(t => 
+        t.name?.toLowerCase().trim().includes('bảo tàng') || 
+        t.id?.toLowerCase().includes('bao-tang')
+      );
+      
+      baoTangTemplates.forEach(async (t) => {
+        if (t.price !== 310000) {
+          console.log(`Migrating price for ${t.name} from ${t.price} to 310000`);
+          await updateTemplate(t.id, { 
+            price: 310000,
+            salePrice: 310000,
+            // Also ensure the config has the right parts to avoid diff errors
+            // but the override handles diff === 0 anyway.
+          });
+        }
       });
-      return () => unsubscribe();
-  }, []);
+    }
+  }, [templates]);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
 
@@ -288,13 +362,19 @@ const App: React.FC = () => {
     
     if (page === 'home') navigate('/');
     else if (page === 'builder') navigate('/builder/3');
+    else if (page === 'lego-collection') navigate('/collection/lego');
+    else if (page === 'gallery-collection') navigate('/collection/gallery');
     else navigate(`/${page}`);
     
     window.scrollTo(0, 0);
   };
 
   const handleCustomizeTemplate = (template: CollectionTemplate) => {
-      const newConfig = { ...template.config, templateId: template.id };
+      const newConfig: FrameConfig = { 
+          ...template.config, 
+          templateId: template.id,
+          productLine: template.productLine || 'lego' 
+      };
       setConfig(newConfig);
       navigate('/builder/3');
       window.scrollTo(0, 0);
@@ -430,14 +510,17 @@ const App: React.FC = () => {
                         backgrounds={backgrounds} frames={frames} editingCartIndex={editingCartIndex} 
                         onCancelEdit={handleCancelEdit} onZoomImage={setZoomedImageUrl} logoUrl={storeConfig.logoUrl}
                         isEditingOrder={!!editingOrder} uploadedFonts={storeConfig.uploadedFonts || []}
-                        isLoadingParts={isLoadingParts}
+                        isLoadingParts={isLoadingParts} templates={templates}
                     />
                 } />
-                <Route path="/collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
-                <Route path="/collection/:category" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
-                <Route path="/collection/:category/:templateId" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
-                <Route path="/cart" element={<CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} />} />
-                <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} />} />
+                <Route path="/collection" element={<Navigate to="/collection/lego" replace />} />
+                <Route path="/collection/:productLine" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
+                <Route path="/collection/:productLine/:category" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
+                <Route path="/collection/:productLine/:category/:templateId" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
+                <Route path="/lego-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="lego" />} />
+                <Route path="/gallery-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="gallery" />} />
+                <Route path="/cart" element={<CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} templates={templates} />} />
+                <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} templates={templates} />} />
                 <Route path="/order-confirmation" element={<OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />} />
                 <Route path="/order-lookup" element={<OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />} />
                 <Route path="/admin/*" element={<AdminPage showToast={showToast} />} />
@@ -450,7 +533,7 @@ const App: React.FC = () => {
             </Routes>
         </main>
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
-        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} />
+        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} templates={templates} />
         {zoomedImageUrl && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
                 <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg></button>

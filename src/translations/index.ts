@@ -37,7 +37,8 @@ export const translations: any = {
             next: "Tiếp theo",
             close: "Đóng",
             editing: "Đang chỉnh sửa",
-            required: "bắt buộc"
+            required: "bắt buộc",
+            days: "ngày"
         },
         collection: {
             title: "Bộ sưu tập",
@@ -148,6 +149,9 @@ export const translations: any = {
             sort_price_desc: "Giá: Cao đến Thấp",
             add_pets: "THÊM THÚ CƯNG",
             no_accessories_found: "Không tìm thấy phụ kiện phù hợp.",
+            gallery_only_notice: "Một số charm kích thước lớn chỉ dành riêng cho Khung Gallery.",
+            gallery_only_badge: "Gallery Only",
+            lego_only_badge: "LEGO Only",
             color_white: "Trắng",
             color_black: "Đen",
             color_wood: "Gỗ",
@@ -160,6 +164,7 @@ export const translations: any = {
             select_print_quality: "Chọn chất lượng in",
             print_quality_desc: "In theo yêu cầu sẽ có chi phí cao hơn. Vui lòng chọn chất lượng mong muốn cho nhân vật này.",
             custom_print_notice: "Lưu ý: Sản phẩm in theo yêu cầu cần ít nhất 7-10 ngày để hoàn thiện.",
+            custom_print_tip: "✨ Nếu không quá gấp, bạn có thể chọn in thêm để tạo sự khác biệt, còn không thì mẫu sẵn có cũng đã rất xinh rồi nè!",
             link_copied_and_downloading: "Đã sao chép link giới thiệu và đang tải ảnh xuống!",
             design_loaded: "Đã tải thiết kế thành công!",
             design_not_found: "Không tìm thấy thiết kế hoặc link đã hết hạn.",
@@ -527,7 +532,8 @@ export const translations: any = {
             next: "Next",
             close: "Close",
             editing: "Editing",
-            required: "required"
+            required: "required",
+            days: "days"
         },
         collection: {
             title: "Our",
@@ -648,6 +654,7 @@ export const translations: any = {
             select_print_quality: "Select print quality",
             print_quality_desc: "Custom printing will have a higher cost. Please select the desired quality for this character.",
             custom_print_notice: "Note: Custom printed products require at least 7-10 days to complete.",
+            custom_print_tip: "✨ If you're not in a hurry, you can choose to print for a unique look, but the standard options are already very lovely!",
             link_copied_and_downloading: "Referral link copied and image downloading!",
             design_loaded: "Design loaded successfully!",
             design_not_found: "Design not found or link expired.",

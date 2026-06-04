@@ -19,13 +19,12 @@ import { AdminProducts } from '../components/admin/AdminProducts';
 import { AdminConfig } from '../components/admin/AdminConfig';
 import { AdminVouchers } from '../components/admin/AdminVouchers'; 
 import { AdminCustomers } from '../components/admin/AdminCustomers'; 
-import { AdminDesign } from '../components/admin/AdminDesign';
 import { AdminCollaborators } from '../components/admin/AdminCollaborators';
 import { AdminSecurity } from '../components/admin/AdminSecurity';
 import { Logo } from '../components/shared/Logo';
 import { trackSession, subscribeToSession } from '../services/adminSessionService';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'design' | 'collaborators' | 'security';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'collaborators' | 'security';
 
 interface AdminPageProps {
     showToast?: (message: string, type: 'success' | 'error') => void;
@@ -47,6 +46,56 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     const [feedbacks, setFeedbackItems] = useState<FeedbackItem[]>([]);
     const [frames, setFrames] = useState<FrameOption[]>([]);
     const [storeConfig, setStoreConfig] = useState<StoreConfig>({});
+
+    // Real-time listeners for all catalogs
+    useEffect(() => {
+        if (!currentUser) return;
+
+        // Frames Listener
+        const unsubFrames = onSnapshot(collection(db, 'frames'), (snapshot) => {
+            const framesData: FrameOption[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data() as FrameOption;
+                framesData.push({ ...data, id: doc.id });
+            });
+            // Sort in memory instead of Firestore query to avoid excluding items without order field
+            framesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+            setFrames(framesData);
+        }, (error) => {
+            console.error("Frames snapshot error:", error);
+            if (showToast) showToast("Lỗi đồng bộ danh sách khung: " + error.message, 'error');
+        });
+
+        // Backgrounds Listener
+        const unsubBgs = onSnapshot(query(collection(db, 'backgrounds'), orderBy('order', 'asc')), (snapshot) => {
+            const bgsData: PresetBackground[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data() as PresetBackground;
+                bgsData.push({ ...data, id: doc.id });
+            });
+            if (bgsData.length > 0) setBackgrounds(bgsData);
+        }, (error) => {
+            if (error.code === 'failed-precondition') {
+                onSnapshot(collection(db, 'backgrounds'), (snap) => {
+                    const data: PresetBackground[] = [];
+                    snap.forEach(d => {
+                        const item = d.data() as PresetBackground;
+                        data.push({ ...item, id: d.id });
+                    });
+                    setBackgrounds(data);
+                });
+            }
+        });
+
+        // Templates Listener (Already handled slightly in init but we can make it cleaner here)
+        // ... handled in App.tsx but Admin needs its own state if not passed from 
+        // actually AdminPage in this app has its own fetch logic
+
+        return () => {
+            unsubFrames();
+            unsubBgs();
+        };
+    }, [currentUser]);
 
     // Hàm chuyển tab tập trung
     const handleTabChange = (tab: MainTab) => {
@@ -186,7 +235,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     // Redirect duy nhất cho nhân viên kho (chỉ được xem Đơn hàng)
     useEffect(() => {
         if (role === 'warehouse') {
-            const restrictedTabs = ['dashboard', 'products', 'config', 'marketing', 'customers', 'design'];
+            const restrictedTabs = ['dashboard', 'products', 'config', 'marketing', 'customers'];
             if (restrictedTabs.includes(activeTab)) {
                 handleTabChange('orders');
             }
@@ -212,7 +261,6 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                                         <button onClick={() => handleTabChange('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => handleTabChange('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
                                         <button onClick={() => handleTabChange('collaborators')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'collaborators' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cộng tác viên</button>
-                                        <button onClick={() => handleTabChange('design')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Studio Design</button>
                                         <button onClick={() => handleTabChange('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
                                         {isSuperAdmin && <button onClick={() => handleTabChange('security')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'security' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Bảo mật</button>}
                                     </>
@@ -253,7 +301,6 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                                 <button onClick={() => handleTabChange('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Khách hàng</button>
                                 <button onClick={() => handleTabChange('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Marketing</button>
                                 <button onClick={() => handleTabChange('collaborators')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'collaborators' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>CTV</button>
-                                <button onClick={() => handleTabChange('design')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'design' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Design</button>
                                 <button onClick={() => handleTabChange('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Cấu hình</button>
                                 {isSuperAdmin && <button onClick={() => handleTabChange('security')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'security' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Bảo mật</button>}
                             </>
@@ -264,13 +311,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
 
             <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
                 {activeTab === 'dashboard' && role === 'admin' && <AdminDashboard orders={orders} products={products} frames={frames} />}
-                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} backgrounds={backgrounds} templates={templates} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} />}
+                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} backgrounds={backgrounds} templates={templates} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} storeConfig={storeConfig} />}
                 {activeTab === 'products' && role === 'admin' && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} showToast={showToast} />}
                 {activeTab === 'config' && role === 'admin' && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
                 {activeTab === 'collaborators' && role === 'admin' && <AdminCollaborators orders={orders} />}
-                {activeTab === 'design' && role === 'admin' && <AdminDesign showToast={showToast} />}
                 {activeTab === 'security' && isSuperAdmin && <AdminSecurity showToast={showToast} />}
             </main>
         </div>
