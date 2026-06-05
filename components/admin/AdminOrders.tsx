@@ -470,6 +470,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
         
+        const legoQuantity = selectedOrder.items
+            .filter(item => (item.productLine || 'lego') === 'lego')
+            .reduce((sum, item) => sum + (item.quantity || 1), 0);
         const html = `
             <!DOCTYPE html>
             <html>
@@ -506,7 +509,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                             return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>Khung LEGO ${frameName}</strong>${galleryInfo}</td><td style="font-size: 12px;">${item.characters.map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${item.draggableItems.length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${item.draggableItems.length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
                         }).join('')}
                         ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
-                        ${selectedOrder.addLight ? `<tr><td style="text-align: center">${selectedOrder.items.length + (selectedOrder.addGiftBox ? 2 : 1)}</td><td>Đèn Spotlight</td><td>Đèn Led chiếu sáng</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
+                        ${selectedOrder.addLight && legoQuantity > 0 ? `<tr><td style="text-align: center">${selectedOrder.items.length + (selectedOrder.addGiftBox ? 2 : 1)}</td><td>Đèn Spotlight</td><td>Đèn Led chiếu sáng</td><td style="text-align: center">${legoQuantity}</td></tr>` : ''}
                     </tbody>
                 </table>
                 <div class="footer"><p>Cảm ơn quý khách đã tin tưởng The Luvin!</p><p>Vui lòng quay video khi mở hàng để được hỗ trợ đổi trả tốt nhất.</p></div>
@@ -605,8 +608,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
     const updateEditFormWithPrice = (newOrder: Order) => {
         const subtotal = calculateOrderPriceDetails(newOrder.items);
         const totalQuantity = newOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const legoQuantity = newOrder.items
+            .filter(item => (item.productLine || 'lego') === 'lego')
+            .reduce((sum, item) => sum + (item.quantity || 1), 0);
+        
         const giftBoxFee = newOrder.addGiftBox ? 30000 * totalQuantity : 0;
-        const lightFee = newOrder.addLight ? (storeConfig?.lightPrice || 0) * totalQuantity : 0;
+        const lightFee = (newOrder.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 0) * legoQuantity : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
         const finalPrice = Math.max(0, subtotal + giftBoxFee + lightFee + shippingFee - discount);
@@ -778,8 +785,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         
         const subtotal = calculateOrderPriceDetails(order.items);
         const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const legoQuantity = order.items
+            .filter(item => (item.productLine || 'lego') === 'lego')
+            .reduce((sum, item) => sum + (item.quantity || 1), 0);
+            
         const giftBoxFee = order.addGiftBox ? 30000 * totalQuantity : 0;
-        const lightFee = order.addLight ? (storeConfig?.lightPrice || 25000) * totalQuantity : 0;
+        const lightFee = (order.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 

@@ -34,6 +34,7 @@ const PartButton = React.memo<{
     
     const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
     const isBulk = part.bulkPricing && part.bulkPricing.length > 0;
+    const isOutOfStock = part.stock === 0;
     
     const hasMultipleColors = useMemo(() => {
         if (part.colors && part.colors.length > 1) return true;
@@ -45,12 +46,13 @@ const PartButton = React.memo<{
 
     return (
         <button
-            onClick={handleClick}
+            onClick={isOutOfStock ? undefined : handleClick}
+            disabled={isOutOfStock}
             className={`border rounded-lg p-1.5 flex flex-col items-center justify-start gap-1.5 transition-all text-center w-full relative overflow-hidden ${
                 isSelected
                     ? 'border-luvin-pink bg-pink-50 shadow-sm'
                     : 'border-gray-200 bg-white hover:border-gray-300'
-            } ${isClicked ? 'ring-2 ring-luvin-pink ring-opacity-50 scale-95' : 'hover:scale-[1.02]'}`}
+            } ${isClicked ? 'ring-2 ring-luvin-pink ring-opacity-50 scale-95' : 'hover:scale-[1.02]'} ${isOutOfStock ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
         >
             {isClicked && (
                 <div className="absolute inset-0 bg-luvin-pink opacity-20 z-10 animate-ping rounded-lg"></div>
@@ -93,18 +95,21 @@ const PartButton = React.memo<{
                 )}
             </div>
             <div className="flex flex-col justify-center items-center flex-shrink-0 h-10 leading-tight">
-                <span className="text-[12px] sm:text-[13px] font-semibold text-gray-800 line-clamp-1">{part.name}</span>
+                <span className="text-[12px] sm:text-[13px] font-semibold text-gray-800 line-clamp-1">
+                    {part.name}
+                    {isOutOfStock && <span className="ml-1 text-[8px] text-red-500 font-bold">(Hết)</span>}
+                </span>
                 {isSale ? (
                     <div className="flex flex-col">
                         <span className="text-[9px] font-normal text-gray-400 line-through">
                             {formatCurrency(originalPrice!)}
                         </span>
-                        <span className={`text-[12px] sm:text-[13px] font-bold ${isSelected ? 'text-red-600' : 'text-red-500'}`}>
+                        <span className={`text-[12px] sm:text-[13px] font-bold ${isSelected ? 'text-red-600' : 'text-red-500'} ${isOutOfStock ? 'text-gray-400' : ''}`}>
                             {formatCurrency(priceToDisplay)}
                         </span>
                     </div>
                 ) : (
-                    <span className={`text-[12px] sm:text-[13px] font-bold ${isSelected ? 'text-red-600' : 'text-luvin-pink'}`}>
+                    <span className={`text-[12px] sm:text-[13px] font-bold ${isSelected ? 'text-red-600' : 'text-luvin-pink'} ${isOutOfStock ? 'text-gray-400' : ''}`}>
                         {formatCurrency(priceToDisplay)}
                     </span>
                 )}
@@ -173,9 +178,8 @@ export const Step3Characters: React.FC<{
     const [accessorySearch, setAccessorySearch] = useState<string>('');
 
     const getAvailableParts = (list: LegoPart[]) => {
-        // Only hide if stock is strictly 0. 
-        // If stock is undefined/null (not tracked) or > 0 (in stock) or < 0 (corrupted but likely intended to be unlimited), show it.
-        return list.filter(p => p.stock === undefined || p.stock === null || p.stock !== 0);
+        // Show ALL parts, but we will mark out of stock ones in the UI
+        return list;
     };
 
      useEffect(() => {
@@ -426,7 +430,7 @@ export const Step3Characters: React.FC<{
     }, [legoParts.accessory, t]);
 
     const filteredAccessories = useMemo(() => {
-        let list = getAvailableParts(legoParts.accessory || []);
+        let list = (legoParts.accessory || []);
         
         // Filter by product line compatibility
         const currentLine = config.productLine || 'lego';
@@ -448,7 +452,7 @@ export const Step3Characters: React.FC<{
     }, [legoParts.accessory, accessorySortMode, accessoryCategory, accessorySearch, hotPartIds, config.frameId, config.productLine]);
 
     const availablePets = useMemo(() => {
-        let list = getAvailableParts(legoParts.pet || []);
+        let list = (legoParts.pet || []);
 
         // Filter by product line compatibility
         const currentLine = config.productLine || 'lego';

@@ -328,22 +328,26 @@ const App: React.FC = () => {
     };
 }, []);
 
-  // Migration logic for "Khung bảo tàng" price
+  // Migration logic for "Khung bảo tàng" and "Graduation 8" price
   useEffect(() => {
     if (templates.length > 0) {
-      const baoTangTemplates = templates.filter(t => 
+      const targetTemplates = templates.filter(t => 
         t.name?.toLowerCase().trim().includes('bảo tàng') || 
-        t.id?.toLowerCase().includes('bao-tang')
+        t.id?.toLowerCase().includes('bao-tang') ||
+        t.name?.toLowerCase().trim().includes('graduation 8')
       );
       
-      baoTangTemplates.forEach(async (t) => {
-        if (t.price !== 310000) {
-          console.log(`Migrating price for ${t.name} from ${t.price} to 310000`);
+      targetTemplates.forEach(async (t) => {
+        let targetPrice = 310000;
+        if (t.name?.toLowerCase().includes('graduation 8')) {
+          targetPrice = 305000;
+        }
+
+        if (t.price !== targetPrice) {
+          console.log(`Migrating price for ${t.name} from ${t.price} to ${targetPrice}`);
           await updateTemplate(t.id, { 
-            price: 310000,
-            salePrice: 310000,
-            // Also ensure the config has the right parts to avoid diff errors
-            // but the override handles diff === 0 anyway.
+            price: targetPrice,
+            salePrice: targetPrice
           });
         }
       });

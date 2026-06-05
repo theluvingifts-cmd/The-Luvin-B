@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FrameConfig, LegoPart, Order, Voucher, CollectionTemplate, FrameOption } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
+import { Scissors, Info } from 'lucide-react';
+import { motion } from 'motion/react';
 import { FRAME_OPTIONS, GENERAL_ASSETS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { validateVoucher, incrementVoucherUsage } from '../services/voucherService';
@@ -208,6 +210,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   const totalQuantity = useMemo(() => cartItems.reduce((total, item) => total + (item.quantity || 1), 0), [cartItems]);
   
+  const legoQuantity = useMemo(() => {
+    return cartItems
+      .filter(item => (item.productLine || 'lego') === 'lego')
+      .reduce((total, item) => total + (item.quantity || 1), 0);
+  }, [cartItems]);
+
+  const hasLegoItems = legoQuantity > 0;
+  
   const hasCustomPrint = useMemo(() => {
     return cartItems.some(item => {
       const { priceBreakdown } = calculatePrice(item, allParts, frames, templates);
@@ -226,7 +236,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   // Gift box fee only if in stock and selected, based on quantity
   const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE * totalQuantity : 0;
   
-  const lightFee = (!storeConfig?.lightOutOfStock && addLight) ? (storeConfig?.lightPrice || 0) * totalQuantity : 0;
+  const lightFee = (!storeConfig?.lightOutOfStock && addLight && hasLegoItems) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -752,36 +762,44 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                 )}
             </div>
 
-            <div className={`bg-gray-50 p-4 rounded-lg border transition-all ${storeConfig?.lightOutOfStock ? 'opacity-70 grayscale-[0.5]' : ''} mt-4`}>
-                <label className={`flex items-center p-3 rounded-lg bg-white border transition-all ${storeConfig?.lightOutOfStock ? 'cursor-not-allowed border-gray-200' : 'cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50'}`}>
-                    <img src={storeConfig?.lightImageUrl || GENERAL_ASSETS.light} alt="Đèn Spotlight" className="w-12 h-12 object-contain mr-4"/>
-                    <div className="flex-grow">
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-800">{t('checkout.add_light', { count: totalQuantity })}</span>
-                            {storeConfig?.lightOutOfStock && (
-                                <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">{t('checkout.out_of_stock')}</span>
+            {hasLegoItems && (
+                <div className={`bg-gray-50 p-4 rounded-lg border transition-all ${storeConfig?.lightOutOfStock ? 'opacity-70 grayscale-[0.5]' : ''} mt-4`}>
+                    <label className={`flex items-center p-3 rounded-lg bg-white border transition-all ${storeConfig?.lightOutOfStock ? 'cursor-not-allowed border-gray-200' : 'cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50'}`}>
+                        <img src={storeConfig?.lightImageUrl || GENERAL_ASSETS.light} alt="Đèn Spotlight" className="w-12 h-12 object-contain mr-4"/>
+                        <div className="flex-grow">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-800">{t('checkout.add_light', { count: legoQuantity })}</span>
+                                {storeConfig?.lightOutOfStock && (
+                                    <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">{t('checkout.out_of_stock')}</span>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500">{t('checkout.light_desc')}</p>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="font-bold text-luvin-pink">+{formatCurrency(storeConfig?.lightPrice || 50000)}</span>
+                            {!storeConfig?.lightOutOfStock && (
+                                <input 
+                                    type="checkbox" 
+                                    checked={addLight} 
+                                    onChange={e => setAddLight(e.target.checked)} 
+                                    className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink mt-1"
+                                />
                             )}
                         </div>
-                        <p className="text-xs text-gray-500">{t('checkout.light_desc')}</p>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="font-bold text-luvin-pink">+{formatCurrency(storeConfig?.lightPrice || 0)}</span>
-                        {!storeConfig?.lightOutOfStock && (
-                            <input 
-                                type="checkbox" 
-                                checked={addLight} 
-                                onChange={e => setAddLight(e.target.checked)} 
-                                className="h-5 w-5 rounded text-luvin-pink focus:ring-luvin-pink mt-1"
-                            />
-                        )}
-                    </div>
-                </label>
-                {storeConfig?.lightOutOfStock && (
-                    <p className="text-[10px] text-gray-400 mt-2 italic px-1">
-                        {t('checkout.light_out_of_stock_note')}
-                    </p>
-                )}
-            </div>
+                    </label>
+                    {(cartItems.some(item => (item.productLine || 'lego') === 'gallery') || cartItems.some(item => (item as any).productLine === 'gallery')) && (
+                        <p className="mt-2 text-[10px] text-blue-600 font-bold italic px-2 flex items-center gap-2 animate-fade-in">
+                            <Info className="w-3 h-3 flex-shrink-0" />
+                            <span>Lưu ý: Chỉ áp dụng gắn đèn cho khung LEGO, không áp dụng cho khung Gallery.</span>
+                        </p>
+                    )}
+                    {storeConfig?.lightOutOfStock && (
+                        <p className="text-[10px] text-gray-400 mt-2 italic px-1">
+                            {t('checkout.light_out_of_stock_note')}
+                        </p>
+                    )}
+                </div>
+            )}
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">

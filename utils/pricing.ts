@@ -144,6 +144,18 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
             
             // Try to get fresh price from allParts if available
             const latestPart = (allParts && part.id && allParts[part.id]) ? allParts[part.id] : part;
+            
+            // If part is out of stock, it should be $0 in price breakdown
+            if (latestPart.stock === 0) {
+                breakdown.push({
+                    label: `${part.name} ${charLabel}`,
+                    value: 0,
+                    originalValue: latestPart.price,
+                    details: 'Hết hàng (0 ₫)'
+                });
+                return;
+            }
+
             let effPrice = getEffectivePrice(latestPart);
             
             // CUSTOM RULE: for Gallery line, only 'hair' and 'accessory' (charms) are NOT $0.
@@ -203,6 +215,17 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     config.draggableItems.forEach((item) => {
         const part = allParts[item.partId];
         if (part) {
+            // If part is out of stock, it should be $0 in price breakdown
+            if (part.stock === 0) {
+                breakdown.push({
+                    label: part.name,
+                    value: 0,
+                    originalValue: part.price,
+                    details: 'Hết hàng (0 ₫)'
+                });
+                return;
+            }
+
             const quantity = partCounts[item.partId] || 1;
             const effPrice = getEffectivePrice(part, quantity, part.bulkPricing);
             const colorPrice = item.selectedColor?.price || 0;
@@ -231,8 +254,14 @@ export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoP
         const { totalPrice } = calculatePrice(item, allParts, frames, templates);
         subtotal += totalPrice * (item.quantity || 1);
     });
-    const giftBoxFee = order.addGiftBox ? 30000 : 0;
+    const totalQuantityForGiftBox = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const legoQuantity = order.items
+        .filter(item => (item.productLine || 'lego') === 'lego')
+        .reduce((sum, item) => sum + (item.quantity || 1), 0);
+    
+    const giftBoxFee = order.addGiftBox ? 30000 * totalQuantityForGiftBox : 0;
+    const lightFee = order.addLight ? 50000 * legoQuantity : 0;
     const shippingFee = order.shipping.fee || 0;
     const discount = order.discountAmount || 0;
-    return Math.max(0, subtotal + giftBoxFee + shippingFee - discount);
+    return Math.max(0, subtotal + giftBoxFee + lightFee + shippingFee - discount);
 };

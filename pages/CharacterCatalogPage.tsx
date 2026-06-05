@@ -77,8 +77,8 @@ export const CharacterCatalogPage: React.FC = () => {
             const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesTab = activeTab === 'all' || p.type === activeTab;
             const matchesGender = activeGender === 'all' || inferGender(p) === activeGender || inferGender(p) === 'unisex';
-            const isInStock = p.stock === undefined || p.stock === null || p.stock !== 0;
-            return matchesSearch && matchesTab && matchesGender && isInStock;
+            // Show all parts, we will grey out OOS in the UI
+            return matchesSearch && matchesTab && matchesGender;
         });
     }, [allParts, searchTerm, activeTab, activeGender]);
 
@@ -413,7 +413,7 @@ export const CharacterCatalogPage: React.FC = () => {
                             <div 
                                 key={part.id}
                                 onClick={() => toggleSelect(part.id)}
-                                className={`group relative bg-white p-4 rounded-[2rem] border-2 transition-all cursor-pointer hover:shadow-xl hover:shadow-pink-100/30 ${selectedIds.includes(part.id) ? 'border-primary shadow-lg shadow-primary/10' : 'border-gray-50 shadow-sm'}`}
+                                className={`group relative bg-white p-4 rounded-[2rem] border-2 transition-all cursor-pointer hover:shadow-xl hover:shadow-pink-100/30 ${selectedIds.includes(part.id) ? 'border-primary shadow-lg shadow-primary/10' : 'border-gray-50 shadow-sm'} ${part.stock === 0 ? 'opacity-60 grayscale' : ''}`}
                             >
                                 {/* Selection Indicator */}
                                 {selectedIds.includes(part.id) && (
@@ -514,7 +514,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                 {filteredParts.map(part => (
                                     <tr 
                                         key={part.id}
-                                        className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedIds.includes(part.id) ? 'bg-primary/5' : 'hover:bg-gray-50/50'}`}
+                                        className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedIds.includes(part.id) ? 'bg-primary/5' : 'hover:bg-gray-50/50'} ${part.stock === 0 ? 'opacity-60 grayscale' : ''}`}
                                         onClick={() => toggleSelect(part.id)}
                                     >
                                         <td className="px-6 py-4">

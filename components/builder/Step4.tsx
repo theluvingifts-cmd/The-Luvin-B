@@ -2,6 +2,8 @@
 import React from 'react';
 import { formatCurrency, FREE_SHIPPING_THRESHOLD, PriceBreakdownItem } from '../../utils/pricing';
 import { useLanguage } from '../../src/contexts/LanguageContext';
+import { Scissors, ShieldCheck, Zap, ShoppingCart, Clock, Info } from 'lucide-react';
+import { motion } from 'motion/react';
 
 const DesignerCommitment: React.FC = () => {
     const { t } = useLanguage();
@@ -56,13 +58,14 @@ export const Step4Summary: React.FC<{
     totalPrice: number; 
     priceBreakdown: PriceBreakdownItem[]; 
     frameName: string; 
+    productLine?: string;
     charCount: number; 
     onAddToCart: () => void; 
     onBuyNow: () => void; 
     isSaving: boolean; 
     isEditingOrder?: boolean;
     urgencyTimeLeft: number;
-}> = ({ totalPrice, priceBreakdown, frameName, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
+}> = ({ totalPrice, priceBreakdown, frameName, productLine, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
   const { t } = useLanguage();
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const hasCustomPrint = priceBreakdown.some(item => item.label.includes('In mặt riêng') || item.label.includes(t('studio.custom_print')));
@@ -78,26 +81,29 @@ export const Step4Summary: React.FC<{
             </h4>
             
             <div className="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto custom-scrollbar pr-1 text-left">
-                {priceBreakdown.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center py-1">
-                        <div className="flex flex-col">
-                            <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
-                                {item.label}
-                            </span>
-                            {item.details && <span className="text-[10px] text-gray-400 italic">{item.details}</span>}
-                        </div>
-                        <div className="text-right">
-                            {item.originalValue !== undefined && item.originalValue > item.value && (
-                                <span className="block text-[10px] text-gray-400 line-through">
-                                    {formatCurrency(item.originalValue)}
+                {priceBreakdown.map((item, index) => {
+                    const isOOS = item.details?.includes('Hết hàng');
+                    return (
+                        <div key={index} className={`flex justify-between items-center py-1 ${isOOS ? 'opacity-50 grayscale' : ''}`}>
+                            <div className="flex flex-col">
+                                <span className={item.isBase ? 'font-semibold text-gray-800' : 'text-gray-600'}>
+                                    {item.label}
                                 </span>
-                            )}
-                            <span className={`font-medium ${item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                                {item.value > 0 ? formatCurrency(item.value) : t('studio.free')}
-                            </span>
+                                {item.details && <span className={`text-[10px] italic ${isOOS ? 'text-red-500 font-bold' : 'text-gray-400'}`}>{item.details}</span>}
+                            </div>
+                            <div className="text-right">
+                                {item.originalValue !== undefined && item.originalValue > item.value && (
+                                    <span className="block text-[10px] text-gray-400 line-through">
+                                        {formatCurrency(item.originalValue)}
+                                    </span>
+                                )}
+                                <span className={`font-medium ${isOOS ? 'text-gray-400' : item.value > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                                    {isOOS ? '0 ₫' : (item.value > 0 ? formatCurrency(item.value) : t('studio.free'))}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             
             <div className="border-t border-gray-200 my-3 pt-2">
@@ -125,6 +131,15 @@ export const Step4Summary: React.FC<{
                     <p className="font-bold text-amber-900 text-sm mb-1">{t('studio.custom_print')}</p>
                     <p className="text-xs text-amber-800 font-medium leading-relaxed">{t('studio.custom_print_notice')}</p>
                 </div>
+            </div>
+        )}
+
+        {productLine === 'gallery' && (
+            <div className="bg-amber-50/50 border border-amber-100 rounded-xl px-4 py-2.5 mt-4 flex items-center justify-center gap-2 animate-fade-in shadow-sm">
+                <Scissors className="w-3.5 h-3.5 text-amber-500" />
+                <p className="text-[10px] text-amber-800 font-bold italic">
+                    Lưu ý: Ảnh in rời khách tự cắt và dán vào khung mini
+                </p>
             </div>
         )}
 

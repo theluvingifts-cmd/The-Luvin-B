@@ -2,6 +2,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig, OutfitColor } from '../types';
+import { Scissors } from 'lucide-react';
+import { motion } from 'motion/react';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice } from '../utils/pricing';
 import { slugify } from '../utils/helpers';
@@ -15,7 +17,7 @@ const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string,
     if (!config) return [];
     const oos: string[] = [];
     
-    // Check characters
+    // Check characters (These are required parts)
     config.characters.forEach(char => {
         if (char.hair && allParts[char.hair.id] && allParts[char.hair.id].stock === 0) oos.push(char.hair.name);
         if (char.face && allParts[char.face.id] && allParts[char.face.id].stock === 0) oos.push(char.face.name);
@@ -25,11 +27,7 @@ const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string,
         if (char.set && allParts[char.set.id] && allParts[char.set.id].stock === 0) oos.push(char.set.name);
     });
     
-    // Check draggable items
-    config.draggableItems.forEach(item => {
-        const part = allParts[item.partId];
-        if (part && part.stock === 0) oos.push(part.name);
-    });
+    // draggableItems (accessories/charms) are now optional and greyed out if OOS, so we DON'T block purchase
     
     return Array.from(new Set(oos)); // Unique names
 };
@@ -88,17 +86,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
     });
 
     const newDraggableItems = config.draggableItems.map(item => {
-        const part = allParts[item.partId];
-        if (part && part.stock === 0) {
-            const fallback = findFallback(item.type === 'accessory' || item.type === 'pet' || item.type === 'hat' ? item.type : 'accessory');
-            if (fallback) {
-                return { 
-                    ...item, 
-                    partId: fallback.id, 
-                    selectedColor: fallback.colors?.[0] 
-                };
-            }
-        }
+        // Keep original items even if out of stock, so they can be shown as greyed out in UI
         return item;
     });
 
@@ -981,6 +969,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </>
                                 )}
                             </div>
+                            {selectedTemplate.productLine === 'gallery' && (
+                                <div className="mt-3 flex items-center justify-center gap-2 text-amber-600/80 animate-fade-in">
+                                    <Scissors className="w-3.5 h-3.5" />
+                                    <span className="text-[10px] font-bold italic">Lưu ý: Ảnh, khung, đèn, charm in rời, bạn tự cắt & dán vào khung mini để hoàn thiện.</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Characters Section */}
@@ -1260,20 +1254,24 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         const currentCount = currentInConfig.length;
                                         const maxCount = originalItems.length;
                                         const isSelected = currentCount > 0;
+                                        const isOutOfStock = part?.stock === 0;
 
                                         return (
                                             <div 
                                                 key={key}
-                                                className={`flex flex-col p-3 rounded-2xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                                className={`flex flex-col p-3 rounded-2xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'} ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
                                                         <img src={selectedColor?.imageUrl || part?.imageUrl || partId} alt="Charm" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                                                     </div>
                                                     <div className="flex-grow text-left">
-                                                        <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{part?.name || 'Phụ kiện'}</p>
+                                                        <p className="text-xs font-black text-gray-800 uppercase tracking-tight">
+                                                            {part?.name || 'Phụ kiện'}
+                                                            {isOutOfStock && <span className="ml-2 text-[8px] text-red-500 font-bold">(Hết hàng)</span>}
+                                                        </p>
                                                         <div className="flex items-center gap-1.5">
-                                                            <p className="text-[10px] text-primary font-bold">
+                                                            <p className={`text-[10px] font-bold ${isOutOfStock ? 'text-gray-400' : 'text-primary'}`}>
                                                                 {formatCurrency(getEffectivePrice(part, currentCount, part?.bulkPricing) + (selectedColor?.price || 0))}
                                                             </p>
                                                             {part && (getEffectivePrice(part, currentCount, part.bulkPricing) < part.price) && (
@@ -1286,9 +1284,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                     
                                                     <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-1">
                                                         <button 
-                                                            onClick={() => updateCharmQuantity(partId, -1)}
-                                                            disabled={currentCount === 0}
-                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === 0 ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
+                                                            onClick={() => !isOutOfStock && updateCharmQuantity(partId, -1)}
+                                                            disabled={currentCount === 0 || isOutOfStock}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === 0 || isOutOfStock ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
                                                         >
                                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg>
                                                         </button>
@@ -1297,9 +1295,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                             <span className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">/{maxCount}</span>
                                                         </div>
                                                         <button 
-                                                            onClick={() => updateCharmQuantity(partId, 1)}
-                                                            disabled={currentCount === maxCount}
-                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === maxCount ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
+                                                            onClick={() => !isOutOfStock && updateCharmQuantity(partId, 1)}
+                                                            disabled={currentCount === maxCount || isOutOfStock}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${currentCount === maxCount || isOutOfStock ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-primary'}`}
                                                         >
                                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                                         </button>
