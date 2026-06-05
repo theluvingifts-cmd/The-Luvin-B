@@ -117,25 +117,25 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     if (config.productLine === 'gallery' && config.galleryOptions) {
         const { photoFrameCount, lightCount } = config.galleryOptions;
         
-        // Fee per photo frame (if > 0)
+        // Fee per photo frame (Fixed to 0 for Gallery as requested)
         if (photoFrameCount && photoFrameCount > 0) {
-            const photoPrice = photoFrameCount * 5000; // Example: 5k per photo
+            const photoPrice = 0; 
             total += photoPrice;
             breakdown.push({
                 label: `Khung ảnh (${photoFrameCount} khung)`,
                 value: photoPrice,
-                details: 'Phụ kiện Gallery'
+                details: ' Gallery (Miễn phí)'
             });
         }
         
-        // Fee per light (if > 0)
+        // Fee per light (Fixed to 0 for Gallery as requested)
         if (lightCount && lightCount > 0) {
-            const lightPrice = lightCount * 20000; // Example: 20k per light
+            const lightPrice = 0;
             total += lightPrice;
             breakdown.push({
                 label: `Đèn LED (${lightCount} bóng)`,
                 value: lightPrice,
-                details: 'Phụ kiện Gallery'
+                details: ' Gallery (Miễn phí)'
             });
         }
     }
@@ -156,6 +156,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     // 3. DETAILED PARTS BREAKDOWN
     config.characters.forEach((char, index) => {
         const charLabel = `(NV${index + 1})`;
+        const isGallery = config.productLine === 'gallery';
         
         if (char.customPrintOption && char.customPrintOption !== 'none') {
             const printPrice = char.customPrintPrice || (char.customPrintOption === 'premium' ? 300000 : 100000);
@@ -169,32 +170,39 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
             breakdown.push({ label: `In mặt riêng ${charLabel}`, value: char.customPrintPrice });
         }
 
-        const addPartCost = (part: LegoPart | undefined, typeLabel: string) => {
+        const addPartCost = (part: LegoPart | undefined, typeLabel: string, type: string) => {
             if (!part) return;
-            const effPrice = getEffectivePrice(part);
-            if (effPrice > 0) {
+            let effPrice = getEffectivePrice(part);
+            
+            // CUSTOM RULE: for Gallery line, only 'hair' and 'accessory' (charms) are NOT $0.
+            // Other parts like shirt, pants, face, hat, set are $0 for Gallery.
+            if (isGallery && !['hair', 'accessory'].includes(type)) {
+                effPrice = 0;
+            }
+
+            if (effPrice > 0 || (isGallery && effPrice === 0 && ['shirt', 'pants', 'face', 'hat', 'set'].includes(type))) {
                 total += effPrice;
                 breakdown.push({
                     label: `${part.name} ${charLabel}`,
                     value: effPrice,
-                    originalValue: part.price > effPrice ? part.price : undefined,
-                    details: typeLabel
+                    originalValue: (part.price > effPrice && effPrice > 0) ? part.price : undefined,
+                    details: isGallery && effPrice === 0 ? `${typeLabel} (Gallery)` : typeLabel
                 });
             }
         };
 
-        addPartCost(char.hair, 'Tóc');
-        addPartCost(char.hat, 'Mũ');
-        addPartCost(char.shirt, 'Áo');
-        addPartCost(char.pants, 'Quần');
-        addPartCost(char.set, 'Bộ đồ');
-        addPartCost(char.face, 'Mặt');
+        addPartCost(char.hair, 'Tóc', 'hair');
+        addPartCost(char.hat, 'Mũ', 'hat');
+        addPartCost(char.shirt, 'Áo', 'shirt');
+        addPartCost(char.pants, 'Quần', 'pants');
+        addPartCost(char.set, 'Bộ đồ', 'set');
+        addPartCost(char.face, 'Mặt', 'face');
 
-        if (char.selectedShirtColor && char.selectedShirtColor.price > 0) {
+        if (char.selectedShirtColor && char.selectedShirtColor.price > 0 && !isGallery) {
             total += char.selectedShirtColor.price;
             breakdown.push({ label: `Màu áo: ${char.selectedShirtColor.name} ${charLabel}`, value: char.selectedShirtColor.price });
         }
-        if (char.selectedPantsColor && char.selectedPantsColor.price > 0) {
+        if (char.selectedPantsColor && char.selectedPantsColor.price > 0 && !isGallery) {
             total += char.selectedPantsColor.price;
             breakdown.push({ label: `Màu quần: ${char.selectedPantsColor.name} ${charLabel}`, value: char.selectedPantsColor.price });
         }
@@ -202,11 +210,11 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
             total += char.selectedHairColor.price;
             breakdown.push({ label: `Màu tóc: ${char.selectedHairColor.name} ${charLabel}`, value: char.selectedHairColor.price });
         }
-        if (char.selectedHatColor && char.selectedHatColor.price > 0) {
+        if (char.selectedHatColor && char.selectedHatColor.price > 0 && !isGallery) {
             total += char.selectedHatColor.price;
             breakdown.push({ label: `Màu mũ: ${char.selectedHatColor.name} ${charLabel}`, value: char.selectedHatColor.price });
         }
-        if (char.selectedSetColor && char.selectedSetColor.price > 0) {
+        if (char.selectedSetColor && char.selectedSetColor.price > 0 && !isGallery) {
             total += char.selectedSetColor.price;
             breakdown.push({ label: `Màu bộ đồ: ${char.selectedSetColor.name} ${charLabel}`, value: char.selectedSetColor.price });
         }

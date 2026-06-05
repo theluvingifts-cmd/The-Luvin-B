@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, FrameConfig, FrameOption } from '../../../types';
 import { INITIAL_FRAME_CONFIG, FRAME_OPTIONS } from '../../../constants';
 import { uploadFile } from '../../../services/uploadService';
+import { calculatePrice, formatCurrency } from '../../../utils/pricing';
 
 const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Mẫu thiết kế yêu cầu', 'Màu trơn'];
 
@@ -510,6 +511,48 @@ export const TemplateForm: React.FC<{
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-300 text-[10px]">VNĐ</span>
                                     </div>
                                 </div>
+
+                                {/* Live Price Calc Preview */}
+                                {(() => {
+                                    const { totalPrice, priceBreakdown } = calculatePrice({ ...config, productLine: formData.productLine, galleryOptions: formData.galleryOptions }, allParts.reduce((acc, p) => ({ ...acc, [p.id]: p }), {}), allFrames);
+                                    return (
+                                        <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-100">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Kiểm tra giá tự động</span>
+                                                <div className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[8px] font-black rounded uppercase">Live Calc</div>
+                                            </div>
+                                            
+                                            <div className="space-y-1.5 mb-4">
+                                                {priceBreakdown.map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-[10px]">
+                                                        <span className="text-gray-500">{item.label}</span>
+                                                        <span className="font-bold text-gray-700">{formatCurrency(item.value)}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-2">
+                                                    <span className="text-xs font-black text-gray-900 uppercase">Tạm tính</span>
+                                                    <span className="text-sm font-black text-blue-600">{formatCurrency(totalPrice)}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {(!formData.price || formData.price === 0) ? (
+                                                <div className="p-3 bg-green-50 rounded-xl border border-green-100 flex items-start gap-3">
+                                                    <span className="text-lg">✅</span>
+                                                    <p className="text-[9px] text-green-700 font-medium leading-relaxed">
+                                                        Mẫu đang sử dụng <b>giá tự động</b> ({formatCurrency(totalPrice)}). Giá sẽ tự cập nhật khi khách hàng thêm bớt linh kiện.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
+                                                    <span className="text-lg">⚠️</span>
+                                                    <p className="text-[9px] text-amber-700 font-medium leading-relaxed">
+                                                        Đang ép giá cố định (<b>{formatCurrency(formData.price)}</b>). Các cấu hình nhân vật/phụ kiện ở mục liệt kê chỉ để tham khảo.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 h-fit">
