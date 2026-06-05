@@ -50,42 +50,6 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
 };
 
 export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[], explicitTemplateId?: string): { totalPrice: number, priceBreakdown: PriceBreakdownItem[] } => {
-    const templateId = explicitTemplateId || config.templateId;
-    const template = (templateId && templates && templates.length > 0) ? templates.find(t => t.id === templateId) : undefined;
-    let bundlePrice = template && template.price && template.price > 0 ? getEffectivePrice(template as any) : undefined;
-
-    // Hard override for "Khung bảo tàng" bundle price to fix stale DB data
-    if (template && (template.name?.toLowerCase().trim().includes('bảo tàng') || template.id?.toLowerCase().includes('bao-tang'))) {
-        if (bundlePrice === undefined || bundlePrice < 310000) {
-            bundlePrice = 310000;
-        }
-    }
-
-    // To handle bundle pricing correctly:
-    // If it's a bundle, the template.price covers everything in template.config.
-    // The final price = template.price + (Difference in standard prices of current vs template config)
-    if (bundlePrice !== undefined && template && templates && templates.length > 0) {
-        // Recurse without templates to get standard part-by-part pricing
-        // Force the same frames and context
-        const currentStd = calculatePrice({ ...config, templateId: undefined }, allParts, frames);
-        const templateStd = calculatePrice({ ...template.config, templateId: undefined }, allParts, frames);
-
-        const diff = currentStd.totalPrice - templateStd.totalPrice;
-        let total = bundlePrice + diff;
-
-        // Use the current config's breakdown but adjust the base item
-        const result = { ...currentStd };
-        result.totalPrice = total;
-        if (result.priceBreakdown.length > 0 && result.priceBreakdown[0].isBase) {
-            result.priceBreakdown[0].value += (total - currentStd.totalPrice);
-            result.priceBreakdown[0].label = `${template.name} (Trọn gói)`;
-            if (template.price && template.price > bundlePrice) {
-                result.priceBreakdown[0].originalValue = template.price;
-            }
-        }
-        return result;
-    }
-
     const breakdown: PriceBreakdownItem[] = [];
     let total = 0;
 
@@ -93,12 +57,17 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     let baseItem: { name: string, price: number, salePrice?: number, saleEndDate?: string, description?: string } | undefined;
     
     // Primary: Find by config.frameId in frames
-    baseItem = frames.find(f => f.id === config.frameId);
+    baseItem = (frames && frames.length > 0) ? frames.find(f => f.id === config.frameId) : undefined;
     
+    // Default to FRAME_OPTIONS if still not found in dynamic frames
+    if (!baseItem && config.frameId) {
+        baseItem = FRAME_OPTIONS.find(f => f.id === config.frameId);
+    }
+
     // Default to first frame if still not found
     if (!baseItem) {
         // Find best match by product line
-        const lineFrames = frames.filter(f => (f.supportedProductLines || ['lego']).includes(config.productLine || 'lego'));
+        const lineFrames = (frames && frames.length > 0) ? frames.filter(f => (f.supportedProductLines || ['lego']).includes(config.productLine || 'lego')) : [];
         baseItem = lineFrames[0] || frames[0] || FRAME_OPTIONS[0];
     }
 
@@ -172,7 +141,10 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 
         const addPartCost = (part: LegoPart | undefined, typeLabel: string, type: string) => {
             if (!part) return;
-            let effPrice = getEffectivePrice(part);
+            
+            // Try to get fresh price from allParts if available
+            const latestPart = (allParts && part.id && allParts[part.id]) ? allParts[part.id] : part;
+            let effPrice = getEffectivePrice(latestPart);
             
             // CUSTOM RULE: for Gallery line, only 'hair' and 'accessory' (charms) are NOT $0.
             // Other parts like shirt, pants, face, hat, set are $0 for Gallery.

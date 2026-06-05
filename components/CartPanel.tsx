@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FrameConfig, LegoPart, Page, CollectionTemplate } from '../types';
+import { FrameConfig, LegoPart, Page, CollectionTemplate, FrameOption } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from './ZoomIcon';
@@ -17,16 +17,17 @@ interface CartPanelProps {
   onUpdateQuantity: (index: number, newQuantity: number) => void;
   onZoomImage: (url: string) => void;
   templates: CollectionTemplate[];
+  frames: FrameOption[];
 }
 
-export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, templates }) => {
+export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, templates, frames }) => {
   const { t } = useLanguage();
-  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
+  const subtotal = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, frames, templates).totalPrice * (item.quantity || 1), 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   const percentage = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
   const hasCustomPrint = cartItems.some(item => {
-    const { priceBreakdown } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
+    const { priceBreakdown } = calculatePrice(item, allParts, frames, templates);
     return priceBreakdown.some(pb => pb.label.includes('In mặt riêng') || pb.label.includes(t('studio.custom_print')));
   });
 
@@ -77,8 +78,8 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
         ) : (
           <div className="flex-grow overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {cartItems.map((item, index) => {
-              const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
-              const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
+              const { totalPrice } = calculatePrice(item, allParts, frames, templates);
+              const frame = frames.find(f => f.id === item.frameId) || frames[0] || FRAME_OPTIONS[0];
               const quantity = item.quantity || 1;
 
               return (

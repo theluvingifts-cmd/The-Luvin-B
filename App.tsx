@@ -519,8 +519,8 @@ const App: React.FC = () => {
                 <Route path="/collection/:productLine/:category/:templateId" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
                 <Route path="/lego-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="lego" />} />
                 <Route path="/gallery-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="gallery" />} />
-                <Route path="/cart" element={<CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} templates={templates} />} />
-                <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} templates={templates} />} />
+                <Route path="/cart" element={<CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} templates={templates} frames={frames} />} />
+                <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} templates={templates} frames={frames} />} />
                 <Route path="/order-confirmation" element={<OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />} />
                 <Route path="/order-lookup" element={<OrderLookupPage onZoomImage={setZoomedImageUrl} onEditOrder={handleEditOrder} />} />
                 <Route path="/admin/*" element={<AdminPage showToast={showToast} />} />
@@ -533,7 +533,7 @@ const App: React.FC = () => {
             </Routes>
         </main>
         {currentPage !== 'admin' && <Footer navigateTo={navigateTo} config={storeConfig} />}
-        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} templates={templates} />
+        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} templates={templates} frames={frames} />
         {zoomedImageUrl && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoomedImageUrl(null)}>
                 <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg></button>

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FrameConfig, LegoPart, Page, CollectionTemplate } from '../types';
+import { FrameConfig, LegoPart, Page, CollectionTemplate, FrameOption } from '../types';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
@@ -17,11 +17,12 @@ interface CartPageProps {
     onZoomImage: (url: string) => void;
     isEditingOrder?: boolean;
     templates: CollectionTemplate[];
+    frames: FrameOption[];
 }
 
-export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder, templates }) => {
+export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onEditItem, allParts, navigateTo, onUpdateQuantity, onZoomImage, isEditingOrder, templates, frames }) => {
     const { t } = useLanguage();
-    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, FRAME_OPTIONS, templates).totalPrice * (item.quantity || 1), 0);
+    const totalCartPrice = cartItems.reduce((total, item) => total + calculatePrice(item, allParts, frames, templates).totalPrice * (item.quantity || 1), 0);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 py-8">
@@ -32,8 +33,8 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                 <div className="max-w-4xl mx-auto">
                     <div className="space-y-6">
                         {cartItems.map((item, index) => {
-                            const { totalPrice } = calculatePrice(item, allParts, FRAME_OPTIONS, templates);
-                            const frame = FRAME_OPTIONS.find(f => f.id === item.frameId) || FRAME_OPTIONS[0];
+                            const { totalPrice } = calculatePrice(item, allParts, frames, templates);
+                            const frame = frames.find(f => f.id === item.frameId) || frames[0] || FRAME_OPTIONS[0];
                             const quantity = item.quantity || 1;
                             
                             return (

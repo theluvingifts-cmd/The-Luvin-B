@@ -33,8 +33,8 @@ export const LEGO_PARTS: {
   set: LegoPart[]; // Added set category
 } = {
   hair: [
-    { id: 'hair-1', name: 'Tóc Nam 1', type: 'hair', price: 20000, imageUrl: 'https://placehold.co/200x200?text=Hair+1', stock: 100, widthCm: 0, heightCm: 0 },
-    { id: 'hair-2', name: 'Tóc Nữ 1', type: 'hair', price: 20000, imageUrl: 'https://placehold.co/200x200?text=Hair+2', stock: 100, widthCm: 0, heightCm: 0 },
+    { id: 'hair-1', name: 'Tóc Nam 1', type: 'hair', price: 25000, imageUrl: 'https://placehold.co/200x200?text=Hair+1', stock: 100, widthCm: 0, heightCm: 0 },
+    { id: 'hair-2', name: 'Tóc Nữ 1', type: 'hair', price: 25000, imageUrl: 'https://placehold.co/200x200?text=Hair+2', stock: 100, widthCm: 0, heightCm: 0 },
   ],
   face: [
     { id: 'face-1', name: 'Mặt Cười', type: 'face', price: 10000, imageUrl: 'https://placehold.co/200x200?text=Face+1', stock: 100, widthCm: 0, heightCm: 0 },

@@ -485,38 +485,11 @@ export const TemplateForm: React.FC<{
 
                         <div className="space-y-4">
                             <div className="bg-white p-4 rounded-2xl border-2 border-blue-100 shadow-sm">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">💰 Giá bán cho mẫu này</label>
-                                <div className="relative">
-                                    <input 
-                                        type="number"
-                                        name="price" 
-                                        value={formData.price || ''} 
-                                        onChange={handleChange} 
-                                        className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 text-base focus:bg-white focus:border-blue-500 outline-none font-black text-red-600 shadow-inner" 
-                                        placeholder="VD: 350000" 
-                                    />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-gray-400 text-xs">VN ĐỒNG</span>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-gray-100">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Giá khuyến mãi (Tùy chọn)</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="number"
-                                            name="salePrice" 
-                                            value={formData.salePrice || ''} 
-                                            onChange={handleChange} 
-                                            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none font-bold text-green-600" 
-                                            placeholder="VD: 290000" 
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-300 text-[10px]">VNĐ</span>
-                                    </div>
-                                </div>
-
                                 {/* Live Price Calc Preview */}
                                 {(() => {
                                     const { totalPrice, priceBreakdown } = calculatePrice({ ...config, productLine: formData.productLine, galleryOptions: formData.galleryOptions }, allParts.reduce((acc, p) => ({ ...acc, [p.id]: p }), {}), allFrames);
                                     return (
-                                        <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-100">
+                                        <div className="mt-2">
                                             <div className="flex items-center justify-between mb-4">
                                                 <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Kiểm tra giá tự động</span>
                                                 <div className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[8px] font-black rounded uppercase">Live Calc</div>
@@ -530,38 +503,29 @@ export const TemplateForm: React.FC<{
                                                     </div>
                                                 ))}
                                                 <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-2">
-                                                    <span className="text-xs font-black text-gray-900 uppercase">Tạm tính</span>
+                                                    <span className="text-xs font-black text-gray-900 uppercase">Giá mẫu thiết kế</span>
                                                     <span className="text-sm font-black text-blue-600">{formatCurrency(totalPrice)}</span>
                                                 </div>
                                             </div>
                                             
-                                            {(!formData.price || formData.price === 0) ? (
-                                                <div className="p-3 bg-green-50 rounded-xl border border-green-100 flex items-start gap-3">
-                                                    <span className="text-lg">✅</span>
-                                                    <p className="text-[9px] text-green-700 font-medium leading-relaxed">
-                                                        Mẫu đang sử dụng <b>giá tự động</b> ({formatCurrency(totalPrice)}). Giá sẽ tự cập nhật khi khách hàng thêm bớt linh kiện.
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
-                                                    <span className="text-lg">⚠️</span>
-                                                    <p className="text-[9px] text-amber-700 font-medium leading-relaxed">
-                                                        Đang ép giá cố định (<b>{formatCurrency(formData.price)}</b>). Các cấu hình nhân vật/phụ kiện ở mục liệt kê chỉ để tham khảo.
-                                                    </p>
-                                                </div>
-                                            )}
+                                            <div className="p-3 bg-green-50 rounded-xl border border-green-100 flex items-start gap-3">
+                                                <span className="text-lg">✅</span>
+                                                <p className="text-[9px] text-green-700 font-medium leading-relaxed">
+                                                    Mẫu này đang sử dụng <b>giá tự động</b> ({formatCurrency(totalPrice)}). Giá sẽ tự cập nhật khi khách hàng thêm bớt linh kiện.
+                                                </p>
+                                            </div>
                                         </div>
                                     );
                                 })()}
                             </div>
 
-                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 h-fit">
-                                <p className="text-[10px] text-amber-700 leading-relaxed mb-2">
-                                    <span className="font-black">💰 CHÚ Ý VỀ GIÁ:</span>
+                            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 h-fit">
+                                <p className="text-[10px] text-blue-700 leading-relaxed mb-2">
+                                    <span className="font-black">💰 CHÚ Ý VỀ GIÁ TỰ ĐỘNG:</span>
                                 </p>
-                                <ul className="text-[9px] text-amber-600 space-y-1 list-disc pl-4">
-                                    <li>Nếu bạn <b>nhập giá</b> ở trên: Giá này sẽ được dùng làm <b>giá trọn gói (Bundle)</b> của mẫu, không quan tâm có bao nhiêu linh kiện bên trong.</li>
-                                    <li>Nếu bạn <b>để trống hoặc nhập 0</b>: Giá sẽ được <b>tính tự động</b> = Giá khung + Nhân vật + Phụ kiện.</li>
+                                <ul className="text-[9px] text-blue-600 space-y-1 list-disc pl-4">
+                                    <li>Mẫu thiết kế giờ đây luôn sử dụng <b>giá tính tự động</b> dựa trên tổng thành phần cấu thành (Khung + Nhân vật + Phụ kiện).</li>
+                                    <li>Giá hiển thị cho khách hàng sẽ thay đổi nếu họ tùy chỉnh thêm/bớt so với cấu hình mẫu này.</li>
                                     <li>Đối với "Khung Gallery", hệ thống sẽ cộng thêm phí khung ảnh và đèn LED nếu có cấu hình.</li>
                                 </ul>
                             </div>
