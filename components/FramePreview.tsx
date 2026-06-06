@@ -813,16 +813,22 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
                 {activeColors && activeColors.length > 0 && (
                     <div className="pointer-events-auto w-fit bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl rounded-full px-2 py-2 overflow-x-auto no-scrollbar mx-auto animate-subtle-pulse">
                         <div className="flex gap-2 w-max px-2">
-                            {activeColors.map((color: OutfitColor, idx: number) => (
-                                <button
-                                    key={idx}
-                                    onMouseDown={(e) => { e.stopPropagation(); handleColorSelect(color); }}
-                                    className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'}`}
-                                    style={{ backgroundColor: color.hex }}
-                                >
-                                    {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
-                                </button>
-                            ))}
+                            {activeColors.map((color: OutfitColor, idx: number) => {
+                                const isColorOOS = color.stock === 0;
+                                return (
+                                    <button
+                                        key={idx}
+                                        onMouseDown={(e) => { if (!isColorOOS) { e.stopPropagation(); handleColorSelect(color); } }}
+                                        disabled={isColorOOS}
+                                        className={`w-6 h-6 rounded-full border relative flex-shrink-0 transition-transform active:scale-95 ${getActiveColorHex === color.hex ? 'ring-2 ring-luvin-pink border-transparent' : 'border-gray-300'} ${isColorOOS ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                                        style={{ backgroundColor: color.hex }}
+                                        title={isColorOOS ? `${color.name} (Hết hàng)` : color.name}
+                                    >
+                                        {color.imageUrl && <SafeImage src={color.imageUrl} className="w-full h-full object-contain rounded-full opacity-80" />}
+                                        {isColorOOS && <div className="absolute inset-0 flex items-center justify-center text-[10px] text-red-500 font-black">/</div>}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

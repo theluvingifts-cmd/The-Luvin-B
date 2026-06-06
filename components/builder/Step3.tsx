@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { FrameConfig, LegoPart, LegoCharacterConfig, DraggableItem, OutfitColor } from '../../types';
 import { LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../../constants';
-import { getEffectivePrice, formatCurrency, CHARACTER_BASE_PRICE } from '../../utils/pricing';
+import { getEffectivePrice, formatCurrency, CHARACTER_BASE_PRICE, isPartOutOfStock, getPartImageUrl } from '../../utils/pricing';
 import { SmartImage } from '../shared/SmartImage';
 import { useLanguage } from '../../src/contexts/LanguageContext';
 
@@ -34,7 +34,8 @@ const PartButton = React.memo<{
     
     const isSale = originalPrice !== undefined && priceToDisplay < originalPrice;
     const isBulk = part.bulkPricing && part.bulkPricing.length > 0;
-    const isOutOfStock = part.stock === 0;
+    const isOutOfStock = isPartOutOfStock(part);
+    const displayImageUrl = getPartImageUrl(part);
     
     const hasMultipleColors = useMemo(() => {
         if (part.colors && part.colors.length > 1) return true;
@@ -81,7 +82,7 @@ const PartButton = React.memo<{
             
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100/50">
                 <SmartImage 
-                    src={part.imageUrl} 
+                    src={displayImageUrl} 
                     alt={part.name} 
                     className="w-full h-full"
                     loading={priority ? "eager" : "lazy"}
@@ -214,9 +215,9 @@ export const Step3Characters: React.FC<{
             y: 75, 
             rotation: 0, 
             scale: 1,
-            selectedShirtColor: availableShirts[0]?.colors?.[0],
-            selectedPantsColor: availablePants[0]?.colors?.[0],
-            selectedHairColor: (availableHair.find(h => h.id === 'hair-1') || availableHair[0] || legoParts.hair[0])?.colors?.[0],
+            selectedShirtColor: availableShirts[0]?.colors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || availableShirts[0]?.colors?.[0],
+            selectedPantsColor: availablePants[0]?.colors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || availablePants[0]?.colors?.[0],
+            selectedHairColor: (availableHair.find(h => h.id === 'hair-1') || availableHair[0])?.colors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || (availableHair.find(h => h.id === 'hair-1') || availableHair[0])?.colors?.[0],
         };
         setConfig(prev => ({ ...prev, characters: [...prev.characters, newCharacter] }));
         setActiveCharId(newId);
@@ -260,7 +261,7 @@ export const Step3Characters: React.FC<{
             rotation: 0, 
             scale: 1, 
             isFlipped: false, 
-            selectedColor: part.colors?.[0],
+            selectedColor: part.colors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || part.colors?.[0],
             linkedCharId: activeCharacter?.id 
         };
         setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
@@ -301,11 +302,13 @@ export const Step3Characters: React.FC<{
                         }
                     }
 
-                    if (part.type === 'shirt') newChar.selectedShirtColor = partColors?.[0];
-                    if (part.type === 'set') newChar.selectedSetColor = partColors?.[0];
-                    if (part.type === 'pants') newChar.selectedPantsColor = partColors?.[0];
-                    if (part.type === 'hair') newChar.selectedHairColor = partColors?.[0];
-                    if (part.type === 'hat') newChar.selectedHatColor = partColors?.[0];
+                    const inStockColor = partColors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || partColors?.[0];
+
+                    if (part.type === 'shirt') newChar.selectedShirtColor = inStockColor;
+                    if (part.type === 'set') newChar.selectedSetColor = inStockColor;
+                    if (part.type === 'pants') newChar.selectedPantsColor = inStockColor;
+                    if (part.type === 'hair') newChar.selectedHairColor = inStockColor;
+                    if (part.type === 'hat') newChar.selectedHatColor = inStockColor;
                     
                     return newChar;
                 }

@@ -49,6 +49,33 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
+// Helper: Check if a part is truly out of stock (accounting for colors)
+export const isPartOutOfStock = (part: LegoPart | undefined) => {
+    if (!part) return false;
+    
+    // If it has colors, it is out of stock only if ALL colors that have stock tracking are at 0
+    if (part.colors && part.colors.length > 0) {
+        return part.colors.every(c => c.stock === 0);
+    }
+    
+    return part.stock === 0;
+};
+
+// Helper: Get display image (first in-stock color or default)
+export const getPartImageUrl = (part: LegoPart | undefined) => {
+    if (!part) return '';
+    
+    // If it has colors, try to find the first one that is NOT out of stock
+    if (part.colors && part.colors.length > 0) {
+        const firstInStockColor = part.colors.find(c => c.stock === undefined || c.stock === null || c.stock > 0);
+        if (firstInStockColor) {
+            return firstInStockColor.imageUrl || part.imageUrl;
+        }
+    }
+    
+    return part.imageUrl;
+};
+
 export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[], explicitTemplateId?: string): { totalPrice: number, priceBreakdown: PriceBreakdownItem[] } => {
     const breakdown: PriceBreakdownItem[] = [];
     let total = 0;
@@ -146,7 +173,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
             const latestPart = (allParts && part.id && allParts[part.id]) ? allParts[part.id] : part;
             
             // If part is out of stock, it should be $0 in price breakdown
-            if (latestPart.stock === 0) {
+            if (isPartOutOfStock(latestPart)) {
                 breakdown.push({
                     label: `${part.name} ${charLabel}`,
                     value: 0,
@@ -216,7 +243,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         const part = allParts[item.partId];
         if (part) {
             // If part is out of stock, it should be $0 in price breakdown
-            if (part.stock === 0) {
+            if (isPartOutOfStock(part)) {
                 breakdown.push({
                     label: part.name,
                     value: 0,

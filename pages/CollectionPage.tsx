@@ -5,7 +5,7 @@ import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, Draggable
 import { Scissors } from 'lucide-react';
 import { motion } from 'motion/react';
 import { COLLECTION_TEMPLATES } from '../constants';
-import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice } from '../utils/pricing';
+import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice, isPartOutOfStock, getPartImageUrl } from '../utils/pricing';
 import { slugify } from '../utils/helpers';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
@@ -19,12 +19,12 @@ const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string,
     
     // Check characters (These are required parts)
     config.characters.forEach(char => {
-        if (char.hair && allParts[char.hair.id] && allParts[char.hair.id].stock === 0) oos.push(char.hair.name);
-        if (char.face && allParts[char.face.id] && allParts[char.face.id].stock === 0) oos.push(char.face.name);
-        if (char.shirt && allParts[char.shirt.id] && allParts[char.shirt.id].stock === 0) oos.push(char.shirt.name);
-        if (char.pants && allParts[char.pants.id] && allParts[char.pants.id].stock === 0) oos.push(char.pants.name);
-        if (char.hat && allParts[char.hat.id] && allParts[char.hat.id].stock === 0) oos.push(char.hat.name);
-        if (char.set && allParts[char.set.id] && allParts[char.set.id].stock === 0) oos.push(char.set.name);
+        if (char.hair && allParts[char.hair.id] && isPartOutOfStock(allParts[char.hair.id])) oos.push(char.hair.name);
+        if (char.face && allParts[char.face.id] && isPartOutOfStock(allParts[char.face.id])) oos.push(char.face.name);
+        if (char.shirt && allParts[char.shirt.id] && isPartOutOfStock(allParts[char.shirt.id])) oos.push(char.shirt.name);
+        if (char.pants && allParts[char.pants.id] && isPartOutOfStock(allParts[char.pants.id])) oos.push(char.pants.name);
+        if (char.hat && allParts[char.hat.id] && isPartOutOfStock(allParts[char.hat.id])) oos.push(char.hat.name);
+        if (char.set && allParts[char.set.id] && isPartOutOfStock(allParts[char.set.id])) oos.push(char.set.name);
     });
     
     // draggableItems (accessories/charms) are now optional and greyed out if OOS, so we DON'T block purchase
@@ -53,7 +53,7 @@ interface CollectionPageProps {
 const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPart>): FrameConfig => {
     const partsByType: Record<string, LegoPart[]> = {};
     Object.values(allParts).forEach(p => {
-        if (p.stock !== 0) {
+        if (!isPartOutOfStock(p)) {
             if (!partsByType[p.type]) partsByType[p.type] = [];
             partsByType[p.type].push(p);
         }
@@ -68,7 +68,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
         const updatedChar = { ...char };
         ['hair', 'face', 'shirt', 'pants', 'hat', 'set'].forEach((type) => {
             const part = (char as any)[type];
-            if (part && allParts[part.id] && allParts[part.id].stock === 0) {
+            if (part && allParts[part.id] && isPartOutOfStock(allParts[part.id])) {
                 const fallback = findFallback(type);
                 if (fallback) {
                     (updatedChar as any)[type] = fallback;
@@ -77,7 +77,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
                                    type === 'pants' ? 'selectedPantsColor' : 
                                    type === 'hat' ? 'selectedHatColor' : null;
                     if (colorKey) {
-                        (updatedChar as any)[colorKey] = fallback.colors?.[0];
+                        (updatedChar as any)[colorKey] = fallback.colors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || fallback.colors?.[0];
                     }
                 }
             }
@@ -656,7 +656,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return (Object.values(allParts) as LegoPart[])
             .filter(p => {
                 const isTypeMatch = (p.type === 'accessory' || p.type === 'pet' || p.type === 'hat');
-                const isInStock = (p.stock === undefined || p.stock === null || p.stock !== 0);
+                const isInStock = !isPartOutOfStock(p);
                 
                 // Filter by product line compatibility
                 const currentLine = selectedTemplate?.productLine || activeProductLine;
@@ -1435,7 +1435,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             className="relative aspect-square rounded-2xl border-2 border-gray-100 hover:border-primary transition-all p-1 bg-white group"
                                         >
                                             <img 
-                                                src={part.imageUrl} 
+                                                src={getPartImageUrl(part)} 
                                                 alt={part.name} 
                                                 className="w-full h-full object-contain group-hover:scale-110 transition-transform"
                                                 referrerPolicy="no-referrer"

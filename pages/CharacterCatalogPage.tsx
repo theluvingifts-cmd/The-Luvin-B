@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { LegoPart, LegoCharacterConfig } from '../types';
 import { getAllParts, updatePart } from '../services/productService';
-import { formatCurrency } from '../utils/pricing';
+import { formatCurrency, isPartOutOfStock, getPartImageUrl } from '../utils/pricing';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { SmartImage } from '../components/shared/SmartImage';
 import { Search, Filter, Copy, Check, ChevronRight, LayoutGrid, List, MessageSquare, RefreshCw, Users, Download, Trash2, Tag, Star, Palette, Ruler } from 'lucide-react';
@@ -154,7 +154,7 @@ export const CharacterCatalogPage: React.FC = () => {
 
         try {
             // ONLY parts in stock (ignore negative corruption)
-            const inStockParts = allParts.filter(p => p.stock === undefined || p.stock === null || p.stock !== 0);
+            const inStockParts = allParts.filter(p => !isPartOutOfStock(p));
             
             const hairs = inStockParts.filter(p => p.type === 'hair');
             const faces = inStockParts.filter(p => p.type === 'face');
@@ -413,7 +413,7 @@ export const CharacterCatalogPage: React.FC = () => {
                             <div 
                                 key={part.id}
                                 onClick={() => toggleSelect(part.id)}
-                                className={`group relative bg-white p-4 rounded-[2rem] border-2 transition-all cursor-pointer hover:shadow-xl hover:shadow-pink-100/30 ${selectedIds.includes(part.id) ? 'border-primary shadow-lg shadow-primary/10' : 'border-gray-50 shadow-sm'} ${part.stock === 0 ? 'opacity-60 grayscale' : ''}`}
+                                className={`group relative bg-white p-4 rounded-[2rem] border-2 transition-all cursor-pointer hover:shadow-xl hover:shadow-pink-100/30 ${selectedIds.includes(part.id) ? 'border-primary shadow-lg shadow-primary/10' : 'border-gray-50 shadow-sm'} ${isPartOutOfStock(part) ? 'opacity-60 grayscale' : ''}`}
                             >
                                 {/* Selection Indicator */}
                                 {selectedIds.includes(part.id) && (
@@ -424,7 +424,7 @@ export const CharacterCatalogPage: React.FC = () => {
 
                                 <div className="aspect-square rounded-2xl bg-gray-50 p-2 sm:p-4 mb-4 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden relative">
                                     <SmartImage 
-                                        src={part.imageUrl} 
+                                        src={getPartImageUrl(part)} 
                                         fallback="https://placehold.co/400x400?text=LEGO"
                                         className={`max-h-full max-w-full object-contain`}
                                     />
@@ -478,8 +478,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                                             </span>
                                                         </div>
                                                         {part.stock !== undefined && (
-                                                            <span className={`text-[8px] font-bold ${part.stock > 10 ? 'text-green-400' : part.stock !== 0 ? 'text-orange-400' : 'text-red-400'}`}>
-                                                                • {part.stock !== 0 ? `Tồn ${part.stock}` : 'Hết'}
+                                                            <span className={`text-[8px] font-bold ${part.stock > 10 ? 'text-green-400' : !isPartOutOfStock(part) ? 'text-orange-400' : 'text-red-400'}`}>
+                                                                • {!isPartOutOfStock(part) ? `Tồn ${part.stock}` : 'Hết'}
                                                             </span>
                                                         )}
                                                     </div>
@@ -514,13 +514,13 @@ export const CharacterCatalogPage: React.FC = () => {
                                 {filteredParts.map(part => (
                                     <tr 
                                         key={part.id}
-                                        className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedIds.includes(part.id) ? 'bg-primary/5' : 'hover:bg-gray-50/50'} ${part.stock === 0 ? 'opacity-60 grayscale' : ''}`}
+                                        className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedIds.includes(part.id) ? 'bg-primary/5' : 'hover:bg-gray-50/50'} ${isPartOutOfStock(part) ? 'opacity-60 grayscale' : ''}`}
                                         onClick={() => toggleSelect(part.id)}
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-lg bg-gray-50 p-1 flex items-center justify-center shrink-0 overflow-hidden">
-                                                    <img src={part.imageUrl} className={`max-w-full max-h-full object-contain`} alt="" />
+                                                    <img src={getPartImageUrl(part)} className={`max-w-full max-h-full object-contain`} alt="" />
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-gray-900 uppercase leading-none mb-1">{part.name}</span>
