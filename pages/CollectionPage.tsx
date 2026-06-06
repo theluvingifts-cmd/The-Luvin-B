@@ -138,6 +138,27 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [charmSearch, setCharmSearch] = useState('');
     const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
 
+    // Auto scroll when editing character
+    useEffect(() => {
+        if (editingCharacterId !== null) {
+            // Give a tiny delay for the element to render/expand if it was hidden
+            setTimeout(() => {
+                const element = document.getElementById(`char-card-${editingCharacterId}`);
+                if (element && scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    const elementTop = element.offsetTop;
+                    // Adjust offset to not stick right at the top under the header
+                    const scrollOffset = Math.max(0, elementTop - 20);
+                    
+                    container.scrollTo({
+                        top: scrollOffset,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
+        }
+    }, [editingCharacterId]);
+
     // Filter and Sort states
     const [galleryOptionsExpanded, setGalleryOptionsExpanded] = useState(false);
     const [priceRange, setPriceRange] = useState<'all' | 'under300' | '300to500' | 'above500'>('all');
@@ -873,7 +894,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     {/* Right Pillar: Controls */}
                     <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative">
                         {/* Header */}
-                        <div className="relative px-5 py-6 border-b border-gray-100 bg-white shadow-sm z-20">
+                        <div className="relative px-5 py-5 border-b border-gray-100 bg-white shadow-sm z-20">
                         {/* Close Button - Absolute for better spacing */}
                         <button 
                             onClick={handleCloseModal} 
@@ -886,14 +907,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </button>
 
                         <div className="flex flex-col items-center text-center px-6">
-                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight leading-tight mb-3">
+                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight leading-tight mb-2">
                                 {selectedTemplate.name}
                             </h2>
                             
                             {/* Prominent Scroll-down Guide (Mobile Only) */}
                             <button 
                                 onClick={scrollToCustomize}
-                                className="bg-gray-900 text-white px-6 py-2.5 rounded-full shadow-xl border border-white/10 flex items-center gap-3 hover:bg-black transition-all active:scale-95 group relative overflow-hidden lg:hidden"
+                                className="bg-gray-900 text-white px-6 py-2 rounded-full shadow-xl border border-white/10 flex items-center gap-3 hover:bg-black transition-all active:scale-95 group relative overflow-hidden lg:hidden"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <span className="relative flex h-2.5 w-2.5">
@@ -912,7 +933,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                     <div 
                         ref={scrollContainerRef}
-                        className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain scroll-smooth"
+                        className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-6 custom-scrollbar overscroll-contain scroll-smooth"
                     >
                         {/* Preview Image with Scroll Hint (Mobile Only) */}
                         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center lg:hidden">
@@ -972,25 +993,25 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </div>
 
                         {/* Included Gifts Notification */}
-                        <div className="bg-blue-50/50 border border-blue-100/50 rounded-3xl p-4 mt-2 animate-fade-in text-left">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                        <div className="bg-blue-50/50 border border-blue-100/50 rounded-3xl p-3 mt-2 animate-fade-in text-left">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                                 </div>
-                                <h4 className="font-black text-[11px] text-blue-900 uppercase tracking-widest">Sản phẩm bao gồm:</h4>
+                                <h4 className="font-black text-[10px] text-blue-900 uppercase tracking-widest">Sản phẩm bao gồm:</h4>
                             </div>
                             <div className={`flex flex-wrap gap-2 ${selectedTemplate.productLine === 'gallery' ? 'justify-start' : 'justify-start'}`}>
-                                <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
-                                    <span className="text-lg mb-1">🎁</span>
-                                    <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_box')}</span>
+                                <div className="flex-1 min-w-[75px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-1.5 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
+                                    <span className="text-base mb-0.5">🎁</span>
+                                    <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_box')}</span>
                                 </div>
-                                <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
-                                    <span className="text-lg mb-1">🛍️</span>
-                                    <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_bag')}</span>
+                                <div className="flex-1 min-w-[75px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-1.5 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
+                                    <span className="text-base mb-0.5">🛍️</span>
+                                    <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_bag')}</span>
                                 </div>
-                                <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
-                                    <span className="text-lg mb-1">✉️</span>
-                                    <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_card')}</span>
+                                <div className="flex-1 min-w-[75px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-1.5 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
+                                    <span className="text-base mb-0.5">✉️</span>
+                                    <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_card')}</span>
                                 </div>
                                 {selectedTemplate.productLine === 'gallery' && (
                                     <>
@@ -1020,8 +1041,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         {/* Characters Section */}
                         {(selectedTemplate.isSimple || selectedTemplate.productLine === 'gallery' || groupedCharacters.length > 0) && (
                             <div ref={customizeSectionRef} className="space-y-4 scroll-mt-6">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <div className="flex justify-between items-center mb-1">
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
                                         Nhân vật ({customConfig.characters.length}) 
                                         {(() => {
@@ -1037,7 +1058,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </h3>
                                     <button 
                                         onClick={addDefaultCharacter}
-                                        className="text-[9px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full hover:bg-primary/20 transition-colors"
+                                        className="text-[8px] font-black text-primary bg-primary/5 px-2.5 py-0.5 rounded-full hover:bg-primary/10 transition-colors"
                                     >
                                         {t('studio.add_character')}
                                     </button>
@@ -1046,10 +1067,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     {customConfig.characters.map((char, idx) => (
                                         <div 
                                             key={char.id} 
+                                            id={`char-card-${char.id}`}
                                             className={`flex flex-col rounded-2xl border-2 transition-all cursor-pointer ${editingCharacterId === char.id ? 'border-primary bg-primary/5' : 'border-primary/10 bg-white shadow-sm hover:border-primary/30'}`}
                                             onClick={() => setEditingCharacterId(editingCharacterId === char.id ? null : char.id)}
                                         >
-                                            <div className="flex items-center gap-4 p-3">
+                                            <div className="flex items-center gap-4 p-2">
                                                 <CharacterPreview character={char} hideHat={true} />
                                                 <div className="flex-grow">
                                                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{t('studio.character_index').replace('{index}', (idx + 1).toString())}</p>
@@ -1058,10 +1080,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                     </p>
                                                 </div>
                                                 
-                                                <div className="flex items-center gap-3 bg-gray-50 rounded-xl border border-gray-100 p-1" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center gap-3 bg-gray-50 rounded-xl border border-gray-100 p-0.5" onClick={(e) => e.stopPropagation()}>
                                                     <button 
                                                         onClick={() => removeSpecificCharacter(char.id)}
-                                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-all shadow-sm"
+                                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-all"
                                                         title={t('studio.remove_char')}
                                                     >
                                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -1071,7 +1093,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                                             {/* Part Selector */}
                                             {editingCharacterId === char.id && (
-                                                <div className="p-4 border-t border-primary/10 space-y-5 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
+                                                <div className="p-3 border-t border-primary/10 space-y-4 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
                                                     {(['hair', 'face', 'shirt', 'pants', 'set'] as const).map(type => (
                                                         <div key={type} className="space-y-2.5">
                                                             <div className="flex justify-between items-center">
@@ -1234,9 +1256,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         return (
                                             <div 
                                                 key={`char-hat-${char.id}`}
-                                                className="flex items-center gap-4 p-3 rounded-2xl border-2 border-primary bg-primary/5 shadow-sm"
+                                                className="flex items-center gap-4 p-2 rounded-2xl border-2 border-primary bg-primary/5 shadow-sm"
                                             >
-                                                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
+                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
                                                     <img src={char.selectedHatColor?.imageUrl || hat.imageUrl} alt="Hat" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                                                 </div>
                                                 <div className="flex-grow text-left">
@@ -1299,10 +1321,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         return (
                                             <div 
                                                 key={key}
-                                                className={`flex flex-col p-3 rounded-2xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'} ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}
+                                                className={`flex flex-col p-2 rounded-2xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'} ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}
                                             >
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
+                                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
                                                         <img src={selectedColor?.imageUrl || part?.imageUrl || partId} alt="Charm" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                                                     </div>
                                                     <div className="flex-grow text-left">
@@ -1587,22 +1609,22 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                         {/* Order Notes */}
                         {selectedTemplate.productLine !== 'gallery' && (
-                            <div ref={noteSectionRef} className="space-y-3 scroll-mt-20">
-                                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                            <div ref={noteSectionRef} className="space-y-2 scroll-mt-20">
+                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                    {t('common.order_note')} <span className="text-[10px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
+                                    {t('common.order_note')} <span className="text-[9px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
                                 </h3>
                                 <div className="relative">
                                     <textarea 
                                         value={orderNote}
                                         onChange={e => setOrderNote(e.target.value)}
                                         placeholder={t('common.order_note_placeholder')}
-                                        rows={3}
-                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none"
+                                        rows={2}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none"
                                     />
-                                    <div className="mt-2 flex items-start gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                    <div className="mt-1 flex items-start gap-2 bg-blue-50/50 p-2.5 rounded-xl border border-blue-100">
                                         <span className="text-blue-500 text-xs">ℹ️</span>
-                                        <p className="text-[10px] sm:text-[11px] text-blue-700 font-medium leading-relaxed">
+                                        <p className="text-[9px] sm:text-[10px] text-blue-700 font-medium leading-relaxed">
                                             {t('common.order_note_demo_note')}
                                         </p>
                                     </div>
@@ -1612,14 +1634,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="px-4 py-6 sm:p-6 border-t border-gray-100 bg-white space-y-4 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+                    <div className="px-4 py-4 sm:px-6 sm:py-5 border-t border-gray-100 bg-white space-y-3 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
                         <div className="flex justify-between items-end">
                             <div>
-                                <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Tổng cộng</span>
+                                <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">Tổng cộng</span>
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-2xl font-black text-gray-900">{formatCurrency(currentPrice)}</span>
+                                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-none">{formatCurrency(currentPrice)}</span>
                                     {originalPrice > currentPrice && (
-                                        <span className="text-sm text-gray-400 line-through font-bold">
+                                        <span className="text-xs text-gray-400 line-through font-bold">
                                             {formatCurrency(originalPrice)}
                                         </span>
                                     )}
@@ -1630,21 +1652,21 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <button 
                                 onClick={handleQuickAddToCart}
                                 disabled={(selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0) || getOutOfStockParts(customConfig, allParts).length > 0}
-                                className="flex-1 py-4 bg-gray-100 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 py-3 bg-gray-100 text-gray-900 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 🛒 {t('common.add_to_cart')}
                             </button>
                             <button 
                                 onClick={handleBuyNow}
                                 disabled={(selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0) || getOutOfStockParts(customConfig, allParts).length > 0}
-                                className="flex-[1.5] py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-[1.5] py-3 bg-gray-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 ⚡ {t('common.buy_now')}
                             </button>
                         </div>
                         <button 
                             onClick={() => handleContactZalo(selectedTemplate.name, currentPrice, selectedTemplate.imageUrl)}
-                            className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-blue-50 text-blue-600 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
