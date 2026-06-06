@@ -829,11 +829,51 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         {selectedTemplate && customConfig && (
             <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
                 <div 
-                    className="bg-white w-full max-w-2xl rounded-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col max-h-[90vh] sm:max-h-[90vh]"
+                    className="bg-white w-full max-w-2xl lg:max-w-6xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col lg:flex-row lg:h-[90vh] max-h-[90vh]"
                     onClick={e => e.stopPropagation()}
                 >
-                    {/* Header */}
-                    <div className="relative px-5 py-6 border-b border-gray-100 bg-white">
+                    {/* Left Pillar: Preview (Desktop) */}
+                    <div className="hidden lg:flex w-1/2 bg-gray-50 items-center justify-center relative overflow-hidden border-r border-gray-100 shadow-inner">
+                        <div className="w-full h-full relative flex items-center justify-center p-12">
+                            {selectedTemplate.isSimple ? (
+                                <div className="relative w-full h-full flex flex-wrap items-center justify-center gap-10 content-center scale-110">
+                                    {customConfig.characters.length === 0 && customConfig.draggableItems.length === 0 && (
+                                        <div className="text-center animate-fade-in">
+                                            <img 
+                                                src={selectedTemplate.imageUrl} 
+                                                alt={selectedTemplate.name} 
+                                                className="max-h-72 mx-auto object-contain rounded-3xl opacity-40 grayscale blur-[2px]" 
+                                            />
+                                            <p className="mt-6 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('collection.select_char_charm')}</p>
+                                        </div>
+                                    )}
+                                    {customConfig.characters.map((char) => (
+                                        <div key={char.id} className="transform scale-[2] hover:scale-[2.1] transition-transform duration-500 mx-4">
+                                            <CharacterPreview character={char} hideHat={true} />
+                                        </div>
+                                    ))}
+                                    {customConfig.draggableItems.map((item) => (
+                                        <div key={item.id} className="w-24 h-24 bg-white rounded-3xl shadow-xl border border-gray-100 p-2.5 flex items-center justify-center hover:scale-110 transition-transform duration-500">
+                                            <img src={item.selectedColor?.imageUrl || allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="Item" />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="relative group w-full h-full flex items-center justify-center">
+                                    <img 
+                                        src={selectedTemplate.imageUrl} 
+                                        alt={selectedTemplate.name} 
+                                        className="max-h-full max-w-full object-contain rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.12)] transition-transform duration-700 group-hover:scale-[1.02]" 
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right Pillar: Controls */}
+                    <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative">
+                        {/* Header */}
+                        <div className="relative px-5 py-6 border-b border-gray-100 bg-white shadow-sm z-20">
                         {/* Close Button - Absolute for better spacing */}
                         <button 
                             onClick={handleCloseModal} 
@@ -850,10 +890,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 {selectedTemplate.name}
                             </h2>
                             
-                            {/* Prominent Scroll-down Guide */}
+                            {/* Prominent Scroll-down Guide (Mobile Only) */}
                             <button 
                                 onClick={scrollToCustomize}
-                                className="bg-gray-900 text-white px-6 py-2.5 rounded-full shadow-xl border border-white/10 flex items-center gap-3 hover:bg-black transition-all active:scale-95 group relative overflow-hidden"
+                                className="bg-gray-900 text-white px-6 py-2.5 rounded-full shadow-xl border border-white/10 flex items-center gap-3 hover:bg-black transition-all active:scale-95 group relative overflow-hidden lg:hidden"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <span className="relative flex h-2.5 w-2.5">
@@ -872,10 +912,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                     <div 
                         ref={scrollContainerRef}
-                        className="flex-grow overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain scroll-smooth"
+                        className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:p-6 space-y-8 custom-scrollbar overscroll-contain scroll-smooth"
                     >
-                        {/* Preview Image with Scroll Hint */}
-                        <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center">
+                        {/* Preview Image with Scroll Hint (Mobile Only) */}
+                        <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center lg:hidden">
                             {selectedTemplate.isSimple ? (
                                 <div className="relative w-full h-full p-4 sm:p-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 content-center">
                                     {customConfig.characters.length === 0 && customConfig.draggableItems.length === 0 && (
@@ -1603,7 +1643,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             </button>
                         </div>
                         <button 
-                            onClick={() => handleContactZalo(selectedTemplate.name, currentPrice, selectedTemplate.image)}
+                            onClick={() => handleContactZalo(selectedTemplate.name, currentPrice, selectedTemplate.imageUrl)}
                             className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1612,6 +1652,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             {t('collection.need_advice') || 'Cần tư vấn mẫu này'}
                         </button>
                     </div>
+                  </div>
                 </div>
             </div>
         )}
