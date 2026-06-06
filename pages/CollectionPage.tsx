@@ -1830,7 +1830,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="mt-auto space-y-3">
                                     <div className="flex justify-between items-end">
                                         <div>
-                                            <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">Giá có bán từ</span>
+                                            <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">Giá cơ bản</span>
                                             <span className="text-sm sm:text-lg font-black text-gray-900 leading-none">
                                                 {formatCurrency(totalPrice)}
                                             </span>

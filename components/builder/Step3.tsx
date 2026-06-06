@@ -74,11 +74,7 @@ const PartButton = React.memo<{
                 </div>
             )}
             
-            {part.supportedProductLines && part.supportedProductLines.length === 1 && (
-                <div className={`absolute top-0 ${isHot || isSale || isBulk ? 'right-0' : 'left-0'} z-20 ${part.supportedProductLines[0] === 'gallery' ? 'bg-pink-600' : 'bg-blue-600'} text-white text-[7px] px-1 font-bold uppercase shadow-sm`}>
-                    {part.supportedProductLines[0]}
-                </div>
-            )}
+            {/* Remove product line tags as per user request */}
             
             <div className="w-full aspect-square rounded-md bg-gray-100 overflow-hidden flex items-center justify-center relative border border-gray-100/50">
                 <SmartImage 
@@ -613,13 +609,6 @@ export const Step3Characters: React.FC<{
                 <div className="flex flex-col gap-4 mb-4">
                     <h4 className="font-bold text-gray-800 uppercase tracking-tight text-base sm:text-lg">{t('studio.add_accessories_charms')}</h4>
                     
-                    {config.productLine !== 'gallery' && (
-                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 leading-relaxed shadow-sm animate-fade-in flex items-start gap-2.5">
-                            <span className="text-sm mt-[-2px]">ℹ️</span>
-                            <span className="font-medium">{t('studio.gallery_only_notice')}</span>
-                        </div>
-                    )}
-
                     {/* Search bar for accessories */}
                     <div className="relative group">
                         <input 
