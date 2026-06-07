@@ -1304,6 +1304,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                     <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }} className="bg-white shadow-2xl transition-transform duration-300 ring-1 ring-gray-200">
                         <FramePreview 
                             ref={previewRef} 
+                            frames={frames}
                             config={config} 
                             containerWidth={500} 
                             onItemTransform={handleItemTransform} 

@@ -1135,7 +1135,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                 </button>
                                             )}
 
-                                            {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa thiết kế (Kéo thả & Click đúp chữ để sửa)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={(textId, updates) => {
+                                            {isEditingOrder && editForm && (<div className="w-full bg-gray-50 p-2 rounded border border-dashed border-gray-300"><p className="text-xs font-bold text-gray-500 mb-2 uppercase">Chỉnh sửa thiết kế (Kéo thả & Click đúp chữ để sửa)</p><div className="w-full h-[400px] flex items-center justify-center bg-gray-200 rounded relative overflow-hidden"><FramePreview config={item} frames={frames} containerWidth={400} onItemTransform={(id, transform) => handleVisualTransform(idx, id, transform)} onItemRemove={() => {}} onTextUpdate={(textId, updates) => {
                                                 setEditForm(prev => {
                                                     if (!prev) return null;
                                                     const newItems = [...prev.items];

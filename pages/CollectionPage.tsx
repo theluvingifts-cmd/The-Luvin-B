@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CollectionTemplate, FrameConfig, FrameOption, LegoPart, Page, DraggableItem, LegoCharacterConfig, OutfitColor } from '../types';
 import { Scissors } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice, isPartOutOfStock, getPartImageUrl } from '../utils/pricing';
 import { slugify } from '../utils/helpers';
@@ -137,6 +137,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [orderNote, setOrderNote] = useState('');
     const [charmSearch, setCharmSearch] = useState('');
     const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
+    const [showFrameWarning, setShowFrameWarning] = useState(false);
 
     // Auto scroll when editing character
     useEffect(() => {
@@ -609,6 +610,63 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         }
     };
 
+    const availableFrames = useMemo(() => {
+        if (!selectedTemplate) return [];
+        
+        // Determine the orientation of the template to restrict swapping between square/rectangular
+        const templateFrameId = selectedTemplate.config.frameId;
+        const templateFrame = frames.find(f => f.id === templateFrameId) || frames[0];
+        const isTemplateSquare = templateFrame.frameWidthCm === templateFrame.frameHeightCm;
+
+        const currentLine = selectedTemplate.productLine || activeProductLine;
+        
+        return frames.filter(f => {
+            // Line check
+            const lineMatch = !f.supportedProductLines || 
+                             f.supportedProductLines.length === 0 || 
+                             f.supportedProductLines.includes(currentLine);
+            
+            // Orientation check: Square templates only show square frames, rectangular show rectangular
+            const isSquare = f.frameWidthCm === f.frameHeightCm;
+            const orientationMatch = isTemplateSquare ? isSquare : !isSquare;
+            
+            return lineMatch && orientationMatch;
+        }).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }, [frames, selectedTemplate, activeProductLine]);
+
+    const isFrameSmallerThanRecommended = useMemo(() => {
+        if (!selectedTemplate || !customConfig) return false;
+        const originalFrameId = selectedTemplate.config.frameId;
+        const currentFrameId = customConfig.frameId;
+        if (originalFrameId === currentFrameId) return false;
+        const originalFrame = frames.find(f => f.id === originalFrameId);
+        const currentFrame = frames.find(f => f.id === currentFrameId);
+        if (!originalFrame || !currentFrame) return false;
+        return (currentFrame.frameWidthCm * currentFrame.frameHeightCm) < (originalFrame.frameWidthCm * originalFrame.frameHeightCm);
+    }, [selectedTemplate, customConfig, frames]);
+
+    const handleFrameChange = (frameId: string) => {
+        if (!customConfig || !selectedTemplate) return;
+        
+        // Detect if switching to a smaller frame than recommended
+        const originalFrameId = selectedTemplate.config.frameId;
+        const targetFrame = frames.find(f => f.id === frameId);
+        const originalFrame = frames.find(f => f.id === originalFrameId);
+        
+        if (targetFrame && originalFrame) {
+            const isSmaller = (targetFrame.frameWidthCm * targetFrame.frameHeightCm) < (originalFrame.frameWidthCm * originalFrame.frameHeightCm);
+            if (isSmaller && frameId !== originalFrameId) {
+                setShowFrameWarning(true);
+                // Auto hide after 6 seconds
+                setTimeout(() => setShowFrameWarning(false), 6000);
+            } else {
+                setShowFrameWarning(false);
+            }
+        }
+        
+        setCustomConfig({ ...customConfig, frameId });
+    };
+
     const groupedCharacters = useMemo(() => {
         if (!customConfig) return [];
         const groups: { char: LegoCharacterConfig, count: number, ids: number[] }[] = [];
@@ -991,6 +1049,73 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </>
                             )}
                         </div>
+
+                        {/* Frame Size Selection - Requested Feature */}
+                        {availableFrames.length > 1 && (
+                            <div className="space-y-3 pb-2 animate-fade-in">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        {t('studio.select_size') || 'Chọn kích thước'}
+                                    </h3>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {availableFrames.map(frame => {
+                                        const isSelected = customConfig.frameId === frame.id;
+                                        const isRecommended = selectedTemplate.config.frameId === frame.id;
+                                        return (
+                                            <button
+                                                key={frame.id}
+                                                onClick={() => handleFrameChange(frame.id)}
+                                                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border-2 transition-all group relative ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                            >
+                                                {isRecommended && (
+                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap">
+                                                        Khuyên dùng
+                                                    </div>
+                                                )}
+                                                <span className={`text-[10px] font-black uppercase tracking-tight mb-0.5 leading-none ${isSelected ? 'text-primary' : 'text-gray-900'}`}>{frame.name}</span>
+                                                <span className={`text-[9px] font-bold ${isSelected ? 'text-primary/70' : 'text-gray-400'}`}>{formatCurrency(frame.price)}</span>
+                                                {isSelected && (
+                                                    <div className="absolute top-1.5 right-1.5">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_rgba(var(--color-primary),0.5)]"></div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <AnimatePresence>
+                                    {showFrameWarning && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            className="bg-orange-50 border border-orange-100 rounded-2xl p-3 flex @container relative overflow-hidden"
+                                        >
+                                            <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
+                                            <span className="text-sm mr-2.5">⚠️</span>
+                                            <div className="flex-grow">
+                                                <p className="text-[9px] sm:text-[10px] text-orange-700 font-black leading-tight uppercase tracking-tight mb-0.5">
+                                                    Cảnh báo kích thước
+                                                </p>
+                                                <p className="text-[9px] text-orange-600 font-bold leading-normal">
+                                                    Khung nhỏ hơn có thể khiến chữ/ảnh khó nhìn & không thêm được nhiều charm/nhân vật
+                                                </p>
+                                            </div>
+                                            <button 
+                                                onClick={() => setShowFrameWarning(false)}
+                                                className="ml-2 text-orange-300 hover:text-orange-500 transition-colors"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        )}
 
                         {/* Included Gifts Notification */}
                         <div className="bg-blue-50/50 border border-blue-100/50 rounded-3xl p-3 mt-2 animate-fade-in text-left">

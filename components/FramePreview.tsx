@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
-import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig } from '../types';
+import type { FrameConfig, LegoCharacterConfig, LegoPart, TextConfig, DraggableItem, OutfitColor, ShapeConfig, FrameOption } from '../types';
 import { FRAME_OPTIONS, LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../constants';
 
 type Transform = {
@@ -14,6 +14,7 @@ type Transform = {
 
 interface FramePreviewProps {
   config: FrameConfig;
+  frames?: FrameOption[];
   containerWidth?: number;
   onItemTransform: (id: string, newTransform: Transform) => void;
   onItemRemove: (id: string) => void;
@@ -481,8 +482,32 @@ const Transformable = memo(({
     );
 });
 
-const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ config, containerWidth = 400, onItemTransform, onItemRemove, onTextUpdate, onItemUpdate, onCharacterUpdate, onItemFlip, onCharacterDoubleClick, onAutoAdvance, className, isInteractive = true, selectedItemId, setSelectedItemId, setIsEditingText, allParts: propAllParts, activePartType, logoUrl, previewFont, allowTextScaling, onAlign }, ref) => {
-  const frameOption = useMemo(() => FRAME_OPTIONS.find(f => f.id === config.frameId) || FRAME_OPTIONS[0], [config.frameId]);
+const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ 
+  config, 
+  frames: propFrames,
+  containerWidth = 400, 
+  onItemTransform, 
+  onItemRemove, 
+  onTextUpdate, 
+  onItemUpdate, 
+  onCharacterUpdate, 
+  onItemFlip, 
+  onCharacterDoubleClick, 
+  onAutoAdvance, 
+  className, 
+  isInteractive = true, 
+  selectedItemId, 
+  setSelectedItemId, 
+  setIsEditingText, 
+  allParts: propAllParts, 
+  activePartType, 
+  logoUrl, 
+  previewFont, 
+  allowTextScaling, 
+  onAlign 
+}, ref) => {
+  const currentFrames = useMemo(() => propFrames || FRAME_OPTIONS, [propFrames]);
+  const frameOption = useMemo(() => currentFrames.find(f => f.id === config.frameId) || currentFrames[0] || FRAME_OPTIONS[0], [currentFrames, config.frameId]);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const uniqueId = React.useId();
@@ -494,7 +519,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({ conf
   const bgW = isRotated ? frameOption.backgroundHeightCm : frameOption.backgroundWidthCm;
   const bgH = isRotated ? frameOption.backgroundWidthCm : frameOption.backgroundHeightCm;
 
-  const maxDimensionCm = useMemo(() => Math.max(...FRAME_OPTIONS.map(f => Math.max(f.frameWidthCm, f.frameHeightCm))), []);
+  const maxDimensionCm = useMemo(() => Math.max(...currentFrames.map(f => Math.max(f.frameWidthCm, f.frameHeightCm))), [currentFrames]);
   const pxPerCm = containerWidth / maxDimensionCm;
   
   const frameWidth = frameW * pxPerCm;

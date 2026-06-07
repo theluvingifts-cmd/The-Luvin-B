@@ -350,6 +350,24 @@ export const Step3Characters: React.FC<{
       }
     };
     
+    useEffect(() => {
+        if (activeCharId) {
+            const viewportWidth = window.innerWidth;
+            if (viewportWidth < 1024) { // Only scroll on mobile/tablet where preview is at top
+                const el = document.getElementById('part-selector-area');
+                if (el) {
+                    const offset = 80; // Header offset
+                    const elementPosition = el.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - offset;
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }
+    }, [activeCharId]);
+
     const handleRandomizeOutfit = () => {
         if (!activeCharId) return;
         
@@ -547,7 +565,7 @@ export const Step3Characters: React.FC<{
             </div>
 
             {activeCharacter && (
-                <div className="p-4 border border-gray-200 rounded-lg relative">
+                <div id="part-selector-area" className="p-4 border border-gray-200 rounded-lg relative scroll-mt-20">
                     <div className="flex flex-col mb-4 border-b border-gray-200 pb-4">
                         <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar items-center w-full px-1 py-1 mb-2">
                             {partTypes.map(pt => (
