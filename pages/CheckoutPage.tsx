@@ -743,8 +743,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         </div>
                         <p className="text-xs text-gray-500">{t('checkout.gift_box_desc')}</p>
                     </div>
-                    <div className="flex flex-col items-end">
-                        <span className="font-bold text-luvin-pink">+{formatCurrency(GIFT_BOX_PRICE)}</span>
+                    <div className="flex flex-col items-end min-w-[80px]">
+                        <span className="font-bold text-luvin-pink text-sm">+{formatCurrency(GIFT_BOX_PRICE * totalQuantity)}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</span>
                         {!isGiftBoxOutOfStock && (
                             <input 
                                 type="checkbox" 
@@ -775,8 +776,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             </div>
                             <p className="text-xs text-gray-500">{t('checkout.light_desc')}</p>
                         </div>
-                        <div className="flex flex-col items-end">
-                            <span className="font-bold text-luvin-pink">+{formatCurrency(storeConfig?.lightPrice || 50000)}</span>
+                        <div className="flex flex-col items-end min-w-[80px]">
+                            <span className="font-bold text-luvin-pink text-sm">+{formatCurrency((storeConfig?.lightPrice || 50000) * legoQuantity)}</span>
+                            <span className="text-[10px] text-gray-400 font-medium">({formatCurrency(storeConfig?.lightPrice || 50000)} x {legoQuantity})</span>
                             {!storeConfig?.lightOutOfStock && (
                                 <input 
                                     type="checkbox" 
@@ -824,22 +826,29 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                 )}
               </div>
 
-              <h2 className="font-bold text-lg mb-4 border-b pb-2">{t('checkout.your_order')}</h2>
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 className="font-bold text-lg">{t('checkout.your_order')}</h2>
+                <div className="bg-luvin-pink text-white text-xs font-black px-2 py-1 rounded-full shadow-sm animate-pulse">
+                    {totalQuantity} {totalQuantity > 1 ? t('cart.items') || 'sản phẩm' : t('cart.item') || 'sản phẩm'}
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {cartItems.map((item, index) => {
                   const { totalPrice } = calculatePrice(item, allParts, frames, templates);
                   const quantity = item.quantity || 1;
+                  const frameName = (frames.find(f => f.id === item.frameId) || frames[0] || FRAME_OPTIONS[0]).name;
                   
                   return (
-                    <div key={index} className="border border-gray-100 rounded-xl p-3 bg-gray-50 flex flex-col gap-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-3">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 object-contain bg-white border rounded-lg cursor-pointer group relative flex-shrink-0" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                    <div key={index} className="border border-gray-200 rounded-2xl p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-3 items-center min-w-0">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 object-contain bg-gray-50 border border-gray-100 rounded-xl cursor-pointer group relative flex-shrink-0 overflow-hidden" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
                                 {item.previewImageUrl ? (
                                     <>
                                         <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <ZoomIcon className="w-5 h-5 text-white" />
+                                            <ZoomIcon className="w-4 h-4 text-white" />
                                         </div>
                                     </>
                                 ) : (
@@ -847,48 +856,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 )}
                             </div>
                             <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-gray-800 text-sm truncate">{t('checkout.custom_frame')}</span>
-                                <span className="text-xs text-gray-400 truncate">{(frames.find(f => f.id === item.frameId) || frames[0] || FRAME_OPTIONS[0]).name}</span>
-                                {quantity > 1 && <span className="text-xs font-black text-luvin-pink mt-1">x{quantity}</span>}
+                                <span className="font-black text-gray-900 text-xs sm:text-sm truncate uppercase tracking-tight">#{index + 1} {t('checkout.custom_frame')}</span>
+                                <span className="text-[10px] sm:text-xs text-gray-500 font-bold">{frameName}</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] font-black text-luvin-pink bg-pink-50 px-1.5 py-0.5 rounded">x{quantity}</span>
+                                    <span className="text-[10px] text-gray-400 font-medium">{t('studio.character_count', { count: item.characters.length })}</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <span className="font-black text-gray-900">{formatCurrency(totalPrice * quantity)}</span>
+                        <div className="text-right flex-shrink-0">
+                            <span className="font-black text-gray-900 text-sm sm:text-base">{formatCurrency(totalPrice * quantity)}</span>
                         </div>
-                      </div>
-
-                      {/* Character & Charm Previews */}
-                      <div className="flex flex-wrap gap-2 mt-1">
-                          {item.characters.map((char, cIdx) => (
-                              <div key={cIdx} className="relative group">
-                                  <CharacterPreview character={char} size="sm" />
-                                  <div className="absolute -top-1 -right-1 bg-white border border-pink-200 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-pink-600 shadow-sm">
-                                      {cIdx + 1}
-                                  </div>
-                              </div>
-                          ))}
-                          {item.draggableItems.filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 4).map((di, diIdx) => {
-                              const part = allParts[di.partId];
-                              if (!part) return null;
-                              return (
-                                  <div key={diIdx} className="w-12 h-12 bg-white border border-gray-100 rounded-lg p-1 flex items-center justify-center">
-                                      <img src={part.imageUrl} className="w-full h-full object-contain" alt="charm" />
-                                  </div>
-                              );
-                          })}
-                      </div>
-
-                      {/* Item Breakdown (Optional/Toggleable or always show if space allows) */}
-                      <div className="bg-white/60 rounded-lg p-2 space-y-1">
-                          {calculatePrice(item, allParts, frames, templates).priceBreakdown.slice(0, 6).map((pb, pbIdx) => (
-                              <div key={pbIdx} className="flex justify-between text-[10px]">
-                                  <span className="text-gray-500">{pb.label}</span>
-                                  <span className="text-gray-700 font-medium">{formatCurrency(pb.value)}</span>
-                              </div>
-                          ))}
-                          {calculatePrice(item, allParts, frames, templates).priceBreakdown.length > 6 && (
-                              <div className="text-[9px] text-gray-400 italic text-center pt-1">... and more details</div>
-                          )}
                       </div>
                     </div>
                   )
@@ -896,8 +874,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
               <div className="border-t mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span>{t('cart.subtotal')}</span><span>{formatCurrency(subtotal)}</span></div>
-                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && <div className="flex justify-between"><span>{t('checkout.gift_box')}</span><span>{formatCurrency(giftBoxFee)}</span></div>}
-                {(!storeConfig?.lightOutOfStock && addLight) && <div className="flex justify-between"><span>{t('checkout.light_box')}</span><span>{formatCurrency(lightFee)}</span></div>}
+                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && (
+                    <div className="flex justify-between text-gray-600">
+                        <span>{t('checkout.gift_box')} ({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</span>
+                        <span>{formatCurrency(giftBoxFee)}</span>
+                    </div>
+                )}
+                {(!storeConfig?.lightOutOfStock && addLight && hasLegoItems) && (
+                    <div className="flex justify-between text-gray-600">
+                        <span>{t('checkout.light_box')} ({formatCurrency(storeConfig?.lightPrice || 50000)} x {legoQuantity})</span>
+                        <span>{formatCurrency(lightFee)}</span>
+                    </div>
+                )}
                 <div className="flex justify-between">
                     <span>{t('checkout.shipping_fee')}</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (
