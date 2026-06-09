@@ -12,6 +12,7 @@ import { useLanguage } from '../src/contexts/LanguageContext';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { getCachedTemplates } from '../services/configService';
 import { trackViewContent, trackAddToCart } from '../utils/analytics';
+import { getDisplayOrderCount, formatOrderNumber } from '../utils/orderUtils';
 
 const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string, LegoPart>) => {
     if (!config) return [];
@@ -30,12 +31,6 @@ const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string,
     // draggableItems (accessories/charms) are now optional and greyed out if OOS, so we DON'T block purchase
     
     return Array.from(new Set(oos)); // Unique names
-};
-
-const getDisplayOrderCount = (template: CollectionTemplate) => {
-    const fake = Number(template.fakeOrderCount ?? template.purchaseCount ?? 0);
-    const real = Number(template.realOrderCount ?? template.orders ?? 0);
-    return fake + real;
 };
 
 interface CollectionPageProps {
@@ -745,8 +740,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             })
             .sort((a, b) => {
                 // Priority 1: Popularity (combined sold items) descending
-                const popA = (a.purchaseCount || 0) + (a.orders || 0) + (Number((a as any).realOrderCount) || 0);
-                const popB = (b.purchaseCount || 0) + (b.orders || 0) + (Number((b as any).realOrderCount) || 0);
+                const popA = getDisplayOrderCount(a);
+                const popB = getDisplayOrderCount(b);
                 if (popA !== popB) return popB - popA;
                 
                 // Priority 2: Hot flag
@@ -1154,6 +1149,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         </div>
                                     </>
                                 )}
+                            </div>
+                            <div className="mt-2.5 pt-2.5 border-t border-blue-100 flex items-start gap-2 text-blue-600/80">
+                                <span className="text-[10px]">💡</span>
+                                <p className="text-[9px] font-bold leading-relaxed italic pr-2">
+                                    {t('collection.background_demo_note')}
+                                </p>
                             </div>
                             {selectedTemplate.productLine === 'gallery' && (
                                 <div className="mt-3 flex items-center justify-center gap-2 text-amber-600/80 animate-fade-in">
@@ -2005,7 +2006,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 
                                 <div className="flex items-center gap-1.5 mb-4">
                                      <div className="text-[10px] sm:text-[11px] text-gray-400 font-bold leading-tight">
-                                         {ordersCount} {t('collection.orders')}
+                                         {formatOrderNumber(ordersCount)} {t('collection.orders')}
                                      </div>
                                      <div className="h-3 w-px bg-gray-200 mx-1"></div>
                                      <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">

@@ -69,6 +69,8 @@ export interface LegoPart {
   order?: number;
   category?: string;
   isHot?: boolean;
+  fakeOrderCount?: number;
+  realOrderCount?: number;
   purchaseCount?: number;
   orders?: number;
   preventScarf?: boolean;

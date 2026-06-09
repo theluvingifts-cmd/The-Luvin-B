@@ -4,6 +4,7 @@ import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, Frame
 import { INITIAL_FRAME_CONFIG, FRAME_OPTIONS } from '../../../constants';
 import { uploadFile } from '../../../services/uploadService';
 import { calculatePrice, formatCurrency } from '../../../utils/pricing';
+import { getDisplayOrderCount } from '../../../utils/orderUtils';
 
 const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Mẫu thiết kế yêu cầu', 'Màu trơn'];
 
@@ -390,16 +391,35 @@ export const TemplateForm: React.FC<{
                     )}
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Lượt chọn ảo (Social Proof)</label>
-                        <input 
-                            type="number"
-                            name="fakeOrderCount" 
-                            value={formData.fakeOrderCount || formData.purchaseCount || 0} 
-                            onChange={handleChange} 
-                            className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
-                            placeholder="VD: 100" 
-                        />
-                        <p className="text-[10px] text-gray-400 mt-1">Số lượng này sẽ hiển thị trên web để tăng độ uy tín.</p>
+                        <div className="flex justify-between items-center mb-1.5">
+                            <label className="block text-xs font-bold text-gray-500 uppercase">Lượt đặt hàng</label>
+                            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Tổng: {getDisplayOrderCount(formData)}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <input 
+                                    type="number"
+                                    name="fakeOrderCount" 
+                                    value={formData.fakeOrderCount ?? formData.purchaseCount ?? 0} 
+                                    onChange={handleChange} 
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
+                                    placeholder="Ảo (VD: 100)" 
+                                />
+                                <span className="text-[9px] text-gray-400 font-bold uppercase mt-1 block">Đơn Ảo (Virtual)</span>
+                            </div>
+                            <div>
+                                <input 
+                                    type="number"
+                                    name="realOrderCount" 
+                                    value={formData.realOrderCount ?? formData.orders ?? 0} 
+                                    onChange={handleChange} 
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" 
+                                    placeholder="Thật (VD: 5)" 
+                                />
+                                <span className="text-[9px] text-gray-400 font-bold uppercase mt-1 block">Đơn Thật (Actual)</span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1.5 italic">Hiển thị = Ảo + Thật. Đơn thật sẽ tự động tăng khi khách thanh toán thành công.</p>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Tồn kho mẫu (Hết hàng sẽ không thể đặt)</label>

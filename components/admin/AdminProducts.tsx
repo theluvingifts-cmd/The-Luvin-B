@@ -10,6 +10,7 @@ import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { TemplateForm } from './forms/TemplateForm';
 import { formatCurrency, getEffectivePrice } from '../../utils/pricing';
+import { getDisplayOrderCount, formatOrderNumber } from '../../utils/orderUtils';
 
 interface AdminProductsProps {
     products: LegoPart[];
@@ -540,8 +541,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                 <span className="text-gray-500">{formatCurrency(part.price)}</span>
                                             )}
                                             
-                                            {/* Quick Stock Edit */}
-                                            {quickStockEditId === part.id ? (
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1 rounded uppercase tracking-tighter">
+                                                    🛍️ {formatOrderNumber(getDisplayOrderCount(part))} lượt bán
+                                                </span>
+                                                {/* Quick Stock Edit */}
+                                                {quickStockEditId === part.id ? (
                                                 <div className="flex items-center gap-1 absolute bottom-1 right-1 bg-white border border-blue-200 p-1.5 rounded-lg shadow-xl z-20 animate-in fade-in zoom-in duration-200">
                                                     <div className="relative">
                                                         <input 
@@ -615,8 +620,10 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                 </button>
                                             </div>
+                                        </div>
                                     </div>
-                                )})}
+                                );
+                            })}
                             </div>
                         </>
                     )}
@@ -797,7 +804,8 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                             </button>
                                         </div>
                                     </div>
-                                )})}
+                                );
+                            })}
                             </div>
                         </>
                     )}
@@ -1027,6 +1035,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                                         {tpl.isSimple ? 'Mẫu Đơn Giản' : 'Mẫu Thiết Kế'}
                                                     </span>
                                                     <span className="text-[10px] text-gray-500 font-bold">{tpl.isSimple ? formatCurrency(tpl.price || 0) : `${tpl.config.characters.length} Nhân vật`}</span>
+                                                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full mt-1 border border-blue-100 italic">
+                                                        🛍️ Đã bán: {formatOrderNumber(getDisplayOrderCount(tpl))}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>

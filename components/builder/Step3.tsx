@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { FrameConfig, LegoPart, LegoCharacterConfig, DraggableItem, OutfitColor } from '../../types';
 import { LEGO_PARTS, defaultShirtColors, defaultPantsColors } from '../../constants';
 import { getEffectivePrice, formatCurrency, CHARACTER_BASE_PRICE, isPartOutOfStock, getPartImageUrl } from '../../utils/pricing';
+import { getDisplayOrderCount } from '../../utils/orderUtils';
 import { SmartImage } from '../shared/SmartImage';
 import { useLanguage } from '../../src/contexts/LanguageContext';
 
@@ -118,9 +119,9 @@ const PartButton = React.memo<{
 const sortParts = (parts: LegoPart[], mode: 'default' | 'price_asc' | 'price_desc', hotIds: string[] = []) => {
     if (mode === 'default') {
         return [...parts].sort((a, b) => {
-            // Priority 1: Multi-factor Popularity (purchaseCount + orders + realOrderCount)
-            const popA = (a.purchaseCount || 0) + (a.orders || 0) + (Number((a as any).realOrderCount) || 0);
-            const popB = (b.purchaseCount || 0) + (b.orders || 0) + (Number((b as any).realOrderCount) || 0);
+            // Priority 1: Multi-factor Popularity (Virtual + Real)
+            const popA = getDisplayOrderCount(a);
+            const popB = getDisplayOrderCount(b);
             if (popA !== popB) return popB - popA;
 
             // Priority 2: isHot flag

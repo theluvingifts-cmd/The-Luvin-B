@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { LegoPart, OutfitColor, BulkPriceTier } from '../../../types';
 import { uploadFile } from '../../../services/uploadService';
 import { formatCurrency } from '../../../utils/pricing';
+import { getDisplayOrderCount } from '../../../utils/orderUtils';
 import { DateInput } from '../../ui/DateInput';
 
 export const ProductForm: React.FC<{ 
@@ -276,14 +277,40 @@ export const ProductForm: React.FC<{
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-6 col-span-2">
-                                    <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
-                                            <input type="number" name="stock" value={formData.stock === undefined ? '' : formData.stock} onChange={handleChange} placeholder="Vô hạn" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 col-span-2 space-y-2 sm:space-y-0">
+                                    <div className="col-span-1 sm:col-span-2">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-sm font-semibold text-gray-700">Lượt đặt hàng (Phổ biến)</label>
+                                            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">🔥 TỔNG HIỂN THỊ: {getDisplayOrderCount(formData)}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="relative">
+                                                <input 
+                                                    type="number" 
+                                                    name="fakeOrderCount" 
+                                                    value={formData.fakeOrderCount ?? formData.purchaseCount ?? 0} 
+                                                    onChange={handleChange} 
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" 
+                                                    placeholder="Đơn ảo"
+                                                />
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase mt-1">Lượt mua Ảo (Social Proof)</span>
+                                            </div>
+                                            <div className="relative">
+                                                <input 
+                                                    type="number" 
+                                                    name="realOrderCount" 
+                                                    value={formData.realOrderCount ?? formData.orders ?? 0} 
+                                                    onChange={handleChange} 
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" 
+                                                    placeholder="Đơn thật"
+                                                />
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase mt-1">Lượt mua THẬT (Từ hệ thống)</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Đã bán (Ảo) <span className="text-gray-400 font-normal text-xs">(Dùng để sắp xếp độ hot)</span></label>
-                                            <input type="number" name="purchaseCount" value={formData.purchaseCount || 0} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Tồn kho <span className="text-gray-400 font-normal text-xs">(Để trống = Vô hạn)</span></label>
+                                        <input type="number" name="stock" value={formData.stock === undefined ? '' : formData.stock} onChange={handleChange} placeholder="Vô hạn" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-base" />
                                     </div>
                                 </div>
 
