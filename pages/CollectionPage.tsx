@@ -996,7 +996,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <span className="text-[10px]">💡</span>
                                 </div>
                                 <p className="text-[9px] font-black leading-relaxed text-blue-900/80 italic select-none pr-1">
-                                    {t('collection.background_demo_note')}
+                                    {selectedTemplate.productLine === 'gallery' ? t('collection.gallery_demo_note') : t('collection.background_demo_note')}
                                 </p>
                             </div>
                             
@@ -1056,7 +1056,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </div>
 
                         {/* Frame Size Selection - Requested Feature */}
-                        {availableFrames.length > 1 && (
+                        {availableFrames.length > 1 && selectedTemplate.productLine !== 'gallery' && (
                             <div className="space-y-3 pb-2 animate-fade-in">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -1175,7 +1175,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <span className="text-xs">💡</span>
                             </div>
                             <p className="text-[10px] font-black leading-relaxed italic text-blue-900/70 translate-y-0.5">
-                                {t('collection.background_demo_note')}
+                                {selectedTemplate.productLine === 'gallery' ? t('collection.gallery_demo_note') : t('collection.background_demo_note')}
                             </p>
                         </div>
 

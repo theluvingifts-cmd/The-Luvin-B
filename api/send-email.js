@@ -64,6 +64,37 @@ export default async function handler(req, res) {
                 </div>
             `
         };
+    } else if (type === 'cancellation') {
+        mailOptions = {
+            from: `"The Luvin" <${EMAIL_USER}>`,
+            to: to_email,
+            subject: `Thông báo Hủy đơn hàng tự động - Mã đơn ${order_id}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #333;">
+                    <h2 style="color: #666;">Chào ${to_name},</h2>
+                    <p>Hệ thống của The Luvin nhận thấy đơn hàng <strong>${order_id}</strong> của bạn đã quá 48 giờ chưa hoàn tất thanh toán.</p>
+                    
+                    <div style="background-color: #fff5f5; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #feb2b2;">
+                        <p style="margin: 0; color: #c53030; font-weight: bold;">🚫 ĐƠN HÀNG ĐÃ BỊ HỦY TỰ ĐỘNG</p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">Lý do: Quá hạn thanh toán (48 giờ).</p>
+                    </div>
+
+                    <p>Để tránh tình trạng om đơn làm ảnh hưởng đến nguồn hàng sẵn có cho các khách hàng khác, hệ thống đã thực hiện hủy đơn hàng này của bạn.</p>
+                    
+                    <p>Nếu bạn vẫn muốn mua sản phẩm, đừng ngần ngại quay lại website <strong>theluvin.vn</strong> để tạo đơn hàng mới nhé! Các thiết kế của bạn có thể cần được tạo lại.</p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="https://theluvin.vn" style="background-color: #1a202c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Quay lại Website</a>
+                    </div>
+
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 12px; color: #777;">
+                        Nếu bạn đã chuyển khoản nhưng vẫn nhận được thông báo này, vui lòng liên hệ ngay với chúng tôi qua.<br>
+                        Hotline: 0968 432 043 - 0345 126 019<br>
+                    </p>
+                </div>
+            `
+        };
     } else {
         // Nội dung email mặc định (Xác nhận đơn hàng)
         mailOptions = {

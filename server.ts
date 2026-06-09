@@ -8,13 +8,24 @@ import fs from 'fs';
 // Import API handlers
 import sendTelegramHandler from './api/send-telegram.js';
 import sendEmailHandler from './api/send-email.js';
+import { runAutoCancelTask } from './services/autoCancelService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Background Tasks
+const startBackgroundTasks = () => {
+  // Run auto-cancel task every hour
+  setInterval(runAutoCancelTask, 60 * 60 * 1000);
+  // Also run once on startup after a short delay
+  setTimeout(runAutoCancelTask, 10 * 1000);
+};
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  startBackgroundTasks();
 
   // Middleware to parse JSON bodies
   app.use(express.json());

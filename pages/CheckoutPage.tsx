@@ -991,6 +991,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   </div>
               )}
 
+              <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg">
+                  <p className="text-[10px] font-bold text-red-600 leading-relaxed text-center">
+                      {t('checkout.payment_deadline_warning')}
+                  </p>
+              </div>
+
               <button type="submit" disabled={isSubmitting} className="w-full mt-4 bg-luvin-pink text-gray-800 font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-wait transition-all shadow-md">
                 {isSubmitting ? t('checkout.processing') : (initialOrder ? t('checkout.save_order_update') : t('checkout.order_now'))}
               </button>

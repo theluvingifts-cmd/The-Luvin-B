@@ -6,6 +6,8 @@ import { uploadFile } from '../services/uploadService';
 import { updateOrder } from '../services/orderService';
 import { dataURLToBlob } from '../utils/helpers';
 
+import { useLanguage } from '../src/contexts/LanguageContext';
+
 declare var confetti: any;
 
 interface OrderConfirmationPageProps {
@@ -16,6 +18,7 @@ interface OrderConfirmationPageProps {
 }
 
 export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create' }) => {
+    const { t } = useLanguage();
     const [isUploading, setIsUploading] = useState(false);
     const [proofUrl, setProofUrl] = useState<string | null>(order?.paymentProofUrl || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,6 +118,12 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                         <div className="mt-4 bg-white p-3 rounded-lg border inline-block w-full max-w-xs">
                            <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
                            <p className="font-bold text-gray-800 tracking-wider text-lg">{order.id}</p>
+                        </div>
+
+                        <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg max-w-sm mx-auto">
+                            <p className="text-xs font-bold text-red-600 leading-relaxed">
+                                {t('checkout.payment_deadline_warning')}
+                            </p>
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-gray-200">
