@@ -990,6 +990,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     >
                         {/* Preview Image with Scroll Hint (Mobile Only) */}
                         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-gray-100 shadow-inner relative group flex items-center justify-center lg:hidden">
+                            {/* Overlay Note: Important Note about background customization */}
+                            <div className="absolute top-3 inset-x-3 bg-white/90 backdrop-blur-md border border-blue-100 rounded-2xl p-2.5 shadow-xl shadow-blue-900/10 z-[30] flex items-start gap-2.5 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
+                                <div className="w-5 h-5 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-inner">
+                                    <span className="text-[10px]">💡</span>
+                                </div>
+                                <p className="text-[9px] font-black leading-relaxed text-blue-900/80 italic select-none pr-1">
+                                    {t('collection.background_demo_note')}
+                                </p>
+                            </div>
+                            
                             {selectedTemplate.isSimple ? (
                                 <div className="relative w-full h-full p-4 sm:p-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 content-center">
                                     {customConfig.characters.length === 0 && customConfig.draggableItems.length === 0 && (
@@ -1150,18 +1160,23 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </>
                                 )}
                             </div>
-                            <div className="mt-2.5 pt-2.5 border-t border-blue-100 flex items-start gap-2 text-blue-600/80">
-                                <span className="text-[10px]">💡</span>
-                                <p className="text-[9px] font-bold leading-relaxed italic pr-2">
-                                    {t('collection.background_demo_note')}
-                                </p>
-                            </div>
+                            
                             {selectedTemplate.productLine === 'gallery' && (
                                 <div className="mt-3 flex items-center justify-center gap-2 text-amber-600/80 animate-fade-in">
                                     <Scissors className="w-3.5 h-3.5" />
                                     <span className="text-[10px] font-bold italic">Lưu ý: Ảnh, khung, đèn, charm in rời, bạn tự cắt & dán vào khung mini để hoàn thiện.</span>
                                 </div>
                             )}
+                        </div>
+
+                        {/* PC Note: About background customization (Only visible on Desktop) */}
+                        <div className="hidden lg:flex mt-3 p-3 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start gap-2 text-blue-600/80 animate-fade-in">
+                            <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-blue-100">
+                                <span className="text-xs">💡</span>
+                            </div>
+                            <p className="text-[10px] font-black leading-relaxed italic text-blue-900/70 translate-y-0.5">
+                                {t('collection.background_demo_note')}
+                            </p>
                         </div>
 
                         {/* Characters Section */}
