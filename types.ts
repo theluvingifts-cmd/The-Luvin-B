@@ -218,6 +218,8 @@ export interface Order {
   amountToPay: number;
   amountPaid?: number;
   internalNotes?: string;
+  updatedAt?: number;
+  cancelledAt?: number;
   isUrgent?: boolean;
   adminDeadline?: string;
   packedBy?: string;

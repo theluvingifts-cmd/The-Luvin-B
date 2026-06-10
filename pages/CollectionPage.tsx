@@ -134,32 +134,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
     const [showFrameWarning, setShowFrameWarning] = useState(false);
 
-    // Auto scroll when editing character
-    useEffect(() => {
-        if (editingCharacterId !== null) {
-            // Give a tiny delay for the element to render/expand if it was hidden
-            setTimeout(() => {
-                const element = document.getElementById(`char-card-${editingCharacterId}`);
-                if (element && scrollContainerRef.current) {
-                    const container = scrollContainerRef.current;
-                    const elementTop = element.offsetTop;
-                    // Adjust offset to not stick right at the top under the header
-                    const scrollOffset = Math.max(0, elementTop - 20);
-                    
-                    container.scrollTo({
-                        top: scrollOffset,
-                        behavior: 'smooth'
-                    });
-                }
-            }, 100);
-        }
-    }, [editingCharacterId]);
-
     // Filter and Sort states
     const [galleryOptionsExpanded, setGalleryOptionsExpanded] = useState(false);
     const [priceRange, setPriceRange] = useState<'all' | 'under300' | '300to500' | 'above500'>('all');
     const [charCount, setCharCount] = useState<'all' | '1' | '2' | '3plus'>('all');
     const [sortBy, setSortBy] = useState<'default' | 'priceAsc' | 'priceDesc' | 'mostPurchased'>('default');
+    const [isCustomizing, setIsCustomizing] = useState(false);
 
     // Handle initial template selection from URL
     useEffect(() => {
@@ -329,6 +309,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     };
 
     const handleSelectTemplate = (template: CollectionTemplate) => {
+        setIsCustomizing(false);
         const categorySlug = slugify(template.category || 'all');
         navigate(`/collection/${activeProductLine}/${categorySlug}/${template.id}`, { replace: true });
         setSelectedTemplate(template);
@@ -359,6 +340,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const handleCloseModal = () => {
         setSelectedTemplate(null);
         setEditingCharacterId(null);
+        setIsCustomizing(false);
         navigate(`/collection/${activeProductLine}`, { replace: true });
     };
 
@@ -964,19 +946,26 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 {selectedTemplate.name}
                             </h2>
                             
-                            {/* Prominent Scroll-down Guide (Mobile Only) */}
+                            {/* Prominent Toggle button (Mobile Only) */}
                             <button 
-                                onClick={scrollToCustomize}
-                                className="bg-gray-900 text-white px-6 py-2 rounded-full shadow-xl border border-white/10 flex items-center gap-3 hover:bg-black transition-all active:scale-95 group relative overflow-hidden lg:hidden"
+                                onClick={() => {
+                                    const nextState = !isCustomizing;
+                                    setIsCustomizing(nextState);
+                                    if (nextState) {
+                                        // Small delay to allow React to render the hidden section before scrolling
+                                        setTimeout(() => scrollToCustomize(), 100);
+                                    }
+                                }}
+                                className={`px-6 py-2 rounded-full shadow-xl border border-white/10 flex items-center gap-3 transition-all active:scale-95 group relative overflow-hidden lg:hidden ${isCustomizing ? 'bg-primary text-white' : 'bg-gray-900 text-white'}`}
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary shadow-[0_0_10px_rgba(var(--color-primary),1)]"></span>
+                                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${isCustomizing ? 'bg-white' : 'bg-primary'}`}></span>
+                                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 shadow-lg ${isCustomizing ? 'bg-white' : 'bg-primary'}`}></span>
                                 </span>
                                 <span className="relative text-[11px] font-black uppercase tracking-[0.12em] flex items-center gap-2">
-                                    {t('collection.quick_customize_title') || 'Lướt xuống để tùy chỉnh mẫu'}
-                                    <svg className="w-4 h-4 animate-bounce text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {isCustomizing ? 'ĐANG TÙY CHỈNH' : 'BẤM ĐỂ CHỈNH MẪU'}
+                                    <svg className={`w-4 h-4 transition-transform duration-300 ${isCustomizing ? 'rotate-180' : 'animate-bounce text-primary'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </span>
@@ -1032,24 +1021,33 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"></div>
                                     
-                                    {/* Mobile Scroll Instructions */}
+                                    {/* Mobile Toggle Instructions */}
                                     <div className="absolute bottom-6 inset-x-0 px-6 flex flex-col items-center gap-3">
                                         <button 
-                                            onClick={scrollToCustomize}
-                                            className="w-full py-4.5 bg-gray-900 text-white rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/30 flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95 sm:hidden border border-white/10"
+                                            onClick={() => {
+                                                const nextState = !isCustomizing;
+                                                setIsCustomizing(nextState);
+                                                if (nextState) {
+                                                    setTimeout(() => scrollToCustomize(), 100);
+                                                }
+                                            }}
+                                            className={`w-full py-4.5 rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/30 flex items-center justify-center gap-3 transition-all active:scale-95 sm:hidden border border-white/10 ${isCustomizing ? 'bg-primary text-white' : 'bg-gray-900 text-white'}`}
                                         >
-                                            <span className="text-primary animate-pulse">✨</span> {t('collection.start_customizing')}
-                                            <svg className="w-3.5 h-3.5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                                            <span className={`animate-pulse ${isCustomizing ? 'text-white' : 'text-primary'}`}>✨</span> 
+                                            {isCustomizing ? 'ĐANG TÙY CHỈNH' : 'BẤM ĐỂ CHỈNH MẪU'}
+                                            <svg className={`w-3.5 h-3.5 transition-transform duration-300 ${isCustomizing ? 'rotate-180' : 'animate-bounce'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                                         </button>
-                                        <div className="hidden sm:flex items-center gap-3 px-6 py-2.5 bg-black/60 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl">
-                                            <div className="flex items-center justify-center">
-                                                <div className="relative">
-                                                  <span className="absolute -inset-1 rounded-full bg-primary animate-ping opacity-20"></span>
-                                                  <span className="relative block w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--color-primary),0.8)]"></span>
+                                        {!isCustomizing && (
+                                            <div className="hidden sm:flex items-center gap-3 px-6 py-2.5 bg-black/60 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl">
+                                                <div className="flex items-center justify-center">
+                                                    <div className="relative">
+                                                      <span className="absolute -inset-1 rounded-full bg-primary animate-ping opacity-20"></span>
+                                                      <span className="relative block w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--color-primary),0.8)]"></span>
+                                                    </div>
                                                 </div>
+                                                <span className="text-[9px] text-white font-black uppercase tracking-[0.25em]">{t('collection.scroll_to_customize')}</span>
                                             </div>
-                                            <span className="text-[9px] text-white font-black uppercase tracking-[0.25em]">{t('collection.scroll_to_customize')}</span>
-                                        </div>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -1179,8 +1177,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             </p>
                         </div>
 
-                        {/* Characters Section */}
-                        {(selectedTemplate.isSimple || selectedTemplate.productLine === 'gallery' || groupedCharacters.length > 0) && (
+                        {/* Customization Sections - Hidden by default on mobile until 'Chỉnh mẫu' is clicked */}
+                        <div className={`${isCustomizing ? 'space-y-6 animate-fade-in' : 'hidden lg:block lg:space-y-6'}`}>
+                            {/* Characters Section */}
+                            {(selectedTemplate.isSimple || selectedTemplate.productLine === 'gallery' || groupedCharacters.length > 0) && (
                             <div ref={customizeSectionRef} className="space-y-4 scroll-mt-6">
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -1209,19 +1209,22 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <div 
                                             key={char.id} 
                                             id={`char-card-${char.id}`}
-                                            className={`flex flex-col rounded-2xl border-2 transition-all cursor-pointer ${editingCharacterId === char.id ? 'border-primary bg-primary/5' : 'border-primary/10 bg-white shadow-sm hover:border-primary/30'}`}
+                                            className={`flex flex-col rounded-2xl border-2 transition-all cursor-pointer ${editingCharacterId === char.id ? 'border-primary bg-primary/5 shadow-md' : 'border-primary/10 bg-white shadow-sm hover:border-primary/30'}`}
                                             onClick={() => setEditingCharacterId(editingCharacterId === char.id ? null : char.id)}
                                         >
-                                            <div className="flex items-center gap-4 p-2">
+                                            <div className="flex items-center gap-4 p-3 relative overflow-hidden">
+                                                {editingCharacterId === char.id && (
+                                                    <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
+                                                )}
                                                 <CharacterPreview character={char} hideHat={true} />
-                                                <div className="flex-grow">
-                                                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{t('studio.character_index').replace('{index}', (idx + 1).toString())}</p>
-                                                    <p className="text-[9px] text-primary font-black uppercase tracking-tighter">
-                                                        {editingCharacterId === char.id ? t('common.editing') : t('collection.click_to_customize')}
+                                                <div className="flex-grow z-10">
+                                                    <p className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{t('studio.character_index').replace('{index}', (idx + 1).toString())}</p>
+                                                    <p className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${editingCharacterId === char.id ? 'text-primary' : 'text-gray-400'}`}>
+                                                        {editingCharacterId === char.id ? 'ĐANG CHỈNH SỬA' : t('collection.click_to_customize')}
                                                     </p>
                                                 </div>
                                                 
-                                                <div className="flex items-center gap-3 bg-gray-50 rounded-xl border border-gray-100 p-0.5" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center gap-3 bg-gray-50 rounded-xl border border-gray-100 p-0.5 z-10" onClick={(e) => e.stopPropagation()}>
                                                     <button 
                                                         onClick={() => removeSpecificCharacter(char.id)}
                                                         className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-all"
@@ -1234,7 +1237,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                                             {/* Part Selector */}
                                             {editingCharacterId === char.id && (
-                                                <div className="p-3 border-t border-primary/10 space-y-4 bg-white rounded-b-2xl" onClick={(e) => e.stopPropagation()}>
+                                                <div 
+                                                    id={`char-editor-controls-${char.id}`}
+                                                    className="p-4 border-t border-primary/20 space-y-6 bg-white rounded-b-2xl animate-fade-in" 
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     {(['hair', 'face', 'shirt', 'pants', 'set'] as const).map(type => (
                                                         <div key={type} className="space-y-2.5">
                                                             <div className="flex justify-between items-center">
@@ -1747,6 +1754,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 </div>
                             </div>
                         )}
+                    </div>
 
                         {/* Order Notes */}
                         {selectedTemplate.productLine !== 'gallery' && (

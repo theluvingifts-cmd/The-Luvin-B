@@ -77,6 +77,12 @@ service cloud.firestore {
       allow create: if true; // Guest order
       allow update: if isVerifiedAdmin() || (
         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'paymentProofUrl', 'paymentProofUploadedAt'])
+      ) || (
+        // Auto-cancel logic (Expired orders)
+        incoming().status == 'Đã hủy' && 
+        existing().status == 'Chờ thanh toán' &&
+        request.time.toMillis() >= (existing().createdAt + (48 * 60 * 60 * 1000)) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'cancelledAt', 'internalNotes'])
       );
       allow delete: if isVerifiedAdmin();
     }

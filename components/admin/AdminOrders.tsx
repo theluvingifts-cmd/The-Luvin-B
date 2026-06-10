@@ -244,6 +244,52 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
     const canDeleteOrder = role === 'admin';
 
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    const [hasCheckedAutoCancel, setHasCheckedAutoCancel] = useState(false);
+
+    useEffect(() => {
+        const autoCancelExpiredOrders = async () => {
+            if (hasCheckedAutoCancel || role !== 'admin' || orders.length === 0) return;
+            
+            const now = Date.now();
+            const CANCELLATION_TIMEOUT_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours
+            
+            const expiredOrders = orders.filter(o => 
+                o.status === 'Chờ thanh toán' && 
+                (o.createdAt && (now - o.createdAt >= CANCELLATION_TIMEOUT_MS))
+            );
+
+            if (expiredOrders.length > 0) {
+                console.log(`[AutoCancel] Found ${expiredOrders.length} expired orders.`);
+                setHasCheckedAutoCancel(true);
+                
+                let successCount = 0;
+                for (const order of expiredOrders) {
+                    try {
+                        const success = await updateOrder(order.id, { 
+                            status: 'Huỷ đơn',
+                            internalNotes: (order.internalNotes || '') + '\n[Hệ thống] Tự động huỷ do quá 48h chưa thanh toán.',
+                            updatedAt: now
+                        });
+                        if (success) {
+                            successCount++;
+                            // Also update local state
+                            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'Huỷ đơn' } : o));
+                        }
+                    } catch (err) {
+                        console.error(`Failed to auto-cancel order ${order.id}:`, err);
+                    }
+                }
+                
+                if (successCount > 0) {
+                    alert(`Hệ thống đã tự động xử lý hủy ${successCount} đơn hàng quá hạn thanh toán (48h).`);
+                }
+            } else {
+                setHasCheckedAutoCancel(true);
+            }
+        };
+
+        autoCancelExpiredOrders();
+    }, [orders, role, hasCheckedAutoCancel]);
 
     useEffect(() => {
         if (selectedOrder) {
