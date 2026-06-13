@@ -14,6 +14,7 @@ import { getCollaboratorByReferralCode } from '../services/shareService';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { DateInput } from '../components/ui/DateInput';
 import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
+import PolaroidUpload from '../components/PolaroidUpload';
 
 // Popular provinces as fallback if API fails
 const POPULAR_PROVINCES = [
@@ -59,6 +60,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [shippingOption, setShippingOption] = useState<'standard' | 'express' | 'bookship'>('standard');
   const [addGiftBox, setAddGiftBox] = useState(false);
   const [addLight, setAddLight] = useState(false);
+  const [polaroidOption, setPolaroidOption] = useState<0 | 2 | 4>(0);
+  const [polaroidImages, setPolaroidImages] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,6 +132,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setShippingOption(initialOrder.shipping.method);
           setAddGiftBox(initialOrder.addGiftBox);
           setAddLight(initialOrder.addLight || false);
+          setPolaroidOption(initialOrder.addPolaroid || 0);
           setPaymentMethod(initialOrder.payment.method);
       }
   }, [initialOrder]);
@@ -237,6 +241,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE * totalQuantity : 0;
   
   const lightFee = (!storeConfig?.lightOutOfStock && addLight && hasLegoItems) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
+
+  const polaroidFee = polaroidOption === 2 ? 15000 : polaroidOption === 4 ? 25000 : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -263,7 +269,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }
 
   const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount + loyaltyDiscountAmount;
-  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee + lightFee - totalDiscount);
+  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee + lightFee + polaroidFee - totalDiscount);
   const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
 
   // Warning based on warehouse location (Dong Anh, Ha Noi)
@@ -473,6 +479,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           }),
           addGiftBox: !storeConfig?.giftBoxOutOfStock && addGiftBox,
           addLight: !storeConfig?.lightOutOfStock && addLight,
+          addPolaroid: polaroidOption,
+          polaroidImages: polaroidOption > 0 ? polaroidImages : [],
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },
           totalPrice,
@@ -514,26 +522,26 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   return (
     <div className="bg-white">
-      <form onSubmit={handleSubmit} className="container mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+      <form onSubmit={handleSubmit} className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:6 text-center">
             {initialOrder ? t('checkout.update_order_title') : t('checkout.title')}
         </h1>
         {initialOrder && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg mb-6 text-center text-sm">
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 sm:p-4 rounded-lg mb-4 sm:6 text-center text-xs sm:text-sm">
                 {t('checkout.editing_order_notice', { id: initialOrder.id })}
             </div>
         )}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          <div className="lg:col-span-7 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-6">
             
-            <div className="bg-gray-50 p-6 rounded-lg border shadow-sm">
-              <h2 className="font-bold text-xl text-gray-800 mb-6 pb-2 border-b border-gray-200">{t('checkout.shipping_info')}</h2>
+            <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border shadow-sm">
+              <h2 className="font-bold text-lg sm:text-xl text-gray-800 mb-4 sm:6 pb-2 border-b border-gray-200">{t('checkout.shipping_info')}</h2>
               
-              <div className="mb-6 border-b border-gray-200 pb-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{t('checkout.recipient')}</h3>
+              <div className="mb-4 sm:6 border-b border-gray-200 pb-4 sm:6">
+                  <div className="flex justify-between items-center mb-2 sm:3">
+                    <h3 className="text-[11px] sm:text-sm font-bold text-gray-500 uppercase tracking-wider">{t('checkout.recipient')}</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:4">
                     <div className="relative">
                       <input 
                         type="tel" 
@@ -541,46 +549,46 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         value={phone} 
                         onChange={e => handlePhoneChange(e.target.value)} 
                         onBlur={handlePhoneBlur}
-                        className={`w-full p-3 border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'} rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none`} 
+                        className={`w-full p-2.5 sm:p-3 border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'} rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none text-sm sm:text-base`} 
                         required 
                       />
                       {isCheckingPhone && <span className="absolute right-3 top-3.5 text-xs text-gray-400 animate-pulse">{t('checkout.checking_phone')}</span>}
                       {isLoyalCustomer && !isCheckingPhone && (
-                          <div className="absolute right-2 top-2 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm border border-blue-200 animate-fade-in">
+                          <div className="absolute right-2 top-2 bg-blue-100 text-blue-700 text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm border border-blue-200 animate-fade-in">
                               <span>💎</span> {t('checkout.loyal_customer')}
                           </div>
                       )}
-                      {phoneError && <p className="text-red-500 text-xs mt-1 ml-1">{phoneError}</p>}
+                      {phoneError && <p className="text-red-500 text-[10px] sm:text-xs mt-1 ml-1">{phoneError}</p>}
                     </div>
-                    <input type="text" placeholder={t('checkout.full_name')} value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
-                    <input type="email" placeholder={t('checkout.email_notice')} value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" required />
+                    <input type="text" placeholder={t('checkout.full_name')} value={name} onChange={e => setName(e.target.value)} className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none text-sm sm:text-base" required />
+                    <input type="email" placeholder={t('checkout.email_notice')} value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 md:col-span-2 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none text-sm sm:text-base" required />
                     <div className="md:col-span-2">
-                      <label className="text-xs font-semibold text-gray-500 block mb-1">{t('checkout.demo_contact_label')}</label>
+                      <label className="text-[10px] sm:text-xs font-semibold text-gray-500 block mb-1">{t('checkout.demo_contact_label')}</label>
                       <input 
                         type="text" 
                         placeholder={t('checkout.demo_contact_placeholder')} 
                         value={demoContact} 
                         onChange={e => setDemoContact(e.target.value)} 
-                        className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none" 
+                        className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none text-sm sm:text-base" 
                         required 
                       />
-                      <p className="text-[10px] text-gray-400 mt-1 italic">{t('checkout.demo_contact_note')}</p>
+                      <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1 italic">{t('checkout.demo_contact_note')}</p>
                     </div>
                   </div>
               </div>
 
-              <div className="mb-6 border-b border-gray-200 pb-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{t('checkout.address_shipping')}</h3>
+              <div className="mb-4 sm:6 border-b border-gray-200 pb-4 sm:6">
+                  <div className="flex justify-between items-center mb-2 sm:3">
+                    <h3 className="text-[11px] sm:text-sm font-bold text-gray-500 uppercase tracking-wider">{t('checkout.address_shipping')}</h3>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:4">
                      {!isApiError ? (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <select 
                                 value={selectedProvince} 
                                 onChange={e => setSelectedProvince(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none"
+                                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base"
                                 required={!isApiError}
                             >
                                 <option value="">{isLoadingProvinces ? t('common.loading') : t('checkout.province')}</option>
@@ -589,7 +597,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             <select 
                                 value={selectedDistrict} 
                                 onChange={e => setSelectedDistrict(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base" 
                                 disabled={!selectedProvince}
                                 required={!isApiError}
                             >
@@ -599,7 +607,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             <select 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm" 
+                                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base" 
                                 disabled={!selectedDistrict}
                                 required={!isApiError}
                             >
@@ -614,7 +622,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder={t('checkout.province')} 
                                 value={selectedProvince} 
                                 onChange={e => setSelectedProvince(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base" 
                                 required 
                             />
                             <input 
@@ -622,7 +630,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder={t('checkout.district')} 
                                 value={selectedDistrict} 
                                 onChange={e => setSelectedDistrict(e.target.value)} 
-                                className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" 
+                                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base" 
                                 required 
                             />
                             <input 
@@ -630,64 +638,64 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 placeholder={t('checkout.ward')} 
                                 value={selectedWard} 
                                 onChange={e => setSelectedWard(e.target.value)} 
-                                className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm" 
+                                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base" 
                                 required 
                             />
                         </div>
                      )}
 
-                     <input type="text" placeholder={t('checkout.street')} value={street} onChange={e => setStreet(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none" required />
+                     <input type="text" placeholder={t('checkout.street')} value={street} onChange={e => setStreet(e.target.value)} className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink outline-none text-sm sm:text-base" required />
 
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:6 text-left">
                         <div>
-                          <DateInput 
+                           <DateInput 
                             label={t('checkout.delivery_date')}
                             value={deliveryDate} 
                             onChange={setDeliveryDate} 
                             required 
                             min={today} 
-                          />
-                          {isEarlyBird ? (
-                              <p className="text-xs text-green-600 font-bold mt-1 animate-pulse">
-                                  {t('checkout.early_bird_discount_applied', { days: daysDifference })}
-                              </p>
-                          ) : (
-                              <p className="text-xs text-gray-500 mt-1">
-                                  {t('checkout.early_bird_tip')}
-                              </p>
-                          )}
+                           />
+                           {isEarlyBird ? (
+                               <p className="text-[10px] sm:text-xs text-green-600 font-bold mt-1 animate-pulse">
+                                   {t('checkout.early_bird_discount_applied', { days: daysDifference })}
+                               </p>
+                           ) : (
+                               <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                                   {t('checkout.early_bird_tip')}
+                               </p>
+                           )}
                         </div>
                         <div>
-                            <h3 className="font-semibold text-sm mb-2 text-gray-700">{t('checkout.shipping_method')}</h3>
-                            <div className="space-y-2">
+                            <h3 className="font-semibold text-xs sm:text-sm mb-2 text-gray-700">{t('checkout.shipping_method')}</h3>
+                            <div className="space-y-1.5 sm:2">
                                 <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="standard" checked={shippingOption === 'standard'} onChange={() => setShippingOption('standard')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
                                     <div className="ml-2 flex-grow">
-                                        <span className="text-sm block text-gray-700 font-medium">{t('checkout.shipping_standard')}</span>
+                                        <span className="text-[11px] sm:text-sm block text-gray-700 font-medium">{t('checkout.shipping_standard')}</span>
                                     </div>
                                     {isFreeShippingEligible ? (
                                         <div className="text-right">
-                                            <span className="text-xs text-gray-400 line-through mr-1">{formatCurrency(SHIPPING_FEES.standard)}</span>
-                                            <span className="text-sm font-bold text-green-600">{t('checkout.free')}</span>
+                                            <span className="text-[9px] sm:text-xs text-gray-400 line-through mr-1">{formatCurrency(SHIPPING_FEES.standard)}</span>
+                                            <span className="text-xs sm:text-sm font-bold text-green-600">{t('checkout.free')}</span>
                                         </div>
                                     ) : (
-                                        <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.standard)}</span>
+                                        <span className="text-xs sm:text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.standard)}</span>
                                     )}
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="express" checked={shippingOption === 'express'} onChange={() => setShippingOption('express')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
                                     <div className="ml-2 flex-grow">
-                                        <span className="text-sm block text-gray-700 font-medium">{t('checkout.shipping_express')}</span>
+                                        <span className="text-[11px] sm:text-sm block text-gray-700 font-medium">{t('checkout.shipping_express')}</span>
                                     </div>
-                                     <span className="text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.express)}</span>
+                                     <span className="text-xs sm:text-sm font-bold text-gray-800">{formatCurrency(SHIPPING_FEES.express)}</span>
                                 </label>
                                  <label className="flex items-center p-2 border rounded-lg bg-white cursor-pointer hover:bg-pink-50 has-[:checked]:border-luvin-pink has-[:checked]:bg-pink-50">
                                     <input type="radio" name="shipping" value="bookship" checked={shippingOption === 'bookship'} onChange={() => setShippingOption('bookship')} className="h-4 w-4 text-luvin-pink focus:ring-luvin-pink"/>
                                     <div className="ml-2 flex-grow">
-                                        <span className="text-sm block text-gray-700 font-medium">{t('checkout.shipping_bookship')}</span>
-                                        <p className="text-[10px] text-gray-400 italic leading-tight">{t('checkout.warehouse_location')}</p>
+                                        <span className="text-[11px] sm:text-sm block text-gray-700 font-medium">{t('checkout.shipping_bookship')}</span>
+                                        <p className="text-[8px] sm:text-[10px] text-gray-400 italic leading-tight">{t('checkout.warehouse_location')}</p>
                                     </div>
-                                     <span className="text-sm font-bold text-gray-800">{t('checkout.zero_vnd')}</span>
+                                     <span className="text-xs sm:text-sm font-bold text-gray-800">{t('checkout.zero_vnd')}</span>
                                 </label>
                             </div>
                         </div>
@@ -802,6 +810,58 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     )}
                 </div>
             )}
+
+            {/* Polaroid Option */}
+            <div className="bg-gray-50/50 p-2 sm:p-3 rounded-2xl border border-gray-100 mt-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white rounded-xl flex-shrink-0 text-sm sm:text-base shadow-sm border border-pink-50">
+                        📸
+                    </div>
+                    <div className="flex-grow min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                            <div>
+                                <span className="font-bold text-gray-800 block text-[12px] sm:text-[13px] leading-tight">{t('checkout.add_polaroid')}</span>
+                                <p className="text-[9px] text-gray-400 leading-tight mt-0.5">{t('checkout.polaroid_desc')}</p>
+                            </div>
+                            {polaroidFee > 0 && (
+                                <span className="font-black text-luvin-pink text-xs whitespace-nowrap ml-2">+{formatCurrency(polaroidFee)}</span>
+                            )}
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-1 sm:gap-2 mt-2">
+                            <button
+                                type="button"
+                                onClick={() => { setPolaroidOption(0); setPolaroidImages([]); }}
+                                className={`py-1.5 sm:py-2 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all border ${polaroidOption === 0 ? 'bg-luvin-pink text-white border-luvin-pink shadow-sm' : 'bg-white text-gray-400 border-gray-100 hover:border-luvin-pink'}`}
+                            >
+                                {t('checkout.polaroid_option_none')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPolaroidOption(2)}
+                                className={`py-1.5 sm:py-2 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all border ${polaroidOption === 2 ? 'bg-luvin-pink text-white border-luvin-pink shadow-sm' : 'bg-white text-gray-400 border-gray-100 hover:border-luvin-pink'}`}
+                            >
+                                {t('checkout.polaroid_option_2')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPolaroidOption(4)}
+                                className={`py-1.5 sm:py-2 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all border ${polaroidOption === 4 ? 'bg-luvin-pink text-white border-luvin-pink shadow-sm' : 'bg-white text-gray-400 border-gray-100 hover:border-luvin-pink'}`}
+                            >
+                                {t('checkout.polaroid_option_4')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {polaroidOption > 0 && (
+                    <PolaroidUpload 
+                        count={polaroidOption} 
+                        images={polaroidImages} 
+                        onImagesChange={setPolaroidImages} 
+                    />
+                )}
+            </div>
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
@@ -826,90 +886,101 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                 )}
               </div>
 
-              <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 className="font-bold text-lg">{t('checkout.your_order')}</h2>
-                <div className="bg-luvin-pink text-white text-xs font-black px-2 py-1 rounded-full shadow-sm animate-pulse">
+              <div className="flex justify-between items-center mb-5 border-b border-gray-100 pb-3">
+                <h2 className="font-extrabold text-xl tracking-tight text-gray-800 font-heading">{t('checkout.your_order')}</h2>
+                <div className="bg-pink-50 text-luvin-pink text-[10px] font-black px-2.5 py-1 rounded-full border border-pink-100 uppercase tracking-wider">
                     {totalQuantity} {totalQuantity > 1 ? t('cart.items') || 'sản phẩm' : t('cart.item') || 'sản phẩm'}
                 </div>
               </div>
 
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                 {cartItems.map((item, index) => {
                   const { totalPrice } = calculatePrice(item, allParts, frames, templates);
                   const quantity = item.quantity || 1;
                   const frameName = (frames.find(f => f.id === item.frameId) || frames[0] || FRAME_OPTIONS[0]).name;
                   
                   return (
-                    <div key={index} className="border border-gray-200 rounded-2xl p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <div key={index} className="border border-gray-100 rounded-2xl p-3 bg-white shadow-sm hover:shadow-md transition-all group">
                       <div className="flex justify-between items-center">
-                        <div className="flex gap-3 items-center min-w-0">
-                            <div className="w-14 h-14 sm:w-16 sm:h-16 object-contain bg-gray-50 border border-gray-100 rounded-xl cursor-pointer group relative flex-shrink-0 overflow-hidden" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
+                        <div className="flex gap-4 items-center min-w-0">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-gray-50 border border-gray-50 rounded-2xl overflow-hidden relative group-hover:scale-105 transition-transform duration-300 shadow-sm" onClick={() => item.previewImageUrl && onZoomImage(item.previewImageUrl)}>
                                 {item.previewImageUrl ? (
                                     <>
                                         <img src={item.previewImageUrl} className="w-full h-full object-contain" alt="preview" />
                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <ZoomIcon className="w-4 h-4 text-white" />
+                                            <ZoomIcon className="w-5 h-5 text-white" />
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[8px]">{t('checkout.no_image')}</div>
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-[8px] text-gray-400">{t('checkout.no_image')}</div>
                                 )}
                             </div>
-                            <div className="flex flex-col min-w-0">
-                                <span className="font-black text-gray-900 text-xs sm:text-sm truncate uppercase tracking-tight">#{index + 1} {t('checkout.custom_frame')}</span>
-                                <span className="text-[10px] sm:text-xs text-gray-500 font-bold">{frameName}</span>
+                            <div className="flex flex-col min-w-0 gap-0.5">
+                                <span className="font-bold text-gray-800 text-[13px] sm:text-sm truncate">#{index + 1} {t('checkout.custom_frame')}</span>
+                                <span className="text-[11px] text-gray-400 font-medium tracking-tight truncate">{frameName}</span>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] font-black text-luvin-pink bg-pink-50 px-1.5 py-0.5 rounded">x{quantity}</span>
-                                    <span className="text-[10px] text-gray-400 font-medium">{t('studio.character_count', { count: item.characters.length })}</span>
+                                    <span className="text-[10px] font-black text-luvin-pink bg-pink-50 px-2 py-0.5 rounded-lg border border-pink-100">x{quantity}</span>
+                                    {item.characters && (
+                                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-tighter opacity-80">{item.characters.length} NV</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                            <span className="font-black text-gray-900 text-sm sm:text-base">{formatCurrency(totalPrice * quantity)}</span>
+                        <div className="text-right flex-shrink-0 pl-2">
+                            <span className="font-black text-gray-900 text-sm sm:text-[17px] tracking-tight font-heading">{formatCurrency(totalPrice * quantity)}</span>
                         </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
-              <div className="border-t mt-4 pt-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span>{t('cart.subtotal')}</span><span>{formatCurrency(subtotal)}</span></div>
+              <div className="border-t border-gray-100 mt-6 pt-5 space-y-3.5 text-sm">
+                <div className="flex justify-between text-gray-500 font-medium tracking-tight">
+                    <span>{t('cart.subtotal')}</span>
+                    <span className="text-gray-700 font-heading font-bold">{formatCurrency(subtotal)}</span>
+                </div>
                 {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && (
-                    <div className="flex justify-between text-gray-600">
-                        <span>{t('checkout.gift_box')} ({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</span>
-                        <span>{formatCurrency(giftBoxFee)}</span>
+                    <div className="flex justify-between text-gray-500 font-medium tracking-tight">
+                        <span>{t('checkout.gift_box')} <small className="opacity-60 text-[10px]">({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</small></span>
+                        <span className="text-gray-700 font-heading font-bold">{formatCurrency(giftBoxFee)}</span>
                     </div>
                 )}
                 {(!storeConfig?.lightOutOfStock && addLight && hasLegoItems) && (
-                    <div className="flex justify-between text-gray-600">
-                        <span>{t('checkout.light_box')} ({formatCurrency(storeConfig?.lightPrice || 50000)} x {legoQuantity})</span>
-                        <span>{formatCurrency(lightFee)}</span>
+                    <div className="flex justify-between text-gray-500 font-medium tracking-tight">
+                        <span>{t('checkout.light_box')} <small className="opacity-60 text-[10px]">({formatCurrency(storeConfig?.lightPrice || 50000)} x {legoQuantity})</small></span>
+                        <span className="text-gray-700 font-heading font-bold">{formatCurrency(lightFee)}</span>
                     </div>
                 )}
-                <div className="flex justify-between">
+                {polaroidOption > 0 && (
+                    <div className="flex justify-between text-gray-500 font-medium tracking-tight">
+                        <span>{t('checkout.add_polaroid')} <small className="opacity-60 text-[10px]">(x{polaroidOption})</small></span>
+                        <span className="text-gray-700 font-heading font-bold">{formatCurrency(polaroidFee)}</span>
+                    </div>
+                )}
+                <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                     <span>{t('checkout.shipping_fee')}</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (
-                        <span className="text-green-600 font-bold">{t('checkout.free')}</span>
+                        <span className="text-green-600 font-extrabold uppercase text-[10px] tracking-widest font-heading">{t('checkout.free')}</span>
                     ) : (
-                        <span>{shippingOption === 'bookship' ? t('checkout.zero_vnd') : formatCurrency(shippingFee)}</span>
+                        <span className="text-gray-700 font-heading font-bold">{shippingOption === 'bookship' ? t('checkout.zero_vnd') : formatCurrency(shippingFee)}</span>
                     )}
                 </div>
                 {isEarlyBird && (
-                    <div className="flex justify-between text-green-700 font-bold">
+                    <div className="flex justify-between text-green-600 font-bold tracking-tight">
                         <span>{t('checkout.early_bird_discount')}</span>
-                        <span>-{formatCurrency(earlyBirdDiscountAmount)}</span>
+                        <span className="font-heading">-{formatCurrency(earlyBirdDiscountAmount)}</span>
                     </div>
                 )}
                 {isLoyalCustomer && (
-                    <div className="flex justify-between text-blue-600 font-bold">
+                    <div className="flex justify-between text-blue-600 font-bold tracking-tight">
                         <span className="flex items-center gap-1">💎 {t('checkout.loyalty_discount')}</span>
-                        <span>-{formatCurrency(loyaltyDiscountAmount)}</span>
+                        <span className="font-heading">-{formatCurrency(loyaltyDiscountAmount)}</span>
                     </div>
                 )}
                 {appliedVoucher && (
-                    <div className="flex justify-between text-purple-600 font-bold">
+                    <div className="flex justify-between text-purple-600 font-bold tracking-tight">
                         <span>{t('checkout.voucher')} ({appliedVoucher.code})</span>
-                        <span>-{formatCurrency(voucherDiscountAmount)}</span>
+                        <span className="font-heading">-{formatCurrency(voucherDiscountAmount)}</span>
                     </div>
                 )}
               </div>
@@ -962,13 +1033,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   )}
               </div>
 
-              <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
-                <span>{t('cart.total')}</span>
-                <span>{formatCurrency(totalPrice)}</span>
+              <div className="border-t border-gray-100 mt-5 pt-4 flex justify-between items-center">
+                <span className="font-bold text-gray-500 uppercase text-[11px] tracking-widest">{t('cart.total')}</span>
+                <span className="font-black text-xl text-gray-900 tracking-tighter font-heading">{formatCurrency(totalPrice)}</span>
               </div>
-              <div className="border-t mt-2 pt-2 flex justify-between font-bold text-lg text-luvin-pink">
-                  <span>{t('checkout.amount_to_pay')}</span>
-                  <span>{formatCurrency(amountToPay)}</span>
+              <div className="border-t border-luvin-pink/10 mt-3 pt-3 flex justify-between items-center bg-pink-50/30 -mx-4 px-4 py-2">
+                  <span className="font-extrabold text-luvin-pink uppercase text-[11px] tracking-widest">{t('checkout.amount_to_pay')}</span>
+                  <span className="font-black text-2xl text-luvin-pink tracking-tighter drop-shadow-sm font-heading">{formatCurrency(amountToPay)}</span>
               </div>
               <div className="border-t mt-4 pt-4">
                 <h3 className="font-semibold mb-2">{t('checkout.payment_method')}</h3>

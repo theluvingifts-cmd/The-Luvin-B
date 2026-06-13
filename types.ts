@@ -212,6 +212,8 @@ export interface Order {
   extraCharms?: LegoPart[];
   addGiftBox: boolean;
   addLight: boolean;
+  addPolaroid?: 0 | 2 | 4;
+  polaroidImages?: string[];
   shipping: { method: 'standard' | 'express' | 'bookship'; fee: number; };
   payment: { method: 'deposit' | 'full'; };
   totalPrice: number;

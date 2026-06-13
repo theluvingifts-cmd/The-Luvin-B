@@ -556,6 +556,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                         }).join('')}
                         ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
                         ${selectedOrder.addLight && legoQuantity > 0 ? `<tr><td style="text-align: center">${selectedOrder.items.length + (selectedOrder.addGiftBox ? 2 : 1)}</td><td>Đèn Spotlight</td><td>Đèn Led chiếu sáng</td><td style="text-align: center">${legoQuantity}</td></tr>` : ''}
+                        ${selectedOrder.addPolaroid ? `<tr><td style="text-align: center">${selectedOrder.items.length + (selectedOrder.addGiftBox ? 2 : 1) + (selectedOrder.addLight ? 1 : 0)}</td><td>In ảnh Polaroid</td><td>Định dạng dọc - ${selectedOrder.addPolaroid} ảnh</td><td style="text-align: center">1</td></tr>` : ''}
                     </tbody>
                 </table>
                 <div class="footer"><p>Cảm ơn quý khách đã tin tưởng The Luvin!</p><p>Vui lòng quay video khi mở hàng để được hỗ trợ đổi trả tốt nhất.</p></div>
@@ -660,9 +661,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         
         const giftBoxFee = newOrder.addGiftBox ? 30000 * totalQuantity : 0;
         const lightFee = (newOrder.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 0) * legoQuantity : 0;
+        const polaroidFee = newOrder.addPolaroid === 2 ? 15000 : newOrder.addPolaroid === 4 ? 25000 : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
-        const finalPrice = Math.max(0, subtotal + giftBoxFee + lightFee + shippingFee - discount);
+        const finalPrice = Math.max(0, subtotal + giftBoxFee + lightFee + polaroidFee + shippingFee - discount);
         return { ...newOrder, totalPrice: finalPrice };
     };
 
@@ -837,6 +839,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             
         const giftBoxFee = order.addGiftBox ? 30000 * totalQuantity : 0;
         const lightFee = (order.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
+        const polaroidFee = order.addPolaroid === 2 ? 15000 : order.addPolaroid === 4 ? 25000 : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 
@@ -850,6 +853,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                     <div className="flex gap-1">
                         {order.addGiftBox && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ HỘP QUÀ ({totalQuantity})</span>}
                         {order.addLight && <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ ĐÈN ({totalQuantity})</span>}
+                        {order.addPolaroid && order.addPolaroid > 0 && <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold">CÓ POLAROID ({order.addPolaroid})</span>}
                     </div>
                 </h3>
                 <div className="space-y-2 text-sm text-gray-700">
@@ -862,6 +866,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                         <div className="flex items-center gap-2"><span className="text-gray-500">Đèn Spotlight ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addLight} onChange={(e) => handleEditFormChange('addLight', e.target.checked)} className="w-4 h-4 accent-yellow-600"/>)}</div>
                         <span className={`font-medium ${order.addLight ? 'text-gray-900' : 'text-gray-400'}`}>{formatCurrency(lightFee, 'admin')}</span>
                     </div>
+                    {order.addPolaroid && order.addPolaroid > 0 && (
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-500">In ảnh Polaroid ({order.addPolaroid}):</span>
+                            <span className="font-medium">{formatCurrency(polaroidFee, 'admin')}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between items-center">
                         <span className="text-gray-500">Phí vận chuyển:</span>
                         {isEditingOrder ? (<input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm" value={shippingFee} onChange={(e) => handleEditFormChange('shipping', Number(e.target.value), 'fee')}/>) : (<span className="font-medium">{formatCurrency(shippingFee, 'admin')}</span>)}
@@ -878,6 +888,65 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                     </div>
                     <div className="flex justify-between items-center bg-red-50 p-2 rounded -mx-2"><span className="text-red-700 font-medium">Còn lại (COD):</span><span className="font-bold text-red-700 text-lg">{formatCurrency(remaining, 'admin')}</span></div>
                 </div>
+
+                {(order.polaroidImages?.length > 0 || isEditingOrder) && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-black text-gray-400 uppercase">Ảnh Polaroid ({order.polaroidImages?.length || 0})</span>
+                            {isEditingOrder && (
+                                <button 
+                                    className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold hover:bg-blue-100 transition-colors"
+                                    onClick={() => {
+                                        const input = document.createElement('input');
+                                        input.type = 'file';
+                                        input.multiple = true;
+                                        input.accept = 'image/*';
+                                        input.onchange = async (e: any) => {
+                                            const files = Array.from(e.target.files) as File[];
+                                            const uploadedUrls = [];
+                                            for (const file of files) {
+                                                const url = await uploadFile(file, 'polaroids');
+                                                if (url) uploadedUrls.push(url);
+                                            }
+                                            const currentImages = order.polaroidImages || [];
+                                            handleEditFormChange('polaroidImages', [...currentImages, ...uploadedUrls]);
+                                        };
+                                        input.click();
+                                    }}
+                                >
+                                    + TẢI ẢNH
+                                </button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                            {order.polaroidImages?.map((img, i) => (
+                                <div key={i} className="aspect-[3/4] rounded border overflow-hidden relative group cursor-pointer" onClick={() => setZoomedImageUrl(img)}>
+                                    <img src={img} alt="Polaroid" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                        <button 
+                                            className="p-1 px-2 bg-white rounded text-[10px] font-bold"
+                                            onClick={(e) => { e.stopPropagation(); downloadImage(img, `Order_${order.id}_Polaroid_${i+1}.jpg`); }}
+                                        >
+                                            LƯU
+                                        </button>
+                                        {isEditingOrder && (
+                                            <button 
+                                                className="p-1 px-2 bg-red-500 text-white rounded text-[10px] font-bold"
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    const updated = order.polaroidImages.filter((_, idx) => idx !== i);
+                                                    handleEditFormChange('polaroidImages', updated);
+                                                }}
+                                            >
+                                                XOÁ
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };
@@ -1057,7 +1126,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
                                         <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Demo:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.demoContact || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'demoContact')} placeholder="SĐT/Zalo gửi demo..." /></div>
-                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <input type="text" className="border rounded p-1 w-full" value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><div className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> <div className="flex gap-1">{selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Hộp quà</span>}{selectedOrder.addLight && <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">💡 Đèn</span>}</div></div><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <input type="text" className="border rounded p-1 w-full" value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><div className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> <div className="flex gap-1">{selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Hộp quà</span>}{selectedOrder.addLight && <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">💡 Đèn</span>}{selectedOrder.addPolaroid && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">📸 Polaroid ({selectedOrder.addPolaroid})</span>}</div></div><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
                                         <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
                                         {selectedOrder.referredBy && (
                                             <div className="mt-2 space-y-1">
