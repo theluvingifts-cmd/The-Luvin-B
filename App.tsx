@@ -17,6 +17,7 @@ import { getAllFeedbacks } from './services/feedbackService';
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
 import { sendOrderTelegram } from './services/telegramService'; 
+import { slugify } from './utils/helpers';
 import { db } from './config/firebase';
 import { doc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 
@@ -405,9 +406,20 @@ const App: React.FC = () => {
   };
 
   const handleEditCartItem = (index: number) => {
-      setConfig(cartItems[index]);
+      const item = cartItems[index];
+      setConfig(item);
       setEditingCartIndex(index);
       setIsCartOpen(false);
+
+      if (item.templateId) {
+          const template = templates.find(t => t.id === item.templateId);
+          if (template) {
+              const productLine = template.productLine || 'lego';
+              const category = slugify(template.category || 'all');
+              navigate(`/collection/${productLine}/${category}/${item.templateId}`);
+              return;
+          }
+      }
       navigate('/builder/4');
   };
 
@@ -518,11 +530,11 @@ const App: React.FC = () => {
                     />
                 } />
                 <Route path="/collection" element={<Navigate to="/collection/lego" replace />} />
-                <Route path="/collection/:productLine" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
-                <Route path="/collection/:productLine/:category" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
-                <Route path="/collection/:productLine/:category/:templateId" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} />} />
-                <Route path="/lego-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="lego" />} />
-                <Route path="/gallery-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="gallery" />} />
+                <Route path="/collection/:productLine" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} editingCartIndex={editingCartIndex} initialConfig={config} onUpdateCart={handleUpdateCartItem} onCancelEdit={handleCancelEdit} />} />
+                <Route path="/collection/:productLine/:category" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} editingCartIndex={editingCartIndex} initialConfig={config} onUpdateCart={handleUpdateCartItem} onCancelEdit={handleCancelEdit} />} />
+                <Route path="/collection/:productLine/:category/:templateId" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} editingCartIndex={editingCartIndex} initialConfig={config} onUpdateCart={handleUpdateCartItem} onCancelEdit={handleCancelEdit} />} />
+                <Route path="/lego-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="lego" editingCartIndex={editingCartIndex} initialConfig={config} onUpdateCart={handleUpdateCartItem} onCancelEdit={handleCancelEdit} />} />
+                <Route path="/gallery-collection" element={<CollectionPage navigateTo={navigateTo} onCustomize={handleCustomizeTemplate} onAddToCart={handleAddToCart} templates={templates} onZoomImage={setZoomedImageUrl} allParts={allParts} frames={frames} isLoadingParts={isLoadingParts} productLine="gallery" editingCartIndex={editingCartIndex} initialConfig={config} onUpdateCart={handleUpdateCartItem} onCancelEdit={handleCancelEdit} />} />
                 <Route path="/cart" element={<CartPage cartItems={cartItems} onRemoveItem={handleRemoveCartItem} onEditItem={handleEditCartItem} allParts={allParts} navigateTo={navigateTo} onUpdateQuantity={handleUpdateCartQuantity} onZoomImage={setZoomedImageUrl} isEditingOrder={!!editingOrder} templates={templates} frames={frames} />} />
                 <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} allParts={allParts} onPlaceOrder={handlePlaceOrder} onZoomImage={setZoomedImageUrl} initialOrder={editingOrder} templates={templates} frames={frames} />} />
                 <Route path="/order-confirmation" element={<OrderConfirmationPage order={currentOrder} navigateTo={navigateTo} onZoomImage={setZoomedImageUrl} actionType={lastOrderAction} />} />

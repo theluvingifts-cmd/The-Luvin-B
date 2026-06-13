@@ -108,7 +108,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         </div>
                                     </div>
                                     <div className="flex-shrink-0 text-center sm:text-right">
-                                        <p className="font-bold text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
+                                        <p className="font-bold tracking-tight text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
                                         <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / {t('common.item')})</p>
                                         <div className="flex justify-center sm:justify-end gap-3 mt-2">
                                             <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">{t('cart.edit')}</button>

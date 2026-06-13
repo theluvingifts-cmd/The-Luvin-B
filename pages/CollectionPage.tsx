@@ -42,7 +42,11 @@ interface CollectionPageProps {
     allParts: Record<string, LegoPart>,
     frames: FrameOption[],
     isLoadingParts?: boolean,
-    productLine?: 'lego' | 'gallery'
+    productLine?: 'lego' | 'gallery',
+    editingCartIndex?: number | null,
+    initialConfig?: FrameConfig,
+    onUpdateCart?: (config: FrameConfig) => void,
+    onCancelEdit?: () => void
 }
 
 const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPart>): FrameConfig => {
@@ -88,7 +92,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
     return { ...config, characters: newCharacters, draggableItems: newDraggableItems };
 };
 
-export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts, productLine: propProductLine }) => {
+export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts, productLine: propProductLine, editingCartIndex, initialConfig, onUpdateCart, onCancelEdit }) => {
     const { t } = useLanguage();
     const { productLine: urlProductLine, category: urlCategory, templateId: urlTemplateId } = useParams();
     const navigate = useNavigate();
@@ -147,12 +151,19 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             const template = displayTemplates.find(t => t.id === urlTemplateId);
             if (template) {
                 setSelectedTemplate(template);
-                const fixedConfig = fixOutOfStockParts(template.config, allParts);
-                setCustomConfig({ 
-                    ...fixedConfig, 
-                    templateId: template.id,
-                    productLine: template.productLine || (urlProductLine as any) || activeProductLine 
-                });
+                
+                // If we're editing a cart item, use initialConfig
+                if (editingCartIndex !== null && editingCartIndex !== undefined && initialConfig && initialConfig.templateId === urlTemplateId) {
+                    setCustomConfig(initialConfig);
+                    setOrderNote(initialConfig.customFormData?.order_note || '');
+                } else {
+                    const fixedConfig = fixOutOfStockParts(template.config, allParts);
+                    setCustomConfig({ 
+                        ...fixedConfig, 
+                        templateId: template.id,
+                        productLine: template.productLine || (urlProductLine as any) || activeProductLine 
+                    });
+                }
                 
                 // Also set active category if it matches
                 if (template.category) {
@@ -160,7 +171,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 }
             }
         }
-    }, [urlTemplateId, displayTemplates, allParts]);
+    }, [urlTemplateId, displayTemplates, allParts, editingCartIndex, initialConfig]);
 
     const categories = useMemo(() => {
         const dynamicCats = new Set<string>();
@@ -341,6 +352,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         setSelectedTemplate(null);
         setEditingCharacterId(null);
         setIsCustomizing(false);
+        if (editingCartIndex !== null && editingCartIndex !== undefined && onCancelEdit) {
+            onCancelEdit();
+        }
         navigate(`/collection/${activeProductLine}`, { replace: true });
     };
 
@@ -481,7 +495,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 template_name: selectedTemplate?.name || ''
             }
         };
-        onAddToCart(finalConfig, false);
+
+        if (editingCartIndex !== null && editingCartIndex !== undefined && onUpdateCart) {
+            onUpdateCart(finalConfig);
+        } else {
+            onAddToCart(finalConfig, false);
+        }
         
         // Track AddToCart for Buy Now
         if (selectedTemplate) {
@@ -510,7 +529,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 template_name: selectedTemplate?.name || ''
             }
         };
-        onAddToCart(finalConfig, true);
+
+        if (editingCartIndex !== null && editingCartIndex !== undefined && onUpdateCart) {
+            onUpdateCart(finalConfig);
+        } else {
+            onAddToCart(finalConfig, true);
+        }
 
         // Track AddToCart
         if (selectedTemplate) {
@@ -1788,7 +1812,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <div>
                                 <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">Tổng cộng</span>
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-none">{formatCurrency(currentPrice)}</span>
+                                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 leading-none">{formatCurrency(currentPrice)}</span>
                                     {originalPrice > currentPrice && (
                                         <span className="text-xs text-gray-400 line-through font-bold">
                                             {formatCurrency(originalPrice)}
@@ -1803,14 +1827,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 disabled={(selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0) || getOutOfStockParts(customConfig, allParts).length > 0}
                                 className="flex-1 py-3 bg-gray-100 text-gray-900 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                🛒 {t('common.add_to_cart')}
+                                🛒 {editingCartIndex !== null && editingCartIndex !== undefined ? t('cart.update') : t('common.add_to_cart')}
                             </button>
                             <button 
                                 onClick={handleBuyNow}
                                 disabled={(selectedTemplate.stock !== undefined && selectedTemplate.stock <= 0) || getOutOfStockParts(customConfig, allParts).length > 0}
                                 className="flex-[1.5] py-3 bg-gray-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-primary transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                ⚡ {t('common.buy_now')}
+                                ⚡ {editingCartIndex !== null && editingCartIndex !== undefined ? t('cart.update_and_checkout') : t('common.buy_now')}
                             </button>
                         </div>
                         <button 
@@ -2043,7 +2067,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">Giá cơ bản</span>
-                                            <span className="text-sm sm:text-lg font-black text-gray-900 leading-none">
+                                            <span className="text-sm sm:text-lg font-bold tracking-tight text-gray-900 leading-none">
                                                 {formatCurrency(totalPrice)}
                                             </span>
                                             {originalPrice > totalPrice && (

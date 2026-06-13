@@ -114,7 +114,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                         </div>
                     )}
                     <div className="flex justify-between items-center mt-1">
-                        <p className="text-sm font-black text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
+                        <p className="text-sm font-bold tracking-tight text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
                         <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
                             <button 
                                 onClick={() => onUpdateQuantity(index, Math.max(1, quantity - 1))}
@@ -149,7 +149,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
           )}
           <div className="flex justify-between items-end">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('cart.subtotal')}</span>
-            <span className="text-xl font-black text-gray-800">{formatCurrency(subtotal)}</span>
+            <span className="text-xl font-bold tracking-tighter text-gray-800">{formatCurrency(subtotal)}</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <button onClick={handleViewCart} className="w-full bg-gray-100 text-gray-600 font-black uppercase tracking-tight py-3.5 rounded-xl text-xs hover:bg-gray-200 transition-all active:scale-[0.98]">{t('cart.view_cart')}</button>
