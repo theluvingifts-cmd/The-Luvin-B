@@ -985,9 +985,38 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               </div>
 
               {submissionError && (
-                  <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2 animate-bounce-small">
-                      <span className="text-xl">⚠️</span>
-                      <span>{submissionError}</span>
+                  <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-4 rounded-xl text-sm font-medium flex flex-col gap-3 animate-fade-in shadow-sm">
+                      <div className="flex items-start gap-3">
+                          <span className="text-xl">⚠️</span>
+                          <div>
+                              <p className="font-bold text-red-800 mb-1">
+                                  {submissionError.includes('size') ? 'Dữ liệu thiết kế quá lớn' : t('common.error')}
+                              </p>
+                              <p className="text-xs opacity-90 leading-relaxed">
+                                  {submissionError.includes('size') 
+                                    ? 'Dữ liệu của bạn đã được shop tối ưu lại để phù hợp. Vui lòng thử nhấn "ĐẶT HÀNG NGAY" một lần nữa.' 
+                                    : 'Đã có sự cố khi xử lý đơn hàng của bạn. Đừng lo lắng, bạn có thể nhắn tin trực tiếp để shop hỗ trợ hoàn tất đơn qua Zalo nhé!'}
+                              </p>
+                              {submissionError.length > 50 && !submissionError.includes('size') && (
+                                  <div className="mt-2 p-2 bg-red-100/50 rounded border border-red-200/50">
+                                      <code className="text-[10px] block break-all font-mono opacity-60">
+                                          Error log: {submissionError}
+                                      </code>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                      
+                      <div className="flex gap-2 mt-1">
+                        <a 
+                            href={storeConfig?.hotline ? `https://zalo.me/${storeConfig.hotline.replace(/\D/g, '')}` : 'https://zalo.me/0369286298'} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="flex-grow bg-blue-600 text-white text-center py-2 px-4 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <span>💬</span> Nhắn Zalo hỗ trợ ngay
+                        </a>
+                      </div>
                   </div>
               )}
 

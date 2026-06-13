@@ -10,6 +10,7 @@ import { incrementTemplatePurchaseCount } from './templateService';
 import { getStoreConfig } from './configService';
 import { pushOrderToPancake, PancakeOrderData } from './pancakeService';
 import { sendOrderEmail, sendThankYouEmail } from './emailService';
+import { sendOrderTelegram, sendErrorTelegram } from './telegramService'; 
 import { cleanForFirestore } from '../utils/helpers';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { createAuditLog } from './auditService';
@@ -43,9 +44,41 @@ export const countPartsInOrder = (orderItems: Order['items']): Record<string, nu
     return counts;
 };
 
+// Helper: Thu gọn dữ liệu của FrameConfig để tiết kiệm dung lượng Firestore (trạng thái đóng băng đơn hàng)
+const slimOrderItems = (items: FrameConfig[]): FrameConfig[] => {
+    const slimPart = (part: any) => {
+        if (!part) return part;
+        return {
+            id: part.id,
+            name: part.name,
+            type: part.type,
+            imageUrl: part.imageUrl,
+            gender: part.gender,
+            category: part.category,
+        };
+    };
+
+    return items.map(item => ({
+        ...item,
+        characters: item.characters ? item.characters.map(char => ({
+            ...char,
+            hair: slimPart(char.hair),
+            face: slimPart(char.face),
+            shirt: slimPart(char.shirt),
+            pants: slimPart(char.pants),
+            hat: slimPart(char.hat),
+            set: slimPart(char.set),
+        })) : [],
+    }));
+};
+
 // HELPER: Process images in order items
 const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfig[]> => {
-    return Promise.all(items.map(async (item) => {
+    // 1. First slim down the data to remove heavy nested objects
+    const slimmedItems = slimOrderItems(items);
+
+    // 2. Then proceed with image uploads
+    return Promise.all(slimmedItems.map(async (item) => {
         let newItem = { ...item };
         
         // 1. Preview Image
@@ -113,6 +146,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         // 1. LƯU ĐƠN HÀNG VÀO FIRESTORE (Primary Action)
         const orderRef = doc(db, "orders", finalOrder.id);
         await setDoc(orderRef, cleanForFirestore(finalOrder)).catch(err => {
+            // Gửi thông báo lỗi Telegram nếu có cầu hình
+            sendErrorTelegram(err, `Tạo đơn hàng (setDoc) - ID: ${finalOrder.id}`, finalOrder.customer);
             handleFirestoreError(err, OperationType.WRITE, `orders/${finalOrder.id}`);
         });
 
@@ -220,6 +255,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         return { success: true, data: finalOrder };
     } catch (error: any) {
         console.error("Lỗi tạo đơn hàng:", error);
+        // Thông báo lỗi tổng quát qua Telegram
+        sendErrorTelegram(error, `Tạo đơn hàng (General Catch) - ID: ${order.id}`, order.customer);
         return { success: false, error: { message: error.message || "Đã có lỗi xảy ra.", original: error } };
     }
 };

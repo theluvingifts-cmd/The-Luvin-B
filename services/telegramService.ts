@@ -78,6 +78,29 @@ ${itemsList}
     }
 };
 
+export const sendErrorTelegram = async (error: any, context: string, customerInfo?: any) => {
+    // We need to fetch config manually since this might be called outside of normal flow
+    const { getStoreConfig } = await import('./configService');
+    const config = await getStoreConfig();
+
+    if (!config?.telegramBotToken || !config?.telegramChatId) return;
+
+    const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+    const customerStr = customerInfo ? `\n👤 <b>Khách:</b> ${customerInfo.name} (${customerInfo.phone})` : '';
+
+    const message = `
+<b>⚠️ LỖI HỆ THỐNG (THANH TOÁN/TẠO ĐƠN)</b>
+--------------------------------
+🛑 <b>Lỗi:</b> <code>${errorMessage}</code>
+📍 <b>Ngữ cảnh:</b> ${context}${customerStr}
+⏰ <b>Thời gian:</b> ${new Date().toLocaleString('vi-VN')}
+
+<i>Vui lòng bửa lỗi ngay để không mất đơn hàng.</i>
+    `.trim();
+
+    await sendTelegramMessage(config.telegramBotToken, config.telegramChatId, message);
+};
+
 export const testTelegramConnection = async (token: string, chatId: string) => {
     const message = `
 <b>🔔 KIỂM TRA KẾT NỐI TELEGRAM</b>
