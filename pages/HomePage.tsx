@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import type { Page, FeedbackItem, CollectionTemplate } from '../types';
 import { COLLECTION_TEMPLATES, FEEDBACK_ITEMS } from '../constants';
 import { StoreConfig, getCachedConfig } from '../services/configService';
@@ -64,6 +65,35 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
   , [templates]);
 
   const rawFeedbacks = (feedbacks && feedbacks.length > 0) ? feedbacks : FEEDBACK_ITEMS;
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const heroTemplates = useMemo(() => {
+    return templates && templates.length > 0 ? templates : COLLECTION_TEMPLATES;
+  }, [templates]);
+
+  useEffect(() => {
+    if (heroTemplates.length <= 1) return;
+    const interval = setInterval(() => {
+      setHeroIndex(prev => {
+        if (heroTemplates.length <= 1) return prev;
+        let next;
+        do {
+          next = Math.floor(Math.random() * heroTemplates.length);
+        } while (next === prev);
+        return next;
+      });
+    }, 6000); // 6 seconds
+    return () => clearInterval(interval);
+  }, [heroTemplates.length]);
+
+  const currentHeroTemplate = heroTemplates[heroIndex];
+
+  const handleHeroClick = () => {
+    if (!currentHeroTemplate) return;
+    const categorySlug = slugify(currentHeroTemplate.category || 'all');
+    const productLine = currentHeroTemplate.productLine || 'lego';
+    navigate(`/collection/${productLine}/${categorySlug}/${currentHeroTemplate.id}`);
+  };
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -129,7 +159,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
   return (
     <div className="font-body text-gray-800 overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex flex-col lg:flex-row bg-[#fffbf0]">
+      <section className="relative min-h-[85vh] flex flex-col lg:flex-row bg-[#fffbf0] overflow-hidden">
         <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 lg:py-0 z-10 order-2 lg:order-1">
             <div className="animate-fade-in space-y-6 text-left">
                 <div className="flex items-center gap-3">
@@ -152,20 +182,58 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                 <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-md">
                     {t('home.cta_desc')}
                 </p>
-                <div className="pt-4 flex gap-4">
-                    <button onClick={() => navigateTo('builder')} className="bg-gray-900 text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-luvin-pink transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1 duration-300">{t('home.start_design')}</button>
+                <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                    <button 
+                        onClick={() => navigateTo('builder')} 
+                        className="bg-gray-900 text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide hover:bg-luvin-pink transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 duration-300 flex items-center justify-center gap-2"
+                    >
+                        <span>{t('home.start_design')}</span>
+                    </button>
                     <button onClick={() => navigateTo('collection')} className="px-8 py-4 rounded-full font-bold text-sm tracking-wide text-gray-900 border border-gray-300 hover:border-gray-900 transition-colors">{t('home.view_templates')}</button>
                 </div>
+
+                {/* Slider Indicators */}
+                {heroTemplates.length > 1 && (
+                    <div className="flex items-center gap-3 pt-8 lg:hidden">
+                        {heroTemplates.map((_, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setHeroIndex(idx)}
+                                className={`h-1.5 transition-all duration-500 rounded-full ${heroIndex === idx ? 'w-8 bg-luvin-pink' : 'w-2 bg-gray-300'}`}
+                                aria-label={`Go to slide ${idx + 1}`}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
-        <div className="w-full lg:w-1/2 h-[50vh] lg:h-auto relative order-1 lg:order-2">
+        <div className="w-full lg:w-1/2 h-[50vh] lg:h-auto relative order-1 lg:order-2 cursor-pointer group" onClick={handleHeroClick}>
             <div className="absolute inset-0 bg-gray-100 lg:rounded-bl-[100px] overflow-hidden">
-                {localConfig?.heroImageUrl ? (
-                    <FadeInImage src={localConfig.heroImageUrl} alt="Hero" className="w-full h-full" loading="eager" />
-                ) : (
-                    <div className="w-full h-full bg-gray-200 animate-pulse"></div>
-                )}
-                <div className="absolute inset-0 bg-black/10 mix-blend-multiply pointer-events-none"></div>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={heroIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8, ease: "easeInOut" }}
+                        className="w-full h-full"
+                    >
+                        {currentHeroTemplate ? (
+                            <FadeInImage src={currentHeroTemplate.imageUrl} alt={currentHeroTemplate.name} className="w-full h-full object-cover" loading="eager" />
+                        ) : localConfig?.heroImageUrl ? (
+                            <FadeInImage src={localConfig.heroImageUrl} alt="Hero" className="w-full h-full" loading="eager" />
+                        ) : (
+                            <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+                        )}
+                        
+                        {/* Overlay with template name on mobile */}
+                        <div className="absolute bottom-4 right-4 lg:hidden bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/50 shadow-lg max-w-[150px]">
+                             <h3 className="font-bold text-gray-900 text-[10px] truncate leading-tight">{currentHeroTemplate?.name}</h3>
+                             <p className="text-[8px] text-luvin-pink font-extrabold uppercase tracking-widest mt-0.5 opacity-80">Chỉnh mẫu</p>
+                        </div>
+                    </motion.div>
+                </AnimatePresence>
+                <div className="absolute inset-0 bg-black/5 mix-blend-multiply pointer-events-none group-hover:bg-black/0 transition-colors duration-500"></div>
             </div>
         </div>
       </section>
