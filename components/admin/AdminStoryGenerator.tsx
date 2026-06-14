@@ -223,7 +223,7 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
                                                         {formatCurrency(Number(basePrice))}
                                                     </p>
                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
-                                                        Giá trọn gói (Khung + In ảnh + LEGO)
+                                                        Tặng kèm Hộp, Túi và Thiệp
                                                     </p>
                                                 </div>
                                             );
