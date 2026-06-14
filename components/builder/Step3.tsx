@@ -165,7 +165,8 @@ export const Step3Characters: React.FC<{
     showToast?: (msg: string, type: 'success' | 'error') => void;
     allParts: Record<string, LegoPart>; 
     isLoadingParts?: boolean;
-}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts, isLoadingParts }) => {
+    storeConfig?: any;
+}> = ({ config, setConfig, legoParts, selectedItemId, setSelectedItemId, activePartType, setActivePartType, hotPartIds, showToast, allParts, isLoadingParts, storeConfig }) => {
     const { t } = useLanguage();
     const [activeCharId, setActiveCharId] = useState<number | null>(config.characters[0]?.id || null);
     const activeCharacter = config.characters.find(c => c.id === activeCharId);
@@ -486,8 +487,44 @@ export const Step3Characters: React.FC<{
         return sortParts(list, accessorySortMode === 'hot_trend' ? 'default' : accessorySortMode as any, hotPartIds);
     }, [legoParts.pet, hotPartIds, accessorySortMode, accessorySearch, config.frameId, config.productLine]);
 
+    const [showPrintExample, setShowPrintExample] = useState<string | null>(null);
+
     return (
         <div className="space-y-4 text-left">
+            {/* Modal for Print Examples */}
+            {showPrintExample && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowPrintExample(null)}>
+                    <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-sm w-full animate-scale-in" onClick={e => e.stopPropagation()}>
+                        <div className="relative aspect-[4/3]">
+                            <img 
+                                src={showPrintExample === 'standard' 
+                                    ? (storeConfig?.standardPrintImageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80') 
+                                    : (storeConfig?.premiumPrintImageUrl || 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600&q=80')
+                                } 
+                                className="w-full h-full object-cover" 
+                                alt="Print Example" 
+                            />
+                            <button 
+                                onClick={() => setShowPrintExample(null)}
+                                className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white rounded-full p-2 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-2">
+                                {showPrintExample === 'standard' ? (t('studio.standard_print') || 'In thường') : (t('studio.premium_print') || 'In cao cấp')}
+                            </h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                {showPrintExample === 'standard' 
+                                    ? (t('studio.standard_print_desc') || 'Độ chi tiết tương đối, in bề mặt áo quần (không bao gồm cánh tay), phù hợp các thiết kế đơn giản. Thời gian hoàn thiện nhanh hơn.') 
+                                    : (t('studio.premium_print_desc') || 'In độ phân giải cực cao, mực in chất lượng Nhật Bản, bền màu và sắc nét tới từng chi tiết nhỏ nhất (bao gồm cả cánh tay & phụ kiện).')}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="font-bold text-gray-800 uppercase tracking-tight text-sm">{t('studio.character_management')}</h4>
@@ -534,25 +571,39 @@ export const Step3Characters: React.FC<{
                             { id: 'standard', label: t('studio.standard_print') || 'In thường', price: 100000 },
                             { id: 'premium', label: t('studio.premium_print') || 'In cao cấp', price: 300000 }
                         ].map(opt => (
-                            <button
-                                key={opt.id}
-                                onClick={() => {
-                                    setConfig(prev => ({
-                                        ...prev,
-                                        characters: prev.characters.map(c => 
-                                            c.id === activeCharacter.id ? { ...c, customPrintOption: opt.id as any, customPrintPrice: opt.price } : c
-                                        )
-                                    }));
-                                }}
-                                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all ${
-                                    (activeCharacter.customPrintOption || 'none') === opt.id 
-                                        ? 'border-luvin-pink bg-pink-50 shadow-sm' 
-                                        : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
-                                }`}
-                            >
-                                <span className={`text-[9px] font-black uppercase tracking-tight mb-1 ${(activeCharacter.customPrintOption || 'none') === opt.id ? 'text-luvin-pink' : 'text-gray-500'}`}>{opt.label}</span>
-                                <span className="text-[8px] font-bold text-luvin-pink">{opt.price === 0 ? '0 ₫' : formatCurrency(opt.price)}</span>
-                            </button>
+                            <div key={opt.id} className="relative group">
+                                <button
+                                    onClick={() => {
+                                        setConfig(prev => ({
+                                            ...prev,
+                                            characters: prev.characters.map(c => 
+                                                c.id === activeCharacter.id ? { ...c, customPrintOption: opt.id as any, customPrintPrice: opt.price } : c
+                                            )
+                                        }));
+                                    }}
+                                    className={`w-full flex flex-col items-center justify-center py-3 px-1 rounded-xl border-2 transition-all min-h-[70px] ${
+                                        (activeCharacter.customPrintOption || 'none') === opt.id 
+                                            ? 'border-luvin-pink bg-pink-50 shadow-sm' 
+                                            : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
+                                    }`}
+                                >
+                                    <span className={`text-[9px] font-black uppercase tracking-tighter mb-1 text-center leading-tight ${(activeCharacter.customPrintOption || 'none') === opt.id ? 'text-luvin-pink' : 'text-gray-500'}`}>{opt.label}</span>
+                                    <span className={`text-[10px] font-bold ${(activeCharacter.customPrintOption || 'none') === opt.id ? 'text-luvin-pink' : 'text-gray-400'}`}>{opt.price === 0 ? '0 ₫' : formatCurrency(opt.price)}</span>
+                                </button>
+                                
+                                {opt.id !== 'none' && (
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowPrintExample(opt.id);
+                                        }}
+                                        className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-400 hover:text-luvin-pink hover:border-luvin-pink rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm transition-all z-10"
+                                        title="Xem ảnh ví dụ"
+                                    >
+                                        i
+                                    </button>
+                                )}
+                            </div>
                         ))}
                     </div>
                     

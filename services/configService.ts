@@ -76,6 +76,10 @@ export interface StoreConfig {
 
     // Email Config
     disableThankYouEmail?: boolean;
+
+    // Print Example Images
+    standardPrintImageUrl?: string;
+    premiumPrintImageUrl?: string;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

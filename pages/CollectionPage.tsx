@@ -46,7 +46,8 @@ interface CollectionPageProps {
     editingCartIndex?: number | null,
     initialConfig?: FrameConfig,
     onUpdateCart?: (config: FrameConfig) => void,
-    onCancelEdit?: () => void
+    onCancelEdit?: () => void,
+    storeConfig?: any
 }
 
 const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPart>): FrameConfig => {
@@ -92,7 +93,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
     return { ...config, characters: newCharacters, draggableItems: newDraggableItems };
 };
 
-export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts, productLine: propProductLine, editingCartIndex, initialConfig, onUpdateCart, onCancelEdit }) => {
+export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts, productLine: propProductLine, editingCartIndex, initialConfig, onUpdateCart, onCancelEdit, storeConfig }) => {
     const { t } = useLanguage();
     const { productLine: urlProductLine, category: urlCategory, templateId: urlTemplateId } = useParams();
     const navigate = useNavigate();
@@ -133,6 +134,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [activeCategory, setActiveCategory] = useState(t('common.all'));
     const [selectedTemplate, setSelectedTemplate] = useState<CollectionTemplate | null>(null);
     const [customConfig, setCustomConfig] = useState<FrameConfig | null>(null);
+    const [showPrintExample, setShowPrintExample] = useState<string | null>(null);
     const [orderNote, setOrderNote] = useState('');
     const [charmSearch, setCharmSearch] = useState('');
     const [editingCharacterId, setEditingCharacterId] = useState<number | null>(null);
@@ -883,6 +885,40 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     return ( 
       <div className="min-h-screen bg-[#f1f3f5] pb-20 font-body text-site-text relative">
+        {/* Modal for Print Examples */}
+        {showPrintExample && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowPrintExample(null)}>
+                <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-sm w-full animate-scale-in" onClick={e => e.stopPropagation()}>
+                    <div className="relative aspect-[4/3]">
+                        <img 
+                            src={showPrintExample === 'standard' 
+                                ? (storeConfig?.standardPrintImageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80') 
+                                : (storeConfig?.premiumPrintImageUrl || 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600&q=80')
+                            } 
+                            className="w-full h-full object-cover" 
+                            alt="Print Example" 
+                        />
+                        <button 
+                            onClick={() => setShowPrintExample(null)}
+                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white rounded-full p-2 transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-2">
+                            {showPrintExample === 'standard' ? (t('studio.standard_print') || 'In thường') : (t('studio.premium_print') || 'In cao cấp')}
+                        </h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">
+                            {showPrintExample === 'standard' 
+                                ? (t('studio.standard_print_desc') || 'Độ chi tiết tương đối, in bề mặt áo quần (không bao gồm cánh tay), phù hợp các thiết kế đơn giản. Thời gian hoàn thiện nhanh hơn.') 
+                                : (t('studio.premium_print_desc') || 'In độ phân giải cực cao, mực in chất lượng Nhật Bản, bền màu và sắc nét tới từng chi tiết nhỏ nhất (bao gồm cả cánh tay & phụ kiện).')}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Product Line Tabs */}
         <div className="bg-white border-b sticky top-0 z-30 shadow-sm">
             <div className="max-w-7xl mx-auto flex overflow-x-auto no-scrollbar">
@@ -1373,24 +1409,38 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                 { id: 'standard', label: t('studio.standard_print') || 'In thường', price: 100000 },
                                                                 { id: 'premium', label: t('studio.premium_print') || 'In cao cấp', price: 300000 }
                                                             ].map(opt => (
-                                                                <button
-                                                                    key={opt.id}
-                                                                    onClick={() => {
-                                                                        const newChars = customConfig.characters.map(c => {
-                                                                            if (c.id === char.id) return { ...c, customPrintOption: opt.id as any, customPrintPrice: opt.price };
-                                                                            return c;
-                                                                        });
-                                                                        setCustomConfig({ ...customConfig, characters: newChars });
-                                                                    }}
-                                                                    className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all ${
-                                                                        (char.customPrintOption || 'none') === opt.id 
-                                                                            ? 'border-primary bg-primary/5 shadow-sm' 
-                                                                            : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
-                                                                    }`}
-                                                                >
-                                                                    <span className={`text-[9px] font-black uppercase tracking-tight mb-1 ${(char.customPrintOption || 'none') === opt.id ? 'text-primary' : 'text-gray-500'}`}>{opt.label}</span>
-                                                                    <span className="text-[8px] font-bold text-primary">{opt.price === 0 ? '0 ₫' : formatCurrency(opt.price)}</span>
-                                                                </button>
+                                                                <div key={opt.id} className="relative">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const newChars = customConfig.characters.map(c => {
+                                                                                if (c.id === char.id) return { ...c, customPrintOption: opt.id as any, customPrintPrice: opt.price };
+                                                                                return c;
+                                                                            });
+                                                                            setCustomConfig({ ...customConfig, characters: newChars });
+                                                                        }}
+                                                                        className={`w-full flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all min-h-[60px] ${
+                                                                            (char.customPrintOption || 'none') === opt.id 
+                                                                                ? 'border-primary bg-primary/5 shadow-sm' 
+                                                                                : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        <span className={`text-[9px] font-black uppercase tracking-tight mb-1 leading-tight text-center ${(char.customPrintOption || 'none') === opt.id ? 'text-primary' : 'text-gray-500'}`}>{opt.label}</span>
+                                                                        <span className={`text-[8px] font-bold ${(char.customPrintOption || 'none') === opt.id ? 'text-primary' : 'text-gray-400'}`}>{opt.price === 0 ? '0 ₫' : formatCurrency(opt.price)}</span>
+                                                                    </button>
+
+                                                                    {opt.id !== 'none' && (
+                                                                        <button 
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setShowPrintExample(opt.id);
+                                                                            }}
+                                                                            className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary rounded-full w-4 h-4 flex items-center justify-center text-[9px] shadow-sm transition-all z-10"
+                                                                            title="Xem ảnh ví dụ"
+                                                                        >
+                                                                            i
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             ))}
                                                         </div>
                                                         

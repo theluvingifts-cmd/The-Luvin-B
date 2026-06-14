@@ -92,6 +92,31 @@ export const Step1Frame: React.FC<{ config: FrameConfig; setConfig: (c: FrameCon
                 </div>
             </div>
         )}
+
+        <div className="mt-8 pt-6 border-t border-gray-100">
+            <h4 className="font-bold text-[11px] text-gray-400 uppercase mb-4 tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-luvin-pink"></span>
+                {t('studio.base_price_includes')}
+            </h4>
+            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                {[
+                    { icon: '🖼️', label: t('studio.include_frame') || '1 Khung tranh LEGO' },
+                    { icon: '🎨', label: t('studio.include_bg') || '1 Nền thiết kế theo yêu cầu' },
+                    { icon: '👥', label: t('studio.include_chars') || '1-2 Nhân vật LEGO' },
+                    { icon: '🎁', label: t('studio.include_box') || 'Hộp quà' },
+                    { icon: '🛍️', label: t('studio.include_bag') || 'Túi' },
+                    { icon: '✉️', label: t('studio.include_card') || 'Thiệp' }
+                ].map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                        <span className="text-sm">{item.icon}</span>
+                        <span className="text-[11px] font-bold text-gray-600">{item.label}</span>
+                    </div>
+                ))}
+            </div>
+            <p className="mt-6 text-[10px] text-gray-400 italic font-medium leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+                * {t('studio.preview_disclaimer')}
+            </p>
+        </div>
       </div>
     </div>
   );

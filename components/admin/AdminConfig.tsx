@@ -205,7 +205,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             enablePancakePush,
             b2bDiscountPercent: b2bDiscount,
             disableThankYouEmail: storeConfig.disableThankYouEmail,
-            lightPrice: storeConfig.lightPrice
+            lightPrice: storeConfig.lightPrice,
+            standardPrintImageUrl: storeConfig.standardPrintImageUrl,
+            premiumPrintImageUrl: storeConfig.premiumPrintImageUrl
         });
         if (success) {
             setStoreConfig(prev => ({ 
@@ -218,7 +220,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 enablePancakePush,
                 b2bDiscountPercent: b2bDiscount,
                 disableThankYouEmail: storeConfig.disableThankYouEmail,
-                lightPrice: storeConfig.lightPrice
+                lightPrice: storeConfig.lightPrice,
+                standardPrintImageUrl: storeConfig.standardPrintImageUrl,
+                premiumPrintImageUrl: storeConfig.premiumPrintImageUrl
             }));
             alert("Đã lưu cấu hình thành công!");
         } else {
@@ -577,6 +581,28 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                         />
                                     </div>
                                     <ConfigImageUpload label="Ảnh mẫu Đèn" description="Tải ảnh mẫu hiển thị ở trang Checkout" currentUrl={storeConfig.lightImageUrl} onUpload={(f) => handleConfigUpload(f, 'lightImageUrl')} isUploading={uploadingField === 'lightImageUrl'} />
+                                </div>
+
+                                <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-orange-50/30">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        🎨 Ảnh mẫu In Yêu Cầu
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <ConfigImageUpload 
+                                            label="Ảnh In Thường" 
+                                            description="Ví dụ cho gói 100k" 
+                                            currentUrl={storeConfig.standardPrintImageUrl} 
+                                            onUpload={(f) => handleConfigUpload(f, 'standardPrintImageUrl')} 
+                                            isUploading={uploadingField === 'standardPrintImageUrl'} 
+                                        />
+                                        <ConfigImageUpload 
+                                            label="Ảnh In Cao Cấp" 
+                                            description="Ví dụ cho gói 300k" 
+                                            currentUrl={storeConfig.premiumPrintImageUrl} 
+                                            onUpload={(f) => handleConfigUpload(f, 'premiumPrintImageUrl')} 
+                                            isUploading={uploadingField === 'premiumPrintImageUrl'} 
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
