@@ -21,10 +21,11 @@ import { AdminVouchers } from '../components/admin/AdminVouchers';
 import { AdminCustomers } from '../components/admin/AdminCustomers'; 
 import { AdminCollaborators } from '../components/admin/AdminCollaborators';
 import { AdminSecurity } from '../components/admin/AdminSecurity';
+import { AdminStoryGenerator } from '../components/admin/AdminStoryGenerator';
 import { Logo } from '../components/shared/Logo';
 import { trackSession, subscribeToSession } from '../services/adminSessionService';
 
-type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'collaborators' | 'security';
+type MainTab = 'dashboard' | 'orders' | 'products' | 'config' | 'marketing' | 'customers' | 'collaborators' | 'security' | 'story-generator';
 
 interface AdminPageProps {
     showToast?: (message: string, type: 'success' | 'error') => void;
@@ -261,6 +262,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                                         <button onClick={() => handleTabChange('customers')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'customers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Khách hàng</button>
                                         <button onClick={() => handleTabChange('marketing')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Marketing</button>
                                         <button onClick={() => handleTabChange('collaborators')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'collaborators' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cộng tác viên</button>
+                                        <button onClick={() => handleTabChange('story-generator')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'story-generator' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Story Generator</button>
                                         <button onClick={() => handleTabChange('config')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Cấu hình</button>
                                         {isSuperAdmin && <button onClick={() => handleTabChange('security')} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'security' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>Bảo mật</button>}
                                     </>
@@ -301,6 +303,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                                 <button onClick={() => handleTabChange('customers')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'customers' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Khách hàng</button>
                                 <button onClick={() => handleTabChange('marketing')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'marketing' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Marketing</button>
                                 <button onClick={() => handleTabChange('collaborators')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'collaborators' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>CTV</button>
+                                <button onClick={() => handleTabChange('story-generator')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'story-generator' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Story</button>
                                 <button onClick={() => handleTabChange('config')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'config' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Cấu hình</button>
                                 {isSuperAdmin && <button onClick={() => handleTabChange('security')} className={`py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'security' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Bảo mật</button>}
                             </>
@@ -317,6 +320,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                 {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
                 {activeTab === 'collaborators' && role === 'admin' && <AdminCollaborators orders={orders} />}
+                {activeTab === 'story-generator' && role === 'admin' && <AdminStoryGenerator templates={templates} logoUrl={storeConfig.logoUrl} />}
                 {activeTab === 'security' && isSuperAdmin && <AdminSecurity showToast={showToast} />}
             </main>
         </div>

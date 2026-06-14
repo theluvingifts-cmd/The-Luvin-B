@@ -68,7 +68,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
 
   const [heroIndex, setHeroIndex] = useState(0);
   const heroTemplates = useMemo(() => {
-    return templates && templates.length > 0 ? templates : COLLECTION_TEMPLATES;
+    const source = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
+    // Strictly filter out anything without a real image URL
+    return source.filter(t => t.imageUrl && t.imageUrl.trim() !== '' && !t.imageUrl.includes('placeholder.co') && !t.imageUrl.includes('placehold.it'));
   }, [templates]);
 
   useEffect(() => {
@@ -227,10 +229,12 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                         )}
                         
                         {/* Overlay with template name on mobile */}
-                        <div className="absolute bottom-4 right-4 lg:hidden bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/50 shadow-lg max-w-[150px]">
-                             <h3 className="font-bold text-gray-900 text-[10px] truncate leading-tight">{currentHeroTemplate?.name}</h3>
-                             <p className="text-[8px] text-luvin-pink font-extrabold uppercase tracking-widest mt-0.5 opacity-80">Chỉnh mẫu</p>
-                        </div>
+                        {currentHeroTemplate && (
+                            <div className="absolute bottom-4 right-4 lg:hidden bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/50 shadow-lg max-w-[150px]">
+                                <h3 className="font-bold text-gray-900 text-[10px] truncate leading-tight">{currentHeroTemplate.name}</h3>
+                                <p className="text-[8px] text-luvin-pink font-extrabold uppercase tracking-widest mt-0.5 opacity-80">Chỉnh mẫu</p>
+                            </div>
+                        )}
                     </motion.div>
                 </AnimatePresence>
                 <div className="absolute inset-0 bg-black/5 mix-blend-multiply pointer-events-none group-hover:bg-black/0 transition-colors duration-500"></div>
@@ -317,8 +321,12 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                     {galleryTemplates.map((item, index) => (
-                        <div 
+                        <motion.div 
                           key={item.id || index} 
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-50px" }}
+                          transition={{ duration: 0.5, delay: index * 0.1 }}
                           className="group flex flex-col bg-gray-50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-700 cursor-pointer" 
                           onClick={() => {
                               const categorySlug = slugify(item.category || 'all');
@@ -333,7 +341,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                                 <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{item.name}</h3>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2 italic">Minimalist Art</p>
                             </div>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
             </div>
@@ -350,8 +358,12 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                   {legoTemplates.map((item, index) => (
-                      <div 
+                      <motion.div 
                         key={item.id || index} 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
                         className="group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 cursor-pointer" 
                         onClick={() => {
                             const categorySlug = slugify(item.category || 'all');
@@ -367,7 +379,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                               <h3 className="font-bold text-sm text-gray-800 group-hover:text-primary transition-colors line-clamp-1 mb-2">{item.name}</h3>
                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-auto">{t('home.unique_design')}</p>
                           </div>
-                      </div>
+                      </motion.div>
                   ))}
               </div>
 

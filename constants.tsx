@@ -90,15 +90,7 @@ export const INITIAL_FRAME_CONFIG: FrameConfig = {
  * COLLECTION_TEMPLATES is used as a fallback when no templates are fetched from the database.
  * Explicitly type it as CollectionTemplate[] to ensure the category property is recognized.
  */
-export const COLLECTION_TEMPLATES: CollectionTemplate[] = [
-  {
-    id: 'template-1',
-    name: 'Mẫu Kỷ Niệm',
-    category: 'Love',
-    imageUrl: 'https://placehold.co/400x600?text=Template+1',
-    config: INITIAL_FRAME_CONFIG
-  }
-];
+export const COLLECTION_TEMPLATES: CollectionTemplate[] = [];
 
 export const FEEDBACK_ITEMS = [
   {

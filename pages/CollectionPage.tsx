@@ -2012,7 +2012,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     const ordersCount = getDisplayOrderCount(template);
                     
                     return ( 
-                        <div key={template.id || index} className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full`}>
+                        <motion.div 
+                            key={template.id || index}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, margin: "-50px" }}
+                            transition={{ duration: 0.5, delay: index % 4 * 0.1 }}
+                            className={`group flex flex-col bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full`}
+                        >
                             {/* Image Container */}
                             <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 cursor-pointer" onClick={() => handleSelectTemplate(template)}>
                                 <SmartImage 
@@ -2113,7 +2120,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </div>
                                 </div>
                             </div>
-                        </div> 
+                        </motion.div> 
                     );
                   })}
                 </div>
