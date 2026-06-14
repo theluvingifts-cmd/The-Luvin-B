@@ -619,6 +619,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         // Determine the orientation of the template to restrict swapping between square/rectangular
         const templateFrameId = selectedTemplate.config.frameId;
         const templateFrame = frames.find(f => f.id === templateFrameId) || frames[0];
+        if (!templateFrame) return [];
         const isTemplateSquare = templateFrame.frameWidthCm === templateFrame.frameHeightCm;
 
         const currentLine = selectedTemplate.productLine || activeProductLine;
