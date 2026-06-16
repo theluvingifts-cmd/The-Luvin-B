@@ -11,13 +11,22 @@
       "src": "https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1766151159202_bl4wsh_2.png?alt=media&token=6b6fbdcd-74d5-45da-a139-a0c977a43d1d",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1766151159202_bl4wsh_2.png?alt=media&token=6b6fbdcd-74d5-45da-a139-a0c977a43d1d",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quản trị cửa hàng",
+      "short_name": "Admin",
+      "description": "Mở bảng điều khiển quản trị",
+      "url": "/admin",
+      "icons": [{ "src": "https://firebasestorage.googleapis.com/v0/b/the-luvin.firebasestorage.app/o/uploads%2F1766151159202_bl4wsh_2.png?alt=media&token=6b6fbdcd-74d5-45da-a139-a0c977a43d1d", "sizes": "192x192" }]
     }
   ]
 }
