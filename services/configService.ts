@@ -80,6 +80,7 @@ export interface StoreConfig {
     // Print Example Images
     standardPrintImageUrl?: string;
     premiumPrintImageUrl?: string;
+    polaroidSampleImages?: string[];
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

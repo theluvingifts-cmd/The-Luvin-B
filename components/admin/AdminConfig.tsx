@@ -207,7 +207,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             disableThankYouEmail: storeConfig.disableThankYouEmail,
             lightPrice: storeConfig.lightPrice,
             standardPrintImageUrl: storeConfig.standardPrintImageUrl,
-            premiumPrintImageUrl: storeConfig.premiumPrintImageUrl
+            premiumPrintImageUrl: storeConfig.premiumPrintImageUrl,
+            polaroidSampleImages: storeConfig.polaroidSampleImages
         });
         if (success) {
             setStoreConfig(prev => ({ 
@@ -222,7 +223,8 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 disableThankYouEmail: storeConfig.disableThankYouEmail,
                 lightPrice: storeConfig.lightPrice,
                 standardPrintImageUrl: storeConfig.standardPrintImageUrl,
-                premiumPrintImageUrl: storeConfig.premiumPrintImageUrl
+                premiumPrintImageUrl: storeConfig.premiumPrintImageUrl,
+                polaroidSampleImages: storeConfig.polaroidSampleImages
             }));
             alert("Đã lưu cấu hình thành công!");
         } else {
@@ -602,6 +604,60 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             onUpload={(f) => handleConfigUpload(f, 'premiumPrintImageUrl')} 
                                             isUploading={uploadingField === 'premiumPrintImageUrl'} 
                                         />
+                                    </div>
+                                </div>
+
+                                <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-pink-50/20">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        📸 Ảnh mẫu Polaroid
+                                    </h4>
+                                    <div className="space-y-4">
+                                        <div className="flex flex-wrap gap-3">
+                                            {(storeConfig.polaroidSampleImages || []).map((url, idx) => (
+                                                <div key={idx} className="relative group w-24 h-32 border rounded-lg bg-white overflow-hidden">
+                                                    <img src={url} alt={`Sample ${idx}`} className="w-full h-full object-cover" />
+                                                    <button 
+                                                        onClick={() => {
+                                                            const updated = (storeConfig.polaroidSampleImages || []).filter((_, i) => i !== idx);
+                                                            setStoreConfig(prev => ({ ...prev, polaroidSampleImages: updated }));
+                                                            updateStoreConfig({ polaroidSampleImages: updated });
+                                                        }}
+                                                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <div className="relative w-24 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 hover:bg-white transition-colors cursor-pointer group">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    multiple
+                                                    onChange={async (e) => {
+                                                        if (e.target.files) {
+                                                            const files = Array.from(e.target.files);
+                                                            setUploadingField('polaroidSampleImages');
+                                                            try {
+                                                                const urls = await Promise.all(files.map((f: File) => uploadFile(f, 'assets')));
+                                                                const validUrls = urls.filter((u): u is string => !!u);
+                                                                const updated = [...(storeConfig.polaroidSampleImages || []), ...validUrls];
+                                                                setStoreConfig(prev => ({ ...prev, polaroidSampleImages: updated }));
+                                                                await updateStoreConfig({ polaroidSampleImages: updated });
+                                                            } finally {
+                                                                setUploadingField(null);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                                />
+                                                {uploadingField === 'polaroidSampleImages' ? (
+                                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-pink-500"></div>
+                                                ) : (
+                                                    <span className="text-2xl text-gray-400 group-hover:text-pink-500">+</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 italic">* Tải lên các ảnh mẫu để khách hàng dễ hình dung về sản phẩm in Polaroid.</p>
                                     </div>
                                 </div>
                             </div>

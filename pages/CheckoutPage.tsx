@@ -814,9 +814,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             {/* Polaroid Option */}
             <div className="bg-gray-50/50 p-2 sm:p-3 rounded-2xl border border-gray-100 mt-4">
                 <div className="flex items-start gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white rounded-xl flex-shrink-0 text-sm sm:text-base shadow-sm border border-pink-50">
-                        📸
-                    </div>
+                    {storeConfig?.polaroidSampleImages && storeConfig.polaroidSampleImages.length > 0 ? (
+                        <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto no-scrollbar max-w-[120px] sm:max-w-[150px] py-0.5">
+                            {storeConfig.polaroidSampleImages.map((url, i) => (
+                                <div 
+                                    key={i} 
+                                    className="w-10 h-14 sm:w-12 sm:h-16 flex-shrink-0 border rounded-sm overflow-hidden bg-white shadow-sm cursor-zoom-in hover:scale-105 transition-transform"
+                                    onClick={() => onZoomImage?.(url)}
+                                >
+                                    <img src={url} alt="Polaroid Sample" className="w-full h-full object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white rounded-xl flex-shrink-0 text-sm sm:text-base shadow-sm border border-pink-50">
+                            📸
+                        </div>
+                    )}
                     <div className="flex-grow min-w-0">
                         <div className="flex justify-between items-start mb-1">
                             <div>

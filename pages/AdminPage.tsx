@@ -320,7 +320,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                 {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}
                 {activeTab === 'customers' && role === 'admin' && <AdminCustomers orders={orders} />}
                 {activeTab === 'collaborators' && role === 'admin' && <AdminCollaborators orders={orders} />}
-                {activeTab === 'story-generator' && role === 'admin' && <AdminStoryGenerator templates={templates} parts={products} frames={frames} logoUrl={storeConfig.logoUrl} />}
+                {activeTab === 'story-generator' && role === 'admin' && <AdminStoryGenerator templates={templates} parts={products} frames={frames} storeConfig={storeConfig} />}
                 {activeTab === 'security' && isSuperAdmin && <AdminSecurity showToast={showToast} />}
             </main>
         </div>

@@ -1,0 +1,17 @@
+{
+  "name": "The Luvin",
+  "short_name": "The Luvin",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#efa3b5",
+  "description": "Thương hiệu quà tặng tinh tế - LEGO Frames",
+  "icons": [
+    {
+      "src": "/icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

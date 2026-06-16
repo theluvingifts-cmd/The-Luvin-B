@@ -4,19 +4,52 @@ import { toPng } from 'html-to-image';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { CollectionTemplate, LegoPart, FrameOption } from '../../types';
-import { calculatePrice, formatCurrency } from '../../utils/pricing';
 import { slugify } from '../../utils/helpers';
-import { Logo } from '../shared/Logo';
+import { StoryEditor } from './story-editor/StoryEditor';
+import { StoryRenderer } from './story-editor/StoryRenderer';
+import { StoryStyle, INITIAL_ADJUSTMENTS } from '../../src/types/story';
+
+import { StoreConfig } from '../../services/configService';
 
 interface AdminStoryGeneratorProps {
     templates: CollectionTemplate[];
     parts: LegoPart[];
     frames: FrameOption[];
-    logoUrl?: string;
+    storeConfig?: StoreConfig;
 }
 
-export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templates, parts, frames, logoUrl }) => {
+interface StyleOption {
+    id: StoryStyle;
+    name: string;
+    description: string;
+    icon: string;
+}
+
+const STYLE_OPTIONS: StyleOption[] = [
+    { 
+        id: 'classic', 
+        name: 'Classic Luvin', 
+        description: 'Bố cục truyền thống, tập trung vào sản phẩm và giá', 
+        icon: '🏠' 
+    },
+    { 
+        id: 'magazine', 
+        name: 'Magazine Cover', 
+        description: 'Phong cách bìa tạp chí cao cấp, Typography nghệ thuật', 
+        icon: '📖' 
+    },
+    { 
+        id: 'minimal', 
+        name: 'Modern Minimal', 
+        description: 'Tối giản, tinh tế, nhiều khoảng trắng sang trọng', 
+        icon: '✨' 
+    }
+];
+
+export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templates, parts, frames, storeConfig }) => {
+    const selectedIdsRef = useRef<Set<string>>(new Set());
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectedStyle, setSelectedStyle] = useState<StoryStyle>('classic');
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
     const templateRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -24,6 +57,9 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [generatingId, setGeneratingId] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+
+    const logoUrl = storeConfig?.logoUrl;
 
     const categories = useMemo(() => {
         const cats = new Set<string>();
@@ -111,10 +147,12 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
 
     const generateSingle = async (template: CollectionTemplate) => {
         setGeneratingId(template.id);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Small delay to ensure React renders the hidden node
+        await new Promise(resolve => setTimeout(resolve, 150));
 
         const node = templateRefs.current[template.id];
         if (!node) {
+            console.error("Template node not found for ID:", template.id);
             setGeneratingId(null);
             return;
         }
@@ -137,6 +175,23 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
             setGeneratingId(null);
         }
     };
+
+    if (editingId) {
+        const activeTemplate = templates.find(t => t.id === editingId);
+        if (activeTemplate) {
+            return (
+                <StoryEditor 
+                    template={activeTemplate}
+                    parts={parts}
+                    frames={frames}
+                    storeConfig={storeConfig}
+                    logoUrl={logoUrl}
+                    onBack={() => setEditingId(null)}
+                    currentStyle={selectedStyle}
+                />
+            );
+        }
+    }
 
     return (
         <div className="animate-fade-in space-y-6 pb-20">
@@ -170,6 +225,27 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
                                 </>
                             )}
                         </button>
+                    </div>
+                </div>
+
+                <div className="border-t pt-6">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Chọn phong cách thiết kế mặc định</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {STYLE_OPTIONS.map(style => (
+                            <button
+                                key={style.id}
+                                onClick={() => setSelectedStyle(style.id)}
+                                className={`flex items-start gap-4 p-4 rounded-2xl border transition-all text-left ${selectedStyle === style.id ? 'border-luvin-pink bg-pink-50/30 ring-1 ring-luvin-pink shadow-sm' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
+                            >
+                                <div className="w-10 h-10 flex-shrink-0 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-gray-50">
+                                    {style.icon}
+                                </div>
+                                <div>
+                                    <h3 className={`text-sm font-bold ${selectedStyle === style.id ? 'text-luvin-pink' : 'text-gray-900'}`}>{style.name}</h3>
+                                    <p className="text-[10px] text-gray-500 mt-1 leading-relaxed font-medium">{style.description}</p>
+                                </div>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -223,9 +299,16 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
                                     </div>
                                 </div>
                                 <button 
+                                    onClick={(e) => { e.stopPropagation(); setEditingId(t.id); }}
+                                    className="absolute bottom-2 left-2 p-2 bg-white/90 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white"
+                                    title="Chỉnh sửa & Xem trước"
+                                >
+                                    <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button 
                                     onClick={(e) => { e.stopPropagation(); generateSingle(t); }}
                                     className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white"
-                                    title="Tải story mẫu này"
+                                    title="Tải nhanh PNG"
                                 >
                                     <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                 </button>
@@ -239,125 +322,21 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
                 </div>
             )}
 
-            {/* Hidden export containers - Render ONLY the template being generated to save DOM memory */}
             <div className="fixed -left-[5000px] top-0 w-0 h-0 pointer-events-none overflow-hidden">
                 {templates.filter(t => t.id === generatingId).map(t => (
                     <div 
                         key={`export-${t.id}`}
                         ref={el => templateRefs.current[t.id] = el}
-                        className="w-[1080px] h-[1920px] bg-[#FFFBF0] flex flex-col items-center justify-between py-24 px-16 relative"
                     >
-                        {/* Background Decor - Minimalist circles or shapes */}
-                        <div className="absolute top-[10%] -left-[10%] w-[500px] h-[500px] bg-white opacity-40 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-[5%] -right-[5%] w-[400px] h-[400px] bg-luvin-pink/5 rounded-full blur-3xl"></div>
-
-                        {/* Top Branding */}
-                        <div className="z-10 flex flex-col items-center gap-6">
-                            <Logo url={logoUrl} className="h-32" textClassName="text-6xl" />
-                            <div className="h-2 w-48 bg-gray-900/10 rounded-full"></div>
-                        </div>
-
-                        {/* Main Product Frame */}
-                        <div className="w-full flex-grow flex flex-col justify-center items-center z-10 pt-12">
-                            {/* Polaroid-style or floating look */}
-                            <div className="w-full bg-white shadow-2xl rounded-[40px] p-6 flex flex-col">
-                                <div className="aspect-square rounded-[24px] overflow-hidden bg-gray-50 border border-gray-100">
-                                    <img src={t.imageUrl} className="w-full h-full object-cover" alt="" crossOrigin="anonymous" />
-                                </div>
-                                <div className="pt-10 pb-6 px-4 flex flex-col items-center text-center">
-                                    <p className="text-sm text-luvin-pink font-extrabold uppercase tracking-[0.4em] mb-3">{t.category || (t.productLine === 'gallery' ? 'MINIMALIST ART' : 'LEGO COLLECTION')}</p>
-                                    <h3 className="text-5xl font-bold text-gray-900 tracking-tight leading-tight px-4">{t.name}</h3>
-                                    
-                                    <div className="flex items-center gap-6 mt-8">
-                                        {t.config?.characters?.length > 0 && (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-lg">👤</div>
-                                                <span className="text-xl font-bold text-gray-600">{t.config.characters.length} nhân vật</span>
-                                            </div>
-                                        )}
-                                        {(() => {
-                                            const isGallery = (t.productLine || t.config?.productLine) === 'gallery';
-                                            const items = t.config?.draggableItems || [];
-                                            
-                                            if (isGallery) {
-                                                const photosCount = items.filter(i => i.frameUrl).length || t.galleryOptions?.photoFrameCount || 0;
-                                                if (photosCount > 0) {
-                                                    return (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-lg">🖼️</div>
-                                                            <span className="text-xl font-bold text-gray-600">{photosCount} khung ảnh</span>
-                                                        </div>
-                                                    );
-                                                }
-                                            } else {
-                                                // LEGO line: count Draggable items + Character's special parts (hat, set)
-                                                // We use a broader count to ensure all added elements are represented
-                                                const draggableCharms = items.length;
-                                                const characterExtras = t.config?.characters?.reduce((acc, char) => {
-                                                    // Count hat and set as charms
-                                                    return acc + (char.hat ? 1 : 0) + (char.set ? 1 : 0);
-                                                }, 0) || 0;
-                                                const charmCount = draggableCharms + characterExtras;
-
-                                                if (charmCount > 0) {
-                                                    return (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-lg">✨</div>
-                                                            <span className="text-xl font-bold text-gray-600">{charmCount} charm</span>
-                                                        </div>
-                                                    );
-                                                }
-                                            }
-                                            return null;
-                                        })()}
-                                    </div>
-
-                                    {(() => {
-                                        // Match CollectionPage logic for price calculation
-                                        let basePrice = t.price || t.salePrice;
-                                        
-                                        // If no explicit price, calculate it accurately
-                                        if (!basePrice && parts.length > 0) {
-                                            const partsMap = parts.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
-                                            const { totalPrice } = calculatePrice(t.config, partsMap, frames);
-                                            basePrice = totalPrice;
-                                        }
-
-                                        // Fallback default
-                                        if (!basePrice) basePrice = 290000;
-                                        
-                                        // Hardcode fix for museum frame if name matches
-                                        if (t.name?.toLowerCase().trim().includes('bảo tàng') || t.id?.toLowerCase().includes('bao-tang')) {
-                                            basePrice = 310000;
-                                        }
-
-                                        return (
-                                            <div className="mt-10 flex flex-col items-center gap-2">
-                                                <p className="text-6xl font-black text-luvin-pink tracking-tighter">
-                                                    {formatCurrency(Number(basePrice))}
-                                                </p>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
-                                                    Tặng kèm Hộp, Túi và Thiệp
-                                                </p>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Bottom Space for Instagram Stickers */}
-                        <div className="w-full h-64 z-10 flex flex-col items-center justify-end pb-12">
-                            <div className="flex flex-col items-center gap-2 opacity-30">
-                                <p className="text-lg text-gray-400 font-bold uppercase tracking-[0.6em]">THELUVIN.VN</p>
-                            </div>
-                        </div>
-
-                        {/* Decoration items */}
-                        <div className="absolute top-1/2 left-0 w-full flex justify-between px-10 opacity-10 pointer-events-none">
-                            <div className="text-9xl font-black text-gray-900/5 rotate-90 select-none">THELUVIN</div>
-                            <div className="text-9xl font-black text-gray-900/5 -rotate-90 select-none">GIFTS</div>
-                        </div>
+                        <StoryRenderer 
+                            template={t}
+                            style={selectedStyle}
+                            adjustments={INITIAL_ADJUSTMENTS}
+                            parts={parts}
+                            frames={frames}
+                            logoUrl={logoUrl}
+                            storeConfig={storeConfig}
+                        />
                     </div>
                 ))}
             </div>
