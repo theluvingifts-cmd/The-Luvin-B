@@ -86,6 +86,12 @@ const updateMetaTags = (config: StoreConfig) => {
     document.getElementById('og-image')?.setAttribute('content', shareImage);
     document.getElementById('twitter-image')?.setAttribute('content', shareImage);
     
+    // Update PWA icons dynamically if possible
+    if (config.logoUrl) {
+        const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
+        if (appleTouchIcon) appleTouchIcon.href = config.logoUrl;
+    }
+    
     if (config.faviconUrl) {
         const faviconLink = document.getElementById('favicon-link') as HTMLLinkElement;
         if (faviconLink) faviconLink.href = config.faviconUrl;
