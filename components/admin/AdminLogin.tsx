@@ -103,8 +103,9 @@ export const AdminLogin: React.FC = () => {
                     <p className="text-[10px] text-gray-400 font-black uppercase mb-1.5 flex items-center justify-center gap-1">
                         <span>📱</span> Mẹo: Truy cập Admin nhanh
                     </p>
-                    <p className="text-[10px] text-gray-400 leading-relaxed">
-                        Trên iPhone/Safari: Bấm nút <span className="text-blue-500 font-black">Chia sẻ</span> ở thanh công cụ, rồi chọn <span className="text-gray-900 font-black">"Thêm vào MH chính"</span> để tạo icon truy cập Admin trực tiếp.
+                    <p className="text-[10px] text-gray-400 leading-relaxed px-4">
+                        1. Trên iPhone/Safari: Bấm <span className="text-blue-500 font-black">Chia sẻ</span> → <span className="text-gray-900 font-black">"Thêm vào MH chính"</span>.<br/>
+                        2. ⚡ <b>Dành cho Admin:</b> Sau khi cài xong, bạn có thể <b>NHẤN GIỮ</b> icon The Luvin ở ngoài màn hình chính để thấy phím tắt <b>"Quản trị cửa hàng"</b> và vào thẳng đây cực nhanh!
                     </p>
                 </div>
             </div>

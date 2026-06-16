@@ -1,6 +1,7 @@
 {
   "name": "The Luvin",
   "short_name": "The Luvin",
+  "start_url": "/?pwa=1",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#efa3b5",

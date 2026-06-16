@@ -541,7 +541,20 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <ConfigImageUpload label="Favicon" description="Icon tab trình duyệt (Vuông)" currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
                                 </div>
                                 <div ref={(el) => { inputRefs.current['appIconUrl'] = el; }}>
-                                    <ConfigImageUpload label="App Icon (Square)" description="Biểu tượng khi lưu ra màn hình chính điện thoại (Cần là hình VUÔNG)" currentUrl={storeConfig.appIconUrl} onUpload={(f) => handleConfigUpload(f, 'appIconUrl')} isUploading={uploadingField === 'appIconUrl'} />
+                                    <div className="mb-4">
+                                        <ConfigImageUpload 
+                                            label="App Icon (Icon màn hình chính)" 
+                                            description="Bắt buộc là hình VUÔNG (1:1). Nếu dùng logo dài sẽ bị méo." 
+                                            currentUrl={storeConfig.appIconUrl} 
+                                            onUpload={(f) => handleConfigUpload(f, 'appIconUrl')} 
+                                            isUploading={uploadingField === 'appIconUrl'} 
+                                        />
+                                        {storeConfig.appIconUrl && (
+                                            <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-100 italic text-[10px] text-yellow-700">
+                                                💡 Lưu ý: Hãy kiểm tra icon ở trên. Nếu nó không VUÔNG, khi cài ra điện thoại sẽ bị biến dạng.
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 <div ref={(el) => { inputRefs.current['heroImageUrl'] = el; }}>
                                     <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
