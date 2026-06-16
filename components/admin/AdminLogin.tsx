@@ -98,6 +98,15 @@ export const AdminLogin: React.FC = () => {
                 <p className="mt-8 text-[10px] text-gray-300 font-bold uppercase tracking-widest">
                     The Luvin Boutique &copy; {new Date().getFullYear()}
                 </p>
+
+                <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+                    <p className="text-[10px] text-gray-400 font-black uppercase mb-1.5 flex items-center justify-center gap-1">
+                        <span>📱</span> Mẹo: Truy cập Admin nhanh
+                    </p>
+                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                        Trên iPhone/Safari: Bấm nút <span className="text-blue-500 font-black">Chia sẻ</span> ở thanh công cụ, rồi chọn <span className="text-gray-900 font-black">"Thêm vào MH chính"</span> để tạo icon truy cập Admin trực tiếp.
+                    </p>
+                </div>
             </div>
         </div>
     );

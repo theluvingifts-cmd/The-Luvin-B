@@ -570,7 +570,7 @@ export const Step3Characters: React.FC<{
                             { id: 'none', label: t('studio.none') || 'Không chọn', price: 0 },
                             { id: 'standard', label: t('studio.standard_print') || 'In thường', price: 100000 },
                             { id: 'premium', label: t('studio.premium_print') || 'In cao cấp', price: 300000 }
-                        ].map(opt => (
+                        ].filter(opt => opt.id !== 'standard' || !storeConfig?.standardPrintOutOfStock).map(opt => (
                             <div key={opt.id} className="relative group">
                                 <button
                                     onClick={() => {

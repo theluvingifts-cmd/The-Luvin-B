@@ -13,6 +13,7 @@ export interface StoreConfig {
     // Legacy fields
     logoUrl?: string;
     faviconUrl?: string;
+    appIconUrl?: string;
     siteName?: string;
     giftBoxImageUrl?: string;
     giftBoxOutOfStock?: boolean; // THAY THẾ hideGiftBoxOption
@@ -79,6 +80,7 @@ export interface StoreConfig {
 
     // Print Example Images
     standardPrintImageUrl?: string;
+    standardPrintOutOfStock?: boolean;
     premiumPrintImageUrl?: string;
     polaroidSampleImages?: string[];
 }

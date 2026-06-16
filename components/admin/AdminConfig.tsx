@@ -206,7 +206,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             b2bDiscountPercent: b2bDiscount,
             disableThankYouEmail: storeConfig.disableThankYouEmail,
             lightPrice: storeConfig.lightPrice,
+            appIconUrl: storeConfig.appIconUrl,
             standardPrintImageUrl: storeConfig.standardPrintImageUrl,
+            standardPrintOutOfStock: storeConfig.standardPrintOutOfStock,
             premiumPrintImageUrl: storeConfig.premiumPrintImageUrl,
             polaroidSampleImages: storeConfig.polaroidSampleImages
         });
@@ -222,7 +224,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 b2bDiscountPercent: b2bDiscount,
                 disableThankYouEmail: storeConfig.disableThankYouEmail,
                 lightPrice: storeConfig.lightPrice,
+                appIconUrl: storeConfig.appIconUrl,
                 standardPrintImageUrl: storeConfig.standardPrintImageUrl,
+                standardPrintOutOfStock: storeConfig.standardPrintOutOfStock,
                 premiumPrintImageUrl: storeConfig.premiumPrintImageUrl,
                 polaroidSampleImages: storeConfig.polaroidSampleImages
             }));
@@ -536,6 +540,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 <div ref={(el) => { inputRefs.current['faviconUrl'] = el; }}>
                                     <ConfigImageUpload label="Favicon" description="Icon tab trình duyệt (Vuông)" currentUrl={storeConfig.faviconUrl} onUpload={(f) => handleConfigUpload(f, 'faviconUrl')} isUploading={uploadingField === 'faviconUrl'} />
                                 </div>
+                                <div ref={(el) => { inputRefs.current['appIconUrl'] = el; }}>
+                                    <ConfigImageUpload label="App Icon (Square)" description="Biểu tượng khi lưu ra màn hình chính điện thoại (Cần là hình VUÔNG)" currentUrl={storeConfig.appIconUrl} onUpload={(f) => handleConfigUpload(f, 'appIconUrl')} isUploading={uploadingField === 'appIconUrl'} />
+                                </div>
                                 <div ref={(el) => { inputRefs.current['heroImageUrl'] = el; }}>
                                     <ConfigImageUpload label="Banner Hero" description="Ảnh lớn đầu trang chủ" currentUrl={storeConfig.heroImageUrl} onUpload={(f) => handleConfigUpload(f, 'heroImageUrl')} isUploading={uploadingField === 'heroImageUrl'} />
                                 </div>
@@ -586,9 +593,26 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 </div>
 
                                 <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-orange-50/30">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                        🎨 Ảnh mẫu In Yêu Cầu
-                                    </h4>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                            🎨 Ảnh mẫu In Yêu Cầu
+                                        </h4>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-black uppercase ${storeConfig.standardPrintOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
+                                                {storeConfig.standardPrintOutOfStock ? 'In thường: Tạm tắt' : 'In thường: Đang bật'}
+                                            </span>
+                                            <button 
+                                                onClick={async () => {
+                                                    const newValue = !storeConfig.standardPrintOutOfStock;
+                                                    setStoreConfig(prev => ({ ...prev, standardPrintOutOfStock: newValue }));
+                                                    await updateStoreConfig({ standardPrintOutOfStock: newValue });
+                                                }}
+                                                className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.standardPrintOutOfStock ? 'bg-gray-300' : 'bg-green-500'}`}
+                                            >
+                                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.standardPrintOutOfStock ? '' : 'translate-x-6'}`}></div>
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <ConfigImageUpload 
                                             label="Ảnh In Thường" 

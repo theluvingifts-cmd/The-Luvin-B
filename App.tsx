@@ -87,9 +87,10 @@ const updateMetaTags = (config: StoreConfig) => {
     document.getElementById('twitter-image')?.setAttribute('content', shareImage);
     
     // Update PWA icons dynamically if possible
-    if (config.logoUrl) {
+    const iconToUse = config.appIconUrl || config.logoUrl;
+    if (iconToUse) {
         const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
-        if (appleTouchIcon) appleTouchIcon.href = config.logoUrl;
+        if (appleTouchIcon) appleTouchIcon.href = iconToUse;
     }
     
     if (config.faviconUrl) {
