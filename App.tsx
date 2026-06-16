@@ -89,7 +89,7 @@ const updateMetaTags = (config: StoreConfig) => {
     // Update PWA icons dynamically if possible
     const iconToUse = config.appIconUrl || config.logoUrl;
     if (iconToUse) {
-        const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
+        const appleTouchIcon = (document.getElementById('apple-touch-icon') || document.querySelector('link[rel="apple-touch-icon"]')) as HTMLLinkElement;
         if (appleTouchIcon) appleTouchIcon.href = iconToUse;
     }
     
