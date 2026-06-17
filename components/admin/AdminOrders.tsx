@@ -857,29 +857,46 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                     </div>
                 </h3>
                 <div className="space-y-2 text-sm text-gray-700">
-                    <div className="flex justify-between"><span className="text-gray-500">Tiền hàng:</span><span className="font-medium">{formatCurrency(subtotal, 'admin')}</span></div>
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2"><span className="text-gray-500">Hộp quà ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addGiftBox} onChange={(e) => handleEditFormChange('addGiftBox', e.target.checked)} className="w-4 h-4 accent-pink-600"/>)}</div>
-                        <span className={`font-medium ${order.addGiftBox ? 'text-gray-900' : 'text-gray-400'}`}>{formatCurrency(giftBoxFee, 'admin')}</span>
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500">Tiền hàng:</span>
+                        <span className="font-medium text-gray-700">{formatCurrency(subtotal, 'admin')}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2"><span className="text-gray-500">Đèn Spotlight ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addLight} onChange={(e) => handleEditFormChange('addLight', e.target.checked)} className="w-4 h-4 accent-yellow-600"/>)}</div>
-                        <span className={`font-medium ${order.addLight ? 'text-gray-900' : 'text-gray-400'}`}>{formatCurrency(lightFee, 'admin')}</span>
-                    </div>
-                    {order.addPolaroid && order.addPolaroid > 0 && (
-                        <div className="flex justify-between items-center">
-                            <span className="text-gray-500">In ảnh Polaroid ({order.addPolaroid}):</span>
-                            <span className="font-medium">{formatCurrency(polaroidFee, 'admin')}</span>
+                    {Number(giftBoxFee) > 0 && (
+                        <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2"><span className="text-gray-500">Hộp quà ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addGiftBox} onChange={(e) => handleEditFormChange('addGiftBox', e.target.checked)} className="w-4 h-4 accent-pink-600"/>)}</div>
+                            <span className="font-medium text-gray-900">{formatCurrency(giftBoxFee, 'admin')}</span>
                         </div>
                     )}
-                    <div className="flex justify-between items-center">
+                    {Number(lightFee) > 0 && (
+                        <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2"><span className="text-gray-500">Đèn Spotlight ({totalQuantity}):</span>{isEditingOrder && (<input type="checkbox" checked={order.addLight} onChange={(e) => handleEditFormChange('addLight', e.target.checked)} className="w-4 h-4 accent-yellow-600"/>)}</div>
+                            <span className="font-medium text-gray-900">{formatCurrency(lightFee, 'admin')}</span>
+                        </div>
+                    )}
+                    {Number(polaroidFee) > 0 && (
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500">In ảnh Polaroid ({order.addPolaroid}):</span>
+                            <span className="font-medium text-gray-900">{formatCurrency(polaroidFee, 'admin')}</span>
+                        </div>
+                    )}
+                    <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-500">Phí vận chuyển:</span>
-                        {isEditingOrder ? (<input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm" value={shippingFee} onChange={(e) => handleEditFormChange('shipping', Number(e.target.value), 'fee')}/>) : (<span className="font-medium">{formatCurrency(shippingFee, 'admin')}</span>)}
+                        {isEditingOrder ? (
+                            <input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm" value={shippingFee} onChange={(e) => handleEditFormChange('shipping', Number(e.target.value), 'fee')}/>
+                        ) : (
+                            <span className="font-medium text-gray-900">{shippingFee > 0 ? formatCurrency(shippingFee, 'admin') : 'Miễn phí'}</span>
+                        )}
                     </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-gray-500">Giảm giá:</span>
-                        {isEditingOrder ? (<input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm text-green-600" value={discount} onChange={(e) => handleEditFormChange('discountAmount', Number(e.target.value))}/>) : (<span className="font-medium text-green-600">-{formatCurrency(discount, 'admin')}</span>)}
-                    </div>
+                    {(discount > 0 || isEditingOrder) && (
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500">Giảm giá:</span>
+                            {isEditingOrder ? (
+                                <input type="number" className="border rounded p-1 w-24 text-right font-medium text-sm text-green-600" value={discount} onChange={(e) => handleEditFormChange('discountAmount', Number(e.target.value))}/>
+                            ) : (
+                                <span className="font-medium text-green-600">-{formatCurrency(discount, 'admin')}</span>
+                            )}
+                        </div>
+                    )}
                     <div className="border-t border-gray-100 my-2"></div>
                     <div className="flex justify-between items-center text-base"><span className="font-bold text-gray-800">Tổng giá trị đơn:</span><span className="font-bold text-gray-900">{formatCurrency(totalPrice, 'admin')}</span></div>
                     <div className="flex justify-between items-center bg-green-50 p-2 rounded -mx-2">
@@ -1126,7 +1143,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div><h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wider">Khách hàng</h3><div className="space-y-2 text-sm text-gray-700">{isEditingOrder && editForm ? (<><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Tên:</span> <input className="border rounded p-1 w-full" value={editForm.customer.name} onChange={e => handleEditFormChange('customer', e.target.value, 'name')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">SĐT:</span> <input className="border rounded p-1 w-full" value={editForm.customer.phone} onChange={e => handleEditFormChange('customer', e.target.value, 'phone')} /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Email:</span> <input className="border rounded p-1 w-full" value={editForm.customer.email} onChange={e => handleEditFormChange('customer', e.target.value, 'email')} /></div>
                                         <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Demo:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.demoContact || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'demoContact')} placeholder="SĐT/Zalo gửi demo..." /></div>
-                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <input type="text" className="border rounded p-1 w-full" value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<><div className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> <div className="flex gap-1">{selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Hộp quà</span>}{selectedOrder.addLight && <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">💡 Đèn</span>}{selectedOrder.addPolaroid && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">📸 Polaroid ({selectedOrder.addPolaroid})</span>}</div></div><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
+                                        <div className="flex items-center gap-2"><span className="w-20 text-gray-500">Liên hệ:</span> <input className="border rounded p-1 w-full placeholder-gray-400 text-xs" value={editForm.customer.socialLink || ''} onChange={e => handleEditFormChange('customer', e.target.value, 'socialLink')} placeholder="Link Facebook/Zalo..." /></div><div className="flex items-center gap-2"><span className="w-20 text-gray-500">Địa chỉ:</span> <input type="text" className="border rounded p-1 w-full" value={editForm.customer.address} onChange={e => handleEditFormChange('customer', e.target.value, 'address')} /></div><div className="flex items-start gap-2 mt-2"><span className="w-20 text-gray-500">Note:</span> <textarea className="border rounded p-1 w-full" rows={2} value={editForm.delivery.notes} onChange={e => handleEditFormChange('delivery', e.target.value, 'notes')} /></div></>) : (<>                                        <div className="flex items-center gap-2"><span className="text-gray-500 w-20 inline-block">Tên:</span> <span className="font-bold">{selectedOrder.customer.name}</span> <div className="flex gap-1">{!!selectedOrder.addGiftBox && <span className="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">🎁 Hộp quà</span>}{!!selectedOrder.addLight && <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">💡 Đèn</span>}{Number(selectedOrder.addPolaroid) > 0 && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase flex items-center gap-1">📸 Polaroid ({selectedOrder.addPolaroid})</span>}</div></div><p><span className="text-gray-500 w-20 inline-block">SĐT:</span> {selectedOrder.customer.phone}</p>
                                         <p><span className="text-gray-500 w-20 inline-block">Email:</span> {selectedOrder.customer.email}</p>
                                         {selectedOrder.referredBy && (
                                             <div className="mt-2 space-y-1">
@@ -1354,8 +1371,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                     <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
                                                                     {item.galleryOptions && (
                                                                         <div className="flex gap-2 mb-1">
-                                                                            {item.galleryOptions.photoFrameCount && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.photoFrameCount} khung ảnh</span>}
-                                                                            {item.galleryOptions.lightCount && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.lightCount} đèn led</span>}
+                                                                            {Number(item.galleryOptions.photoFrameCount) > 0 && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.photoFrameCount} khung ảnh</span>}
+                                                                            {Number(item.galleryOptions.lightCount) > 0 && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.lightCount} đèn led</span>}
                                                                         </div>
                                                                     )}
                                                                     <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>
@@ -1457,7 +1474,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                     {isEditingOrder && editForm ? (
                                                                         <div className="space-y-1">{(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (<div key={partType} className="flex flex-col"><div className="flex justify-between items-center"><span className="text-gray-500 capitalize w-16">{partType}</span><select className="border rounded p-1 text-xs flex-grow" value={char[partType]?.id || ''} onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}><option value="">None</option>{partsByType[partType]?.map(part => (<option key={part.id} value={part.id}>{part.name}</option>))}</select></div>{['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (<div className="flex gap-1 mt-1 ml-16">{char[partType]!.colors!.map(c => (<button key={c.hex} onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)} className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`} style={{backgroundColor: c.hex}} title={c.name} />))}</div>)}</div>))}</div>
                                                                     ) : (
-                                                                        <ul className="text-gray-600 space-y-0.5 mt-1">{char.hair && <li>Tóc: {char.hair.name}</li>}{char.face && <li>Mặt: {char.face.name}</li>}{char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}{char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}{char.hat && <li>Mũ: {char.hat.name}</li>}{char.customPrintPrice && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}</ul>
+                                                                        <ul className="text-gray-600 space-y-0.5 mt-1">{char.hair && <li>Tóc: {char.hair.name}</li>}{char.face && <li>Mặt: {char.face.name}</li>}{char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}{char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}{char.hat && <li>Mũ: {char.hat.name}</li>}{Number(char.customPrintPrice) > 0 && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}</ul>
                                                                     )}
                                                                 </div>
                                                             </div>

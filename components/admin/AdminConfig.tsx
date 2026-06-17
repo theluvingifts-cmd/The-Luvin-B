@@ -550,9 +550,29 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             isUploading={uploadingField === 'appIconUrl'} 
                                         />
                                         {storeConfig.appIconUrl && (
-                                            <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-100 text-[10px] text-yellow-700 flex items-start gap-2">
-                                                <span className="text-sm">💡</span>
-                                                <span>Lưu ý: Ảnh này PHẢI LÀ HÌNH VUÔNG. Nếu bạn dùng logo dài, Safari/Android sẽ tự co bóp lại làm logo bị méo (biến dạng) như bạn đã thấy.</span>
+                                            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase mb-3">Xem trước trên điện thoại (iPhone/Android)</p>
+                                                <div className="flex gap-8 justify-center items-center">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-16 h-16 rounded-xl overflow-hidden shadow-lg border-2 border-white">
+                                                            <img src={storeConfig.appIconUrl} className="w-full h-full object-cover" alt="Square preview" />
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-gray-500">Android/Web</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-16 h-16 rounded-full overflow-hidden shadow-lg border-2 border-white">
+                                                            <img src={storeConfig.appIconUrl} className="w-full h-full object-cover" alt="Circle preview" />
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-gray-500">iOS/Shortcut</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 p-2 bg-yellow-50 rounded-lg border border-yellow-100 text-[10px] text-yellow-700 flex items-start gap-2">
+                                                    <span className="text-sm">💡</span>
+                                                    <div className="space-y-1">
+                                                        <p className="font-bold">Làm sao để không bị méo ảnh?</p>
+                                                        <p>Ảnh trên PHẢI LÀ HÌNH VUÔNG (Tỷ lệ 1:1, ví dụ 512x512 pixel). Nếu bạn thấy logo trong hình TRÒN bị bóp méo, hãy dùng ứng dụng chỉnh ảnh để cắt logo thành hình vuông trước khi tải lên đây.</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

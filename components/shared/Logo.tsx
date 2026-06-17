@@ -20,11 +20,14 @@ export const Logo: React.FC<LogoProps> = ({
   textClassName = "text-xl" 
 }) => {
   const brandContent = url ? (
-    <img 
-      src={url} 
-      alt="The Luvin" 
-      className={`${className} object-contain transition-opacity duration-300`} 
-    />
+    <div className={`${className} flex items-center justify-center overflow-hidden`}>
+      <img 
+        src={url} 
+        alt="The Luvin" 
+        style={{ height: '100%', width: 'auto', minWidth: '40px' }}
+        className="object-contain transition-opacity duration-300" 
+      />
+    </div>
   ) : (
     <span className={`font-heading ${textClassName} font-bold text-primary tracking-tight`}>
       The Luvin
