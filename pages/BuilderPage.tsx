@@ -457,7 +457,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
     });
   }, [backgrounds, hotPartIds, allParts, legoParts]);
 
-  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames, templates), [config, allParts, frames, templates]);
+  const { totalPrice, priceBreakdown } = useMemo(() => calculatePrice(config, allParts, frames, templates, config.templateId), [config, allParts, frames, templates]);
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const freeShipPercent = Math.min(100, (totalPrice / FREE_SHIPPING_THRESHOLD) * 100);
 
@@ -1035,7 +1035,20 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
       case 1: return <Step1Frame config={config} setConfig={setConfig} frames={frames} />;
       case 2: return <Step2BackgroundAndDecorations config={config} setConfig={setConfig} backgrounds={backgrounds} frames={frames} onZoomImage={onZoomImage} showToast={showToast} preferredSquareFrameId={lastSquareFrameId} />;
       case 3: return <Step3Characters config={config} setConfig={setConfig} legoParts={legoParts} selectedItemId={selectedItemId} setSelectedItemId={setSelectedItemId} activePartType={activePartType} setActivePartType={setActivePartType} hotPartIds={hotPartIds} showToast={showToast} allParts={allParts} isLoadingParts={isLoadingParts} storeConfig={storeConfig} />;
-      case 4: return <Step4Summary totalPrice={totalPrice} priceBreakdown={priceBreakdown} frameName={frames.find(f => f.id === config.frameId)?.name || ''} productLine={config.productLine || 'lego'} charCount={config.characters.length} onAddToCart={() => handleAddToCartWrapper(false)} onBuyNow={() => handleAddToCartWrapper(true)} isSaving={isSaving} isEditingOrder={isEditingOrder} urgencyTimeLeft={urgencyTimeLeft} />;
+      case 4: return <Step4Summary 
+        config={config}
+        setConfig={setConfig}
+        totalPrice={totalPrice} 
+        priceBreakdown={priceBreakdown} 
+        frameName={frames.find(f => f.id === config.frameId)?.name || ''} 
+        productLine={config.productLine || 'lego'} 
+        charCount={config.characters.length} 
+        onAddToCart={() => handleAddToCartWrapper(false)} 
+        onBuyNow={() => handleAddToCartWrapper(true)} 
+        isSaving={isSaving} 
+        isEditingOrder={isEditingOrder} 
+        urgencyTimeLeft={urgencyTimeLeft} 
+      />;
       default: return null;
     }
   };

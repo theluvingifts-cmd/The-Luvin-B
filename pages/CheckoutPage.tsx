@@ -930,7 +930,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 )}
                             </div>
                             <div className="flex flex-col min-w-0 gap-0.5">
-                                <span className="font-bold text-gray-800 text-[13px] sm:text-sm truncate">#{index + 1} {t('checkout.custom_frame')}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-gray-800 text-[13px] sm:text-sm truncate">#{index + 1} {t('checkout.custom_frame')}</span>
+                                    {item.galleryOptions?.assembly && (
+                                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                            {item.galleryOptions.assembly === 'pre-assembled' ? 'Shop hoàn thiện' : 'Tự lắp'}
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="text-[11px] text-gray-400 font-medium tracking-tight truncate">{frameName}</span>
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[10px] font-black text-luvin-pink bg-pink-50 px-2 py-0.5 rounded-lg border border-pink-100">x{quantity}</span>

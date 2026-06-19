@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { FrameConfig } from '../../types';
 import { formatCurrency, FREE_SHIPPING_THRESHOLD, PriceBreakdownItem } from '../../utils/pricing';
 import { useLanguage } from '../../src/contexts/LanguageContext';
 import { Scissors, ShieldCheck, Zap, ShoppingCart, Clock, Info } from 'lucide-react';
@@ -55,6 +56,8 @@ const UrgencyFlashSale: React.FC<{ timeLeft: number }> = ({ timeLeft }) => {
 };
 
 export const Step4Summary: React.FC<{ 
+    config: FrameConfig;
+    setConfig: (c: FrameConfig | ((prev: FrameConfig) => FrameConfig)) => void;
     totalPrice: number; 
     priceBreakdown: PriceBreakdownItem[]; 
     frameName: string; 
@@ -65,15 +68,63 @@ export const Step4Summary: React.FC<{
     isSaving: boolean; 
     isEditingOrder?: boolean;
     urgencyTimeLeft: number;
-}> = ({ totalPrice, priceBreakdown, frameName, productLine, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
+}> = ({ config, setConfig, totalPrice, priceBreakdown, frameName, productLine, charCount, onAddToCart, onBuyNow, isSaving, isEditingOrder, urgencyTimeLeft }) => {
   const { t } = useLanguage();
   const remainingForFreeShip = FREE_SHIPPING_THRESHOLD - totalPrice;
   const hasCustomPrint = priceBreakdown.some(item => item.label.includes('In mặt riêng') || item.label.includes(t('studio.custom_print')));
+  const isMuseumStyle = config.isMuseumStyle || productLine === 'gallery';
+
+  const handleAssemblyChange = (val: 'diy' | 'pre-assembled') => {
+      setConfig(prev => ({
+          ...prev,
+          galleryOptions: {
+              ...prev.galleryOptions,
+              assembly: val
+          }
+      }));
+  };
 
   return (
     <div className="text-left">
         {!isEditingOrder && urgencyTimeLeft > 0 && <UrgencyFlashSale timeLeft={urgencyTimeLeft} />}
         
+        {isMuseumStyle && (
+            <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl animate-fade-in">
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
+                        <Info className="w-4 h-4" />
+                    </div>
+                    <h4 className="font-bold text-indigo-900 text-sm uppercase tracking-tight">Tùy chọn hoàn thiện Bảo Tàng</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <button 
+                        onClick={() => handleAssemblyChange('diy')}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1 ${
+                            (config.galleryOptions?.assembly !== 'pre-assembled')
+                                ? 'bg-white border-indigo-500 shadow-md scale-105' 
+                                : 'bg-indigo-50/50 border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                    >
+                        <span className="text-xl">🧩</span>
+                        <span className="text-xs font-bold leading-none">Khách tự lắp</span>
+                        <span className="text-[10px] opacity-70">Miễn phí</span>
+                    </button>
+                    <button 
+                        onClick={() => handleAssemblyChange('pre-assembled')}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1 ${
+                            (config.galleryOptions?.assembly === 'pre-assembled')
+                                ? 'bg-white border-indigo-500 shadow-md scale-105' 
+                                : 'bg-indigo-50/50 border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                    >
+                        <span className="text-xl">✨</span>
+                        <span className="text-xs font-bold leading-none">The Luvin lắp sẵn</span>
+                        <span className="text-[10px] opacity-70">+70.000₫</span>
+                    </button>
+                </div>
+            </div>
+        )}
+
         <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
             <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
                 <span>{t('studio.invoice_details')}</span>

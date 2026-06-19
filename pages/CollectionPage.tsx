@@ -163,6 +163,11 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     setCustomConfig({ 
                         ...fixedConfig, 
                         templateId: template.id,
+                        galleryOptions: template.productLine === 'gallery' ? {
+                            photoFrameCount: fixedConfig.galleryOptions?.photoFrameCount || template.galleryOptions?.photoFrameCount || 0,
+                            lightCount: fixedConfig.galleryOptions?.lightCount || template.galleryOptions?.lightCount || 0,
+                            assembly: fixedConfig.galleryOptions?.assembly || template.galleryOptions?.assembly || 'diy'
+                        } : fixedConfig.galleryOptions,
                         productLine: template.productLine || (urlProductLine as any) || activeProductLine 
                     });
                 }
@@ -244,7 +249,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             counts.categories[cat] = (counts.categories[cat] || 0) + 1;
             counts.categories[t('common.all')] = (counts.categories[t('common.all')] || 0) + 1;
 
-            const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
+            const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates, template.id);
             
             // Price counts
             counts.prices.all++;
@@ -271,7 +276,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             const isInStock = template.stock !== 0;
             
             // Price Filter
-            const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates);
+            const { totalPrice } = calculatePrice(template.config, allParts, frames, displayTemplates, template.id);
             let matchesPrice = true;
             if (priceRange === 'under300') matchesPrice = totalPrice < 300000;
             else if (priceRange === '300to500') matchesPrice = totalPrice >= 300000 && totalPrice <= 500000;
@@ -290,14 +295,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         // Sorting
         if (sortBy === 'priceAsc') {
             result.sort((a, b) => {
-                const priceA = calculatePrice(a.config, allParts, frames, displayTemplates).totalPrice;
-                const priceB = calculatePrice(b.config, allParts, frames, displayTemplates).totalPrice;
+                const priceA = calculatePrice(a.config, allParts, frames, displayTemplates, a.id).totalPrice;
+                const priceB = calculatePrice(b.config, allParts, frames, displayTemplates, b.id).totalPrice;
                 return priceA - priceB;
             });
         } else if (sortBy === 'priceDesc') {
             result.sort((a, b) => {
-                const priceA = calculatePrice(a.config, allParts, frames, displayTemplates).totalPrice;
-                const priceB = calculatePrice(b.config, allParts, frames, displayTemplates).totalPrice;
+                const priceA = calculatePrice(a.config, allParts, frames, displayTemplates, a.id).totalPrice;
+                const priceB = calculatePrice(b.config, allParts, frames, displayTemplates, b.id).totalPrice;
                 return priceB - priceA;
             });
         } else if (sortBy === 'mostPurchased') {
@@ -334,7 +339,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             const templateGallery = template.galleryOptions || template.config?.galleryOptions;
             galleryOptions = {
                 photoFrameCount: templateGallery?.photoFrameCount || 0,
-                lightCount: templateGallery?.lightCount || 0
+                lightCount: templateGallery?.lightCount || 0,
+                assembly: templateGallery?.assembly || 'diy'
             };
         }
 
@@ -1115,40 +1121,51 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         </div>
 
                         {/* Frame Size Selection - Requested Feature */}
-                        {availableFrames.length > 1 && selectedTemplate.productLine !== 'gallery' && (
+                        {selectedTemplate.productLine !== 'gallery' && (
                             <div className="space-y-3 pb-2 animate-fade-in">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        {t('studio.select_size') || 'Chọn kích thước'}
-                                    </h3>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {availableFrames.map(frame => {
-                                        const isSelected = customConfig.frameId === frame.id;
-                                        const isRecommended = selectedTemplate.config.frameId === frame.id;
-                                        return (
-                                            <button
-                                                key={frame.id}
-                                                onClick={() => handleFrameChange(frame.id)}
-                                                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border-2 transition-all group relative ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
-                                            >
-                                                {isRecommended && (
-                                                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap">
-                                                        Khuyên dùng
-                                                    </div>
-                                                )}
-                                                <span className={`text-[10px] font-black uppercase tracking-tight mb-0.5 leading-none ${isSelected ? 'text-primary' : 'text-gray-900'}`}>{frame.name}</span>
-                                                <span className={`text-[9px] font-bold ${isSelected ? 'text-primary/70' : 'text-gray-400'}`}>{formatCurrency(frame.price)}</span>
-                                                {isSelected && (
-                                                    <div className="absolute top-1.5 right-1.5">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_rgba(var(--color-primary),0.5)]"></div>
-                                                    </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
+                                {availableFrames.length > 1 && (
+                                    <>
+                                        <div className="flex justify-between items-center">
+                                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                                {t('studio.select_size') || 'Chọn kích thước'}
+                                            </h3>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {availableFrames.map(frame => {
+                                                const isSelected = customConfig.frameId === frame.id;
+                                                const isRecommended = selectedTemplate.config.frameId === frame.id;
+                                                return (
+                                                    <button
+                                                        key={frame.id}
+                                                        onClick={() => handleFrameChange(frame.id)}
+                                                        className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border-2 transition-all group relative ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                                    >
+                                                        {isRecommended && (
+                                                            <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap">
+                                                                Khuyên dùng
+                                                            </div>
+                                                        )}
+                                                        <span className={`text-[10px] font-black uppercase tracking-tight mb-0.5 leading-none ${isSelected ? 'text-primary' : 'text-gray-900'}`}>{frame.name}</span>
+                                                        <span className={`text-[9px] font-bold ${isSelected ? 'text-primary/70' : 'text-gray-400'}`}>{formatCurrency(frame.price)}</span>
+                                                        {isSelected && (
+                                                            <div className="absolute top-1.5 right-1.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_rgba(var(--color-primary),0.5)]"></div>
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="flex items-center gap-1.5 mt-1.5 px-1 animate-fade-in text-site-text/60">
+                                    <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                                    <p className="text-[9px] font-bold italic leading-tight">
+                                        * Lưu ý: Đây là giá khung, chưa bao gồm nhân vật, charm và phụ kiện.
+                                    </p>
                                 </div>
 
                                 <AnimatePresence>
@@ -1173,7 +1190,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 onClick={() => setShowFrameWarning(false)}
                                                 className="ml-2 text-orange-300 hover:text-orange-500 transition-colors"
                                             >
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
                                         </motion.div>
                                     )}
@@ -1221,9 +1238,18 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             </div>
                             
                             {selectedTemplate.productLine === 'gallery' && (
-                                <div className="mt-3 flex items-center justify-center gap-2 text-amber-600/80 animate-fade-in">
-                                    <Scissors className="w-3.5 h-3.5" />
-                                    <span className="text-[10px] font-bold italic">Lưu ý: Ảnh, khung, đèn, charm in rời, bạn tự cắt & dán vào khung mini để hoàn thiện.</span>
+                                <div className="mt-3 flex items-center justify-center gap-2 animate-fade-in">
+                                    {(customConfig?.galleryOptions?.assembly === 'pre-assembled') ? (
+                                        <div className="flex items-center gap-2 text-green-600 font-bold italic text-[10px]">
+                                            <span className="text-sm">✨</span>
+                                            <span>Shop sẽ lắp ráp và hoàn thiện 100% giúp bạn</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-amber-600/80 font-bold italic text-[10px]">
+                                            <Scissors className="w-3.5 h-3.5" />
+                                            <span>Lưu ý: Bạn tự tay lắp ráp và dán hoàn thiện (Dạng DIY Kit)</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1240,6 +1266,65 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                         {/* Customization Sections - Hidden by default on mobile until 'Chỉnh mẫu' is clicked */}
                         <div className={`${isCustomizing ? 'space-y-6 animate-fade-in' : 'hidden lg:block lg:space-y-6'}`}>
+                            
+                            {/* Assembly Option for Museum/Gallery Frame */}
+                            {selectedTemplate.productLine === 'gallery' && customConfig && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                            {t('studio.museum.assembly')}
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            { id: 'diy', label: t('studio.museum.assembly_diy'), desc: t('studio.museum.assembly_diy_desc'), icon: '✂️', price: 'Miễn phí' },
+                                            { id: 'pre-assembled', label: t('studio.museum.assembly_pre'), desc: t('studio.museum.assembly_pre_desc'), icon: '✨', price: '+70.000₫' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setCustomConfig({
+                                                    ...customConfig,
+                                                    galleryOptions: {
+                                                        ...customConfig.galleryOptions,
+                                                        assembly: opt.id as any
+                                                    }
+                                                })}
+                                                className={`flex flex-col text-left p-3 rounded-2xl border-2 transition-all relative ${
+                                                    (customConfig.galleryOptions?.assembly || 'diy') === opt.id 
+                                                        ? 'border-primary bg-primary/5 shadow-md scale-[1.02]' 
+                                                        : 'border-primary/10 bg-white hover:border-primary/30 shadow-sm'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm">{opt.icon}</span>
+                                                    <span className={`text-[9px] font-black uppercase tracking-tight ${
+                                                        (customConfig.galleryOptions?.assembly || 'diy') === opt.id ? 'text-primary' : 'text-gray-500'
+                                                    }`}>{opt.label}</span>
+                                                </div>
+                                                <p className="text-[8px] text-gray-400 font-bold leading-tight mb-2">{opt.desc}</p>
+                                                <div className={`mt-auto inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-center ${
+                                                    (customConfig.galleryOptions?.assembly || 'diy') === opt.id 
+                                                        ? 'bg-primary text-white' 
+                                                        : 'bg-gray-100 text-gray-400'
+                                                }`}>
+                                                    {opt.price}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    
+                                    {(customConfig.galleryOptions?.assembly || 'diy') === 'diy' && (
+                                        <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-2 text-amber-700/80 animate-fade-in shadow-sm">
+                                            <Scissors className="w-4 h-4 mt-0.5" />
+                                            <p className="text-[9px] font-black leading-relaxed italic text-amber-900/70">
+                                                Lưu ý: Với lựa chọn DIY, shop gửi đầy đủ linh kiện (ảnh, khung mini, đèn, charm), bạn sẽ tự cắt & dán vào khung để hoàn thiện tác phẩm.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Characters Section */}
                             {(selectedTemplate.isSimple || selectedTemplate.productLine === 'gallery' || groupedCharacters.length > 0) && (
                             <div ref={customizeSectionRef} className="space-y-4 scroll-mt-6">

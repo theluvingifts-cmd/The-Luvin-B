@@ -19,8 +19,8 @@ export const getDisplayOrderCount = (item: OrderCountable): number => {
     // Virtual orders: prioritize fakeOrderCount, fallback to purchaseCount
     const virtualOrders = Number(item.fakeOrderCount ?? item.purchaseCount ?? 0);
     
-    // Real orders: prioritize realOrderCount, fallback to orders
-    const realOrders = Number(item.realOrderCount ?? item.orders ?? 0);
+    // Real orders: prioritize the maximum of realOrderCount and orders (legacy field)
+    const realOrders = Math.max(Number(item.realOrderCount || 0), Number(item.orders || 0));
     
     return virtualOrders + realOrders;
 };

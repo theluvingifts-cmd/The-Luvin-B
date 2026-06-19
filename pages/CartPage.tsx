@@ -64,9 +64,14 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
                                         <p className="text-sm text-gray-600">{t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}</p>
                                         {item.galleryOptions && (
-                                            <div className="flex gap-3 mt-1">
-                                                {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold">📸 {item.galleryOptions.photoFrameCount} Khung ảnh</span>}
-                                                {item.galleryOptions.lightCount && <span className="text-xs text-blue-600 font-bold">💡 {item.galleryOptions.lightCount} Đèn led</span>}
+                                            <div className="flex flex-wrap gap-2 sm:gap-3 mt-1 items-center">
+                                                {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">📸 {item.galleryOptions.photoFrameCount} Khung ảnh</span>}
+                                                {item.galleryOptions.lightCount && <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full shadow-sm">💡 {item.galleryOptions.lightCount} Đèn led</span>}
+                                                {item.galleryOptions.assembly && (
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                                                        {item.galleryOptions.assembly === 'pre-assembled' ? `✨ ${t('studio.museum.assembly_pre')}` : `✂️ ${t('studio.museum.assembly_diy')}`}
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                         

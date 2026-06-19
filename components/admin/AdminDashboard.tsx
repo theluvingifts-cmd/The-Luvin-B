@@ -604,7 +604,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div className="bg-gradient-to-br from-blue-50 to-white p-4 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
                     <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Doanh thu</p>
                     <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
@@ -625,7 +625,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
 
                 <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-red-50 rounded-bl-full flex items-start justify-end p-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-orange-500 uppercase tracking-wider mb-1">Số lượng đơn hàng</p>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                        <span className="text-lg sm:text-2xl font-bold text-gray-900">{analytics.orderCount}</span>
+                        <span className={`text-[10px] sm:text-xs font-bold ${analytics.orderGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{analytics.orderGrowth >= 0 ? '↑' : '↓'} {Math.abs(analytics.orderGrowth).toFixed(0)}%</span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-medium">Đơn thành công: {analytics.validOrderCount}</span>
+                </div>
+
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-red-50 rounded-bl-full flex items-start justify-end p-2 opacity-50">
                         <span className="text-xs">💰</span>
                     </div>
                     <p className="text-[10px] sm:text-xs font-bold text-red-500 uppercase tracking-wider mb-1">Tổng COD đang treo</p>
@@ -636,7 +645,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
                 </div>
                  
                  <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-100 shadow-sm">
-                    <p className="text-[10px] sm:text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">Giá trị trung bình đơn</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">Giá trị TB đơn</p>
                     <div className="flex items-center justify-between">
                         <span className="text-sm sm:text-xl font-bold text-gray-900">
                             {analytics.validOrderCount > 0 ? formatCurrency(analytics.revenue / analytics.validOrderCount, 'admin') : '0đ'}

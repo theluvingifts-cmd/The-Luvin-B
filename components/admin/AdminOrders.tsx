@@ -551,7 +551,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                         ${selectedOrder.items.map((item, idx) => {
                             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
                             const frameName = frame ? frame.name : item.frameId;
-                            const galleryInfo = item.galleryOptions ? ` <span style="background: #fdf2f8; color: #db2777; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">${item.galleryOptions.photoFrameCount || 0} khung, ${item.galleryOptions.lightCount || 0} đèn</span>` : '';
+                            const assemblyInfo = item.galleryOptions?.assembly === 'pre-assembled' ? ' [HOÀN THIỆN]' : ' [TỰ LẮP]';
+                            let galleryParts = [];
+                            if (item.galleryOptions?.photoFrameCount) galleryParts.push(`${item.galleryOptions.photoFrameCount} khung`);
+                            if (item.galleryOptions?.lightCount) galleryParts.push(`${item.galleryOptions.lightCount} đèn`);
+                            
+                            const galleryInfo = item.galleryOptions ? ` <span style="background: #fdf2f8; color: #db2777; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">${galleryParts.join(', ')}${assemblyInfo}</span>` : '';
                             return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>Khung LEGO ${frameName}</strong>${galleryInfo}</td><td style="font-size: 12px;">${item.characters.map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${item.draggableItems.length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${item.draggableItems.length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
                         }).join('')}
                         ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
@@ -646,7 +651,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         let subtotal = 0;
         const partLookup = allKnownParts;
         orderItems.forEach(item => {
-            const { totalPrice } = calculatePrice(item, partLookup, frames, templates);
+            const { totalPrice } = calculatePrice(item, partLookup, frames, templates, item.templateId);
             subtotal += totalPrice * (item.quantity || 1);
         });
         return subtotal;
@@ -1242,7 +1247,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                 <h3 className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider">Chi tiết sản phẩm</h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
-                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames);
+                                        const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames, templates, item.templateId);
                                         
                                         const formFieldImages = (item.formFields || [])
                                             .filter(f => f.type === 'image' && item.customFormData?.[f.id])
@@ -1373,6 +1378,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                         <div className="flex gap-2 mb-1">
                                                                             {Number(item.galleryOptions.photoFrameCount) > 0 && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.photoFrameCount} khung ảnh</span>}
                                                                             {Number(item.galleryOptions.lightCount) > 0 && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.lightCount} đèn led</span>}
+                                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                                                {item.galleryOptions.assembly === 'pre-assembled' ? 'HOÀN THIỆN' : 'DIY (TỰ LẮP)'}
+                                                                            </span>
                                                                         </div>
                                                                     )}
                                                                     <p className="text-xs text-gray-500">Nền: {item.background.type === 'color' ? item.background.value : 'Hình ảnh'}</p>

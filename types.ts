@@ -167,6 +167,7 @@ export interface FrameConfig {
   galleryOptions?: {
       photoFrameCount?: number;
       lightCount?: number;
+      assembly?: 'diy' | 'pre-assembled';
   };
 }
 
@@ -303,6 +304,7 @@ export interface CollectionTemplate {
     galleryOptions?: {
         photoFrameCount?: number;
         lightCount?: number;
+        assembly?: 'diy' | 'pre-assembled';
         showPhotoOptions?: boolean;
         showLightOptions?: boolean;
     };

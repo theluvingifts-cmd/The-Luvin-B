@@ -387,6 +387,47 @@ export const TemplateForm: React.FC<{
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="bg-white/60 p-4 rounded-2xl border border-pink-100 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-bold text-gray-700">Lựa chọn lắp sẵn</h3>
+                                    <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest">Loại Kit</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-pink-50">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            galleryOptions: { ...formData.galleryOptions, assembly: 'diy' }
+                                        })}
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1 ${
+                                            (formData.galleryOptions?.assembly || 'diy') === 'diy'
+                                                ? 'bg-white border-pink-500 shadow-md scale-105'
+                                                : 'bg-white/50 border-gray-100 text-gray-400 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        <span className="text-xl">🧩</span>
+                                        <span className="text-[10px] font-bold leading-none uppercase">DIY Kit</span>
+                                        <span className="text-[8px] opacity-70">Khách tự lắp</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            galleryOptions: { ...formData.galleryOptions, assembly: 'pre-assembled' }
+                                        })}
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1 ${
+                                            (formData.galleryOptions?.assembly === 'pre-assembled')
+                                                ? 'bg-white border-pink-500 shadow-md scale-105'
+                                                : 'bg-white/50 border-gray-100 text-gray-400 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        <span className="text-xl">✨</span>
+                                        <span className="text-[10px] font-bold leading-none uppercase">Lắp sẵn</span>
+                                        <span className="text-[8px] opacity-70">Shop hoàn thiện</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 

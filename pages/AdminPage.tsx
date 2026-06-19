@@ -59,12 +59,10 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                 const data = doc.data() as FrameOption;
                 framesData.push({ ...data, id: doc.id });
             });
-            // Sort in memory instead of Firestore query to avoid excluding items without order field
             framesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
             setFrames(framesData);
         }, (error) => {
             console.error("Frames snapshot error:", error);
-            if (showToast) showToast("Lỗi đồng bộ danh sách khung: " + error.message, 'error');
         });
 
         // Backgrounds Listener
@@ -74,7 +72,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                 const data = doc.data() as PresetBackground;
                 bgsData.push({ ...data, id: doc.id });
             });
-            if (bgsData.length > 0) setBackgrounds(bgsData);
+            setBackgrounds(bgsData);
         }, (error) => {
             if (error.code === 'failed-precondition') {
                 onSnapshot(collection(db, 'backgrounds'), (snap) => {
@@ -88,13 +86,33 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
             }
         });
 
-        // Templates Listener (Already handled slightly in init but we can make it cleaner here)
-        // ... handled in App.tsx but Admin needs its own state if not passed from 
-        // actually AdminPage in this app has its own fetch logic
+        // Products (Parts) Listener
+        const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+            const productsData: LegoPart[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data() as LegoPart;
+                productsData.push({ ...data, id: doc.id });
+            });
+            productsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+            setProducts(productsData);
+        });
+
+        // Templates Listener
+        const unsubTemplates = onSnapshot(collection(db, 'templates'), (snapshot) => {
+            const templatesData: CollectionTemplate[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data() as CollectionTemplate;
+                templatesData.push({ ...data, id: doc.id });
+            });
+            templatesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+            setTemplates(templatesData);
+        });
 
         return () => {
             unsubFrames();
             unsubBgs();
+            unsubProducts();
+            unsubTemplates();
         };
     }, [currentUser]);
 

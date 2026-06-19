@@ -70,7 +70,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
   const heroTemplates = useMemo(() => {
     const source = (templates && templates.length > 0) ? templates : COLLECTION_TEMPLATES;
     // Strictly filter out anything without a real image URL
-    return source.filter(t => t.imageUrl && t.imageUrl.trim() !== '' && !t.imageUrl.includes('placeholder.co') && !t.imageUrl.includes('placehold.it'));
+    return source.filter(t => t.imageUrl && t.imageUrl.trim() !== '' && !t.imageUrl.includes('placeholder.co') && !t.imageUrl.includes('placehold.it')).slice(0, 10);
   }, [templates]);
 
   useEffect(() => {
@@ -193,20 +193,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                     </button>
                     <button onClick={() => navigateTo('collection')} className="px-8 py-4 rounded-full font-bold text-sm tracking-wide text-gray-900 border border-gray-300 hover:border-gray-900 transition-colors">{t('home.view_templates')}</button>
                 </div>
-
-                {/* Slider Indicators */}
-                {heroTemplates.length > 1 && (
-                    <div className="flex items-center gap-3 pt-8 lg:hidden">
-                        {heroTemplates.map((_, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => setHeroIndex(idx)}
-                                className={`h-1.5 transition-all duration-500 rounded-full ${heroIndex === idx ? 'w-8 bg-luvin-pink' : 'w-2 bg-gray-300'}`}
-                                aria-label={`Go to slide ${idx + 1}`}
-                            />
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
         <div className="w-full lg:w-1/2 h-[50vh] lg:h-auto relative order-1 lg:order-2 cursor-pointer group" onClick={handleHeroClick}>
@@ -228,8 +214,8 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                             <div className="w-full h-full bg-gray-200 animate-pulse"></div>
                         )}
                         
-                        {/* Overlay with template name on mobile */}
-                        {currentHeroTemplate && (
+                        {/* Overlay with template name hidden as requested */}
+                        {false && currentHeroTemplate && (
                             <div className="absolute bottom-4 right-4 lg:hidden bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/50 shadow-lg max-w-[150px]">
                                 <h3 className="font-bold text-gray-900 text-[10px] truncate leading-tight">{currentHeroTemplate.name}</h3>
                                 <p className="text-[8px] text-luvin-pink font-extrabold uppercase tracking-widest mt-0.5 opacity-80">Chỉnh mẫu</p>

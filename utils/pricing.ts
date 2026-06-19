@@ -110,29 +110,44 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     });
 
     // 1.1 GALLERY OPTIONS (PHOTO & LIGHTS)
-    if (config.productLine === 'gallery' && config.galleryOptions) {
-        const { photoFrameCount, lightCount } = config.galleryOptions;
-        
-        // Fee per photo frame (Fixed to 0 for Gallery as requested)
-        if (photoFrameCount && photoFrameCount > 0) {
-            const photoPrice = 0; 
-            total += photoPrice;
+    if (config.productLine === 'gallery') {
+        const assembly = config.galleryOptions?.assembly || 'diy';
+
+        // Shop Surcharge for Gallery (Added only if customer chooses shop assembly)
+        if (assembly === 'pre-assembled') {
+            const gallerySurcharge = 70000;
+            total += gallerySurcharge;
             breakdown.push({
-                label: `Khung ảnh (${photoFrameCount} khung)`,
-                value: photoPrice,
-                details: ' Gallery (Miễn phí)'
+                label: 'Shop lắp hoàn thiện',
+                value: gallerySurcharge,
+                details: 'Phụ phí lắp đặt & đóng gói'
             });
         }
-        
-        // Fee per light (Fixed to 0 for Gallery as requested)
-        if (lightCount && lightCount > 0) {
-            const lightPrice = 0;
-            total += lightPrice;
-            breakdown.push({
-                label: `Đèn LED (${lightCount} bóng)`,
-                value: lightPrice,
-                details: ' Gallery (Miễn phí)'
-            });
+
+        if (config.galleryOptions) {
+            const { photoFrameCount, lightCount } = config.galleryOptions;
+            
+            // Fee per photo frame (Fixed to 0 for Gallery as requested)
+            if (photoFrameCount && photoFrameCount > 0) {
+                const photoPrice = 0; 
+                total += photoPrice;
+                breakdown.push({
+                    label: `Khung ảnh (${photoFrameCount} khung)`,
+                    value: photoPrice,
+                    details: ' Gallery (Miễn phí)'
+                });
+            }
+            
+            // Fee per light (Fixed to 0 for Gallery as requested)
+            if (lightCount && lightCount > 0) {
+                const lightPrice = 0;
+                total += lightPrice;
+                breakdown.push({
+                    label: `Đèn LED (${lightCount} bóng)`,
+                    value: lightPrice,
+                    details: ' Gallery (Miễn phí)'
+                });
+            }
         }
     }
 

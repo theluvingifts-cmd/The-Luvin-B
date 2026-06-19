@@ -111,6 +111,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                         <div className="flex gap-2 mb-1">
                             {item.galleryOptions.photoFrameCount && <span className="text-[9px] bg-pink-50 text-pink-600 px-1.5 rounded-md font-bold">{item.galleryOptions.photoFrameCount} Khung ảnh</span>}
                             {item.galleryOptions.lightCount && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 rounded-md font-bold">{item.galleryOptions.lightCount} Đèn led</span>}
+                            {item.galleryOptions.assembly && (
+                                <span className={`text-[9px] px-1.5 rounded-md font-bold ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                                    {item.galleryOptions.assembly === 'pre-assembled' ? 'Hoàn thiện' : 'Tự lắp'}
+                                </span>
+                            )}
                         </div>
                     )}
                     <div className="flex justify-between items-center mt-1">
