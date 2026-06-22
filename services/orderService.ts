@@ -222,14 +222,21 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             // 4. Lưu đơn hàng vào Database (Bên trong Transaction)
             const orderToSave = { ...finalOrder, templateOrderCounted: true };
             transaction.set(orderRef, cleanForFirestore(orderToSave));
-            
-            // Tăng tổng số lượng đơn hàng tích lũy trong config/stats
-            const statsRef = doc(db, "config", "stats");
-            transaction.set(statsRef, { totalOrders: firestoreIncrement(1) }, { merge: true });
 
             // Cập nhật lại đối tượng trả về để UI biết đã counted
             finalOrder.templateOrderCounted = true;
         });
+
+        // C. TĂNG TỔNG SỐ ĐƠN TÍCH LŨY TRONG CONFIG/STATS BẤT ĐỒNG BỘ 
+        // Thực hiện bất đồng bộ ngoài transaction để lỗi phân quyền (của Guest) không ảnh hưởng tới việc tạo đơn hàng.
+        try {
+            const statsRef = doc(db, "config", "stats");
+            setDoc(statsRef, { totalOrders: firestoreIncrement(1) }, { merge: true }).catch((err) => {
+                console.warn("Lưu lượng đếm thống kê bị chặn (Do khách vãng lai không có quyền ghi):", err.message);
+            });
+        } catch (statsErr) {
+            console.warn("Lỗi đồng bộ thống kê đơn hàng:", statsErr);
+        }
 
         // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async side-effect)
         try {
@@ -521,12 +528,18 @@ export const rollbackOrderStats = async (order: Order) => {
                 }
             }
 
-            // Giảm tổng số đơn hàng tích lũy trong config/stats
-            const statsRef = doc(db, "config", "stats");
-            transaction.set(statsRef, { totalOrders: firestoreIncrement(-1) }, { merge: true });
-            
             // Note: templateOrderCounted should be updated in the main order document call after this
         });
+
+        // BẢN GHI GIẢM TỔNG SỐ ĐƠN TÍCH LŨY TRONG CONFIG/STATS BẤT ĐỒNG BỘ
+        try {
+            const statsRef = doc(db, "config", "stats");
+            setDoc(statsRef, { totalOrders: firestoreIncrement(-1) }, { merge: true }).catch((err) => {
+                console.warn("Lưu lượng đếm thống kê bị chặn lúc rollback (expected):", err.message);
+            });
+        } catch (statsErr) {
+            console.warn("Lỗi đồng bộ thống kê đơn hàng lúc rollback:", statsErr);
+        }
     } catch (e) {
         console.error("Critical error rolling back order stats:", e);
         throw e; // Relaunch to handle in the caller
