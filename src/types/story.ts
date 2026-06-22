@@ -1,7 +1,7 @@
 
 import { CollectionTemplate } from '../../types';
 
-export type StoryStyle = 'classic' | 'magazine' | 'minimal';
+export type StoryStyle = 'classic' | 'magazine' | 'minimal' | 'addons';
 
 export interface StoryAdjustments {
     brandingY: number;

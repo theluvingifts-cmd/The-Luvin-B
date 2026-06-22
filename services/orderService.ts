@@ -19,24 +19,25 @@ import { createAuditLog } from './auditService';
 export const countPartsInOrder = (orderItems: Order['items']): Record<string, number> => {
     const counts: Record<string, number> = {};
 
-    const increment = (id: string | undefined, amount: number) => {
+    const addCount = (id: string | undefined, amount: number) => {
         if (!id) return;
         counts[id] = (counts[id] || 0) + amount;
     };
 
     orderItems.forEach(item => {
         const qty = item.quantity || 1;
-        item.characters.forEach(char => {
-            increment(char.hair?.id, qty);
-            increment(char.face?.id, qty);
-            increment(char.shirt?.id, qty);
-            increment(char.pants?.id, qty);
-            increment(char.hat?.id, qty);
-            increment(char.set?.id, qty);
+        item.characters?.forEach(char => {
+            addCount(char.hair?.id, qty);
+            addCount(char.face?.id, qty);
+            addCount(char.shirt?.id, qty);
+            addCount(char.pants?.id, qty);
+            addCount(char.hat?.id, qty);
+            addCount(char.set?.id, qty);
         });
-        item.draggableItems.forEach(di => {
-            if (di.type !== 'charm') {
-                increment(di.partId, qty);
+        item.draggableItems?.forEach(di => {
+            // Không bỏ qua charm, đếm tất cả partId có trong draggableItems
+            if (di.partId) {
+                addCount(di.partId, qty);
             }
         });
     });
@@ -139,91 +140,80 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             internalNotes: "",
             isUrgent: false,
             adminDeadline: "",
-            countedInStats: true, // Đánh dấu đơn hàng này đã được tính vào thống kê
-            templateOrderCounted: true
+            countedInStats: true, // Đánh dấu đơn hàng này đã được tính vào thống kê chung
+            templateOrderCounted: false // Sẽ được cập nhật thành true trong transaction nếu thành công
         };
 
-        // 1. LƯU ĐƠN HÀNG VÀO FIRESTORE (Primary Action)
+        const partsUsage = countPartsInOrder(finalOrder.items);
         const orderRef = doc(db, "orders", finalOrder.id);
-        await setDoc(orderRef, cleanForFirestore(finalOrder)).catch(err => {
-            // Gửi thông báo lỗi Telegram nếu có cầu hình
-            sendErrorTelegram(err, `Tạo đơn hàng (setDoc) - ID: ${finalOrder.id}`, finalOrder.customer);
-            handleFirestoreError(err, OperationType.WRITE, `orders/${finalOrder.id}`);
+
+        // THỰC HIỆN TOÀN BỘ TRONG TRANSACTION (Bao gồm cả tạo đơn hàng)
+        await runTransaction(db, async (transaction) => {
+            // 1. Kiểm tra đơn hàng trùng lặp (Idempotency)
+            const existingOrder = await transaction.get(orderRef);
+            if (existingOrder.exists()) {
+                throw new Error("Mã đơn hàng đã tồn tại.");
+            }
+
+            // 2. Chuẩn bị dữ liệu cập nhật cho Template
+            const templateIncrements = new Map<string, number>();
+            finalOrder.items.forEach(item => {
+                if (item.templateId) {
+                    const current = templateIncrements.get(item.templateId) || 0;
+                    templateIncrements.set(item.templateId, current + (item.quantity || 1));
+                }
+            });
+            if (finalOrder.templateId && !templateIncrements.has(finalOrder.templateId)) {
+                templateIncrements.set(finalOrder.templateId, 1);
+            }
+
+            // 3. Thực hiện đọc và viết (READS then WRITES)
+            const templateIds = Array.from(templateIncrements.keys());
+            const partIds = Object.keys(partsUsage);
+
+            // Cập nhật Template
+            for (const id of templateIds) {
+                const snap = await transaction.get(doc(db, "templates", id));
+                if (snap.exists()) {
+                    const tplQty = templateIncrements.get(id) || 1;
+                    const tplData = snap.data();
+                    const updates: any = {
+                        realOrderCount: firestoreIncrement(tplQty),
+                        orders: firestoreIncrement(tplQty)
+                    };
+                    if (typeof tplData.stock === 'number') {
+                        updates.stock = firestoreIncrement(-tplQty);
+                    }
+                    transaction.update(snap.ref, updates);
+                }
+            }
+
+            // Cập nhật Parts
+            for (const id of partIds) {
+                const snap = await transaction.get(doc(db, "lego_parts", id));
+                if (snap.exists()) {
+                    const qty = partsUsage[id];
+                    const partData = snap.data();
+                    const updates: any = {
+                        orders: firestoreIncrement(qty),
+                        realOrderCount: firestoreIncrement(qty)
+                    };
+                    if (typeof partData.stock === 'number') {
+                        updates.stock = firestoreIncrement(-qty);
+                    }
+                    transaction.update(snap.ref, updates);
+                }
+            }
+
+            // 4. Lưu đơn hàng vào Database (Bên trong Transaction)
+            const orderToSave = { ...finalOrder, templateOrderCounted: true };
+            transaction.set(orderRef, cleanForFirestore(orderToSave));
+            
+            // Cập nhật lại đối tượng trả về để UI biết đã counted
+            finalOrder.templateOrderCounted = true;
         });
 
-        // 2. CẬP NHẬT LƯỢT MUA VÀ TỒN KHO (Secondary Actions - Wrapped in try-catch to not block order)
-        try {
-            const partsUsage = countPartsInOrder(finalOrder.items);
-            
-            await runTransaction(db, async (transaction) => {
-                // A. Collect all unique IDs to fetch
-                const templateIncrements = new Map<string, number>();
-
-                // Only count items for quantity-based purchase tracking
-                finalOrder.items.forEach(item => {
-                    if (item.templateId) {
-                        const current = templateIncrements.get(item.templateId) || 0;
-                        templateIncrements.set(item.templateId, current + (item.quantity || 1));
-                    }
-                });
-                
-                // If the order has a top-level templateId but no items were template-based, 
-                // we still want to count the order itself.
-                if (finalOrder.templateId && !templateIncrements.has(finalOrder.templateId)) {
-                    templateIncrements.set(finalOrder.templateId, 1);
-                }
-
-                const templateIds = Array.from(templateIncrements.keys());
-                const partIds = Object.keys(partsUsage).filter(id => partsUsage[id] > 0);
-
-                // B. Perform ALL READS first
-                const templateSnaps = await Promise.all(templateIds.map(id => transaction.get(doc(db, "templates", id))));
-                const partSnaps = await Promise.all(partIds.map(id => transaction.get(doc(db, "lego_parts", id))));
-
-                // C. Perform ALL WRITES next
-                templateSnaps.forEach((snap, index) => {
-                    if (snap.exists()) {
-                        const tplId = templateIds[index];
-                        const tplQty = templateIncrements.get(tplId) || 1;
-                        const tplData = snap.data();
-                        
-                        const updates: any = {
-                            realOrderCount: firestoreIncrement(tplQty),
-                            orders: firestoreIncrement(tplQty)
-                        };
-
-                        if (typeof tplData.stock === 'number') {
-                            updates.stock = firestoreIncrement(-tplQty);
-                        }
-                        
-                        transaction.update(snap.ref, updates);
-                    }
-                });
-
-                partSnaps.forEach((snap, index) => {
-                    if (snap.exists()) {
-                        const partId = partIds[index];
-                        const qty = partsUsage[partId];
-                        const partData = snap.data();
-                        
-                        const updates: any = {
-                            orders: firestoreIncrement(qty),
-                            realOrderCount: firestoreIncrement(qty)
-                        };
-
-                        if (typeof partData.stock === 'number') {
-                            updates.stock = firestoreIncrement(-qty);
-                        }
-                        
-                        transaction.update(snap.ref, updates);
-                    }
-                });
-            });
-        } catch (secondaryError) {
-            console.error("Critical error updating template stats or stock:", secondaryError);
-        }
-
-        // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async, không cần transaction)
+        // B. ĐẨY ĐƠN SANG PANCAKE POS NẾU ĐƯỢC CẤU HÌNH (Async side-effect)
         try {
             const config = await getStoreConfig();
             if (config && config.enablePancakePush) {
@@ -350,25 +340,30 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         }
         
         const orderRef = doc(db, "orders", orderId);
+        const currentDoc = await getDoc(orderRef);
         
+        if (!currentDoc.exists()) return false;
+        const currentData = currentDoc.data() as Order;
+
+        // XỬ LÝ ROLLBACK KHI HỦY ĐƠN HÀNG
+        if (updates.status === 'Đã hủy' && currentData.status !== 'Đã hủy' && currentData.templateOrderCounted) {
+            await rollbackOrderStats(currentData);
+            updates.templateOrderCounted = false;
+        }
+
         // KIỂM TRA TRẠNG THÁI GIAO HÀNG ĐỂ GỬI MAIL CẢM ƠN
         if (updates.status === 'Đã giao hàng') {
             const config = await getStoreConfig();
             if (config && !config.disableThankYouEmail) {
-                const orderRef = doc(db, "orders", orderId);
-                const currentDoc = await getDoc(orderRef);
-                if (currentDoc.exists()) {
-                    const currentData = currentDoc.data() as Order;
-                    // Chỉ gửi nếu trạng thái trước đó chưa phải là đã giao và chưa gửi mail cảm ơn
-                    if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
-                        // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
-                        updates.thankYouEmailSent = true;
-                        
-                        // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
-                        sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
-                            console.error("Lỗi khi gửi email cảm ơn tự động:", err);
-                        });
-                    }
+                // Chỉ gửi nếu trạng thái trước đó chưa phải là đã giao và chưa gửi mail cảm ơn
+                if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
+                    // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
+                    updates.thankYouEmailSent = true;
+                    
+                    // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
+                    sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
+                        console.error("Lỗi khi gửi email cảm ơn tự động:", err);
+                    });
                 }
             }
         }
@@ -386,11 +381,83 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
 // 6. Delete Order
 export const deleteOrder = async (orderId: string): Promise<boolean> => {
     try {
-        await deleteDoc(doc(db, "orders", orderId));
+        const orderRef = doc(db, "orders", orderId);
+        const snap = await getDoc(orderRef);
+        
+        if (snap.exists()) {
+            const orderData = snap.data() as Order;
+            // Rollback statistics before deleting if not already cancelled/rolled back
+            if (orderData.templateOrderCounted && orderData.status !== 'Đã hủy') {
+                await rollbackOrderStats(orderData);
+            }
+        }
+
+        await deleteDoc(orderRef);
         await createAuditLog('delete_part', 'order', orderId); 
         return true;
     } catch (error) {
         console.error("Error deleting order:", error);
         return false;
+    }
+};
+
+// 7. Helper for Rollback Order Statistics
+export const rollbackOrderStats = async (order: Order) => {
+    if (!order.templateOrderCounted) return;
+    
+    try {
+        const partsUsage = countPartsInOrder(order.items);
+        
+        await runTransaction(db, async (transaction) => {
+            // A. Template rollbacks
+            const templateIncrements = new Map<string, number>();
+            order.items.forEach(item => {
+                if (item.templateId) {
+                    const current = templateIncrements.get(item.templateId) || 0;
+                    templateIncrements.set(item.templateId, current + (item.quantity || 1));
+                }
+            });
+            if (order.templateId && !templateIncrements.has(order.templateId)) {
+                templateIncrements.set(order.templateId, 1);
+            }
+
+            const templateIds = Array.from(templateIncrements.keys());
+            for (const id of templateIds) {
+                const snap = await transaction.get(doc(db, "templates", id));
+                if (snap.exists()) {
+                    const qty = templateIncrements.get(id) || 1;
+                    const updates: any = {
+                        realOrderCount: firestoreIncrement(-qty),
+                        orders: firestoreIncrement(-qty)
+                    };
+                    if (typeof snap.data().stock === 'number') {
+                        updates.stock = firestoreIncrement(qty);
+                    }
+                    transaction.update(snap.ref, updates);
+                }
+            }
+
+            // B. Part rollbacks
+            const partIds = Object.keys(partsUsage);
+            for (const id of partIds) {
+                const snap = await transaction.get(doc(db, "lego_parts", id));
+                if (snap.exists()) {
+                    const qty = partsUsage[id];
+                    const updates: any = {
+                        orders: firestoreIncrement(-qty),
+                        realOrderCount: firestoreIncrement(-qty)
+                    };
+                    if (typeof snap.data().stock === 'number') {
+                        updates.stock = firestoreIncrement(qty);
+                    }
+                    transaction.update(snap.ref, updates);
+                }
+            }
+            
+            // Note: templateOrderCounted should be updated in the main order document call after this
+        });
+    } catch (e) {
+        console.error("Critical error rolling back order stats:", e);
+        throw e; // Relaunch to handle in the caller
     }
 };

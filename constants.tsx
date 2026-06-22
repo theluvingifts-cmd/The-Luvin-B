@@ -6,7 +6,7 @@ export const FRAME_OPTIONS: FrameOption[] = [
   { id: 'lg', name: '23x23cm', frameWidthCm: 23, frameHeightCm: 23, backgroundWidthCm: 20, backgroundHeightCm: 20, price: 230000, imageUrl: '', description: 'Sang trọng, ấn tượng', colors: ['black', 'white'], stock: 100 },
   { id: 'sm', name: '15x15cm', frameWidthCm: 15, frameHeightCm: 15, backgroundWidthCm: 12, backgroundHeightCm: 12, price: 210000, imageUrl: '', description: 'Nhỏ gọn, tinh tế', colors: ['black', 'white'], stock: 100 },
   { id: 'md', name: '14.8x21cm', frameWidthCm: 14.8, frameHeightCm: 21, backgroundWidthCm: 11.8, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Thanh lịch, đứng dáng', colors: ['black', 'white'], stock: 100 },
-  { id: 'gallery-1520', name: '15x20cm', frameWidthCm: 15, frameHeightCm: 20, backgroundWidthCm: 13, backgroundHeightCm: 18, price: 220000, imageUrl: '', description: 'Phù hợp Khung Gallery', colors: ['black', 'white'], stock: 100 },
+  { id: 'gallery-1520', name: '15x20cm', frameWidthCm: 15, frameHeightCm: 20, backgroundWidthCm: 13, backgroundHeightCm: 18, price: 250000, imageUrl: '', description: 'Phù hợp Khung Gallery', colors: ['black', 'white'], stock: 100 },
 ];
 
 export const defaultShirtColors: OutfitColor[] = [

@@ -559,12 +559,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         // Stabilize price during initial load
         if (isLoadingParts && selectedTemplate.price) {
             let current = selectedTemplate.salePrice && selectedTemplate.salePrice < selectedTemplate.price ? selectedTemplate.salePrice : selectedTemplate.price;
-            
-            // Force 310,000 for Khung bảo tàng even if loading/stale
-            if (selectedTemplate.name?.toLowerCase().trim().includes('bảo tàng') || selectedTemplate.id?.toLowerCase().includes('bao-tang')) {
-                current = 310000;
-            }
-            
             return { currentPrice: current, originalPrice: selectedTemplate.price };
         }
 
@@ -2121,11 +2115,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     const calculated = calculatePrice(template.config, allParts, frames, displayTemplates, template.id);
                     
                     let basePrice = (template.salePrice && template.salePrice < template.price ? template.salePrice : (template.price || 290000));
-                    
-                    // Force 310,000 for Khung bảo tàng even if DB is stale
-                    if (template.name?.toLowerCase().trim().includes('bảo tàng') || template.id?.toLowerCase().includes('bao-tang')) {
-                        basePrice = 310000;
-                    }
 
                     const totalPrice = hasParts 
                         ? calculated.totalPrice 

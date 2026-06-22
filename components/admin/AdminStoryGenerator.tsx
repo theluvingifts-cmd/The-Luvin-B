@@ -43,6 +43,12 @@ const STYLE_OPTIONS: StyleOption[] = [
         name: 'Modern Minimal', 
         description: 'Tối giản, tinh tế, nhiều khoảng trắng sang trọng', 
         icon: '✨' 
+    },
+    {
+        id: 'addons',
+        name: 'Service Addons',
+        description: 'Làm nổi bật các dịch vụ cộng thêm (Đèn, Ảnh, Hộp...)',
+        icon: '📸'
     }
 ];
 

@@ -337,29 +337,9 @@ const App: React.FC = () => {
 }, []);
 
   // Migration logic for "Khung bảo tàng" and "Graduation 8" price
+  // Clear stale hardcoded price migration logic to rely on database values
   useEffect(() => {
-    if (templates.length > 0) {
-      const targetTemplates = templates.filter(t => 
-        t.name?.toLowerCase().trim().includes('bảo tàng') || 
-        t.id?.toLowerCase().includes('bao-tang') ||
-        t.name?.toLowerCase().trim().includes('graduation 8')
-      );
-      
-      targetTemplates.forEach(async (t) => {
-        let targetPrice = 310000;
-        if (t.name?.toLowerCase().includes('graduation 8')) {
-          targetPrice = 305000;
-        }
-
-        if (t.price !== targetPrice) {
-          console.log(`Migrating price for ${t.name} from ${t.price} to ${targetPrice}`);
-          await updateTemplate(t.id, { 
-            price: targetPrice,
-            salePrice: targetPrice
-          });
-        }
-      });
-    }
+    // Migration logic removed to prevent incorrect hardcoded prices
   }, [templates]);
 
   const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
