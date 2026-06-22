@@ -73,6 +73,7 @@ const PolaroidUpload: React.FC<PolaroidUploadProps> = ({ count, images, onImages
                         >
                             <img src={url} alt={`Polaroid ${idx + 1}`} className="w-full h-full object-cover" />
                             <button 
+                                type="button"
                                 onClick={() => removeImage(idx)}
                                 className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500/90 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm shadow-sm"
                             >
@@ -83,6 +84,7 @@ const PolaroidUpload: React.FC<PolaroidUploadProps> = ({ count, images, onImages
                     
                     {images.length < count && (
                         <motion.button
+                            type="button"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             onClick={() => fileInputRef.current?.click()}

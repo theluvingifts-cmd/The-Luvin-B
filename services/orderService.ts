@@ -147,15 +147,19 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         const partsUsage = countPartsInOrder(finalOrder.items);
         const orderRef = doc(db, "orders", finalOrder.id);
 
-        // THỰC HIỆN TOÀN BỘ TRONG TRANSACTION (Bao gồm cả tạo đơn hàng)
-        await runTransaction(db, async (transaction) => {
-            // 1. Kiểm tra đơn hàng trùng lặp (Idempotency)
-            const existingOrder = await transaction.get(orderRef);
-            if (existingOrder.exists()) {
-                throw new Error("Mã đơn hàng đã tồn tại.");
-            }
+        // 1. Kiểm tra đơn hàng trùng lặp (Idempotency)
+        const existingOrder = await getDoc(orderRef);
+        if (existingOrder.exists()) {
+            throw new Error("Mã đơn hàng đã tồn tại.");
+        }
 
-            // 2. Chuẩn bị dữ liệu cập nhật cho Template
+        // 2. GHI ĐƠN HÀNG LÊN CLOUD ĐẦU TIÊN (Giao dịch ghi này được áp dụng quyền 'create' công khai cho Khách vãng lai, đảm bảo 100% LUÔN THÀNH CÔNG)
+        const orderToSave = { ...finalOrder, templateOrderCounted: true };
+        await setDoc(orderRef, cleanForFirestore(orderToSave));
+        finalOrder.templateOrderCounted = true;
+
+        // 3. Cập nhật số lượng và trừ kho (Templates & Lego Parts) bất đồng bộ và bọc lỗi riêng biệt (Best-effort), lỗi phân quyền ở kho sẽ không làm đổ vỡ đơn hàng đã lưu thành công!
+        try {
             const templateIncrements = new Map<string, number>();
             finalOrder.items.forEach(item => {
                 if (item.templateId) {
@@ -167,63 +171,53 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                 templateIncrements.set(finalOrder.templateId, 1);
             }
 
-            // 3. Thực hiện đọc và viết (READS then WRITES)
             const templateIds = Array.from(templateIncrements.keys());
             const partIds = Object.keys(partsUsage);
 
-            // ĐỌC TOÀN BỘ DỮ LIỆU TRƯỚC (READS FIRST)
-            const templateSnaps = [];
+            // Cập nhật số bán / tồn kho mẫu thiết kế (Templates)
             for (const id of templateIds) {
-                const docRef = doc(db, "templates", id);
-                const snap = await transaction.get(docRef);
-                templateSnaps.push({ id, snap });
+                try {
+                    const docRef = doc(db, "templates", id);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        const tplQty = templateIncrements.get(id) || 1;
+                        const tplData = snap.data();
+                        const updates: any = {
+                            orders: firestoreIncrement(tplQty)
+                        };
+                        if (typeof tplData.stock === 'number') {
+                            updates.stock = firestoreIncrement(-tplQty);
+                        }
+                        await updateDoc(docRef, updates);
+                    }
+                } catch (templateErr: any) {
+                    console.warn(`Lỗi cập nhật Template (${id}) - Tồn kho không đồng bộ nhưng đơn hàng đã an toàn:`, templateErr.message);
+                }
             }
 
-            const partSnaps = [];
+            // Cập nhật tồn kho mảnh Lego (Lego Parts)
             for (const id of partIds) {
-                const docRef = doc(db, "lego_parts", id);
-                const snap = await transaction.get(docRef);
-                partSnaps.push({ id, snap });
-            }
-
-            // GHI TOÀN BỘ DỮ LIỆU SAU (WRITES NEXT)
-            // Cập nhật Template
-            for (const { id, snap } of templateSnaps) {
-                if (snap.exists()) {
-                    const tplQty = templateIncrements.get(id) || 1;
-                    const tplData = snap.data();
-                    const updates: any = {
-                        orders: firestoreIncrement(tplQty)
-                    };
-                    if (typeof tplData.stock === 'number') {
-                        updates.stock = firestoreIncrement(-tplQty);
+                try {
+                    const docRef = doc(db, "lego_parts", id);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        const qty = partsUsage[id];
+                        const partData = snap.data();
+                        const updates: any = {};
+                        if (typeof partData.stock === 'number') {
+                            updates.stock = firestoreIncrement(-qty);
+                        }
+                        if (Object.keys(updates).length > 0) {
+                            await updateDoc(docRef, updates);
+                        }
                     }
-                    transaction.update(snap.ref, updates);
+                } catch (partErr: any) {
+                    console.warn(`Lỗi cập nhật Lego Part (${id}) - Tồn kho không đồng bộ nhưng đơn hàng đã an toàn:`, partErr.message);
                 }
             }
-
-            // Cập nhật Parts
-            for (const { id, snap } of partSnaps) {
-                if (snap.exists()) {
-                    const qty = partsUsage[id];
-                    const partData = snap.data();
-                    const updates: any = {};
-                    if (typeof partData.stock === 'number') {
-                        updates.stock = firestoreIncrement(-qty);
-                    }
-                    if (Object.keys(updates).length > 0) {
-                        transaction.update(snap.ref, updates);
-                    }
-                }
-            }
-
-            // 4. Lưu đơn hàng vào Database (Bên trong Transaction)
-            const orderToSave = { ...finalOrder, templateOrderCounted: true };
-            transaction.set(orderRef, cleanForFirestore(orderToSave));
-
-            // Cập nhật lại đối tượng trả về để UI biết đã counted
-            finalOrder.templateOrderCounted = true;
-        });
+        } catch (stockErr: any) {
+            console.error("Lỗi đồng bộ tồn kho / số bán, đơn hàng vẫn an toàn:", stockErr.message);
+        }
 
         // C. TĂNG TỔNG SỐ ĐƠN TÍCH LŨY TRONG CONFIG/STATS BẤT ĐỒNG BỘ 
         // Thực hiện bất đồng bộ ngoài transaction để lỗi phân quyền (của Guest) không ảnh hưởng tới việc tạo đơn hàng.
