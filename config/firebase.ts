@@ -2,8 +2,8 @@
 // config/firebase.ts
 // Fix: Use standard modular imports for Firebase v9+
 import { initializeApp } from "firebase/app";
-// Import getFirestore from the modular SDK subpath
-import { getFirestore } from "firebase/firestore"; 
+// Import initializeFirestore from the modular SDK subpath
+import { initializeFirestore } from "firebase/firestore"; 
 // Fix: Ensure modular import for auth works by using consistent single quotes and path
 import { getAuth } from 'firebase/auth';
 import { getStorage } from "firebase/storage";
@@ -23,6 +23,8 @@ export const firebaseConfig = {
 // Fix: Direct initialization as per modular SDK v9+
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 export const auth = getAuth(app);
 export const storage = getStorage(app);
