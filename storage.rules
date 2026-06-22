@@ -8,6 +8,12 @@ service firebase.storage {
       allow write: if true; // Guests can upload receipts
     }
     
+    // allow guests to upload polaroids and custom designs
+    match /uploads/polaroids/{allPaths=**} {
+      allow read: if true; // Customers can view theirs/previews
+      allow write: if true; // Guests can upload polaroids during checkout
+    }
+    
     // assets are manageable by admin
     match /uploads/assets/{allPaths=**} {
       allow read: if true;

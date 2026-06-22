@@ -65,15 +65,15 @@ service cloud.firestore {
       
       allow update: if (
         isVerifiedAdmin() ||
-        // Action: Stock Adjustment (Public/Checkout)
-        (incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'lastUpdated']) && incoming().stock is number)
+        // Action: Stock & Stats Update (Public/Checkout)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'lastUpdated', 'orders', 'realOrderCount']))
       ) && (isVerifiedAdmin() || isValidLegoPart(incoming()));
     }
 
     // 2. ORDERS
     match /orders/{orderId} {
       allow get: if true; // Allow customer to see their order if they have the ID
-      allow list: if isVerifiedAdmin() || (request.query.limit <= 20); // Searchable by phone (Firestore handles the data-level phone constraint if queried correctly)
+      allow list: if true; // Allow customers to look up their orders via SĐT or referral code
       allow create: if true; // Guest order
       allow update: if isVerifiedAdmin() || (
         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'paymentProofUrl', 'paymentProofUploadedAt'])
@@ -123,7 +123,7 @@ service cloud.firestore {
     match /templates/{docId} { 
       allow read: if true; 
       allow create, delete: if isVerifiedAdmin();
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasAny(['purchaseCount', 'orders', 'stock']));
+      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount', 'orders', 'stock', 'realOrderCount']));
     }
     match /config/{docId} { 
       allow read: if true; 

@@ -2,7 +2,7 @@
 // services/orderService.ts
 import { db } from '../config/firebase';
 // Standard modular imports from firebase/firestore
-import { collection, setDoc, doc, getDoc, getDocFromCache, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer, runTransaction, increment as firestoreIncrement } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocFromCache, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer, runTransaction, increment as firestoreIncrement, limit } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadFile } from './uploadService';
 import { adjustStock } from './productService';
@@ -193,7 +193,6 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                     const tplQty = templateIncrements.get(id) || 1;
                     const tplData = snap.data();
                     const updates: any = {
-                        realOrderCount: firestoreIncrement(tplQty),
                         orders: firestoreIncrement(tplQty)
                     };
                     if (typeof tplData.stock === 'number') {
@@ -208,14 +207,13 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                 if (snap.exists()) {
                     const qty = partsUsage[id];
                     const partData = snap.data();
-                    const updates: any = {
-                        orders: firestoreIncrement(qty),
-                        realOrderCount: firestoreIncrement(qty)
-                    };
+                    const updates: any = {};
                     if (typeof partData.stock === 'number') {
                         updates.stock = firestoreIncrement(-qty);
                     }
-                    transaction.update(snap.ref, updates);
+                    if (Object.keys(updates).length > 0) {
+                        transaction.update(snap.ref, updates);
+                    }
                 }
             }
 
@@ -291,21 +289,29 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 // 2b. Hàm tra cứu đơn hàng bằng SĐT
 export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
     try {
-        const q = query(collection(db, "orders"), where("customer.phone", "==", phone));
+        const q = query(
+            collection(db, "orders"), 
+            where("customer.phone", "==", phone),
+            limit(20)
+        );
         const querySnapshot = await getDocs(q);
         const orders: Order[] = [];
         querySnapshot.forEach((doc) => { orders.push(doc.data() as Order); });
         return orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     } catch (error) {
         console.error("Lỗi tra cứu theo SĐT:", error);
-        return [];
+        throw error; // Let outer handle the error context
     }
 };
 
 // 2c. Hàm tra cứu đơn hàng bằng mã giới thiệu
 export const getOrdersByReferralCode = async (referralCode: string): Promise<Order[]> => {
     try {
-        const q = query(collection(db, "orders"), where("referredBy", "==", referralCode));
+        const q = query(
+            collection(db, "orders"), 
+            where("referredBy", "==", referralCode),
+            limit(20)
+        );
         const querySnapshot = await getDocs(q);
         const orders: Order[] = [];
         querySnapshot.forEach((doc) => { orders.push(doc.data() as Order); });

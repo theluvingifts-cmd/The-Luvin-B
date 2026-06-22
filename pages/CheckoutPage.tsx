@@ -1101,7 +1101,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                       
                       <div className="flex gap-2 mt-1">
                         <a 
-                            href={storeConfig?.hotline ? `https://zalo.me/${storeConfig.hotline.replace(/\D/g, '')}` : 'https://zalo.me/0369286298'} 
+                            href="https://zalo.me/0964393115" 
                             target="_blank" 
                             rel="noreferrer"
                             className="flex-grow bg-blue-600 text-white text-center py-2 px-4 rounded-lg font-bold text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
