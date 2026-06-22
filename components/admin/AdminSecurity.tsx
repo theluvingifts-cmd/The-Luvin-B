@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../config/firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
 import { getAllSessions, revokeSession, deleteSession } from '../../services/adminSessionService';
+import { safeJsonStringify } from '../../utils/helpers';
 import { Shield, Ban, Clock, User, Globe, AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -176,7 +177,7 @@ export const AdminSecurity: React.FC<AdminSecurityProps> = ({ showToast }) => {
                         </div>
                         {log.details && (
                           <pre className="mt-1 text-[9px] bg-gray-50 p-1 rounded max-w-[300px] overflow-hidden truncate">
-                            {JSON.stringify(log.details)}
+                            {safeJsonStringify(log.details)}
                           </pre>
                         )}
                       </td>

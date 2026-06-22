@@ -25,6 +25,7 @@ import { formatCurrency } from '../utils/pricing';
 import { Order, SavedDesign } from '../types';
 import { getCTVDesigns, deleteCTVDesign } from '../services/shareService';
 import { useNavigate } from 'react-router-dom';
+import { safeJsonStringify } from '../utils/helpers';
 
 enum OperationType {
     CREATE = 'create',
@@ -64,21 +65,9 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
     };
 
     try {
-        console.error('Firestore Error: ', JSON.stringify(errInfo));
+        console.error('Firestore Error: ', safeJsonStringify(errInfo));
     } catch (e) {
-        try {
-            const cache = new Set();
-            const safeStr = JSON.stringify(errInfo, (key, value) => {
-                if (typeof value === 'object' && value !== null) {
-                    if (cache.has(value)) return '[Circular]';
-                    cache.add(value);
-                }
-                return value;
-            });
-            console.error('Firestore Error (Safe): ', safeStr);
-        } catch (innerErr) {
-            console.error('Firestore Error (Unserializable): ', errInfo.error);
-        }
+        console.error('Firestore Error (Unserializable): ', errInfo.error);
     }
     return errInfo;
 };
