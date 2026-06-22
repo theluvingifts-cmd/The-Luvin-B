@@ -127,7 +127,7 @@ service cloud.firestore {
     }
     match /config/{docId} { 
       allow read: if true; 
-      allow write: if isVerifiedAdmin(); 
+      allow write: if isVerifiedAdmin() || (docId == 'stats'); 
       match /ads_costs/{date} {
         allow read, write: if isVerifiedAdmin();
       }

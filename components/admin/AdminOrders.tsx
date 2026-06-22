@@ -15,6 +15,7 @@ import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../../constants
 import { ZoomIcon } from '../ZoomIcon';
 import FramePreview from '../FramePreview';
 import { CharacterPreview } from '../shared/CharacterPreview';
+import { safeJsonStringify } from '../../utils/helpers';
 
 const STATUS_CONFIG = [
     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-800', icon: '🕒' },
@@ -603,7 +604,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
 
     const startEditingOrder = () => {
         if (!selectedOrder) return;
-        const form = JSON.parse(JSON.stringify(selectedOrder));
+        const form = JSON.parse(safeJsonStringify(selectedOrder));
         setEditForm(form);
         setAmountPaidInput(form.amountPaid || 0); 
         setIsEditingOrder(true);

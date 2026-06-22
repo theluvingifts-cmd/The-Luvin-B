@@ -36,6 +36,20 @@ enum OperationType {
 }
 
 const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+    let providerInfo: any[] = [];
+    try {
+        if (auth.currentUser?.providerData) {
+            providerInfo = auth.currentUser.providerData.map(provider => ({
+                providerId: provider.providerId,
+                displayName: provider.displayName,
+                email: provider.email,
+                photoUrl: provider.photoURL
+            }));
+        }
+    } catch (e) {
+        console.error("Error reading providerData:", e);
+    }
+
     const errInfo = {
         error: error instanceof Error ? error.message : String(error),
         authInfo: {
@@ -43,17 +57,29 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
             email: auth.currentUser?.email,
             emailVerified: auth.currentUser?.emailVerified,
             isAnonymous: auth.currentUser?.isAnonymous,
-            providerInfo: auth.currentUser?.providerData.map(provider => ({
-                providerId: provider.providerId,
-                displayName: provider.displayName,
-                email: provider.email,
-                photoUrl: provider.photoURL
-            })) || []
+            providerInfo
         },
         operationType,
         path
     };
-    console.error('Firestore Error: ', JSON.stringify(errInfo));
+
+    try {
+        console.error('Firestore Error: ', JSON.stringify(errInfo));
+    } catch (e) {
+        try {
+            const cache = new Set();
+            const safeStr = JSON.stringify(errInfo, (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                    if (cache.has(value)) return '[Circular]';
+                    cache.add(value);
+                }
+                return value;
+            });
+            console.error('Firestore Error (Safe): ', safeStr);
+        } catch (innerErr) {
+            console.error('Firestore Error (Unserializable): ', errInfo.error);
+        }
+    }
     return errInfo;
 };
 

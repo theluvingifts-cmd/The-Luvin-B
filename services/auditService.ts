@@ -1,6 +1,7 @@
 
 import { db, auth } from '../config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { safeJsonStringify } from '../utils/helpers';
 
 const COLLECTION_NAME = "audit_logs";
 
@@ -34,6 +35,15 @@ export const createAuditLog = async (
     const user = auth.currentUser;
     if (!user) return;
 
+    let sanitizedDetails = {};
+    try {
+      if (details) {
+        sanitizedDetails = JSON.parse(safeJsonStringify(details));
+      }
+    } catch (e) {
+      console.error("Error sanitizing audit log details:", e);
+    }
+
     const log: Omit<AuditLog, 'timestamp'> & { timestamp: any } = {
       timestamp: serverTimestamp(),
       adminUid: user.uid,
@@ -41,7 +51,7 @@ export const createAuditLog = async (
       action,
       entityType,
       entityId,
-      details
+      details: sanitizedDetails
     };
 
     await addDoc(collection(db, COLLECTION_NAME), log);

@@ -85,7 +85,24 @@ export const sendErrorTelegram = async (error: any, context: string, customerInf
 
     if (!config?.telegramBotToken || !config?.telegramChatId) return;
 
-    const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+    const safeStringify = (obj: any): string => {
+        try {
+            const seen = new WeakSet();
+            return JSON.stringify(obj, (key, value) => {
+                if (typeof value === "object" && value !== null) {
+                    if (seen.has(value)) {
+                        return "[Circular]";
+                    }
+                    seen.add(value);
+                }
+                return value;
+            });
+        } catch (e) {
+            return "[Unserializable Error]";
+        }
+    };
+
+    const errorMessage = typeof error === 'string' ? error : (error.message || safeStringify(error));
     const customerStr = customerInfo ? `\n👤 <b>Khách:</b> ${customerInfo.name} (${customerInfo.phone})` : '';
 
     const message = `

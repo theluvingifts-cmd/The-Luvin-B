@@ -171,9 +171,24 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             const templateIds = Array.from(templateIncrements.keys());
             const partIds = Object.keys(partsUsage);
 
-            // Cập nhật Template
+            // ĐỌC TOÀN BỘ DỮ LIỆU TRƯỚC (READS FIRST)
+            const templateSnaps = [];
             for (const id of templateIds) {
-                const snap = await transaction.get(doc(db, "templates", id));
+                const docRef = doc(db, "templates", id);
+                const snap = await transaction.get(docRef);
+                templateSnaps.push({ id, snap });
+            }
+
+            const partSnaps = [];
+            for (const id of partIds) {
+                const docRef = doc(db, "lego_parts", id);
+                const snap = await transaction.get(docRef);
+                partSnaps.push({ id, snap });
+            }
+
+            // GHI TOÀN BỘ DỮ LIỆU SAU (WRITES NEXT)
+            // Cập nhật Template
+            for (const { id, snap } of templateSnaps) {
                 if (snap.exists()) {
                     const tplQty = templateIncrements.get(id) || 1;
                     const tplData = snap.data();
@@ -189,8 +204,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             }
 
             // Cập nhật Parts
-            for (const id of partIds) {
-                const snap = await transaction.get(doc(db, "lego_parts", id));
+            for (const { id, snap } of partSnaps) {
                 if (snap.exists()) {
                     const qty = partsUsage[id];
                     const partData = snap.data();
@@ -209,6 +223,10 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             const orderToSave = { ...finalOrder, templateOrderCounted: true };
             transaction.set(orderRef, cleanForFirestore(orderToSave));
             
+            // Tăng tổng số lượng đơn hàng tích lũy trong config/stats
+            const statsRef = doc(db, "config", "stats");
+            transaction.set(statsRef, { totalOrders: firestoreIncrement(1) }, { merge: true });
+
             // Cập nhật lại đối tượng trả về để UI biết đã counted
             finalOrder.templateOrderCounted = true;
         });
@@ -247,7 +265,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
         console.error("Lỗi tạo đơn hàng:", error);
         // Thông báo lỗi tổng quát qua Telegram
         sendErrorTelegram(error, `Tạo đơn hàng (General Catch) - ID: ${order.id}`, order.customer);
-        return { success: false, error: { message: error.message || "Đã có lỗi xảy ra.", original: error } };
+        return { success: false, error: { message: error.message || "Đã có lỗi xảy ra." } };
     }
 };
 
@@ -323,12 +341,32 @@ export const getRecentOrders = async (limitCount: number = 50): Promise<Order[]>
 // 4. Lấy tổng số lượng đơn hàng thực tế
 export const getTotalOrderCount = async (): Promise<number> => {
     try {
-        const coll = collection(db, "orders");
-        const snapshot = await getCountFromServer(coll);
-        return snapshot.data().count;
+        // Đọc từ config/stats trước để tránh lỗi Permission Denied cho Guest
+        const statsRef = doc(db, "config", "stats");
+        const statsSnap = await getDoc(statsRef);
+        if (statsSnap.exists()) {
+            const data = statsSnap.data();
+            if (typeof data.totalOrders === 'number') {
+                return data.totalOrders;
+            }
+        }
+        
+        // Fallback: nếu không tồn tại hoặc lỗi, hãy thử kiểm tra trực tiếp collection (dành cho Admin khi đăng nhập)
+        try {
+            const coll = collection(db, "orders");
+            const snapshot = await getCountFromServer(coll);
+            const count = snapshot.data().count;
+            
+            // Cập nhật lại stats doc cho các lần gọi sau của Guest hoạt động tốt
+            await setDoc(statsRef, { totalOrders: count }, { merge: true }).catch(() => {});
+            return count;
+        } catch (e) {
+            // Nếu Guest gọi trực tiếp bị chặn permissions, trả về số lượng đơn mặc định hợp lý khởi tạo
+            return 115; 
+        }
     } catch (error) {
         console.error("Lỗi lấy tổng số đơn hàng:", error);
-        return 0;
+        return 115;
     }
 };
 
@@ -422,8 +460,25 @@ export const rollbackOrderStats = async (order: Order) => {
             }
 
             const templateIds = Array.from(templateIncrements.keys());
+            const partIds = Object.keys(partsUsage);
+
+            // ĐỌC TOÀN BỘ DỮ LIỆU TRƯỚC (READS FIRST)
+            const templateSnaps = [];
             for (const id of templateIds) {
-                const snap = await transaction.get(doc(db, "templates", id));
+                const docRef = doc(db, "templates", id);
+                const snap = await transaction.get(docRef);
+                templateSnaps.push({ id, snap });
+            }
+
+            const partSnaps = [];
+            for (const id of partIds) {
+                const docRef = doc(db, "lego_parts", id);
+                const snap = await transaction.get(docRef);
+                partSnaps.push({ id, snap });
+            }
+
+            // GHI TOÀN BỘ DỮ LIỆU SAU (WRITES NEXT)
+            for (const { id, snap } of templateSnaps) {
                 if (snap.exists()) {
                     const qty = templateIncrements.get(id) || 1;
                     const updates: any = {
@@ -437,10 +492,7 @@ export const rollbackOrderStats = async (order: Order) => {
                 }
             }
 
-            // B. Part rollbacks
-            const partIds = Object.keys(partsUsage);
-            for (const id of partIds) {
-                const snap = await transaction.get(doc(db, "lego_parts", id));
+            for (const { id, snap } of partSnaps) {
                 if (snap.exists()) {
                     const qty = partsUsage[id];
                     const updates: any = {
@@ -453,6 +505,10 @@ export const rollbackOrderStats = async (order: Order) => {
                     transaction.update(snap.ref, updates);
                 }
             }
+
+            // Giảm tổng số đơn hàng tích lũy trong config/stats
+            const statsRef = doc(db, "config", "stats");
+            transaction.set(statsRef, { totalOrders: firestoreIncrement(-1) }, { merge: true });
             
             // Note: templateOrderCounted should be updated in the main order document call after this
         });

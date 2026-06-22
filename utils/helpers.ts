@@ -136,14 +136,18 @@ export const safeJsonStringify = (obj: any): string => {
 /**
  * Removes undefined values and handles complex/circular objects.
  */
-export const cleanForFirestore = (obj: any): any => {
+export const cleanForFirestore = (obj: any, seen = new WeakSet()): any => {
     if (obj === null || obj === undefined) return obj;
     if (typeof obj !== 'object') return obj;
+    
+    // Xử lý Circular References
+    if (seen.has(obj)) return '[Circular]';
+    seen.add(obj);
     
     // Nếu là Array
     if (Array.isArray(obj)) {
         return obj
-            .map(cleanForFirestore)
+            .map(item => cleanForFirestore(item, seen))
             .filter(item => item !== undefined);
     }
 
@@ -162,7 +166,7 @@ export const cleanForFirestore = (obj: any): any => {
     const newObj: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const val = cleanForFirestore(obj[key]);
+            const val = cleanForFirestore(obj[key], seen);
             if (val !== undefined) {
                 newObj[key] = val;
             }
