@@ -2,7 +2,7 @@
 // services/orderService.ts
 import { db } from '../config/firebase';
 // Standard modular imports from firebase/firestore
-import { collection, setDoc, doc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer, runTransaction, increment as firestoreIncrement } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, getDocFromCache, getDocs, query, orderBy, updateDoc, deleteDoc, where, getCountFromServer, runTransaction, increment as firestoreIncrement } from 'firebase/firestore';
 import type { Order, FrameConfig } from '../types';
 import { uploadFile } from './uploadService';
 import { adjustStock } from './productService';
@@ -340,11 +340,25 @@ export const getRecentOrders = async (limitCount: number = 50): Promise<Order[]>
 
 // 4. Lấy tổng số lượng đơn hàng thực tế
 export const getTotalOrderCount = async (): Promise<number> => {
+    const statsRef = doc(db, "config", "stats");
+    let statsSnap = null;
+
     try {
-        // Đọc từ config/stats trước để tránh lỗi Permission Denied cho Guest
-        const statsRef = doc(db, "config", "stats");
-        const statsSnap = await getDoc(statsRef);
-        if (statsSnap.exists()) {
+        // Đọc từ config/stats (Server) trước
+        statsSnap = await getDoc(statsRef);
+    } catch (serverError: any) {
+        // Nếu offline hoặc lỗi mạng, thử đọc từ cache để tránh quăng lỗi crash/báo động hệ thống
+        try {
+            statsSnap = await getDocFromCache(statsRef);
+        } catch (cacheError) {
+            // Báo warn nhẹ thay vì console.error để tránh trigger các bug logger hệ thống
+            console.warn("Could not retrieve order count from server or cache (offline mode):", serverError.message);
+            return 115;
+        }
+    }
+
+    try {
+        if (statsSnap && statsSnap.exists()) {
             const data = statsSnap.data();
             if (typeof data.totalOrders === 'number') {
                 return data.totalOrders;
@@ -365,7 +379,8 @@ export const getTotalOrderCount = async (): Promise<number> => {
             return 115; 
         }
     } catch (error) {
-        console.error("Lỗi lấy tổng số đơn hàng:", error);
+        // Sử dụng console.warn thay vì console.error khi lấy tổng số đơn hàng gặp lỗi cuối cùng
+        console.warn("Lỗi lấy tổng số đơn hàng:", error);
         return 115;
     }
 };
