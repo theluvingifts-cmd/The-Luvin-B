@@ -335,23 +335,25 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             const searchLower = orderSearch.trim().toLowerCase();
             result = result.filter(o => {
                 // 1. Tìm trong thông tin cơ bản
-                const matchesBasic = o.id.toLowerCase().includes(searchLower) || 
-                    o.customer.phone.includes(searchLower) ||
-                    (o.customer.name && o.customer.name.toLowerCase().includes(searchLower));
+                const matchesBasic = (o.id && o.id.toLowerCase().includes(searchLower)) || 
+                    (o.customer?.phone && o.customer.phone.includes(searchLower)) ||
+                    (o.customer?.name && o.customer.name.toLowerCase().includes(searchLower));
                 
                 if (matchesBasic) return true;
 
                 // 2. Tìm trong form khách nhập (customFormData) và nội dung chữ (texts)
-                return o.items.some(item => {
+                const items = Array.isArray(o.items) ? o.items : [];
+                return items.some(item => {
                     // Kiểm tra customFormData
-                    const matchesForm = item.customFormData && Object.values(item.customFormData).some(val => 
-                        typeof val === 'string' && val.toLowerCase().includes(searchLower)
-                    );
+                    const matchesForm = item.customFormData && typeof item.customFormData === 'object' && 
+                        Object.values(item.customFormData).some(val => 
+                            typeof val === 'string' && val.toLowerCase().includes(searchLower)
+                        );
                     if (matchesForm) return true;
 
                     // Kiểm tra nội dung chữ (texts)
-                    const matchesTexts = item.texts && item.texts.some(t => 
-                        t.content.toLowerCase().includes(searchLower)
+                    const matchesTexts = Array.isArray(item.texts) && item.texts.some(t => 
+                        t && t.content && typeof t.content === 'string' && t.content.toLowerCase().includes(searchLower)
                     );
                     return matchesTexts;
                 });

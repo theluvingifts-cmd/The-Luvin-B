@@ -87,7 +87,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
         });
 
         // Products (Parts) Listener
-        const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+        const unsubProducts = onSnapshot(collection(db, 'lego_parts'), (snapshot) => {
             const productsData: LegoPart[] = [];
             snapshot.forEach((doc) => {
                 const data = doc.data() as LegoPart;
@@ -95,6 +95,8 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
             });
             productsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
             setProducts(productsData);
+        }, (error) => {
+            console.error("Products snapshot error:", error);
         });
 
         // Templates Listener
