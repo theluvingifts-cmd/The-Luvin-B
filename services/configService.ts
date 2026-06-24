@@ -49,6 +49,7 @@ export interface StoreConfig {
     
     // NEW: Staff Management
     staff?: StaffMember[];
+    staffEmails?: string[];
 
     // Ads Config
     dailyAdsBudget?: number; 

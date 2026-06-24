@@ -200,9 +200,9 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 
             let effPrice = getEffectivePrice(latestPart);
             
-            // CUSTOM RULE: for Gallery line, only 'hair' and 'accessory' (charms) are NOT $0.
-            // Other parts like shirt, pants, face, hat, set are $0 for Gallery.
-            if (isGallery && !['hair', 'accessory'].includes(type)) {
+            // CUSTOM RULE: for Gallery line, only 'hair', 'accessory' (charms), and 'set' (outfits) are NOT $0.
+            // Other parts like shirt, pants, face, hat are $0 for Gallery.
+            if (isGallery && !['hair', 'accessory', 'set'].includes(type)) {
                 effPrice = 0;
             }
 

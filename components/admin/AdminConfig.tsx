@@ -410,9 +410,17 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 addedAt: new Date().toISOString()
             };
             const updatedStaff = [...(storeConfig.staff || []), newStaff];
-            const success = await updateStoreConfig({ staff: updatedStaff });
+            const updatedStaffEmails = updatedStaff.map(s => s.email);
+            const success = await updateStoreConfig({ 
+                staff: updatedStaff,
+                staffEmails: updatedStaffEmails
+            });
             if (success) {
-                setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
+                setStoreConfig(prev => ({ 
+                    ...prev, 
+                    staff: updatedStaff,
+                    staffEmails: updatedStaffEmails
+                }));
                 setNewStaffEmail('');
                 setNewStaffPassword('');
                 alert("Đã thêm nhân viên thành công.");
@@ -428,9 +436,17 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
     const handleDeleteStaff = async (email: string) => {
         if (confirm(`Bạn có chắc muốn xóa quyền truy cập của ${email}?`)) {
             const updatedStaff = (storeConfig.staff || []).filter(s => s.email !== email);
-            const success = await updateStoreConfig({ staff: updatedStaff });
+            const updatedStaffEmails = updatedStaff.map(s => s.email);
+            const success = await updateStoreConfig({ 
+                staff: updatedStaff,
+                staffEmails: updatedStaffEmails
+            });
             if (success) {
-                setStoreConfig(prev => ({ ...prev, staff: updatedStaff }));
+                setStoreConfig(prev => ({ 
+                    ...prev, 
+                    staff: updatedStaff,
+                    staffEmails: updatedStaffEmails
+                }));
             }
         }
     };

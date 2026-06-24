@@ -20,7 +20,15 @@ service cloud.firestore {
         request.auth.token.email.matches('(?i)jinbduong@gmail\\.com') ||
         request.auth.token.email.matches('(?i)theluvin\\.gifts@gmail\\.com') ||
         request.auth.token.email.matches('(?i)theluvingifts@gmail\\.com') ||
+        request.auth.token.email.matches('(?i)ngominh@gmail\\.com') ||
         (request.auth.token.email.matches('(?i).*admin.*') && request.auth.token.get('email_verified', false) == true)
+      );
+    }
+
+    function isStaff() {
+      return isSignedIn() && (
+        isVerifiedAdmin() ||
+        request.auth.token.email in get(/databases/$(database)/documents/config/general).data.get('staffEmails', [])
       );
     }
 
@@ -64,18 +72,18 @@ service cloud.firestore {
       allow create, delete: if isVerifiedAdmin() && isValidId(partId);
       
       allow update: if (
-        isVerifiedAdmin() ||
+        isStaff() ||
         // Action: Stock & Stats Update (Public/Checkout)
         (incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'lastUpdated', 'orders', 'realOrderCount']))
-      ) && (isVerifiedAdmin() || isValidLegoPart(incoming()));
+      ) && (isStaff() || isValidLegoPart(incoming()));
     }
 
     // 2. ORDERS
     match /orders/{orderId} {
       allow get: if true; // Allow customer to see their order if they have the ID
-      allow list: if true; // Allow customers to look up their orders via SĐT or referral code
+      allow list: if isStaff() || true; // Combined with public lookup
       allow create: if true; // Guest order
-      allow update: if isVerifiedAdmin() || (
+      allow update: if isStaff() || (
         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'paymentProofUrl', 'paymentProofUploadedAt'])
       ) || (
         // Auto-cancel logic (Expired orders)
@@ -89,24 +97,24 @@ service cloud.firestore {
 
     // 3. ANALYTICS
     match /analytics/{docId} {
-      allow read: if isVerifiedAdmin();
+      allow read: if isStaff();
       allow write: if true; // Guest funnel tracking
     }
 
     // 4. SHARED DESIGNS
     match /shared_designs/{designId} {
       allow get: if true;
-      allow list: if isVerifiedAdmin();
+      allow list: if isStaff();
       allow create: if true;
-      allow update, delete: if isVerifiedAdmin();
+      allow update, delete: if isStaff();
     }
 
     // 5. COLLABORATORS (CTVs)
     match /collaborators/{uid} {
       allow get: if true; 
-      allow list: if isVerifiedAdmin();
+      allow list: if isStaff();
       allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if (isSignedIn() && request.auth.uid == uid) || isVerifiedAdmin();
+      allow update: if (isSignedIn() && request.auth.uid == uid) || isStaff();
       allow delete: if isVerifiedAdmin();
     }
 
@@ -119,41 +127,41 @@ service cloud.firestore {
     }
 
     // 7. ASSETS, CONFIG, VOUCHERS, BACKGROUNDS, TEMPLATES
-    match /backgrounds/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
+    match /backgrounds/{docId} { allow read: if true; allow write: if isStaff(); }
     match /templates/{docId} { 
       allow read: if true; 
       allow create, delete: if isVerifiedAdmin();
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount', 'orders', 'stock', 'realOrderCount']));
+      allow update: if isStaff() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount', 'orders', 'stock', 'realOrderCount']));
     }
     match /config/{docId} { 
       allow read: if true; 
-      allow write: if isVerifiedAdmin() || (docId == 'stats'); 
+      allow write: if isVerifiedAdmin() || (docId == 'stats') || (docId == 'general' && isStaff()); 
       match /ads_costs/{date} {
-        allow read, write: if isVerifiedAdmin();
+        allow read, write: if isStaff();
       }
     }
     match /vouchers/{docId} { 
       allow get: if true; // Allow guests to validate vouchers
-      allow list: if isVerifiedAdmin(); 
-      allow update: if isVerifiedAdmin() || (incoming().diff(existing()).affectedKeys().hasOnly(['usageCount', 'usedBy']));
-      allow write: if isVerifiedAdmin(); 
+      allow list: if isStaff(); 
+      allow update: if isStaff() || (incoming().diff(existing()).affectedKeys().hasOnly(['usageCount', 'usedBy']));
+      allow write: if isStaff(); 
     }
-    match /assets/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /frames/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
-    match /feedbacks/{docId} { allow read: if true; allow write: if isVerifiedAdmin(); }
+    match /assets/{docId} { allow read: if true; allow write: if isStaff(); }
+    match /frames/{docId} { allow read: if true; allow write: if isStaff(); }
+    match /feedbacks/{docId} { allow read: if true; allow write: if isStaff(); }
 
     // 8. AUDIT LOGS
     match /audit_logs/{logId} {
       allow read: if isSuperAdmin();
-      allow create: if isVerifiedAdmin();
+      allow create: if isStaff();
     }
 
     // 9. ADMIN SESSIONS
     match /admin_sessions/{sessionId} {
-      allow get: if isVerifiedAdmin();
+      allow get: if isStaff();
       allow list: if isSuperAdmin();
-      allow create: if isVerifiedAdmin() && incoming().uid == request.auth.uid;
-      allow update: if isVerifiedAdmin() && (
+      allow create: if isStaff() && incoming().uid == request.auth.uid;
+      allow update: if isStaff() && (
         (isSignedIn() && request.auth.uid == existing().uid && !incoming().isRevoked) || 
         isSuperAdmin()
       );
