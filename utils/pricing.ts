@@ -53,12 +53,15 @@ export const formatCurrency = (amount: number, context: 'price' | 'payment' | 'a
 export const isPartOutOfStock = (part: LegoPart | undefined) => {
     if (!part) return false;
     
-    // If it has colors, it is out of stock only if ALL colors that have stock tracking are at 0
+    // If it has colors, it is out of stock only if ALL colors that have stock tracking are <= 0
     if (part.colors && part.colors.length > 0) {
-        return part.colors.every(c => c.stock === 0);
+        return part.colors.every(c => c.stock !== undefined && c.stock !== null && Number(c.stock) <= 0);
     }
     
-    return part.stock === 0;
+    // If stock is not tracked (undefined or null), it's considered in stock
+    if (part.stock === undefined || part.stock === null) return false;
+    
+    return Number(part.stock) <= 0;
 };
 
 // Helper: Get display image (first in-stock color or default)
@@ -225,24 +228,49 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         addPartCost(char.face, 'Mặt', 'face');
 
         if (char.selectedShirtColor && char.selectedShirtColor.price > 0 && !isGallery) {
-            total += char.selectedShirtColor.price;
-            breakdown.push({ label: `Màu áo: ${char.selectedShirtColor.name} ${charLabel}`, value: char.selectedShirtColor.price });
+            const isColorOOS = char.selectedShirtColor.stock !== undefined && char.selectedShirtColor.stock !== null && Number(char.selectedShirtColor.stock) <= 0;
+            if (isColorOOS) {
+                breakdown.push({ label: `Màu áo: ${char.selectedShirtColor.name} ${charLabel}`, value: 0, originalValue: char.selectedShirtColor.price, details: 'Hết hàng (0 ₫)' });
+            } else {
+                total += char.selectedShirtColor.price;
+                breakdown.push({ label: `Màu áo: ${char.selectedShirtColor.name} ${charLabel}`, value: char.selectedShirtColor.price });
+            }
         }
         if (char.selectedPantsColor && char.selectedPantsColor.price > 0 && !isGallery) {
-            total += char.selectedPantsColor.price;
-            breakdown.push({ label: `Màu quần: ${char.selectedPantsColor.name} ${charLabel}`, value: char.selectedPantsColor.price });
+            const isColorOOS = char.selectedPantsColor.stock !== undefined && char.selectedPantsColor.stock !== null && Number(char.selectedPantsColor.stock) <= 0;
+            if (isColorOOS) {
+                breakdown.push({ label: `Màu quần: ${char.selectedPantsColor.name} ${charLabel}`, value: 0, originalValue: char.selectedPantsColor.price, details: 'Hết hàng (0 ₫)' });
+            } else {
+                total += char.selectedPantsColor.price;
+                breakdown.push({ label: `Màu quần: ${char.selectedPantsColor.name} ${charLabel}`, value: char.selectedPantsColor.price });
+            }
         }
         if (char.selectedHairColor && char.selectedHairColor.price > 0) {
-            total += char.selectedHairColor.price;
-            breakdown.push({ label: `Màu tóc: ${char.selectedHairColor.name} ${charLabel}`, value: char.selectedHairColor.price });
+            const isColorOOS = char.selectedHairColor.stock !== undefined && char.selectedHairColor.stock !== null && Number(char.selectedHairColor.stock) <= 0;
+            if (isColorOOS) {
+                breakdown.push({ label: `Màu tóc: ${char.selectedHairColor.name} ${charLabel}`, value: 0, originalValue: char.selectedHairColor.price, details: 'Hết hàng (0 ₫)' });
+            } else {
+                total += char.selectedHairColor.price;
+                breakdown.push({ label: `Màu tóc: ${char.selectedHairColor.name} ${charLabel}`, value: char.selectedHairColor.price });
+            }
         }
         if (char.selectedHatColor && char.selectedHatColor.price > 0 && !isGallery) {
-            total += char.selectedHatColor.price;
-            breakdown.push({ label: `Màu mũ: ${char.selectedHatColor.name} ${charLabel}`, value: char.selectedHatColor.price });
+            const isColorOOS = char.selectedHatColor.stock !== undefined && char.selectedHatColor.stock !== null && Number(char.selectedHatColor.stock) <= 0;
+            if (isColorOOS) {
+                breakdown.push({ label: `Màu mũ: ${char.selectedHatColor.name} ${charLabel}`, value: 0, originalValue: char.selectedHatColor.price, details: 'Hết hàng (0 ₫)' });
+            } else {
+                total += char.selectedHatColor.price;
+                breakdown.push({ label: `Màu mũ: ${char.selectedHatColor.name} ${charLabel}`, value: char.selectedHatColor.price });
+            }
         }
         if (char.selectedSetColor && char.selectedSetColor.price > 0 && !isGallery) {
-            total += char.selectedSetColor.price;
-            breakdown.push({ label: `Màu bộ đồ: ${char.selectedSetColor.name} ${charLabel}`, value: char.selectedSetColor.price });
+            const isColorOOS = char.selectedSetColor.stock !== undefined && char.selectedSetColor.stock !== null && Number(char.selectedSetColor.stock) <= 0;
+            if (isColorOOS) {
+                breakdown.push({ label: `Màu bộ đồ: ${char.selectedSetColor.name} ${charLabel}`, value: 0, originalValue: char.selectedSetColor.price, details: 'Hết hàng (0 ₫)' });
+            } else {
+                total += char.selectedSetColor.price;
+                breakdown.push({ label: `Màu bộ đồ: ${char.selectedSetColor.name} ${charLabel}`, value: char.selectedSetColor.price });
+            }
         }
     });
 
