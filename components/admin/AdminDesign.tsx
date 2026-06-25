@@ -453,7 +453,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
             texts: bg.overlayConfig?.texts || [],
             draggableItems: bg.overlayConfig?.draggableItems || [],
             shapes: bg.overlayConfig?.shapes || [],
-            formFields: bg.formFields || [],
+            formFields: Array.isArray(bg.formFields) ? bg.formFields : [],
             characters: []
         });
     };
@@ -485,7 +485,8 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
             customFormData: { ...(prev.customFormData || {}), [fieldId]: value },
             texts: prev.texts.map(t => {
                 if (t.linkedFieldId === fieldId) {
-                    const field = (prev.formFields || []).find(f => f.id === fieldId);
+                    const formFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+                    const field = formFields.find(f => f.id === fieldId);
                     if (field?.type === 'color') return { ...t, color: value };
                     return { ...t, content: displayValue || ' ' };
                 }
@@ -493,14 +494,16 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
             }),
             shapes: (prev.shapes || []).map(s => {
                 if (s.linkedFieldId === fieldId) {
-                    const field = (prev.formFields || []).find(f => f.id === fieldId);
+                    const formFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+                    const field = formFields.find(f => f.id === fieldId);
                     if (field?.type === 'color') return { ...s, fillColor: value };
                 }
                 return s;
             }),
             draggableItems: (prev.draggableItems || []).map(item => {
                 if (item.linkedFieldId === fieldId) {
-                    const field = (prev.formFields || []).find(f => f.id === fieldId);
+                    const formFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+                    const field = formFields.find(f => f.id === fieldId);
                     if (field?.type === 'image' && value) return { ...item, partId: value };
                 }
                 return item;
@@ -510,15 +513,24 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
 
     const handleAddField = () => {
         const newField: FormField = { id: `field_${Date.now()}`, label: 'Trường mới', type: 'text', required: false };
-        setConfig(prev => ({ ...prev, formFields: [...(prev.formFields || []), newField] }));
+        setConfig(prev => {
+            const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+            return { ...prev, formFields: [...currentFields, newField] };
+        });
     };
 
     const updateField = (id: string, updates: Partial<FormField>) => {
-        setConfig(prev => ({ ...prev, formFields: (prev.formFields || []).map(f => f.id === id ? { ...f, ...updates } : f) }));
+        setConfig(prev => {
+            const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+            return { ...prev, formFields: currentFields.map(f => f.id === id ? { ...f, ...updates } : f) };
+        });
     };
 
     const removeField = (id: string) => {
-        setConfig(prev => ({ ...prev, formFields: (prev.formFields || []).filter(f => f.id !== id) }));
+        setConfig(prev => {
+            const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+            return { ...prev, formFields: currentFields.filter(f => f.id !== id) };
+        });
     };
 
     const isFieldLinked = (fieldId: string) => {
@@ -679,7 +691,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                         onChange={e => updateSelected({ linkedFieldId: e.target.value })}
                                     >
                                         <option value="">-- Không kết nối --</option>
-                                        {(config.formFields || [])
+                                        {(Array.isArray(config.formFields) ? config.formFields : [])
                                             .filter(f => {
                                                 if (selectedItemId?.startsWith('text-')) return f.type !== 'image';
                                                 if (selectedItemId?.startsWith('shape-')) return f.type === 'color' || f.type === 'image';
@@ -1166,7 +1178,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                     {isTestMode ? (
                                         <div className="space-y-3 animate-fade-in">
                                             <p className="text-[9px] text-blue-600 font-bold bg-blue-50 p-2 rounded border border-blue-100 italic">💡 Nhập thử vào đây để xem thông tin thay đổi trên thiết kế như thế nào.</p>
-                                            {(config.formFields || []).map(f => (
+                                            {(Array.isArray(config.formFields) ? config.formFields : []).map(f => (
                                                 <div key={f.id} className="space-y-1">
                                                     <label className="text-[9px] font-black text-gray-500 uppercase ml-1">{f.label}</label>
                                                     {f.type === 'color' ? (
@@ -1209,7 +1221,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                         </div>
                                     ) : (
                                         <div className="space-y-3 animate-fade-in">
-                                            {(config.formFields || []).map((f) => (
+                                            {(Array.isArray(config.formFields) ? config.formFields : []).map((f) => (
                                                 <div key={f.id} className="p-3 bg-gray-50 border rounded-xl space-y-2 relative group hover:border-blue-300 transition-all">
                                                     <button onClick={() => removeField(f.id)} className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">&times;</button>
                                                     
@@ -1469,7 +1481,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                             type: bgType, 
                                             url: config.background.value,
                                             overlayConfig: { texts: config.texts, draggableItems: config.draggableItems, shapes: config.shapes },
-                                            formFields: config.formFields || []
+                                            formFields: Array.isArray(config.formFields) ? config.formFields : []
                                         };
                                         const success = editingBgId ? await updateBackground(editingBgId, backgroundData) : await addBackground(backgroundData);
                                         if (success) {

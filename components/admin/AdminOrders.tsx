@@ -1268,7 +1268,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                     {(isEditingOrder && editForm ? editForm.items : selectedOrder.items).map((item, idx) => {
                                         const { totalPrice: itemTotal, priceBreakdown } = calculatePrice(item, allKnownParts, frames, templates, item.templateId);
                                         
-                                        const formFieldImages = (item.formFields || [])
+                                        const formFields = Array.isArray(item.formFields) ? item.formFields : [];
+                                        const formFieldImages = formFields
                                             .filter(f => f.type === 'image' && item.customFormData?.[f.id])
                                             .map(f => ({ url: item.customFormData![f.id], type: `Ảnh Form (${f.label})` }));
 
@@ -1456,7 +1457,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                 <span>📝</span> Thông tin in ấn (Form khách nhập)
                                                             </h4>
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                                                                {(item.formFields || []).map((field: FormField) => {
+                                                                {(Array.isArray(item.formFields) ? item.formFields : []).map((field: FormField) => {
                                                                     const val = item.customFormData?.[field.id];
                                                                     if (!val) return null;
                                                                     return (
@@ -1478,7 +1479,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                 
                                                                 {/* Extra non-standard fields (like order_note from Collection) */}
                                                                 {Object.entries(item.customFormData || {}).map(([key, val]) => {
-                                                                    if ((item.formFields || []).some((f: FormField) => f.id === key)) return null;
+                                                                    if ((Array.isArray(item.formFields) ? item.formFields : []).some((f: FormField) => f.id === key)) return null;
                                                                     if (!val) return null;
                                                                     return (
                                                                         <div key={key} className="border-b border-orange-100 pb-2">

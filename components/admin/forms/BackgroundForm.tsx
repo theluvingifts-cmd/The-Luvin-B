@@ -64,24 +64,24 @@ export const BackgroundForm: React.FC<{
             required: false,
             placeholder: ''
         };
-        setFormData(prev => ({
-            ...prev,
-            formFields: [...(prev.formFields || []), newField]
-        }));
+        setFormData(prev => {
+            const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+            return { ...prev, formFields: [...currentFields, newField] };
+        });
     };
 
     const handleUpdateField = (id: string, updates: Partial<FormField>) => {
-        setFormData(prev => ({
-            ...prev,
-            formFields: (prev.formFields || []).map(f => f.id === id ? { ...f, ...updates } : f)
-        }));
+        setFormData(prev => {
+            const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+            return { ...prev, formFields: currentFields.map(f => f.id === id ? { ...f, ...updates } : f) };
+        });
     };
 
     const handleRemoveField = (id: string) => {
-        setFormData(prev => ({
-            ...prev,
-            formFields: (prev.formFields || []).filter(f => f.id !== id)
-        }));
+        setFormData(prev => {
+            const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+            return { ...prev, formFields: currentFields.filter(f => f.id !== id) };
+        });
     };
 
     const loadDefaultTemplate = () => {
@@ -103,10 +103,10 @@ export const BackgroundForm: React.FC<{
                 type: 'image',
                 required: true
             }));
-            setFormData(prev => ({
-                ...prev,
-                formFields: [...(prev.formFields || []), ...photoFields]
-            }));
+            setFormData(prev => {
+                const currentFields = Array.isArray(prev.formFields) ? prev.formFields : [];
+                return { ...prev, formFields: [...currentFields, ...photoFields] };
+            });
         }
     };
 
@@ -203,7 +203,7 @@ export const BackgroundForm: React.FC<{
                     </div>
 
                     <div className="space-y-3">
-                        {(formData.formFields || []).map((field, index) => (
+                        {(Array.isArray(formData.formFields) ? formData.formFields : []).map((field, index) => (
                             <div key={field.id} className="group p-4 bg-gray-50 border border-gray-200 rounded-2xl relative animate-fade-in hover:border-blue-300 transition-all">
                                 {/* Delete Button */}
                                 <button 

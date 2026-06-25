@@ -46,8 +46,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
   const currentBg = backgrounds.find(bg => bg.url === config.background.value);
 
   const activeFields = useMemo((): FormField[] => {
-    if (config.formFields && config.formFields.length > 0) return config.formFields;
-    if (currentBg?.formFields && currentBg.formFields.length > 0) return currentBg.formFields;
+    if (Array.isArray(config.formFields) && config.formFields.length > 0) return config.formFields;
+    if (currentBg && Array.isArray(currentBg.formFields) && currentBg.formFields.length > 0) return currentBg.formFields;
     return [];
   }, [currentBg, config.formFields]);
 
@@ -139,7 +139,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         frameId: newFrameId,
         background: { type: isColor ? 'color' : 'image', value: bg.url },
         isRotated: bg.orientation === 'landscape',
-        formFields: bg.formFields || [],
+        formFields: Array.isArray(bg.formFields) ? bg.formFields : [],
         texts: overlayTexts,
         draggableItems: overlayDraggableItems,
         shapes: overlayShapes

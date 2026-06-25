@@ -685,7 +685,8 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
                     // --- BỔ SUNG LOGIC ĐỔ ẢNH TỪ FORM CHO SHAPE ---
                     let shapeImageUrl = null;
                     if (shape.linkedFieldId && config.customFormData?.[shape.linkedFieldId]) {
-                        const field = (config.formFields || []).find(f => f.id === shape.linkedFieldId);
+                        const formFields = Array.isArray(config.formFields) ? config.formFields : [];
+                        const field = formFields.find(f => f.id === shape.linkedFieldId);
                         if (field?.type === 'image') {
                             shapeImageUrl = config.customFormData[shape.linkedFieldId];
                         }
