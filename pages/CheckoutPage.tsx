@@ -968,24 +968,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     <span>{t('cart.subtotal')}</span>
                     <span className="text-gray-700 font-heading font-bold">{formatCurrency(subtotal)}</span>
                 </div>
-                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) ? (
+                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && (
                     <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                         <span>{t('checkout.gift_box')} <small className="opacity-60 text-[10px]">({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</small></span>
                         <span className="text-gray-700 font-heading font-bold">{formatCurrency(giftBoxFee)}</span>
                     </div>
-                ) : null}
-                {(!storeConfig?.lightOutOfStock && addLight && hasLegoItems) ? (
+                )}
+                {(!storeConfig?.lightOutOfStock && addLight && hasLegoItems) && (
                     <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                         <span>{t('checkout.light_box')} <small className="opacity-60 text-[10px]">({formatCurrency(storeConfig?.lightPrice || 50000)} x {legoQuantity})</small></span>
                         <span className="text-gray-700 font-heading font-bold">{formatCurrency(lightFee)}</span>
                     </div>
-                ) : null}
-                {polaroidOption > 0 ? (
+                )}
+                {polaroidOption > 0 && (
                     <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                         <span>{t('checkout.add_polaroid')} <small className="opacity-60 text-[10px]">(x{polaroidOption})</small></span>
                         <span className="text-gray-700 font-heading font-bold">{formatCurrency(polaroidFee)}</span>
                     </div>
-                ) : null}
+                )}
                 <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                     <span>{t('checkout.shipping_fee')}</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (

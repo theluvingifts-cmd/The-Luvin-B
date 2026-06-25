@@ -411,8 +411,6 @@ export const translations: any = {
             discount: "Giảm giá",
             total_payment: "Tổng thanh toán",
             deposit_required: "Cần đặt cọc (70%)",
-            light_box: "Đèn Spotlight",
-            add_polaroid: "In ảnh Polaroid",
         },
         checkout: {
             title: "Thông tin thanh toán",
@@ -925,8 +923,6 @@ export const translations: any = {
             discount: "Discount",
             total_payment: "Total Payment",
             deposit_required: "Deposit Required (70%)",
-            light_box: "Spotlight",
-            add_polaroid: "Polaroid Prints",
         },
         checkout: {
             title: "Checkout Information",

@@ -654,14 +654,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         let subtotal = 0;
         const partLookup = allKnownParts;
         orderItems.forEach(item => {
-            // Priority 1: Use stored historical price
-            if (item.price && typeof item.price === 'number') {
-                subtotal += item.price * (item.quantity || 1);
-            } else {
-                // Fallback: Re-calculate if price not stored (legacy orders)
-                const { totalPrice } = calculatePrice(item, partLookup, frames, templates, item.templateId);
-                subtotal += totalPrice * (item.quantity || 1);
-            }
+            const { totalPrice } = calculatePrice(item, partLookup, frames, templates, item.templateId);
+            subtotal += totalPrice * (item.quantity || 1);
         });
         return subtotal;
     }
@@ -855,13 +849,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         const lightFee = (order.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
         const polaroidFee = Number(order.addPolaroid) === 2 ? 15000 : Number(order.addPolaroid) === 4 ? 25000 : 0;
         const shippingFee = order.shipping.fee || 0;
-        const discount = Number(order.discountAmount) || 0;
+        const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 
-        
-        // Calculate what the total SHOULD be based on visible components
-        const calculatedTotal = subtotal + giftBoxFee + lightFee + polaroidFee + shippingFee - discount;
-        const adjustment = totalPrice - calculatedTotal;
-
         const amountPaid = isEditingOrder ? amountPaidInput : (order.amountPaid || 0);
         const remaining = Math.max(0, totalPrice - amountPaid);
 
@@ -922,15 +911,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                             )}
                         </div>
                     )}
-                    {!isEditingOrder && Math.abs(adjustment) > 10 && (
-                        <div className="flex justify-between items-center text-xs italic">
-                            <span className="text-gray-400">Điều chỉnh giá/KM khác:</span>
-                            <span className={adjustment < 0 ? "text-green-600" : "text-amber-600"}>
-                                {adjustment < 0 ? '-' : '+'}{formatCurrency(Math.abs(adjustment), 'admin')}
-                            </span>
-                        </div>
-                    )}
-                    <div className="border-t border-gray-100 my-2 pt-2"></div>
+                    <div className="border-t border-gray-100 my-2"></div>
                     <div className="flex justify-between items-center text-base"><span className="font-bold text-gray-800">Tổng giá trị đơn:</span><span className="font-bold text-gray-900">{formatCurrency(totalPrice, 'admin')}</span></div>
                     <div className="flex justify-between items-center bg-green-50 p-2 rounded -mx-2">
                         <span className="text-green-700 font-medium">Đã thanh toán:</span>
@@ -1089,10 +1070,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <p className="text-sm text-gray-600 truncate max-w-[120px]">{order.customer.name}</p>
                                         <div className="flex gap-0.5">
-                                            {!!order.addGiftBox && (
+                                            {order.addGiftBox && (
                                                 <span className="flex-shrink-0 text-pink-500 text-sm" title="Đơn có gói quà">🎁</span>
                                             )}
-                                            {!!order.addLight && (
+                                            {order.addLight && (
                                                 <span className="flex-shrink-0 text-yellow-500 text-sm" title="Đơn có đèn spotlight">💡</span>
                                             )}
                                         </div>
@@ -1119,7 +1100,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                 <div className="flex-grow">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                                         <h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                            {selectedOrder.id}{!!selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
+                                            {selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
                                         </h2>
                                         <div className="mt-1 sm:mt-0">
                                             <StatusDropdown 
@@ -1426,26 +1407,19 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                             )}
                                                         </div>
                                                         <div className="text-right text-xs">
-                                                            {item.price && typeof item.price === 'number' ? (
-                                                                <div className="flex justify-end gap-2">
-                                                                    <span className="text-gray-500">Giá sản phẩm:</span>
-                                                                    <span className="font-medium text-gray-900">{formatCurrency(item.price, 'admin')}</span>
-                                                                </div>
-                                                            ) : (
-                                                                priceBreakdown.map((pb, pbIdx) => (
-                                                                    <div key={pbIdx} className="flex justify-end gap-2">
-                                                                        <span className="text-gray-500">{pb.label}:</span>
-                                                                        <div className="flex flex-col items-end">
-                                                                            {pb.originalValue !== undefined && pb.originalValue > pb.value && (
-                                                                                <span className="text-gray-400 line-through text-[9px]">{formatCurrency(pb.originalValue, 'admin')}</span>
-                                                                            )}
-                                                                            <span className="font-medium text-gray-900">{formatCurrency(pb.value, 'admin')}</span>
-                                                                        </div>
+                                                            {priceBreakdown.map((pb, pbIdx) => (
+                                                                <div key={pbIdx} className="flex justify-end gap-2">
+                                                                    <span className="text-gray-500">{pb.label}:</span>
+                                                                    <div className="flex flex-col items-end">
+                                                                        {pb.originalValue !== undefined && pb.originalValue > pb.value && (
+                                                                            <span className="text-gray-400 line-through text-[9px]">{formatCurrency(pb.originalValue, 'admin')}</span>
+                                                                        )}
+                                                                        <span className="font-medium text-gray-900">{formatCurrency(pb.value, 'admin')}</span>
                                                                     </div>
-                                                                ))
-                                                            )}
+                                                                </div>
+                                                            ))}
                                                             <div className="border-t mt-1 pt-1 font-bold text-gray-900">
-                                                                Tổng: {formatCurrency((item.price || itemTotal) * (item.quantity || 1), 'admin')}
+                                                                Tổng: {formatCurrency(itemTotal * (item.quantity || 1), 'admin')}
                                                             </div>
                                                         </div>
                                                     </div>

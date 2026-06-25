@@ -211,18 +211,13 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                         <span className="font-medium">{formatCurrency(order.shipping.fee)}</span>
                                     )}
                                 </div>
-                                {order.addGiftBox ? (
-                                    <div className="flex justify-between">
-                                        <span>Hộp quà ({totalQuantity} tranh):</span>
-                                        <span className="font-medium">{formatCurrency(giftBoxFee)}</span>
-                                    </div>
-                                ) : null}
-                                {(order.discountAmount ?? 0) > 0 ? (
+                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà ({totalQuantity} tranh):</span><span className="font-medium">{formatCurrency(giftBoxFee)}</span></div>}
+                                {order.discountAmount && order.discountAmount > 0 && (
                                     <div className="flex justify-between text-green-600 font-bold">
                                         <span>Giảm giá:</span>
                                         <span>-{formatCurrency(order.discountAmount)}</span>
                                     </div>
-                                ) : null}
+                                )}
                                 <div className="border-t my-2"></div>
                                 <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
                                 <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
