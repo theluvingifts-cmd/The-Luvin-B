@@ -73,9 +73,9 @@ service cloud.firestore {
       
       allow update: if (
         isStaff() ||
-        // Action: Stock & Stats Update (Public/Checkout)
+        // Action: Stock & Stats Update (Public/Checkout) - Allow guests to update ONLY these fields
         (incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'lastUpdated', 'orders', 'realOrderCount']))
-      ) && (isStaff() || isValidLegoPart(incoming()));
+      );
     }
 
     // 2. ORDERS

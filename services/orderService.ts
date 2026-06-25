@@ -183,7 +183,8 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                         const tplQty = templateIncrements.get(id) || 1;
                         const tplData = snap.data();
                         const updates: any = {
-                            orders: firestoreIncrement(tplQty)
+                            orders: firestoreIncrement(tplQty),
+                            realOrderCount: firestoreIncrement(tplQty)
                         };
                         if (typeof tplData.stock === 'number') {
                             updates.stock = firestoreIncrement(-tplQty);
@@ -203,13 +204,14 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                     if (snap.exists()) {
                         const qty = partsUsage[id];
                         const partData = snap.data();
-                        const updates: any = {};
+                        const updates: any = {
+                            orders: firestoreIncrement(qty),
+                            realOrderCount: firestoreIncrement(qty)
+                        };
                         if (typeof partData.stock === 'number') {
                             updates.stock = firestoreIncrement(-qty);
                         }
-                        if (Object.keys(updates).length > 0) {
-                            await updateDoc(docRef, updates);
-                        }
+                        await updateDoc(docRef, updates);
                     }
                 } catch (partErr: any) {
                     console.warn(`Lỗi cập nhật Lego Part (${id}) - Tồn kho không đồng bộ nhưng đơn hàng đã an toàn:`, partErr.message);

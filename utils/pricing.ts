@@ -101,15 +101,16 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         baseItem = lineFrames[0] || frames[0] || FRAME_OPTIONS[0];
     }
 
-    const baseEffective = getEffectivePrice(baseItem as any);
+    const isBaseOOS = (baseItem as any).stock !== undefined && (baseItem as any).stock !== null && (baseItem as any).stock <= 0;
+    const baseEffective = isBaseOOS ? 0 : getEffectivePrice(baseItem as any);
     total += baseEffective;
     
     breakdown.push({ 
         label: baseItem.name, 
         value: baseEffective,
-        originalValue: (baseItem.price && baseItem.price > baseEffective) ? baseItem.price : undefined,
+        originalValue: (baseItem.price && baseItem.price > baseEffective) ? baseItem.price : (isBaseOOS ? baseItem.price : undefined),
         isBase: true,
-        details: baseItem.description
+        details: isBaseOOS ? 'Hết hàng (0 ₫)' : baseItem.description
     });
 
     // 1.1 GALLERY OPTIONS (PHOTO & LIGHTS)
@@ -299,6 +300,8 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
             const quantity = partCounts[item.partId] || 1;
             const effPrice = getEffectivePrice(part, quantity, part.bulkPricing);
             const colorPrice = item.selectedColor?.price || 0;
+            const isColorOOS = item.selectedColor?.stock !== undefined && item.selectedColor?.stock !== null && Number(item.selectedColor.stock) <= 0;
+
             if (effPrice > 0) {
                 total += effPrice;
                 breakdown.push({
@@ -308,7 +311,15 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
                     details: (part.price > effPrice) ? `Giá Combo (SL: ${quantity})` : (part.type === 'pet' ? 'Thú cưng' : (part.type === 'hat' ? 'Mũ' : 'Phụ kiện'))
                 });
             }
-            if (colorPrice > 0) {
+
+            if (isColorOOS) {
+                breakdown.push({ 
+                    label: `Màu: ${item.selectedColor?.name} (${part.name})`, 
+                    value: 0, 
+                    originalValue: colorPrice, 
+                    details: 'Hết hàng (0 ₫)' 
+                });
+            } else if (colorPrice > 0) {
                 total += colorPrice;
                 breakdown.push({ label: `Màu: ${item.selectedColor?.name} (${part.name})`, value: colorPrice });
             }
