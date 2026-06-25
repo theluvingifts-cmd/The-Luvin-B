@@ -437,12 +437,24 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                                     <span>{formatCurrency(30000)}</span>
                                                 </div>
                                             )}
-                                            {foundOrder.discountAmount && foundOrder.discountAmount > 0 && (
+                                            {(foundOrder.addLight || foundOrder.items.some(item => (item.galleryOptions?.lightCount || 0) > 0)) ? (
+                                                <div className="flex justify-between text-gray-600">
+                                                    <span>{t('order_lookup.light_box')}</span>
+                                                    <span>{formatCurrency(foundOrder.items.reduce((sum, item) => sum + (item.galleryOptions?.lightCount || 0) * (item.quantity || 1), 0) * 50000)}</span>
+                                                </div>
+                                            ) : null}
+                                            {(foundOrder.addPolaroid ?? 0) > 0 ? (
+                                                <div className="flex justify-between text-gray-600">
+                                                    <span>{t('order_lookup.add_polaroid')}</span>
+                                                    <span>{formatCurrency(foundOrder.addPolaroid === 2 ? 15000 : 25000)}</span>
+                                                </div>
+                                            ) : null}
+                                            {(foundOrder.discountAmount ?? 0) > 0 ? (
                                                 <div className="flex justify-between text-green-600 font-medium">
                                                     <span>{t('order_lookup.discount')}</span>
                                                     <span>-{formatCurrency(foundOrder.discountAmount)}</span>
                                                 </div>
-                                            )}
+                                            ) : null}
                                             <div className="border-t border-gray-200 pt-3 mt-1 flex justify-between items-center">
                                                 <span className="font-bold text-gray-900 text-base">{t('order_lookup.total_payment')}</span>
                                                 <span className="font-heading font-bold text-xl text-luvin-pink">{formatCurrency(foundOrder.totalPrice)}</span>

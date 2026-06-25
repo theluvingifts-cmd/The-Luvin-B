@@ -84,6 +84,10 @@ export interface StoreConfig {
     standardPrintOutOfStock?: boolean;
     premiumPrintImageUrl?: string;
     polaroidSampleImages?: string[];
+
+    // Shipping & Warehouse
+    warehouseAddress?: string;
+    googleMapsUrl?: string;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {

@@ -708,7 +708,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                           <span className="text-xl">📍</span>
                           <div className="text-xs text-orange-900 leading-relaxed">
                               <p className="font-bold mb-1">{t('checkout.distance_warning_title')}</p>
-                              <p>{t('checkout.distance_warning_desc', { location: t('checkout.warehouse_location') })}</p>
+                              <p>{t('checkout.distance_warning_desc', { location: storeConfig?.warehouseAddress || t('checkout.warehouse_location') })}</p>
+                              <a 
+                                 href={storeConfig?.googleMapsUrl || t('checkout.warehouse_google_maps_link')} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer"
+                                 className="inline-block mt-2 text-blue-600 font-bold hover:underline bg-white/50 px-2 py-1 rounded border border-blue-100 transition-colors"
+                              >
+                                 {t('checkout.view_on_google_maps')}
+                              </a>
                               {shippingOption === 'bookship' && <p className="mt-1">{t('checkout.bookship_warning')}</p>}
                               {isNonHanoiProvince && <p className="mt-1 text-red-600 font-bold">{t('checkout.non_hanoi_warning')}</p>}
                           </div>
@@ -960,24 +968,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     <span>{t('cart.subtotal')}</span>
                     <span className="text-gray-700 font-heading font-bold">{formatCurrency(subtotal)}</span>
                 </div>
-                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) && (
+                {(!storeConfig?.giftBoxOutOfStock && addGiftBox) ? (
                     <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                         <span>{t('checkout.gift_box')} <small className="opacity-60 text-[10px]">({formatCurrency(GIFT_BOX_PRICE)} x {totalQuantity})</small></span>
                         <span className="text-gray-700 font-heading font-bold">{formatCurrency(giftBoxFee)}</span>
                     </div>
-                )}
-                {(!storeConfig?.lightOutOfStock && addLight && hasLegoItems) && (
+                ) : null}
+                {(!storeConfig?.lightOutOfStock && addLight && hasLegoItems) ? (
                     <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                         <span>{t('checkout.light_box')} <small className="opacity-60 text-[10px]">({formatCurrency(storeConfig?.lightPrice || 50000)} x {legoQuantity})</small></span>
                         <span className="text-gray-700 font-heading font-bold">{formatCurrency(lightFee)}</span>
                     </div>
-                )}
-                {polaroidOption > 0 && (
+                ) : null}
+                {polaroidOption > 0 ? (
                     <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                         <span>{t('checkout.add_polaroid')} <small className="opacity-60 text-[10px]">(x{polaroidOption})</small></span>
                         <span className="text-gray-700 font-heading font-bold">{formatCurrency(polaroidFee)}</span>
                     </div>
-                )}
+                ) : null}
                 <div className="flex justify-between text-gray-500 font-medium tracking-tight">
                     <span>{t('checkout.shipping_fee')}</span>
                     {isFreeShippingEligible && shippingOption === 'standard' ? (

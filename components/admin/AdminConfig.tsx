@@ -210,7 +210,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             standardPrintImageUrl: storeConfig.standardPrintImageUrl,
             standardPrintOutOfStock: storeConfig.standardPrintOutOfStock,
             premiumPrintImageUrl: storeConfig.premiumPrintImageUrl,
-            polaroidSampleImages: storeConfig.polaroidSampleImages
+            polaroidSampleImages: storeConfig.polaroidSampleImages,
+            warehouseAddress: storeConfig.warehouseAddress,
+            googleMapsUrl: storeConfig.googleMapsUrl
         });
         if (success) {
             setStoreConfig(prev => ({ 
@@ -228,7 +230,9 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 standardPrintImageUrl: storeConfig.standardPrintImageUrl,
                 standardPrintOutOfStock: storeConfig.standardPrintOutOfStock,
                 premiumPrintImageUrl: storeConfig.premiumPrintImageUrl,
-                polaroidSampleImages: storeConfig.polaroidSampleImages
+                polaroidSampleImages: storeConfig.polaroidSampleImages,
+                warehouseAddress: storeConfig.warehouseAddress,
+                googleMapsUrl: storeConfig.googleMapsUrl
             }));
             alert("Đã lưu cấu hình thành công!");
         } else {
@@ -732,6 +736,37 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             </div>
                                         </div>
                                         <p className="text-[10px] text-gray-400 italic">* Tải lên các ảnh mẫu để khách hàng dễ hình dung về sản phẩm in Polaroid.</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-blue-50/20">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        📍 Thông tin Kho & Google Maps
+                                    </h4>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Tên Kho (Hiển thị trang Thanh toán)</label>
+                                            <input 
+                                                type="text" 
+                                                className="w-full p-2.5 border rounded-lg text-sm"
+                                                value={storeConfig.warehouseAddress || ''}
+                                                onChange={(e) => setStoreConfig({...storeConfig, warehouseAddress: e.target.value})}
+                                                placeholder="Kho: Thư Lâm, Đông Anh, HN"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Link Google Maps (Ghim địa chỉ)</label>
+                                            <input 
+                                                type="text" 
+                                                className="w-full p-2.5 border rounded-lg text-sm"
+                                                value={storeConfig.googleMapsUrl || ''}
+                                                onChange={(e) => setStoreConfig({...storeConfig, googleMapsUrl: e.target.value})}
+                                                placeholder="https://www.google.com/maps/..."
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1 italic leading-tight">
+                                                Link này sẽ hiện nút "Xem trên Google Maps" ở phần Xác nhận khoảng cách khi khách chọn Tự book ship.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

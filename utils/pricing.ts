@@ -303,7 +303,8 @@ export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoP
     
     const giftBoxFee = order.addGiftBox ? 30000 * totalQuantityForGiftBox : 0;
     const lightFee = order.addLight ? 50000 * legoQuantity : 0;
+    const polaroidFee = Number(order.addPolaroid) === 2 ? 15000 : Number(order.addPolaroid) === 4 ? 25000 : 0;
     const shippingFee = order.shipping.fee || 0;
     const discount = order.discountAmount || 0;
-    return Math.max(0, subtotal + giftBoxFee + lightFee + shippingFee - discount);
+    return Math.max(0, subtotal + giftBoxFee + lightFee + polaroidFee + shippingFee - discount);
 };
