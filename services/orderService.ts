@@ -362,7 +362,7 @@ export const getTotalOrderCount = async (): Promise<number> => {
         } catch (cacheError) {
             // Báo warn nhẹ thay vì console.error để tránh trigger các bug logger hệ thống
             console.warn("Could not retrieve order count from server or cache (offline mode):", serverError.message);
-            return 115;
+            return 1500;
         }
     }
 
@@ -370,7 +370,8 @@ export const getTotalOrderCount = async (): Promise<number> => {
         if (statsSnap && statsSnap.exists()) {
             const data = statsSnap.data();
             if (typeof data.totalOrders === 'number') {
-                return data.totalOrders;
+                // Đảm bảo không bao giờ hiện số âm trên UI (tránh bug hiển thị -60)
+                return Math.max(0, data.totalOrders);
             }
         }
         
@@ -381,16 +382,17 @@ export const getTotalOrderCount = async (): Promise<number> => {
             const count = snapshot.data().count;
             
             // Cập nhật lại stats doc cho các lần gọi sau của Guest hoạt động tốt
-            await setDoc(statsRef, { totalOrders: count }, { merge: true }).catch(() => {});
-            return count;
+            const correctedCount = Math.max(0, count);
+            await setDoc(statsRef, { totalOrders: correctedCount }, { merge: true }).catch(() => {});
+            return correctedCount;
         } catch (e) {
             // Nếu Guest gọi trực tiếp bị chặn permissions, trả về số lượng đơn mặc định hợp lý khởi tạo
-            return 115; 
+            return 1500; 
         }
     } catch (error) {
         // Sử dụng console.warn thay vì console.error khi lấy tổng số đơn hàng gặp lỗi cuối cùng
         console.warn("Lỗi lấy tổng số đơn hàng:", error);
-        return 115;
+        return 1500;
     }
 };
 
@@ -407,10 +409,14 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         if (!currentDoc.exists()) return false;
         const currentData = currentDoc.data() as Order;
 
-        // XỬ LÝ ROLLBACK KHI HỦY ĐƠN HÀNG
+        // XỬ LÝ ROLLBACK KHI HỦY ĐƠN HÀNG HOẶC KHÔI PHỤC ĐƠN HÀNG
         if (updates.status === 'Đã hủy' && currentData.status !== 'Đã hủy' && currentData.templateOrderCounted) {
             await rollbackOrderStats(currentData);
             updates.templateOrderCounted = false;
+        } else if (updates.status && updates.status !== 'Đã hủy' && currentData.status === 'Đã hủy' && !currentData.templateOrderCounted) {
+            // Khôi phục thống kê nếu đơn hàng được chuyển từ Hủy sang trạng thái khác
+            await incrementOrderStats(currentData);
+            updates.templateOrderCounted = true;
         }
 
         // KIỂM TRA TRẠNG THÁI GIAO HÀNG ĐỂ GỬI MAIL CẢM ƠN
@@ -463,7 +469,7 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
     }
 };
 
-// 7. Helper for Rollback Order Statistics
+// 7. Helper for Rollback Order Statistics (Khi hủy đơn)
 export const rollbackOrderStats = async (order: Order) => {
     if (!order.templateOrderCounted) return;
     
@@ -529,8 +535,6 @@ export const rollbackOrderStats = async (order: Order) => {
                     transaction.update(snap.ref, updates);
                 }
             }
-
-            // Note: templateOrderCounted should be updated in the main order document call after this
         });
 
         // BẢN GHI GIẢM TỔNG SỐ ĐƠN TÍCH LŨY TRONG CONFIG/STATS BẤT ĐỒNG BỘ
@@ -544,6 +548,86 @@ export const rollbackOrderStats = async (order: Order) => {
         }
     } catch (e) {
         console.error("Critical error rolling back order stats:", e);
-        throw e; // Relaunch to handle in the caller
+        throw e;
+    }
+};
+
+// 8. Helper for Increment Order Statistics (Khi khôi phục đơn từ Hủy)
+export const incrementOrderStats = async (order: Order) => {
+    try {
+        const partsUsage = countPartsInOrder(order.items);
+        
+        await runTransaction(db, async (transaction) => {
+            const templateIncrements = new Map<string, number>();
+            order.items.forEach(item => {
+                if (item.templateId) {
+                    const current = templateIncrements.get(item.templateId) || 0;
+                    templateIncrements.set(item.templateId, current + (item.quantity || 1));
+                }
+            });
+            if (order.templateId && !templateIncrements.has(order.templateId)) {
+                templateIncrements.set(order.templateId, 1);
+            }
+
+            const templateIds = Array.from(templateIncrements.keys());
+            const partIds = Object.keys(partsUsage);
+
+            // READS FIRST
+            const templateSnaps = [];
+            for (const id of templateIds) {
+                const docRef = doc(db, "templates", id);
+                const snap = await transaction.get(docRef);
+                templateSnaps.push({ id, snap });
+            }
+
+            const partSnaps = [];
+            for (const id of partIds) {
+                const docRef = doc(db, "lego_parts", id);
+                const snap = await transaction.get(docRef);
+                partSnaps.push({ id, snap });
+            }
+
+            // WRITES NEXT
+            for (const { id, snap } of templateSnaps) {
+                if (snap.exists()) {
+                    const qty = templateIncrements.get(id) || 1;
+                    const updates: any = {
+                        realOrderCount: firestoreIncrement(qty),
+                        orders: firestoreIncrement(qty)
+                    };
+                    if (typeof snap.data().stock === 'number') {
+                        updates.stock = firestoreIncrement(-qty);
+                    }
+                    transaction.update(snap.ref, updates);
+                }
+            }
+
+            for (const { id, snap } of partSnaps) {
+                if (snap.exists()) {
+                    const qty = partsUsage[id];
+                    const updates: any = {
+                        orders: firestoreIncrement(qty),
+                        realOrderCount: firestoreIncrement(qty)
+                    };
+                    if (typeof snap.data().stock === 'number') {
+                        updates.stock = firestoreIncrement(-qty);
+                    }
+                    transaction.update(snap.ref, updates);
+                }
+            }
+        });
+
+        // TĂNG TỔNG SỐ ĐƠN TÍCH LŨY
+        try {
+            const statsRef = doc(db, "config", "stats");
+            setDoc(statsRef, { totalOrders: firestoreIncrement(1) }, { merge: true }).catch((err) => {
+                console.warn("Lỗi tăng thống kê khi khôi phục đơn:", err.message);
+            });
+        } catch (statsErr) {
+            console.warn("Lỗi đồng bộ thống kê đơn hàng khi khôi phục:", statsErr);
+        }
+    } catch (e) {
+        console.error("Critical error incrementing order stats:", e);
+        throw e;
     }
 };
