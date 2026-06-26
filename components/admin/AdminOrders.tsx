@@ -8,7 +8,7 @@ import { sendThankYouEmail } from '../../services/emailService';
 import { uploadFile } from '../../services/uploadService';
 import { adjustStock } from '../../services/productService';
 import { StoreConfig } from '../../services/configService';
-import { calculatePrice, formatCurrency } from '../../utils/pricing';
+import { calculatePrice, formatCurrency, isPartOutOfStock } from '../../utils/pricing';
 import { DateInput } from '../ui/DateInput';
 import { StatusDropdown } from './shared/StatusDropdown';
 import { FRAME_OPTIONS, LEGO_PARTS, INITIAL_FRAME_CONFIG } from '../../constants';
@@ -1515,6 +1515,20 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                             <div className="flex flex-wrap gap-2">
                                                                 {item.draggableItems.map((di, diIdx) => { 
                                                                     const part = allKnownParts[di.partId]; 
+                                                                    
+                                                                    // Check if currently out of stock to avoid showing image as requested
+                                                                    let isCurrentlyOOS = false;
+                                                                    if (part) {
+                                                                        if (di.selectedColor) {
+                                                                            const liveColor = part.colors?.find(c => c.hex === di.selectedColor?.hex);
+                                                                            if (liveColor && liveColor.stock !== undefined && liveColor.stock !== null && Number(liveColor.stock) <= 0) {
+                                                                                isCurrentlyOOS = true;
+                                                                            }
+                                                                        } else {
+                                                                            isCurrentlyOOS = isPartOutOfStock(part);
+                                                                        }
+                                                                    }
+
                                                                     return (
                                                                         <div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
                                                                             {di.type === 'charm' ? (
@@ -1526,7 +1540,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                                 </div>
                                                                             ) : (
                                                                                 <div className="flex items-center gap-2">
-                                                                                    {part?.imageUrl && (
+                                                                                    {part?.imageUrl && !isCurrentlyOOS && (
                                                                                         <div className="w-6 h-6 rounded bg-gray-50 p-0.5 border border-gray-100 flex-shrink-0">
                                                                                             <img src={part.imageUrl} className="w-full h-full object-contain" alt={part.name} />
                                                                                         </div>
