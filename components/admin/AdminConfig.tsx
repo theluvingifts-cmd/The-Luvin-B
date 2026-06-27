@@ -112,6 +112,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     // B2B Config
     const [b2bDiscount, setB2bDiscount] = useState(storeConfig.b2bDiscountPercent || 5);
+    const [museumSurcharge, setMuseumSurcharge] = useState(storeConfig.museumSurcharge !== undefined ? storeConfig.museumSurcharge : 70000);
 
     // Pancake POS Config
     const [pancakeShopId, setPancakeShopId] = useState(storeConfig.pancakeShopId || '');
@@ -156,6 +157,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         if (storeConfig.telegramBotToken) setTelegramToken(storeConfig.telegramBotToken);
         if (storeConfig.telegramChatId) setTelegramChatId(storeConfig.telegramChatId);
         if (storeConfig.b2bDiscountPercent !== undefined) setB2bDiscount(storeConfig.b2bDiscountPercent);
+        if (storeConfig.museumSurcharge !== undefined) setMuseumSurcharge(storeConfig.museumSurcharge);
 
         // Auto Cleanup Logic
         const runAutoCleanup = async () => {
@@ -204,6 +206,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             pancakeAccessToken,
             enablePancakePush,
             b2bDiscountPercent: b2bDiscount,
+            museumSurcharge: museumSurcharge,
             disableThankYouEmail: storeConfig.disableThankYouEmail,
             lightPrice: storeConfig.lightPrice,
             appIconUrl: storeConfig.appIconUrl,
@@ -224,6 +227,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 pancakeAccessToken,
                 enablePancakePush,
                 b2bDiscountPercent: b2bDiscount,
+                museumSurcharge: museumSurcharge,
                 disableThankYouEmail: storeConfig.disableThankYouEmail,
                 lightPrice: storeConfig.lightPrice,
                 appIconUrl: storeConfig.appIconUrl,
@@ -548,6 +552,31 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                         <p className="text-[10px] text-blue-500 mt-2 leading-relaxed">
                                             Mức giảm này sẽ được áp dụng trực tiếp vào bảng "Dự toán ngân sách" tại trang <b>/business</b>. 
                                             Giúp khách hàng doanh nghiệp thấy ngay lợi ích khi đặt số lượng lớn.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* MUSEUM SURCHARGE CONFIG - ADDED FOR USER REQUEST */}
+                            <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <h4 className="text-sm font-black text-indigo-800 uppercase tracking-tight mb-3 flex items-center gap-2">
+                                    🖼️ Hoàn thiện Khung bảo tàng / Gallery
+                                </h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-indigo-600 uppercase mb-1">Phí shop lắp hoàn thiện (VNĐ)</label>
+                                        <div className="flex items-center gap-3">
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2.5 border-2 border-indigo-200 rounded-lg text-lg font-black text-indigo-900 focus:border-indigo-500 outline-none"
+                                                value={museumSurcharge}
+                                                onChange={(e) => setMuseumSurcharge(Number(e.target.value))}
+                                                min="0"
+                                            />
+                                            <span className="font-black text-indigo-400 text-xl">₫</span>
+                                        </div>
+                                        <p className="text-[10px] text-indigo-500 mt-2 leading-relaxed">
+                                            Mức phí này được áp dụng khi khách hàng chọn tùy chọn "Shop hoàn thiện / Lắp sẵn" cho Khung bảo tàng/Gallery.
                                         </p>
                                     </div>
                                 </div>

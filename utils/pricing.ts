@@ -79,7 +79,7 @@ export const getPartImageUrl = (part: LegoPart | undefined) => {
     return part.imageUrl;
 };
 
-export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[], explicitTemplateId?: string): { totalPrice: number, priceBreakdown: PriceBreakdownItem[] } => {
+export const calculatePrice = (config: FrameConfig, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[], explicitTemplateId?: string, storeConfig?: any): { totalPrice: number, priceBreakdown: PriceBreakdownItem[] } => {
     const breakdown: PriceBreakdownItem[] = [];
     let total = 0;
 
@@ -119,7 +119,20 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
 
         // Shop Surcharge for Gallery (Added only if customer chooses shop assembly)
         if (assembly === 'pre-assembled') {
-            const gallerySurcharge = 70000;
+            let gallerySurcharge = 70000;
+            if (storeConfig && typeof storeConfig.museumSurcharge === 'number') {
+                gallerySurcharge = storeConfig.museumSurcharge;
+            } else {
+                try {
+                    const cached = typeof window !== 'undefined' ? localStorage.getItem('store_config_cache') : null;
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && typeof parsed.museumSurcharge === 'number') {
+                            gallerySurcharge = parsed.museumSurcharge;
+                        }
+                    }
+                } catch (e) {}
+            }
             total += gallerySurcharge;
             breakdown.push({
                 label: 'Shop lắp hoàn thiện',

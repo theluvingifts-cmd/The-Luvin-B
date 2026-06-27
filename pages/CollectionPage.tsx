@@ -1273,7 +1273,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <div className="grid grid-cols-2 gap-3">
                                         {[
                                             { id: 'diy', label: t('studio.museum.assembly_diy'), desc: t('studio.museum.assembly_diy_desc'), icon: '✂️', price: 'Miễn phí' },
-                                            { id: 'pre-assembled', label: t('studio.museum.assembly_pre'), desc: t('studio.museum.assembly_pre_desc'), icon: '✨', price: '+70.000₫' }
+                                            { id: 'pre-assembled', label: t('studio.museum.assembly_pre'), desc: t('studio.museum.assembly_pre_desc'), icon: '✨', price: `+${formatCurrency(storeConfig?.museumSurcharge ?? 70000)}` }
                                         ].map(opt => (
                                             <button
                                                 key={opt.id}

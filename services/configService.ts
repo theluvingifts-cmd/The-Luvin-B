@@ -88,6 +88,7 @@ export interface StoreConfig {
     // Shipping & Warehouse
     warehouseAddress?: string;
     googleMapsUrl?: string;
+    museumSurcharge?: number;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -159,12 +160,13 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (!data.staff) data.staff = [];
             if (data.b2bDiscountPercent === undefined) data.b2bDiscountPercent = 5;
             if (data.disableThankYouEmail === undefined) data.disableThankYouEmail = true;
+            if (data.museumSurcharge === undefined) data.museumSurcharge = 70000;
             
             // Persist to cache
             localStorage.setItem(CACHE_KEY, safeJsonStringify(data));
             return data;
         }
-        return getCachedConfig() || { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5, disableThankYouEmail: true };
+        return getCachedConfig() || { theme: DEFAULT_THEME, uploadedFonts: [], staff: [], b2bDiscountPercent: 5, disableThankYouEmail: true, museumSurcharge: 70000 };
     } catch (error: any) {
         console.warn("Firestore: Unable to fetch config. Using cache fallback.");
         return getCachedConfig();

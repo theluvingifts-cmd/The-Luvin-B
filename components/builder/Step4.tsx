@@ -74,6 +74,17 @@ export const Step4Summary: React.FC<{
   const hasCustomPrint = priceBreakdown.some(item => item.label.includes('In mặt riêng') || item.label.includes(t('studio.custom_print')));
   const isMuseumStyle = config.isMuseumStyle || productLine === 'gallery';
 
+  let museumSurcharge = 70000;
+  try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('store_config_cache') : null;
+      if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.museumSurcharge === 'number') {
+              museumSurcharge = parsed.museumSurcharge;
+          }
+      }
+  } catch (e) {}
+
   const handleAssemblyChange = (val: 'diy' | 'pre-assembled') => {
       setConfig(prev => ({
           ...prev,
@@ -119,7 +130,7 @@ export const Step4Summary: React.FC<{
                     >
                         <span className="text-xl">✨</span>
                         <span className="text-xs font-bold leading-none">The Luvin lắp sẵn</span>
-                        <span className="text-[10px] opacity-70">+70.000₫</span>
+                        <span className="text-[10px] opacity-70">+{formatCurrency(museumSurcharge)}</span>
                     </button>
                 </div>
             </div>
