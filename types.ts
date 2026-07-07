@@ -1,7 +1,7 @@
 
 // types.ts
 
-export type Page = 'home' | 'builder' | 'collection' | 'lego-collection' | 'gallery-collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv' | 'catalog' | 'linh-kien';
+export type Page = 'home' | 'builder' | 'collection' | 'lego-collection' | 'gallery-collection' | 'feedback' | 'order-lookup' | 'contact' | 'cart' | 'checkout' | 'order-confirmation' | 'admin' | 'about' | 'warranty' | 'business' | 'ctv' | 'catalog';
 
 export type StaffRole = 'admin' | 'warehouse';
 

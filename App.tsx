@@ -36,7 +36,6 @@ import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
 import { CharacterCatalogPage } from './pages/CharacterCatalogPage';
-import { LinhKienPage } from './pages/LinhKienPage';
 import CollaboratorPage from './pages/CollaboratorPage';
 import { categorizeParts, safeJsonStringify } from './utils/helpers';
 
@@ -130,7 +129,7 @@ const App: React.FC = () => {
   // Determine currentPage from location for Header/Footer visibility
   const currentPage = useMemo<Page>(() => {
     const path = location.pathname.split('/')[1] || 'home';
-    const validPages: Page[] = ['home', 'builder', 'collection', 'lego-collection', 'gallery-collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv', 'linh-kien'];
+    const validPages: Page[] = ['home', 'builder', 'collection', 'lego-collection', 'gallery-collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv'];
     return validPages.includes(path as Page) ? (path as Page) : 'home';
   }, [location]);
   
@@ -543,7 +542,7 @@ const App: React.FC = () => {
                 <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />
                 <Route path="/business" element={<BusinessPage config={storeConfig} legoParts={legoParts} />} />
                 <Route path="/catalog" element={<CharacterCatalogPage />} />
-                <Route path="/linh-kien" element={<LinhKienPage legoParts={legoParts} allParts={allParts} onAddToCart={handleAddToCart} showToast={showToast} isLoadingParts={isLoadingParts} navigateTo={navigateTo} />} />
+
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>
