@@ -36,6 +36,7 @@ import { AboutPage } from './pages/AboutPage';
 import { WarrantyPage } from './pages/WarrantyPage';
 import { BusinessPage } from './pages/BusinessPage'; 
 import { CharacterCatalogPage } from './pages/CharacterCatalogPage';
+import { LinhKienPage } from './pages/LinhKienPage';
 import CollaboratorPage from './pages/CollaboratorPage';
 import { categorizeParts, safeJsonStringify } from './utils/helpers';
 
@@ -129,7 +130,7 @@ const App: React.FC = () => {
   // Determine currentPage from location for Header/Footer visibility
   const currentPage = useMemo<Page>(() => {
     const path = location.pathname.split('/')[1] || 'home';
-    const validPages: Page[] = ['home', 'builder', 'collection', 'lego-collection', 'gallery-collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv'];
+    const validPages: Page[] = ['home', 'builder', 'collection', 'lego-collection', 'gallery-collection', 'feedback', 'order-lookup', 'contact', 'cart', 'checkout', 'order-confirmation', 'admin', 'about', 'warranty', 'business', 'ctv', 'linh-kien'];
     return validPages.includes(path as Page) ? (path as Page) : 'home';
   }, [location]);
   
@@ -342,7 +343,17 @@ const App: React.FC = () => {
     // Migration logic removed to prevent incorrect hardcoded prices
   }, [templates]);
 
-  const allParts = useMemo(() => (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>), [legoParts]);
+  const allParts = useMemo(() => {
+    const base = (Object.values(legoParts) as LegoPart[][]).flat().reduce((acc, part) => ({ ...acc, [part.id]: part }), {} as Record<string, LegoPart>);
+    const virtualServices: Record<string, LegoPart> = {
+        'srv-giftbox': { id: 'srv-giftbox', name: 'Hộp quà cao cấp The Luvin', price: 30000, type: 'accessory', imageUrl: '/src/assets/images/srv_giftbox_1782720591249.jpg', widthCm: 10, heightCm: 10 },
+        'srv-light': { id: 'srv-light', name: 'Đèn LED đom đóm lung linh', price: 20000, type: 'accessory', imageUrl: '/src/assets/images/srv_light_1782720604384.jpg', widthCm: 10, heightCm: 10 },
+        'srv-flower': { id: 'srv-flower', name: 'Hoa mini trang trí kèm', price: 15000, type: 'accessory', imageUrl: '/src/assets/images/srv_flower_1782720618289.jpg', widthCm: 10, heightCm: 10 },
+        'srv-card': { id: 'srv-card', name: 'Thiệp viết tay theo yêu cầu', price: 10000, type: 'accessory', imageUrl: '/src/assets/images/srv_card_1782720631994.jpg', widthCm: 10, heightCm: 10 },
+        'srv-polaroid': { id: 'srv-polaroid', name: 'In thêm 1 ảnh Polaroid lẻ', price: 10000, type: 'accessory', imageUrl: '/src/assets/images/srv_polaroid_1782720644820.jpg', widthCm: 10, heightCm: 10 }
+    };
+    return { ...base, ...virtualServices };
+  }, [legoParts]);
 
   const navigateTo = (page: Page) => {
     if (editingOrder && page !== 'cart' && page !== 'checkout' && page !== 'builder') {
@@ -532,6 +543,7 @@ const App: React.FC = () => {
                 <Route path="/warranty" element={<WarrantyPage config={storeConfig} />} />
                 <Route path="/business" element={<BusinessPage config={storeConfig} legoParts={legoParts} />} />
                 <Route path="/catalog" element={<CharacterCatalogPage />} />
+                <Route path="/linh-kien" element={<LinhKienPage legoParts={legoParts} allParts={allParts} onAddToCart={handleAddToCart} showToast={showToast} isLoadingParts={isLoadingParts} navigateTo={navigateTo} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>

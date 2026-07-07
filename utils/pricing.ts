@@ -86,19 +86,23 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     // 1. FRAME PRICE
     let baseItem: { name: string, price: number, salePrice?: number, saleEndDate?: string, description?: string } | undefined;
     
-    // Primary: Find by config.frameId in frames
-    baseItem = (frames && frames.length > 0) ? frames.find(f => f.id === config.frameId) : undefined;
-    
-    // Default to FRAME_OPTIONS if still not found in dynamic frames
-    if (!baseItem && config.frameId) {
-        baseItem = FRAME_OPTIONS.find(f => f.id === config.frameId);
-    }
+    if (config.frameId === 'accessory-only') {
+        baseItem = { name: 'Linh kiện / dịch vụ lẻ', price: 0, description: 'Mua lẻ phụ kiện, charm hoặc dịch vụ' };
+    } else {
+        // Primary: Find by config.frameId in frames
+        baseItem = (frames && frames.length > 0) ? frames.find(f => f.id === config.frameId) : undefined;
+        
+        // Default to FRAME_OPTIONS if still not found in dynamic frames
+        if (!baseItem && config.frameId) {
+            baseItem = FRAME_OPTIONS.find(f => f.id === config.frameId);
+        }
 
-    // Default to first frame if still not found
-    if (!baseItem) {
-        // Find best match by product line
-        const lineFrames = (frames && frames.length > 0) ? frames.filter(f => (f.supportedProductLines || ['lego']).includes(config.productLine || 'lego')) : [];
-        baseItem = lineFrames[0] || frames[0] || FRAME_OPTIONS[0];
+        // Default to first frame if still not found
+        if (!baseItem) {
+            // Find best match by product line
+            const lineFrames = (frames && frames.length > 0) ? frames.filter(f => (f.supportedProductLines || ['lego']).includes(config.productLine || 'lego')) : [];
+            baseItem = lineFrames[0] || frames[0] || FRAME_OPTIONS[0];
+        }
     }
 
     const isBaseOOS = (baseItem as any).stock !== undefined && (baseItem as any).stock !== null && (baseItem as any).stock <= 0;

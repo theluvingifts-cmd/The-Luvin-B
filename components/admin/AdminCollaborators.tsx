@@ -22,6 +22,23 @@ interface AdminCollaboratorsProps {
     orders: Order[];
 }
 
+const formatDateTime = (timestamp: any) => {
+    if (!timestamp) return 'Chưa rõ';
+    try {
+        const date = new Date(typeof timestamp === 'number' && timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+        if (isNaN(date.getTime())) return 'Chưa rõ';
+        return date.toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return 'Chưa rõ';
+    }
+};
+
 export const AdminCollaborators: React.FC<AdminCollaboratorsProps> = ({ orders }) => {
     const [collaborators, setCollaborators] = useState<CollaboratorProfile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -142,6 +159,10 @@ export const AdminCollaborators: React.FC<AdminCollaboratorsProps> = ({ orders }
                                         <div className="font-bold text-gray-900">{c.fullName}</div>
                                         <div className="text-xs text-gray-500">{c.phone}</div>
                                         <div className="text-[10px] text-luvin-pink font-bold mt-1">Mã: {c.referralCode}</div>
+                                        <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                            <span>🕒 Đăng ký:</span>
+                                            <span className="font-medium text-gray-600">{formatDateTime(c.createdAt)}</span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-gray-700">{c.bankName}</div>

@@ -105,8 +105,14 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                       )}
                   </div>
                   <div className="flex-grow min-w-0">
-                    <h3 className="text-xs sm:text-sm font-bold text-gray-800 truncate">{t('cart.custom_lego_frame')}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-500 truncate mb-1">{frame.name}</p>
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-800 truncate">
+                      {item.frameId === 'accessory-only' 
+                        ? (item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || 'Linh kiện lẻ') : 'Linh kiện lẻ') 
+                        : t('cart.custom_lego_frame')}
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-gray-500 truncate mb-1">
+                      {item.frameId === 'accessory-only' ? 'Mua lẻ phụ kiện / dịch vụ thêm' : frame.name}
+                    </p>
                     {item.galleryOptions && (
                         <div className="flex gap-2 mb-1">
                             {item.galleryOptions.photoFrameCount && <span className="text-[9px] bg-pink-50 text-pink-600 px-1.5 rounded-md font-bold">{item.galleryOptions.photoFrameCount} Khung ảnh</span>}
@@ -138,7 +144,9 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                       <button onClick={() => onRemoveItem(index)} className="text-gray-300 hover:text-red-500 transition-colors p-1" title={t('cart.remove')}>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
-                      <button onClick={() => onEditItem(index)} className="text-blue-500 text-[10px] font-black uppercase tracking-tighter hover:text-blue-700 transition-colors">{t('cart.edit')}</button>
+                      {item.frameId !== 'accessory-only' && (
+                          <button onClick={() => onEditItem(index)} className="text-blue-500 text-[10px] font-black uppercase tracking-tighter hover:text-blue-700 transition-colors">{t('cart.edit')}</button>
+                      )}
                   </div>
                 </div>
               );

@@ -60,9 +60,17 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                       )}
                                     </div>
                                     <div className="flex-grow text-center sm:text-left">
-                                        <h3 className="font-bold text-lg font-body text-luvin-pink">{t('order_lookup.frame_lego', { name: frame.name })}</h3>
+                                        <h3 className="font-bold text-lg font-body text-luvin-pink">
+                                            {item.frameId === 'accessory-only' 
+                                                ? (item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || 'Linh kiện lẻ') : 'Linh kiện lẻ') 
+                                                : t('order_lookup.frame_lego', { name: frame.name })}
+                                        </h3>
                                         <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
-                                        <p className="text-sm text-gray-600">{t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}</p>
+                                        <p className="text-sm text-gray-600">
+                                            {item.frameId === 'accessory-only' 
+                                                ? 'Mua lẻ linh kiện / dịch vụ thêm' 
+                                                : t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}
+                                        </p>
                                         {item.galleryOptions && (
                                             <div className="flex flex-wrap gap-2 sm:gap-3 mt-1 items-center">
                                                 {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">📸 {item.galleryOptions.photoFrameCount} Khung ảnh</span>}
@@ -116,7 +124,9 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         <p className="font-bold tracking-tight text-lg text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
                                         <p className="text-xs text-gray-500">({formatCurrency(totalPrice)} / {t('common.item')})</p>
                                         <div className="flex justify-center sm:justify-end gap-3 mt-2">
-                                            <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">{t('cart.edit')}</button>
+                                            {item.frameId !== 'accessory-only' && (
+                                                <button onClick={() => onEditItem(index)} className="text-sm text-blue-600 hover:underline font-semibold">{t('cart.edit')}</button>
+                                            )}
                                             <button onClick={() => onRemoveItem(index)} className="text-sm text-red-500 hover:underline">{t('cart.remove')}</button>
                                         </div>
                                     </div>

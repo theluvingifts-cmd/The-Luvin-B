@@ -953,26 +953,18 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                             {order.polaroidImages?.map((img, i) => (
                                 <div key={i} className="aspect-[3/4] rounded border overflow-hidden relative group cursor-pointer" onClick={() => setZoomedImageUrl(img)}>
                                     <img src={img} alt="Polaroid" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                    {isEditingOrder && (
                                         <button 
-                                            className="p-1 px-2 bg-white rounded text-[10px] font-bold"
-                                            onClick={(e) => { e.stopPropagation(); downloadImage(img, `Order_${order.id}_Polaroid_${i+1}.jpg`); }}
+                                            className="absolute top-1.5 right-1.5 p-1 px-2 bg-red-600 text-white rounded text-[10px] font-black tracking-tight shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                const updated = order.polaroidImages.filter((_, idx) => idx !== i);
+                                                handleEditFormChange('polaroidImages', updated);
+                                            }}
                                         >
-                                            LƯU
+                                            XOÁ
                                         </button>
-                                        {isEditingOrder && (
-                                            <button 
-                                                className="p-1 px-2 bg-red-500 text-white rounded text-[10px] font-bold"
-                                                onClick={(e) => { 
-                                                    e.stopPropagation(); 
-                                                    const updated = order.polaroidImages.filter((_, idx) => idx !== i);
-                                                    handleEditFormChange('polaroidImages', updated);
-                                                }}
-                                            >
-                                                XOÁ
-                                            </button>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
