@@ -757,7 +757,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">{t('checkout.out_of_stock')}</span>
                             )}
                         </div>
-                        <p className="text-xs text-gray-500">{t('checkout.gift_box_desc')}</p>
+                        <p className="text-xs text-gray-500">
+                            {storeConfig?.cardOutOfStock 
+                                ? "Hộp quà, túi & rơm (tạm hết thiệp đi kèm, áp dụng cho mỗi tranh trong giỏ hàng)" 
+                                : t('checkout.gift_box_desc')}
+                        </p>
                     </div>
                     <div className="flex flex-col items-end min-w-[80px]">
                         <span className="font-bold text-luvin-pink text-sm">+{formatCurrency(GIFT_BOX_PRICE * totalQuantity)}</span>

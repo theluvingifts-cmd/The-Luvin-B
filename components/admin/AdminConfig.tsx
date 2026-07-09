@@ -358,6 +358,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
         await updateStoreConfig({ lightOutOfStock: newValue });
     };
 
+    const handleToggleCard = async () => {
+        const newValue = !storeConfig.cardOutOfStock;
+        setStoreConfig(prev => ({ ...prev, cardOutOfStock: newValue }));
+        await updateStoreConfig({ cardOutOfStock: newValue });
+    };
+
     const handleAddNewFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!newFontName.trim()) {
             alert("Vui lòng nhập tên font trước khi chọn file.");
@@ -673,6 +679,27 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                         />
                                     </div>
                                     <ConfigImageUpload label="Ảnh mẫu Đèn" description="Tải ảnh mẫu hiển thị ở trang Checkout" currentUrl={storeConfig.lightImageUrl} onUpload={(f) => handleConfigUpload(f, 'lightImageUrl')} isUploading={uploadingField === 'lightImageUrl'} />
+                                </div>
+
+                                <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-700">Tùy chọn Thiệp đi kèm</h4>
+                                            <p className="text-xs text-gray-400 mt-0.5">Bật/tắt hiển thị thiệp chúc mừng đi kèm hộp quà và các trang trưng bày sản phẩm.</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-black uppercase ${storeConfig.cardOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
+                                                {storeConfig.cardOutOfStock ? 'Tạm ẩn (Hết hàng)' : 'Hiển thị (Còn hàng)'}
+                                            </span>
+                                            <button 
+                                                type="button"
+                                                onClick={handleToggleCard}
+                                                className={`w-12 h-6 rounded-full p-1 transition-colors ${storeConfig.cardOutOfStock ? 'bg-gray-300' : 'bg-green-500'}`}
+                                            >
+                                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${storeConfig.cardOutOfStock ? '' : 'translate-x-6'}`}></div>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-orange-50/30">

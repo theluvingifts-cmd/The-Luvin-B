@@ -21,6 +21,7 @@ export interface StoreConfig {
     lightImageUrl?: string;
     lightPrice?: number;
     lightOutOfStock?: boolean;
+    cardOutOfStock?: boolean;
     
     // Content Fields
     heroImageUrl?: string;

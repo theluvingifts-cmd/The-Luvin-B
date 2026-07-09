@@ -1209,10 +1209,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <span className="text-base mb-0.5">🛍️</span>
                                     <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_bag')}</span>
                                 </div>
-                                <div className="flex-1 min-w-[75px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-1.5 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
-                                    <span className="text-base mb-0.5">✉️</span>
-                                    <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_card')}</span>
-                                </div>
+                                {!storeConfig?.cardOutOfStock && (
+                                    <div className="flex-1 min-w-[75px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-1.5 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
+                                        <span className="text-base mb-0.5">✉️</span>
+                                        <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_card')}</span>
+                                    </div>
+                                )}
                                 {selectedTemplate.productLine === 'gallery' && (
                                     <>
                                         <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
@@ -2190,7 +2192,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                      <div className="h-3 w-px bg-gray-200 mx-1"></div>
                                      <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
                                          <span className="text-[8px] font-black text-blue-600 uppercase tracking-tighter whitespace-nowrap">
-                                             + {t('studio.include_box')}, {t('studio.include_bag')}, {t('studio.include_card')}
+                                             + {t('studio.include_box')}, {t('studio.include_bag')}{!storeConfig?.cardOutOfStock && `, ${t('studio.include_card')}`}
                                          </span>
                                      </div>
                                 </div>
