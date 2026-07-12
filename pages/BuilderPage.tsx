@@ -754,7 +754,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           if (type === 'character') return { ...prev, characters: prev.characters.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
           if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
           if (type === 'shape') {
-              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
+              return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
           }
           return prev;
       });
@@ -782,7 +782,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           } else if (type === 'item') {
               return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           } else if (type === 'shape') {
-              return { ...prev, shapes: (prev.shapes || []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+              return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           }
           return prev;
       });
@@ -835,7 +835,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
         const itemId = parseInt(rawId, 10);
         if (type === 'character') return { ...prev, characters: prev.characters.filter((item: any) => item.id !== itemId) };
         if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: any) => item.id !== itemId) };
-        if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(item => item.id !== itemId) };
+        if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).filter(item => item.id !== itemId) };
         return prev;
     });
   }, [setConfig]);

@@ -204,6 +204,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             // Keep all parts in the map, but we'll handle the visual display of OOS elsewhere
             // or filter them for the user selection if desired. 
             // Change: Don't filter out negative stock here, treat it as OOS but available to see.
+            // Exclude virtual services
+            if (p.id.startsWith('srv-')) return;
             if (result[p.type]) {
                 result[p.type].push(p);
             }
@@ -738,6 +740,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         
         return (Object.values(allParts) as LegoPart[])
             .filter(p => {
+                // Exclude virtual services
+                if (p.id.startsWith('srv-')) return false;
                 const isTypeMatch = (p.type === 'accessory' || p.type === 'pet' || p.type === 'hat');
                 const isInStock = !isPartOutOfStock(p);
                 

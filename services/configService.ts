@@ -90,6 +90,9 @@ export interface StoreConfig {
     warehouseAddress?: string;
     googleMapsUrl?: string;
     museumSurcharge?: number;
+
+    // Report Token for external sync API
+    reportToken?: string;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -162,6 +165,9 @@ export const getStoreConfig = async (): Promise<StoreConfig | null> => {
             if (data.b2bDiscountPercent === undefined) data.b2bDiscountPercent = 5;
             if (data.disableThankYouEmail === undefined) data.disableThankYouEmail = true;
             if (data.museumSurcharge === undefined) data.museumSurcharge = 70000;
+            if (!data.reportToken) {
+                data.reportToken = 'tl_token_' + Math.random().toString(36).substring(2, 10).toUpperCase() + Math.random().toString(36).substring(2, 10).toUpperCase();
+            }
             
             // Persist to cache
             localStorage.setItem(CACHE_KEY, safeJsonStringify(data));

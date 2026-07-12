@@ -681,7 +681,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
                     </div>
                 )}
 
-                {(config.shapes || []).map(shape => {
+                {(Array.isArray(config.shapes) ? config.shapes : []).map(shape => {
                     // --- BỔ SUNG LOGIC ĐỔ ẢNH TỪ FORM CHO SHAPE ---
                     let shapeImageUrl = null;
                     if (shape.linkedFieldId && config.customFormData?.[shape.linkedFieldId]) {

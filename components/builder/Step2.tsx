@@ -82,7 +82,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         return item;
     });
 
-    const updatedShapes = (config.shapes || []).map(s => {
+    const updatedShapes = (Array.isArray(config.shapes) ? config.shapes : []).map(s => {
         if (s.linkedFieldId === fieldId) {
             const field = activeFields.find(f => f.id === fieldId);
             if (field?.type === 'color') {
@@ -127,7 +127,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         return item;
     });
 
-    const overlayShapes = (bg.overlayConfig?.shapes || []).map(s => {
+    const overlayShapes = (Array.isArray(bg.overlayConfig?.shapes) ? bg.overlayConfig.shapes : []).map(s => {
         if (s.linkedFieldId && config.customFormData?.[s.linkedFieldId]) {
             return { ...s, fillColor: config.customFormData[s.linkedFieldId] };
         }
@@ -177,7 +177,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
   const isFieldLinked = (fieldId: string) => {
       return config.texts.some(t => t.linkedFieldId === fieldId) || 
              config.draggableItems.some(i => i.linkedFieldId === fieldId) ||
-             config.shapes.some(s => s.linkedFieldId === fieldId);
+             (Array.isArray(config.shapes) ? config.shapes : []).some(s => s.linkedFieldId === fieldId);
   };
 
   return (

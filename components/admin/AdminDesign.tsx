@@ -253,7 +253,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         setConfig(prev => {
             if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(s => s.id === id ? { ...s, ...updates } : s) };
             if (type === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
             return prev;
         });
@@ -267,7 +267,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         setConfig((prev: FrameConfig) => {
             if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== itemId) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== itemId) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).filter(s => s.id !== itemId) };
+            if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).filter(s => s.id !== itemId) };
             if (type === 'character') return { ...prev, characters: prev.characters.filter(c => c.id !== itemId) };
             return prev;
         });
@@ -302,9 +302,9 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                 return { ...prev, draggableItems: [...prev.draggableItems, { ...item, id: newId, x: Math.min(100, item.x + offset), y: Math.min(100, item.y + offset) }] };
             }
             if (type === 'shape') {
-                const item = (prev.shapes || []).find(s => s.id === parseInt(selectedItemId.split('-')[1]));
+                const item = (Array.isArray(prev.shapes) ? prev.shapes : []).find(s => s.id === parseInt(selectedItemId.split('-')[1]));
                 if (!item) return prev;
-                return { ...prev, shapes: [...(prev.shapes || []), { ...item, id: newId, x: Math.min(100, item.x + offset), y: Math.min(100, item.y + offset) }] };
+                return { ...prev, shapes: [...(Array.isArray(prev.shapes) ? prev.shapes : []), { ...item, id: newId, x: Math.min(100, item.x + offset), y: Math.min(100, item.y + offset) }] };
             }
             return prev;
         });
@@ -326,7 +326,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
             const newData = { ...clipboard.data, id: newId, x: Math.min(100, clipboard.data.x + offset), y: Math.min(100, clipboard.data.y + offset) };
             if (clipboard.type === 'text') return { ...prev, texts: [...prev.texts, newData] };
             if (clipboard.type === 'item') return { ...prev, draggableItems: [...prev.draggableItems, newData] };
-            if (clipboard.type === 'shape') return { ...prev, shapes: [...(prev.shapes || []), newData] };
+            if (clipboard.type === 'shape') return { ...prev, shapes: [...(Array.isArray(prev.shapes) ? prev.shapes : []), newData] };
             if (clipboard.type === 'character') return { ...prev, characters: [...prev.characters, newData] };
             return prev;
         });
@@ -465,7 +465,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         setConfig((prev: FrameConfig) => {
             if (type === 'text') return { ...prev, texts: prev.texts.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
-            if (type === 'shape') return { ...prev, shapes: (prev.shapes || []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
+            if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             return prev;
         });
@@ -492,7 +492,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                 }
                 return t;
             }),
-            shapes: (prev.shapes || []).map(s => {
+            shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(s => {
                 if (s.linkedFieldId === fieldId) {
                     const formFields = Array.isArray(prev.formFields) ? prev.formFields : [];
                     const field = formFields.find(f => f.id === fieldId);
@@ -536,7 +536,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
     const isFieldLinked = (fieldId: string) => {
         return config.texts.some(t => t.linkedFieldId === fieldId) || 
                config.draggableItems.some(i => i.linkedFieldId === fieldId) ||
-               (config.shapes || []).some(s => s.linkedFieldId === fieldId);
+               (Array.isArray(config.shapes) ? config.shapes : []).some(s => s.linkedFieldId === fieldId);
     };
 
     const alignItem = (type: 'h-center' | 'v-center') => {
@@ -552,7 +552,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
 
             if (itemType === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
             if (itemType === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
-            if (itemType === 'shape') return { ...prev, shapes: (prev.shapes || []).map(s => s.id === id ? { ...s, ...updates } : s) };
+            if (itemType === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(s => s.id === id ? { ...s, ...updates } : s) };
             if (itemType === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
             return prev;
         });
@@ -578,9 +578,9 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                 return { ...prev, draggableItems: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
             }
             if (itemType === 'shape') {
-                const item = (prev.shapes || []).find(s => s.id === id);
+                const item = (Array.isArray(prev.shapes) ? prev.shapes : []).find(s => s.id === id);
                 if (!item) return prev;
-                const filtered = (prev.shapes || []).filter(s => s.id !== id);
+                const filtered = (Array.isArray(prev.shapes) ? prev.shapes : []).filter(s => s.id !== id);
                 return { ...prev, shapes: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
             }
             return prev;
@@ -1113,12 +1113,12 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                 <div className="grid grid-cols-2 gap-2">
                                     <button onClick={() => {
                                         const id = Date.now();
-                                        setConfig(prev => ({...prev, shapes: [...(prev.shapes || []), { id, type: 'rect', x: 50, y: 50, width: 20, height: 20, rotation: 0, strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: 0, fillColor: '#cccccc', opacity: 1 }]}));
+                                        setConfig(prev => ({...prev, shapes: [...(Array.isArray(prev.shapes) ? prev.shapes : []), { id, type: 'rect', x: 50, y: 50, width: 20, height: 20, rotation: 0, strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: 0, fillColor: '#cccccc', opacity: 1 }]}));
                                         setSelectedItemId(`shape-${id}`);
                                     }} className="p-4 border rounded-xl flex flex-col items-center gap-2 hover:bg-gray-50 transition-all"><div className="w-8 h-8 bg-gray-300 rounded-sm"></div><span className="text-[10px] font-bold uppercase">Hình vuông</span></button>
                                     <button onClick={() => {
                                         const id = Date.now();
-                                        setConfig(prev => ({...prev, shapes: [...(prev.shapes || []), { id, type: 'circle', x: 50, y: 50, width: 20, height: 20, rotation: 0, strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: 100, fillColor: '#cccccc', opacity: 1 }]}));
+                                        setConfig(prev => ({...prev, shapes: [...(Array.isArray(prev.shapes) ? prev.shapes : []), { id, type: 'circle', x: 50, y: 50, width: 20, height: 20, rotation: 0, strokeColor: '#000000', strokeWidth: 0, strokeType: 'solid', borderRadius: 100, fillColor: '#cccccc', opacity: 1 }]}));
                                         setSelectedItemId(`shape-${id}`);
                                     }} className="p-4 border rounded-xl flex flex-col items-center gap-2 hover:bg-gray-50 transition-all"><div className="w-8 h-8 bg-gray-300 rounded-full"></div><span className="text-[10px] font-bold uppercase">Hình tròn</span></button>
                                 </div>
@@ -1285,7 +1285,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                             <span>{i.type === 'charm' ? 'Sticker/Ảnh' : 'Phụ kiện/Nhân vật'}</span>
                                         </div>
                                     ))}
-                                    {(config.shapes || []).map(s => (
+                                    {(Array.isArray(config.shapes) ? config.shapes : []).map(s => (
                                         <div key={s.id} onClick={() => setSelectedItemId(`shape-${s.id}`)} className={`p-2 border rounded-lg text-xs flex justify-between items-center cursor-pointer ${selectedItemId === `shape-${s.id}` ? 'border-blue-500 bg-blue-50' : ''}`}>
                                             <span>Khối hình</span>
                                         </div>

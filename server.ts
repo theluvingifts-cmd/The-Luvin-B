@@ -8,6 +8,7 @@ import fs from 'fs';
 // Import API handlers
 import sendTelegramHandler from './api/send-telegram.js';
 import sendEmailHandler from './api/send-email.js';
+import exportReportHandler from './api/export-report.js';
 // import { runAutoCancelTask } from './services/autoCancelService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,15 @@ async function startServer() {
       await sendEmailHandler(req, res);
     } catch (error) {
       console.error('Error in /api/send-email:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+  app.get('/api/export-report', async (req, res) => {
+    try {
+      await exportReportHandler(req, res);
+    } catch (error) {
+      console.error('Error in /api/export-report:', error);
       res.status(500).json({ error: 'Internal Server Error' });
     }
   });

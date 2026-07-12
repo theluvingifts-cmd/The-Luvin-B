@@ -595,7 +595,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                 } else if (type === 'item') {
                     currentItem.draggableItems = currentItem.draggableItems.map(i => i.id === idToUpdate ? { ...i, ...newTransform } : i);
                 } else if (type === 'shape') {
-                    currentItem.shapes = (currentItem.shapes || []).map(s => s.id === idToUpdate ? { ...s, ...newTransform } : s);
+                    currentItem.shapes = (Array.isArray(currentItem.shapes) ? currentItem.shapes : []).map(s => s.id === idToUpdate ? { ...s, ...newTransform } : s);
                 }
             }
             newItems[itemIndex] = currentItem;
@@ -1313,7 +1313,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                         <div>
                                                             {isEditingOrder && editForm ? (
                                                                 <div className="flex flex-col gap-2 mb-3">
-                                                                    <div className="flex gap-2 items-center"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map(f => (<option key={f.id} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
+                                                                    <div className="flex gap-2 items-center"><span className="font-bold text-gray-800 text-sm">Khung:</span><select className="border rounded p-1 text-sm bg-gray-50" value={item.frameId} onChange={(e) => handleEditFormChange('frameId', e.target.value, 'frameId', idx)}>{frames.map((f, fIdx) => (<option key={f.id || fIdx} value={f.id}>{f.name} - {formatCurrency(f.price, 'admin')}</option>))}</select></div>
                                                                     
                                                                     <div className="p-2 bg-gray-50 rounded border border-dashed border-gray-300">
                                                                         <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Thay đổi nền</p>
@@ -1342,8 +1342,8 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                                     onChange={(e) => handleEditFormChange('background', { ...item.background, value: e.target.value }, undefined, idx)}
                                                                                 >
                                                                                     <option value="">Chọn mẫu nền...</option>
-                                                                                    {backgrounds.map(bg => (
-                                                                                        <option key={bg.id} value={bg.url}>{bg.name}</option>
+                                                                                    {backgrounds.map((bg, bgIdx) => (
+                                                                                        <option key={bg.id || bgIdx} value={bg.url}>{bg.name}</option>
                                                                                     ))}
                                                                                 </select>
                                                                             ) : (
@@ -1486,7 +1486,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                     
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                                         {item.characters.map((char, charIdx) => (
-                                                            <div key={char.id} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative flex gap-3">
+                                                            <div key={char.id || `char-${charIdx}`} className="bg-gray-50 p-2 rounded border border-gray-200 text-xs relative flex gap-3">
                                                                 <CharacterPreview character={char} size="sm" />
                                                                 <div className="flex-grow">
                                                                     <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
@@ -1522,7 +1522,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                     }
 
                                                                     return (
-                                                                        <div key={di.id} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
+                                                                        <div key={di.id || `di-${diIdx}`} className="bg-white border border-gray-200 px-2 py-1 rounded text-xs flex items-center gap-2">
                                                                             {di.type === 'charm' ? (
                                                                                 <div className="flex items-center gap-2">
                                                                                     <div className="w-6 h-6 rounded bg-gray-50 p-0.5 border border-gray-100 flex-shrink-0">
@@ -1547,7 +1547,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {isEditingOrder && editForm && (<div className="mt-2"><button onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)} className="text-xs text-blue-600 hover:underline font-semibold">+ Thêm phụ kiện/thú cưng</button>{addingAccessoryToItemIndex === idx && (<div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">{[...products.filter(p => p.type === 'accessory' || p.type === 'pet')].map(p => (<button key={p.id} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500"><img src={p.imageUrl} className="w-8 h-8 object-contain" /><span className="text-[10px] text-gray-500">{p.name}</span></button>))}</div>)}</div>)}
+                                                    {isEditingOrder && editForm && (<div className="mt-2"><button onClick={() => setAddingAccessoryToItemIndex(addingAccessoryToItemIndex === idx ? null : idx)} className="text-xs text-blue-600 hover:underline font-semibold">+ Thêm phụ kiện/thú cưng</button>{addingAccessoryToItemIndex === idx && (<div className="mt-2 p-2 bg-gray-50 border rounded grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">{[...products.filter(p => (p.type === 'accessory' || p.type === 'pet') && !p.id.startsWith('srv-'))].map((p, pIdx) => (<button key={p.id || pIdx} onClick={() => handleAddDraggable(idx, p)} className="flex flex-col items-center p-1 bg-white border rounded hover:border-blue-500"><img src={p.imageUrl} className="w-8 h-8 object-contain" /><span className="text-[10px] text-gray-500">{p.name}</span></button>))}</div>)}</div>)}
                                                 </div>
                                             </div>
                                         </div>

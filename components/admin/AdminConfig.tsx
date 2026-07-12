@@ -21,7 +21,7 @@ interface AdminConfigProps {
     onRefreshFeedbacks: () => void;
 }
 
-type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'seo' | 'cleanup' | 'restore';
+type ConfigTab = 'branding' | 'theme' | 'sections' | 'content' | 'fonts' | 'staff' | 'pancake' | 'seo' | 'cleanup' | 'restore' | 'reports';
 
 const GOOGLE_FONTS = [
     { name: 'Playfair Display', label: 'Playfair Display (Serif Elegant)' },
@@ -512,13 +512,13 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
             <div className="sticky top-16 z-20 bg-gray-50 pt-4 pb-2 border-b mb-6 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2">
-                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'pancake', 'seo', 'cleanup', 'restore'].map((tab) => (
+                    {['branding', 'theme', 'sections', 'content', 'fonts', 'staff', 'pancake', 'seo', 'cleanup', 'restore', 'reports'].map((tab) => (
                         <button 
                             key={tab}
                             onClick={() => setActiveTab(tab as ConfigTab)} 
                             className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
                         >
-                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Thông báo' : tab === 'pancake' ? 'Kết nối POS' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : 'Khôi phục ảnh'}
+                            {tab === 'branding' ? 'Hình ảnh & Doanh nghiệp' : tab === 'theme' ? 'Màu & Font' : tab === 'sections' ? 'Chi tiết' : tab === 'content' ? 'Nội dung' : tab === 'fonts' ? 'Quản lý Font' : tab === 'staff' ? 'Nhân sự & Thông báo' : tab === 'pancake' ? 'Kết nối POS' : tab === 'seo' ? 'SEO & Social' : tab === 'cleanup' ? 'Dọn dẹp Storage' : tab === 'restore' ? 'Khôi phục ảnh' : 'Báo cáo & API Đồng bộ'}
                             {tab === 'cleanup' && (isScanning || isDeleting || isCleaningOldOrders) && (
                                 <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                             )}
@@ -1162,6 +1162,121 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     <option value="admin">Admin</option>
                                 </select>
                                 <button onClick={handleAddStaff} className="w-full py-2 bg-gray-900 text-white rounded-lg text-sm font-bold">+ Thêm nhân viên</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'reports' && (
+                        <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+                            <h3 className="text-lg font-bold mb-4 border-b pb-2">Báo cáo & API Đồng bộ</h3>
+                            
+                            <div className="space-y-4">
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Tính năng này cho phép bạn xuất dữ liệu khách hàng, đơn hàng, doanh thu trực tiếp hoặc tích hợp đồng bộ tự động thời gian thực sang các nền tảng khác như Google Sheets hoặc website thống kê của bạn bằng API Token bảo mật.
+                                </p>
+
+                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-xs font-bold text-blue-700 uppercase">API Token Bảo mật</label>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                const newToken = 'tl_token_' + Math.random().toString(36).substring(2, 10).toUpperCase() + Math.random().toString(36).substring(2, 10).toUpperCase();
+                                                setStoreConfig(prev => ({ ...prev, reportToken: newToken }));
+                                            }}
+                                            className="text-[10px] bg-blue-600 text-white font-bold py-1 px-2 rounded hover:bg-blue-700 transition-colors"
+                                        >
+                                            Tạo Token Mới
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            readOnly 
+                                            className="w-full p-2 border rounded text-xs font-mono bg-white" 
+                                            value={storeConfig.reportToken || ''} 
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                if (storeConfig.reportToken) {
+                                                    navigator.clipboard.writeText(storeConfig.reportToken);
+                                                    alert('Đã sao chép Token bảo mật!');
+                                                }
+                                            }}
+                                            className="p-2 border rounded bg-white hover:bg-gray-50 text-xs font-bold"
+                                        >
+                                            Sao chép
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-blue-600 italic">
+                                        * Lưu ý: Thay đổi token sẽ làm mất hiệu lực các link liên kết cũ đang chạy tự động. Hãy nhớ bấm "Lưu cấu hình" ở dưới sau khi tạo mới token.
+                                    </p>
+                                </div>
+
+                                <div className="border-t pt-4 space-y-4">
+                                    <h4 className="text-sm font-bold text-gray-700">1. Tải báo cáo trực tiếp (Tệp Excel/CSV)</h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <a 
+                                            href={`/api/export-report?token=${storeConfig.reportToken}&type=csv&dataset=orders`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-3 border rounded-lg hover:bg-gray-50 flex items-center justify-between transition-colors text-left"
+                                        >
+                                            <div>
+                                                <span className="text-xs font-bold block">Danh sách Đơn hàng (CSV)</span>
+                                                <span className="text-[10px] text-gray-500 block">Đầy đủ thông tin khách hàng, trạng thái, tiền cọc, chi tiết sản phẩm...</span>
+                                            </div>
+                                            <span className="text-xs text-blue-600 hover:underline font-semibold">Tải về ↓</span>
+                                        </a>
+
+                                        <a 
+                                            href={`/api/export-report?token=${storeConfig.reportToken}&type=csv&dataset=customers`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-3 border rounded-lg hover:bg-gray-50 flex items-center justify-between transition-colors text-left"
+                                        >
+                                            <div>
+                                                <span className="text-xs font-bold block">Danh sách Khách hàng (CSV)</span>
+                                                <span className="text-[10px] text-gray-500 block">Danh sách khách hàng gom nhóm theo số điện thoại, tổng số tiền chi tiêu, số đơn...</span>
+                                            </div>
+                                            <span className="text-xs text-blue-600 hover:underline font-semibold">Tải về ↓</span>
+                                        </a>
+
+                                        <a 
+                                            href={`/api/export-report?token=${storeConfig.reportToken}&type=csv&dataset=revenue`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-3 border rounded-lg hover:bg-gray-50 flex items-center justify-between transition-colors text-left"
+                                        >
+                                            <div>
+                                                <span className="text-xs font-bold block">Báo cáo Doanh thu hàng ngày (CSV)</span>
+                                                <span className="text-[10px] text-gray-500 block">Thống kê số lượng đơn đặt, đơn thành công, tổng tiền cọc/thực thu mỗi ngày...</span>
+                                            </div>
+                                            <span className="text-xs text-blue-600 hover:underline font-semibold">Tải về ↓</span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4 space-y-3">
+                                    <h4 className="text-sm font-bold text-gray-700">2. Hướng dẫn đồng bộ tự động sang Google Sheets (Auto-update)</h4>
+                                    <div className="bg-gray-50 p-3 rounded-lg border text-xs space-y-2">
+                                        <p className="font-semibold text-gray-800">Để dữ liệu tự động cập nhật liên tục vào Google Sheets của bạn:</p>
+                                        <ol className="list-decimal pl-4 space-y-1.5 text-gray-600">
+                                            <li>Mở một trang Google Sheets mới.</li>
+                                            <li>Chọn 1 ô bất kỳ (ví dụ ô A1).</li>
+                                            <li>Dán công thức sau vào ô đó:
+                                                <div className="mt-1 flex gap-1 font-mono text-[10px] bg-gray-900 text-green-400 p-2 rounded relative overflow-x-auto whitespace-nowrap">
+                                                    =IMPORTDATA("{window.location.origin}/api/export-report?token={storeConfig.reportToken || 'YOUR_TOKEN'}&type=csv&dataset=orders")
+                                                </div>
+                                            </li>
+                                            <li>Google Sheets sẽ <b>tự động tải dữ liệu</b> và tự cập nhật định kỳ mỗi khi có đơn hàng mới mà bạn không cần thao tác gì thêm!</li>
+                                        </ol>
+                                        <p className="text-[10px] text-red-500 italic font-semibold mt-1">
+                                            * Mẹo: Bạn có thể thay đổi <code className="bg-gray-200 px-1 rounded">dataset=orders</code> thành <code className="bg-gray-200 px-1 rounded">customers</code> hoặc <code className="bg-gray-200 px-1 rounded">revenue</code> để đồng bộ các bảng dữ liệu tương ứng.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
