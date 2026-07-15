@@ -196,6 +196,24 @@
         opacity: 1;
       }
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+      /* ─── Nền phủ màn hình của nét vẽ ───────────────────────────────────────────── */
+      .transition-scribble {
+          position: fixed;
+          top: -50vh;
+          left: -50vw;
+          width: 200vw;
+          height: 200vh;
+          z-index: 9999;
+          pointer-events: none;
+          color: #0d47a1; /* Màu dự phòng ban đầu */
+      }
+
+      /* ─── Chặn các thao tác chuột khi hiệu ứng đang chạy ─────────────────────── */
+      body.is-transitioning {
+          pointer-events: none !important;
+          overflow: hidden !important; /* Khóa cuộn thủ công */
+      }
     </style>
 </head>
   <body>

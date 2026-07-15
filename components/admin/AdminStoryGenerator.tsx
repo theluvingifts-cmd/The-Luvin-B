@@ -105,6 +105,28 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
         }
     };
 
+    const [dailyTarget, setDailyTarget] = useState<number>(() => {
+        const saved = localStorage.getItem('story_daily_target');
+        return saved ? parseInt(saved, 10) : 5;
+    });
+
+    const handleTargetChange = (val: number) => {
+        const cleanVal = Math.max(1, isNaN(val) ? 1 : val);
+        setDailyTarget(cleanVal);
+        localStorage.setItem('story_daily_target', String(cleanVal));
+    };
+
+    const selectRandomStories = () => {
+        const source = filteredTemplates.length > 0 ? filteredTemplates : templates;
+        if (source.length === 0) return;
+        
+        const shuffled = [...source].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, dailyTarget);
+        
+        const newSet = new Set(selected.map(t => t.id));
+        setSelectedIds(newSet);
+    };
+
     const generateStories = async () => {
         if (selectedIds.size === 0) return;
         setIsGenerating(true);
@@ -231,6 +253,54 @@ export const AdminStoryGenerator: React.FC<AdminStoryGeneratorProps> = ({ templa
                                 </>
                             )}
                         </button>
+                    </div>
+                </div>
+
+                <div className="border-t pt-6">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Chỉ tiêu & Chọn Ngẫu Nhiên hàng ngày</p>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-gradient-to-br from-pink-50/20 to-violet-50/20 p-5 rounded-2xl border border-pink-100/60 shadow-sm">
+                        <div className="md:col-span-4 space-y-2">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Chỉ tiêu đăng story hàng ngày</label>
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    type="number" 
+                                    min="1"
+                                    max="50"
+                                    value={dailyTarget}
+                                    onChange={(e) => handleTargetChange(parseInt(e.target.value, 10))}
+                                    className="w-20 px-3 py-2 text-center text-sm font-bold bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-luvin-pink/20 transition-all"
+                                />
+                                <span className="text-xs text-gray-500 font-semibold">story / ngày</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Thiết lập mục tiêu số lượng story cần đăng tải mỗi ngày.</p>
+                        </div>
+                        <div className="md:col-span-5 space-y-2">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Tiến độ hôm nay</label>
+                            <div className="flex items-center justify-between text-xs font-bold text-gray-700">
+                                <span>Đã chọn: {selectedIds.size} / {dailyTarget} story</span>
+                                <span className="text-luvin-pink">{Math.round((selectedIds.size / dailyTarget) * 100)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200/60 h-2 rounded-full overflow-hidden">
+                                <div 
+                                    className="bg-gradient-to-r from-pink-500 to-violet-500 h-full transition-all duration-500" 
+                                    style={{ width: `${Math.min(100, (selectedIds.size / dailyTarget) * 100)}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[10px] text-gray-400 font-medium">
+                                {selectedIds.size >= dailyTarget 
+                                    ? '🎉 Tuyệt vời! Bạn đã chọn đủ hoặc vượt chỉ tiêu đăng story hôm nay!' 
+                                    : `Cần chọn thêm ${Math.max(1, dailyTarget - selectedIds.size)} story nữa để đạt mục tiêu.`}
+                            </p>
+                        </div>
+                        <div className="md:col-span-3 flex items-center justify-end">
+                            <button
+                                type="button"
+                                onClick={selectRandomStories}
+                                className="w-full md:w-auto px-5 py-3 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                                <span>🎲 Chọn Ngẫu Nhiên {dailyTarget} Story</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
