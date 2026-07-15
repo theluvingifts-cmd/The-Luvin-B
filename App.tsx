@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
-import { TransitionScribble } from './components/shared/TransitionScribble';
 import type { Page, FrameConfig, LegoPart, Order, PresetBackground, CollectionTemplate, FeedbackItem, FrameOption, CustomFont } from './types';
 import { 
     LEGO_PARTS, 
@@ -190,7 +188,6 @@ const App: React.FC = () => {
   });
 
   const [isCartShaking, setIsCartShaking] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
 
   const applyTheme = (themeData: typeof DEFAULT_THEME, uploadedFonts: CustomFont[] = []) => {
       const root = document.documentElement;
@@ -558,8 +555,6 @@ const App: React.FC = () => {
             </div>
         )}
         {toast && <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 animate-fade-in-down ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>{toast.message}</div>}
-        
-        <TransitionScribble />
     </div>
   );
 };
