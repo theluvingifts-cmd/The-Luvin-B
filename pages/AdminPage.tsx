@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { db, auth } from '../config/firebase';
-import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where, limit } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { getAllParts } from '../services/productService';
 import { getAllBackgrounds } from '../services/backgroundService';
@@ -40,6 +40,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
     const [orders, setOrders] = useState<Order[]>([]);
+    const [ordersLimit, setOrdersLimit] = useState<number>(150);
     const isInitialLoadRef = React.useRef(true);
     const [products, setProducts] = useState<LegoPart[]>([]);
     const [backgrounds, setBackgrounds] = useState<PresetBackground[]>([]);
@@ -135,8 +136,6 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
     }, [location]);
 
     useEffect(() => {
-        let unsubscribeOrders: (() => void) | null = null;
-
         const init = async () => {
             const config = await getStoreConfig();
             if (config) {
@@ -156,60 +155,13 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
                         if (showToast) showToast("Phiên đăng nhập đã bị thu hồi bởi quản trị viên cấp cao.", 'error');
                         signOut(auth);
                     });
-                    
-                    // Cleanup previous listener if any
-                    if (unsubscribeOrders) {
-                        unsubscribeOrders();
-                        unsubscribeOrders = null;
-                    }
-
-                    // Listen to orders real-time - Remove lookback filter by default to restore visibility of all history
-                    const ordersCollection = collection(db, 'orders');
-                    const ordersQuery = query(ordersCollection, orderBy('createdAt', 'desc'));
-
-                    isInitialLoadRef.current = true; // Reset flag cho listener mới
-                    unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
-                        const ordersData: Order[] = [];
-                        snapshot.forEach((doc) => {
-                            ordersData.push(doc.data() as Order);
-                        });
-                        
-                        // Tự động load orders khi có đơn mới
-                        const hasNewAdded = snapshot.docChanges().some(change => change.type === 'added');
-                        if (hasNewAdded && !isInitialLoadRef.current) {
-                            handleTabChange('orders');
-                            if (showToast) showToast("🔔 CÓ ĐƠN HÀNG MỚI!", 'success');
-                            // Sound notification
-                            try {
-                                const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-20.mp3');
-                                audio.volume = 0.5;
-                                audio.play().catch(() => {});
-                            } catch (e) {}
-                        }
-
-                        setOrders(ordersData);
-                        isInitialLoadRef.current = false;
-                    }, (error) => {
-                        console.error("Firestore onSnapshot Error:", error);
-                        // Case: Missing index or permissions
-                        if (error.code === 'failed-precondition') {
-                            if (showToast) showToast("Đang khởi tạo chỉ mục database, vui lòng đợi 1 phút...", 'error');
-                        } else if (showToast) {
-                            showToast(`Lỗi đồng bộ đơn hàng: ${error.message}`, 'error');
-                        }
-                    });
                 } else {
                     setCurrentUser(null);
-                    if (unsubscribeOrders) {
-                        unsubscribeOrders();
-                        unsubscribeOrders = null;
-                    }
                 }
             });
 
             return () => {
                 unsubscribeAuth();
-                if (unsubscribeOrders) unsubscribeOrders();
             };
         };
 
@@ -218,6 +170,55 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
              cleanup.then(fn => fn && fn());
         };
     }, []);
+
+    // Listen to orders real-time - with ordersLimit control to speed up order loading
+    useEffect(() => {
+        if (!currentUser) {
+            setOrders([]);
+            return;
+        }
+
+        const ordersCollection = collection(db, 'orders');
+        const ordersQuery = ordersLimit > 0 
+            ? query(ordersCollection, orderBy('createdAt', 'desc'), limit(ordersLimit))
+            : query(ordersCollection, orderBy('createdAt', 'desc'));
+
+        isInitialLoadRef.current = true; // Reset flag cho listener mới
+        const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
+            const ordersData: Order[] = [];
+            snapshot.forEach((doc) => {
+                ordersData.push(doc.data() as Order);
+            });
+            
+            // Tự động load orders khi có đơn mới
+            const hasNewAdded = snapshot.docChanges().some(change => change.type === 'added');
+            if (hasNewAdded && !isInitialLoadRef.current) {
+                handleTabChange('orders');
+                if (showToast) showToast("🔔 CÓ ĐƠN HÀNG MỚI!", 'success');
+                // Sound notification
+                try {
+                    const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-20.mp3');
+                    audio.volume = 0.5;
+                    audio.play().catch(() => {});
+                } catch (e) {}
+            }
+
+            setOrders(ordersData);
+            isInitialLoadRef.current = false;
+        }, (error) => {
+            console.error("Firestore onSnapshot Error:", error);
+            // Case: Missing index or permissions
+            if (error.code === 'failed-precondition') {
+                if (showToast) showToast("Đang khởi tạo chỉ mục database, vui lòng đợi 1 phút...", 'error');
+            } else if (showToast) {
+                showToast(`Lỗi đồng bộ đơn hàng: ${error.message}`, 'error');
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [currentUser, ordersLimit]);
 
     const fetchInitialData = async () => {
         const [p, b, t, fb, fr] = await Promise.all([
@@ -334,7 +335,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ showToast }) => {
 
             <main className="max-w-[1600px] mx-auto py-4 sm:py-8 px-2 sm:px-6">
                 {activeTab === 'dashboard' && role === 'admin' && <AdminDashboard orders={orders} products={products} frames={frames} />}
-                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} backgrounds={backgrounds} templates={templates} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} storeConfig={storeConfig} />}
+                {activeTab === 'orders' && <AdminOrders orders={orders} setOrders={setOrders} products={products} frames={frames} backgrounds={backgrounds} templates={templates} currentUser={currentUser} role={role} onRefreshProducts={async () => setProducts(await getAllParts())} storeConfig={storeConfig} ordersLimit={ordersLimit} setOrdersLimit={setOrdersLimit} />}
                 {activeTab === 'products' && role === 'admin' && <AdminProducts products={products} frames={frames} backgrounds={backgrounds} templates={templates} onRefreshProducts={async () => setProducts(await getAllParts())} onRefreshFrames={async () => setFrames(await getAllFrames())} onRefreshBackgrounds={async () => setBackgrounds(await getAllBackgrounds())} onRefreshTemplates={async () => setTemplates(await getAllTemplates())} showToast={showToast} />}
                 {activeTab === 'config' && role === 'admin' && <AdminConfig storeConfig={storeConfig} setStoreConfig={setStoreConfig} feedbacks={feedbacks} onRefreshFeedbacks={async () => setFeedbackItems(await getAllFeedbacks())} />}
                 {activeTab === 'marketing' && role === 'admin' && <AdminVouchers />}

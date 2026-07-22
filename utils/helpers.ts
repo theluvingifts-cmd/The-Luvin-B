@@ -121,16 +121,81 @@ export const formatFullAddress = (customer: { address: string; ward?: string; di
  * xử lý được các cấu trúc vòng (circular structure).
  */
 export const safeJsonStringify = (obj: any): string => {
-    const cache = new Set();
-    return JSON.stringify(obj, (key, value) => {
-        if (typeof value === 'object' && value !== null) {
-            if (cache.has(value)) {
-                return '[Circular]';
-            }
-            cache.add(value);
+    const seen = new WeakSet();
+    const cleanObject = (val: any): any => {
+        if (val === null || val === undefined) return val;
+        
+        if (typeof val !== 'object') {
+            if (typeof val === 'function') return '[Function]';
+            if (typeof val === 'symbol') return val.toString();
+            if (typeof val === 'bigint') return val.toString();
+            return val;
         }
-        return value;
-    });
+
+        // DOM Elements
+        if (typeof Node !== 'undefined' && val instanceof Node) {
+            return `[Element ${val.nodeName}]`;
+        }
+        if (val.nodeType && typeof val.nodeName === 'string') {
+            return `[Element ${val.nodeName}]`;
+        }
+
+        // Firestore DocumentReference
+        if (val.path && typeof val.path === 'string' && val.firestore) {
+            return `[FirestoreRef: ${val.path}]`;
+        }
+
+        if (seen.has(val)) {
+            return '[Circular]';
+        }
+        seen.add(val);
+
+        if (Array.isArray(val)) {
+            return val.map(item => cleanObject(item));
+        }
+
+        if (val instanceof Date) {
+            return val.toISOString();
+        }
+
+        if (val instanceof RegExp) {
+            return val.toString();
+        }
+
+        const prototype = Object.getPrototypeOf(val);
+        const isPlainObject = prototype === null || prototype === Object.prototype;
+
+        if (!isPlainObject) {
+            if (val.constructor && (
+                val.constructor.name === 'DocumentReference' || 
+                val.constructor.name === 'FieldValue' ||
+                val.constructor.name === 'GeoPoint'
+            )) {
+                return `[Firestore: ${val.constructor.name}]`;
+            }
+            if (typeof val.toString === 'function' && val.toString() !== '[object Object]') {
+                return val.toString();
+            }
+            const className = val.constructor ? val.constructor.name : 'UnknownClass';
+            if (className !== 'Object' && className !== '') {
+                return `[Instance of ${className}]`;
+            }
+        }
+
+        const cleaned: any = {};
+        for (const key in val) {
+            if (Object.prototype.hasOwnProperty.call(val, key)) {
+                cleaned[key] = cleanObject(val[key]);
+            }
+        }
+        return cleaned;
+    };
+
+    try {
+        return JSON.stringify(cleanObject(obj));
+    } catch (e) {
+        return '[Serialization Error]';
+    }
 };
 
 /**
@@ -140,6 +205,16 @@ export const cleanForFirestore = (obj: any, seen = new WeakSet()): any => {
     if (obj === null || obj === undefined) return obj;
     if (typeof obj !== 'object') return obj;
     
+    // Preserve Firestore classes so they can be written to DB
+    if (obj.constructor && (
+        obj.constructor.name === 'DocumentReference' || 
+        obj.constructor.name === 'FieldValue' ||
+        obj.constructor.name === 'GeoPoint' ||
+        (typeof obj.path === 'string' && obj.firestore)
+    )) {
+        return obj;
+    }
+
     // Xử lý Circular References
     if (seen.has(obj)) return '[Circular]';
     seen.add(obj);

@@ -73,7 +73,7 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
 };
 
 const CollaboratorPage: React.FC = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const navigate = useNavigate();
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
@@ -161,7 +161,7 @@ const CollaboratorPage: React.FC = () => {
     };
 
     const handleDeleteDesign = async (id: string) => {
-        if (confirm("Bạn có chắc chắn muốn xóa thiết kế này?")) {
+        if (confirm(t('collaborator.confirm_delete_design'))) {
             const success = await deleteCTVDesign(id, auth.currentUser?.uid);
             if (success) {
                 setDesigns(prev => prev.filter(d => d.id !== id));
@@ -177,11 +177,11 @@ const CollaboratorPage: React.FC = () => {
         } catch (error: any) {
             console.error("Login error:", error);
             if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                setAuthError('Email hoặc mật khẩu không chính xác');
+                setAuthError(t('collaborator.email_or_password_incorrect') || 'Email hoặc mật khẩu không chính xác');
             } else if (error.code === 'auth/invalid-email') {
-                setAuthError('Email không hợp lệ');
+                setAuthError(t('collaborator.invalid_email') || 'Email không hợp lệ');
             } else {
-                setAuthError('Lỗi đăng nhập. Vui lòng thử lại.');
+                setAuthError(t('collaborator.login_error') || 'Lỗi đăng nhập. Vui lòng thử lại.');
             }
         }
     };
@@ -190,18 +190,18 @@ const CollaboratorPage: React.FC = () => {
         e.preventDefault();
         setAuthError('');
         if (authPassword.length < 6) {
-            return setAuthError('Mật khẩu phải có ít nhất 6 ký tự');
+            return setAuthError(t('collaborator.password_min_length') || 'Mật khẩu phải có ít nhất 6 ký tự');
         }
         try {
             await createUserWithEmailAndPassword(auth, authEmail, authPassword);
         } catch (error: any) {
             console.error("Signup error:", error);
             if (error.code === 'auth/email-already-in-use') {
-                setAuthError('Email này đã được sử dụng');
+                setAuthError(t('collaborator.email_in_use') || 'Email này đã được sử dụng');
             } else if (error.code === 'auth/invalid-email') {
-                setAuthError('Email không hợp lệ');
+                setAuthError(t('collaborator.invalid_email') || 'Email không hợp lệ');
             } else {
-                setAuthError('Lỗi đăng ký. Vui lòng thử lại.');
+                setAuthError(t('collaborator.signup_error') || 'Lỗi đăng ký. Vui lòng thử lại.');
             }
         }
     };
@@ -209,7 +209,7 @@ const CollaboratorPage: React.FC = () => {
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        if (!formData.phone || !formData.fullName) return alert("Vui lòng điền đầy đủ thông tin");
+        if (!formData.phone || !formData.fullName) return alert(t('collaborator.required_fields') || "Vui lòng điền đầy đủ thông tin");
 
         const referralCode = formData.phone; // Use phone as ref code for simplicity
         const newProfile = {
@@ -232,7 +232,7 @@ const CollaboratorPage: React.FC = () => {
             localStorage.setItem('referral_id', referralCode);
         } catch (error) {
             console.error("Registration/Update error:", error);
-            alert("Lỗi khi lưu thông tin. Vui lòng thử lại.");
+            alert(t('collaborator.save_error') || "Lỗi khi lưu thông tin. Vui lòng thử lại.");
         }
     };
 
@@ -246,15 +246,15 @@ const CollaboratorPage: React.FC = () => {
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
                     <div className="text-center mb-8">
                         <Logo className="h-12 mx-auto mb-6" />
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Cổng Cộng Tác Viên</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('collaborator.title')}</h1>
                         <p className="text-gray-500">
-                            {authMode === 'login' ? 'Đăng nhập để bắt đầu kiếm thu nhập' : 'Đăng ký tài khoản CTV mới'}
+                            {authMode === 'login' ? t('collaborator.login_subtitle') : t('collaborator.signup_subtitle')}
                         </p>
                     </div>
 
                     <form onSubmit={authMode === 'login' ? handleLogin : handleSignUp} className="space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Email</label>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t('collaborator.email')}</label>
                             <input 
                                 type="email" 
                                 required
@@ -265,7 +265,7 @@ const CollaboratorPage: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Mật khẩu</label>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t('collaborator.password')}</label>
                             <input 
                                 type="password" 
                                 required
@@ -284,7 +284,7 @@ const CollaboratorPage: React.FC = () => {
                             type="submit"
                             className="w-full bg-luvin-pink text-white py-3 rounded-xl font-bold hover:bg-luvin-pink/90 transition-all shadow-lg shadow-luvin-pink/20"
                         >
-                            {authMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}
+                            {authMode === 'login' ? t('collaborator.login') : t('collaborator.signup')}
                         </button>
                     </form>
 
@@ -296,7 +296,7 @@ const CollaboratorPage: React.FC = () => {
                             }}
                             className="text-luvin-pink text-sm font-bold hover:underline"
                         >
-                            {authMode === 'login' ? 'Chưa có tài khoản? Đăng ký ngay' : 'Đã có tài khoản? Đăng nhập'}
+                            {authMode === 'login' ? t('collaborator.no_account') : t('collaborator.has_account')}
                         </button>
                     </div>
                 </div>
@@ -309,11 +309,11 @@ const CollaboratorPage: React.FC = () => {
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
                     <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                        {profile ? 'Cập nhật thông tin' : 'Đăng ký Cộng Tác Viên'}
+                        {profile ? t('collaborator.update_title') : t('collaborator.register_title')}
                     </h1>
                     <form onSubmit={handleRegister} className="space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Họ và tên</label>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t('collaborator.full_name')}</label>
                             <input 
                                 type="text" 
                                 required
@@ -323,7 +323,7 @@ const CollaboratorPage: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Số điện thoại (Mã giới thiệu)</label>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t('collaborator.phone')}</label>
                             <input 
                                 type="tel" 
                                 required
@@ -333,20 +333,20 @@ const CollaboratorPage: React.FC = () => {
                             />
                         </div>
                         <div className="pt-4 border-t border-gray-100">
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">Thông tin nhận thanh toán</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">{t('collaborator.payment_info')}</p>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tên ngân hàng</label>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t('collaborator.bank_name')}</label>
                                     <input 
                                         type="text" 
-                                        placeholder="Ví dụ: MB Bank, Techcombank..."
+                                        placeholder={t('collaborator.bank_name_placeholder') || "Ví dụ: MB Bank, Techcombank..."}
                                         className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none text-sm"
                                         value={formData.bankName}
                                         onChange={e => setFormData({...formData, bankName: e.target.value})}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Số tài khoản</label>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t('collaborator.bank_account')}</label>
                                     <input 
                                         type="text" 
                                         className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none text-sm font-mono"
@@ -355,7 +355,7 @@ const CollaboratorPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Chủ tài khoản</label>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t('collaborator.bank_owner')}</label>
                                     <input 
                                         type="text" 
                                         className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-luvin-pink outline-none text-sm uppercase"
@@ -372,14 +372,14 @@ const CollaboratorPage: React.FC = () => {
                                     onClick={() => setIsEditing(false)}
                                     className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all"
                                 >
-                                    Hủy
+                                    {t('collaborator.cancel')}
                                 </button>
                             )}
                             <button 
                                 type="submit"
                                 className="flex-[2] bg-luvin-pink text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition-all shadow-lg"
                             >
-                                {profile ? 'Lưu thay đổi' : 'Hoàn tất đăng ký'}
+                                {profile ? t('collaborator.save_changes') : t('collaborator.complete_register')}
                             </button>
                         </div>
                     </form>
@@ -397,12 +397,12 @@ const CollaboratorPage: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Đang chờ xác duyệt</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">{t('collaborator.pending_title')}</h1>
                     <p className="text-gray-600 mb-8">
-                        Cảm ơn bạn đã đăng ký làm Cộng tác viên! Tài khoản của bạn đang được quản trị viên kiểm tra. Chúng tôi sẽ thông báo cho bạn ngay khi tài khoản được kích hoạt.
+                        {t('collaborator.pending_desc')}
                     </p>
                     <button onClick={handleLogout} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">
-                        Đăng xuất
+                        {t('collaborator.logout')}
                     </button>
                 </div>
             </div>
@@ -418,12 +418,12 @@ const CollaboratorPage: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Tài khoản bị tạm khóa</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">{t('collaborator.suspended_title')}</h1>
                     <p className="text-gray-600 mb-8">
-                        Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.
+                        {t('collaborator.suspended_desc')}
                     </p>
                     <button onClick={handleLogout} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">
-                        Đăng xuất
+                        {t('collaborator.logout')}
                     </button>
                 </div>
             </div>
@@ -439,32 +439,32 @@ const CollaboratorPage: React.FC = () => {
             <div className="max-w-5xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Chào, {profile.fullName}!</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('collaborator.hello', { name: profile.fullName })}</h1>
                         <div className="flex items-center gap-3">
-                            <p className="text-gray-500">Mã CTV: <span className="font-bold text-luvin-pink">{profile.referralCode}</span></p>
-                            <button onClick={() => setIsEditing(true)} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-200 font-bold">Sửa hồ sơ</button>
+                            <p className="text-gray-500">{t('collaborator.ref_code', { code: profile.referralCode })}</p>
+                            <button onClick={() => setIsEditing(true)} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-200 font-bold">{t('collaborator.edit_profile')}</button>
                         </div>
                     </div>
-                    <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 font-medium">Đăng xuất</button>
+                    <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 font-medium">{t('collaborator.logout')}</button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-xs mb-1 uppercase font-bold">Tổng đơn</p>
+                        <p className="text-gray-500 text-xs mb-1 uppercase font-bold">{t('collaborator.total_orders')}</p>
                         <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-xs mb-1 uppercase font-bold">Thành công</p>
+                        <p className="text-gray-500 text-xs mb-1 uppercase font-bold">{t('collaborator.successful')}</p>
                         <p className="text-2xl font-bold text-green-600">{orders.filter(o => o.status === 'Đã giao hàng').length}</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-xs mb-1 uppercase font-bold">Doanh số</p>
+                        <p className="text-gray-500 text-xs mb-1 uppercase font-bold">{t('collaborator.sales')}</p>
                         <p className="text-2xl font-bold text-blue-600">
                             {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => sum + o.totalPrice, 0), 'payment')}
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-luvin-pink/5 border-luvin-pink/20">
-                        <p className="text-luvin-pink text-xs mb-1 uppercase font-bold">Tổng hoa hồng</p>
+                        <p className="text-luvin-pink text-xs mb-1 uppercase font-bold">{t('collaborator.total_commission')}</p>
                         <p className="text-2xl font-bold text-luvin-pink">
                             {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng').reduce((sum, o) => {
                                 if (o.commissionAmount !== undefined) return sum + o.commissionAmount;
@@ -474,7 +474,7 @@ const CollaboratorPage: React.FC = () => {
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 bg-orange-50 border-orange-200">
-                        <p className="text-orange-700 text-xs mb-1 uppercase font-bold">Chưa thanh toán</p>
+                        <p className="text-orange-700 text-xs mb-1 uppercase font-bold">{t('collaborator.unpaid')}</p>
                         <p className="text-2xl font-bold text-orange-700">
                             {formatCurrency(orders.filter(o => o.status === 'Đã giao hàng' && !o.commissionPaid).reduce((sum, o) => {
                                 if (o.commissionAmount !== undefined) return sum + o.commissionAmount;
@@ -486,29 +486,29 @@ const CollaboratorPage: React.FC = () => {
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
-                    <h2 className="font-bold text-gray-900 mb-4">Chính sách hoa hồng</h2>
+                    <h2 className="font-bold text-gray-900 mb-4">{t('collaborator.policy_title')}</h2>
                     {profile.customCommissionRate !== undefined ? (
                         <div className="p-4 rounded-xl bg-luvin-pink/5 border border-luvin-pink/20">
-                            <p className="text-luvin-pink font-bold text-sm mb-1">Mức hoa hồng riêng biệt: {profile.customCommissionRate}%</p>
-                            <p className="text-gray-600 text-xs">Bạn đang được áp dụng mức hoa hồng đặc biệt dành riêng cho đối tác chiến lược.</p>
+                            <p className="text-luvin-pink font-bold text-sm mb-1">{t('collaborator.custom_rate', { rate: profile.customCommissionRate })}</p>
+                            <p className="text-gray-600 text-xs">{t('collaborator.custom_rate_desc')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                                <p className="text-blue-800 font-bold text-sm mb-1">Mức 1: Khởi động (5%)</p>
-                                <p className="text-blue-600 text-xs">Áp dụng cho 2 đơn hàng thành công đầu tiên của bạn.</p>
+                                <p className="text-blue-800 font-bold text-sm mb-1">{t('collaborator.level1_title')}</p>
+                                <p className="text-blue-600 text-xs">{t('collaborator.level1_desc')}</p>
                             </div>
                             <div className="p-4 rounded-xl bg-green-50 border border-green-100">
-                                <p className="text-green-800 font-bold text-sm mb-1">Mức 2: Chuyên nghiệp (10%)</p>
-                                <p className="text-green-600 text-xs">Áp dụng từ đơn hàng thành công thứ 3 trở đi.</p>
+                                <p className="text-green-800 font-bold text-sm mb-1">{t('collaborator.level2_title')}</p>
+                                <p className="text-green-600 text-xs">{t('collaborator.level2_desc')}</p>
                             </div>
                         </div>
                     )}
-                    <p className="text-[10px] text-gray-400 mt-4 italic">* Hoa hồng chỉ được tính khi đơn hàng ở trạng thái "Đã giao hàng". Không tính hoa hồng cho đơn hàng tự đặt.</p>
+                    <p className="text-[10px] text-gray-400 mt-4 italic">{t('collaborator.policy_note')}</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
-                    <h2 className="font-bold text-gray-900 mb-4">Link giới thiệu của bạn</h2>
+                    <h2 className="font-bold text-gray-900 mb-4">{t('collaborator.referral_link_title')}</h2>
                     <div className="flex flex-col sm:flex-row gap-3">
                         <input 
                             readOnly 
@@ -518,30 +518,30 @@ const CollaboratorPage: React.FC = () => {
                         <button 
                             onClick={() => {
                                 navigator.clipboard.writeText(referralLink);
-                                alert("Đã copy link!");
+                                alert(t('collaborator.copy_success') || "Đã copy link!");
                             }}
                             className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-all"
                         >
-                            Copy Link
+                            {t('collaborator.copy_link')}
                         </button>
                     </div>
-                    <p className="text-xs text-gray-400 mt-3 italic">* Gửi link này cho bạn bè, khi họ mua hàng bạn sẽ được ghi nhận doanh số.</p>
+                    <p className="text-xs text-gray-400 mt-3 italic">{t('collaborator.referral_link_note')}</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="font-bold text-gray-900">Thiết kế của bạn</h2>
+                        <h2 className="font-bold text-gray-900">{t('collaborator.your_designs')}</h2>
                         <button 
                             onClick={() => navigate(`/builder/1?ref=${profile.referralCode}`)}
                             className="bg-luvin-pink text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-pink-600 transition-all shadow-sm"
                         >
-                            + Tạo thiết kế mới
+                            {t('collaborator.create_new_design')}
                         </button>
                     </div>
                     
                     {designs.length === 0 ? (
                         <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                            <p className="text-gray-400 text-sm">Bạn chưa có thiết kế nào được lưu.</p>
+                            <p className="text-gray-400 text-sm">{t('collaborator.no_designs')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -556,23 +556,23 @@ const CollaboratorPage: React.FC = () => {
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 mb-4">{new Date(design.createdAt).toLocaleDateString('vi-VN')}</p>
+                                    <p className="text-[10px] text-gray-400 mb-4">{new Date(design.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</p>
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => {
                                                 const url = `${window.location.origin}/builder/3?design=${design.id}&ref=${profile.referralCode}`;
                                                 navigator.clipboard.writeText(url);
-                                                alert("Đã copy link thiết kế!");
+                                                alert(t('collaborator.copy_design_link_success') || "Đã copy link thiết kế!");
                                             }}
                                             className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-xs font-bold hover:bg-black transition-all"
                                         >
-                                            Copy Link
+                                            {t('collaborator.copy_link')}
                                         </button>
                                         <button 
                                             onClick={() => navigate(`/builder/3?design=${design.id}&ref=${profile.referralCode}`)}
                                             className="px-3 bg-gray-100 text-gray-600 py-2 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all"
                                         >
-                                            Xem
+                                            {t('collaborator.view')}
                                         </button>
                                     </div>
                                 </div>
@@ -583,30 +583,30 @@ const CollaboratorPage: React.FC = () => {
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-6 border-b border-gray-100">
-                        <h2 className="font-bold text-gray-900">Lịch sử đơn hàng giới thiệu</h2>
+                        <h2 className="font-bold text-gray-900">{t('collaborator.referred_orders_history')}</h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase">
                                 <tr>
-                                    <th className="px-6 py-4">Mã đơn</th>
-                                    <th className="px-6 py-4">Ngày đặt</th>
-                                    <th className="px-6 py-4">Khách hàng</th>
-                                    <th className="px-6 py-4">Giá trị</th>
-                                    <th className="px-6 py-4">Hoa hồng</th>
-                                    <th className="px-6 py-4">Trạng thái</th>
-                                    <th className="px-6 py-4">Thanh toán</th>
+                                    <th className="px-6 py-4">{t('collaborator.order_id')}</th>
+                                    <th className="px-6 py-4">{t('collaborator.order_date')}</th>
+                                    <th className="px-6 py-4">{t('collaborator.customer')}</th>
+                                    <th className="px-6 py-4">{t('collaborator.value')}</th>
+                                    <th className="px-6 py-4">{t('collaborator.commission')}</th>
+                                    <th className="px-6 py-4">{t('collaborator.status')}</th>
+                                    <th className="px-6 py-4">{t('collaborator.payment')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-8 text-center text-gray-400">Chưa có đơn hàng nào được giới thiệu.</td>
+                                        <td colSpan={7} className="px-6 py-8 text-center text-gray-400">{t('collaborator.no_referred_orders')}</td>
                                     </tr>
                                 ) : orders.map(order => (
                                     <tr key={order.id} className="text-sm">
                                         <td className="px-6 py-4 font-mono font-bold">{order.id}</td>
-                                        <td className="px-6 py-4 text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
+                                        <td className="px-6 py-4 text-gray-500">{new Date(order.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</td>
                                         <td className="px-6 py-4">{order.customer.name}</td>
                                         <td className="px-6 py-4 font-bold">{formatCurrency(order.totalPrice, 'payment')}</td>
                                         <td className="px-6 py-4 text-luvin-pink font-bold">
@@ -618,7 +618,9 @@ const CollaboratorPage: React.FC = () => {
                                                 order.status === 'Huỷ đơn' ? 'bg-red-100 text-red-700' :
                                                 'bg-yellow-100 text-yellow-700'
                                             }`}>
-                                                {order.status}
+                                                {order.status === 'Đã giao hàng' ? t('collaborator.delivered') : 
+                                                 order.status === 'Huỷ đơn' ? t('collaborator.cancelled') : 
+                                                 t('collaborator.processing')}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
@@ -626,7 +628,7 @@ const CollaboratorPage: React.FC = () => {
                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                                     order.commissionPaid ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                                                 }`}>
-                                                    {order.commissionPaid ? 'Đã trả' : 'Chờ trả'}
+                                                    {order.commissionPaid ? t('collaborator.paid') : t('collaborator.unpaid_status')}
                                                 </span>
                                             ) : (
                                                 <span className="text-gray-400 text-[10px]">—</span>

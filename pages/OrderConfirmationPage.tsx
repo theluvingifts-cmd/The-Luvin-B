@@ -18,7 +18,7 @@ interface OrderConfirmationPageProps {
 }
 
 export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ order, navigateTo, onZoomImage, actionType = 'create' }) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [isUploading, setIsUploading] = useState(false);
     const [proofUrl, setProofUrl] = useState<string | null>(order?.paymentProofUrl || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,16 +79,16 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                     
                     if (success) {
                         setProofUrl(url);
-                        alert("Đã gửi ảnh xác nhận thành công! Chúng tôi sẽ kiểm tra sớm.");
+                        alert(t('order_confirmation.alert_success') || "Đã gửi ảnh xác nhận thành công! Chúng tôi sẽ kiểm tra sớm.");
                     } else {
-                        alert("Lỗi cập nhật đơn hàng. Vui lòng thử lại.");
+                        alert(t('order_confirmation.alert_update_error') || "Lỗi cập nhật đơn hàng. Vui lòng thử lại.");
                     }
                 } else {
-                    alert("Lỗi tải ảnh lên.");
+                    alert(t('order_confirmation.alert_upload_error') || "Lỗi tải ảnh lên.");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Đã có lỗi xảy ra.");
+                alert(t('order_confirmation.alert_general_error') || "Đã có lỗi xảy ra.");
             } finally {
                 setIsUploading(false);
             }
@@ -102,21 +102,23 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                     <div className="text-center">
                         <div className="mb-4 text-5xl">🎉</div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                            {actionType === 'update' ? 'Cập nhật đơn hàng thành công!' : 'Đơn hàng của bạn đã được ghi nhận!'}
+                            {actionType === 'update' 
+                                ? (t('order_confirmation.success_title_update') || 'Cập nhật đơn hàng thành công!') 
+                                : (t('order_confirmation.success_title_create') || 'Đơn hàng của bạn đã được ghi nhận!')}
                         </h1>
                         <p className="mt-2 text-sm text-gray-600">
                             {actionType === 'update' 
-                                ? 'Thông tin đơn hàng đã được thay đổi. Chúng tôi sẽ cập nhật lại quy trình xử lý.'
-                                : 'Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.'}
+                                ? (t('order_confirmation.success_desc_update') || 'Thông tin đơn hàng đã được thay đổi. Chúng tôi sẽ cập nhật lại quy trình xử lý.')
+                                : (t('order_confirmation.success_desc_create') || 'Cảm ơn bạn đã đặt hàng. Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng của bạn.')}
                         </p>
-                        <p className="mt-4 text-base text-gray-700">Mã đơn hàng của bạn là: <span className="font-bold text-lg text-luvin-pink">{order.id}</span></p>
+                        <p className="mt-4 text-base text-gray-700">{(t('order_confirmation.order_id_prefix') || 'Mã đơn hàng của bạn là:')} <span className="font-bold text-lg text-luvin-pink">{order.id}</span></p>
                     </div>
                     
                     <div className="mt-8 bg-gray-50 rounded-lg border p-6 text-center">
-                        <h2 className="font-semibold text-gray-700">Quét mã QR để thanh toán</h2>
+                        <h2 className="font-semibold text-gray-700">{t('order_confirmation.qr_title') || 'Quét mã QR để thanh toán'}</h2>
                         <img src={getVietQR(order)} alt="VietQR" className="mt-4 w-48 mx-auto border rounded-lg" />
                         <div className="mt-4 bg-white p-3 rounded-lg border inline-block w-full max-w-xs">
-                           <p className="text-xs text-gray-500">Nội dung chuyển khoản:</p>
+                           <p className="text-xs text-gray-500">{t('order_confirmation.transfer_content') || 'Nội dung chuyển khoản:'}</p>
                            <p className="font-bold text-gray-800 tracking-wider text-lg">{order.id}</p>
                         </div>
 
@@ -127,19 +129,19 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-gray-200">
-                            <h3 className="text-sm font-bold text-gray-700 mb-2">Đã chuyển khoản?</h3>
+                            <h3 className="text-sm font-bold text-gray-700 mb-2">{t('order_confirmation.has_transferred') || 'Đã chuyển khoản?'}</h3>
                             {proofUrl ? (
                                 <div className="flex flex-col items-center">
                                     <div className="w-full max-w-xs bg-green-50 border border-green-200 rounded-lg p-3 mb-2 flex items-center gap-2">
                                         <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-xs">✓</div>
-                                        <span className="text-sm text-green-700 font-medium">Đã gửi ảnh xác nhận</span>
+                                        <span className="text-sm text-green-700 font-medium">{t('order_confirmation.proof_sent') || 'Đã gửi ảnh xác nhận'}</span>
                                     </div>
                                     <img src={proofUrl} alt="Payment Proof" className="w-32 h-auto object-contain border rounded mb-2" />
-                                    <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 hover:underline">Gửi lại ảnh khác?</button>
+                                    <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 hover:underline">{t('order_confirmation.resend_proof') || 'Gửi lại ảnh khác?'}</button>
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-3">Tải ảnh biên lai để đơn hàng được xác nhận nhanh hơn.</p>
+                                    <p className="text-xs text-gray-500 mb-3">{t('order_confirmation.proof_tip') || 'Tải ảnh biên lai để đơn hàng được xác nhận nhanh hơn.'}</p>
                                     <button 
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={isUploading}
@@ -148,7 +150,7 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                         </svg>
-                                        {isUploading ? 'Đang tải lên...' : 'Tải ảnh biên lai'}
+                                        {isUploading ? (t('order_confirmation.uploading_proof') || 'Đang tải lên...') : (t('order_confirmation.upload_proof') || 'Tải ảnh biên lai')}
                                     </button>
                                 </div>
                             )}
@@ -202,37 +204,37 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                             )}
 
                             <div className="text-sm space-y-2">
-                                <div className="flex justify-between"><span>Tạm tính:</span><span className="font-medium">{formatCurrency(order.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) + (order.extraCharms?.reduce((sum, c) => sum + (c.price || 0), 0) || 0))}</span></div>
+                                <div className="flex justify-between"><span>{t('checkout.subtotal') || 'Tạm tính'}:</span><span className="font-medium">{formatCurrency(order.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) + (order.extraCharms?.reduce((sum, c) => sum + (c.price || 0), 0) || 0))}</span></div>
                                 <div className="flex justify-between">
-                                    <span>Phí vận chuyển:</span>
+                                    <span>{t('checkout.shipping_fee') || 'Phí vận chuyển'}:</span>
                                     {order.shipping.fee === 0 && order.shipping.method === 'standard' ? (
-                                        <span className="font-bold text-green-600">Miễn phí</span>
+                                        <span className="font-bold text-green-600">{t('common.free') || 'Miễn phí'}</span>
                                     ) : (
                                         <span className="font-medium">{formatCurrency(order.shipping.fee)}</span>
                                     )}
                                 </div>
-                                {order.addGiftBox && <div className="flex justify-between"><span>Hộp quà ({totalQuantity} tranh):</span><span className="font-medium">{formatCurrency(giftBoxFee)}</span></div>}
+                                {order.addGiftBox && <div className="flex justify-between"><span>{t('checkout.gift_box') || 'Hộp quà'} ({totalQuantity} {language === 'en' ? 'frames' : 'tranh'}):</span><span className="font-medium">{formatCurrency(giftBoxFee)}</span></div>}
                                 {order.discountAmount && order.discountAmount > 0 && (
                                     <div className="flex justify-between text-green-600 font-bold">
-                                        <span>Giảm giá:</span>
+                                        <span>{t('checkout.discount') || 'Giảm giá'}:</span>
                                         <span>-{formatCurrency(order.discountAmount)}</span>
                                     </div>
                                 )}
                                 <div className="border-t my-2"></div>
-                                <div className="flex justify-between font-bold text-base"><span>Tổng cộng:</span><span>{formatCurrency(order.totalPrice)}</span></div>
-                                <div className="flex justify-between font-bold text-base text-red-600"><span>Cần thanh toán:</span><span>{formatCurrency(order.amountToPay)}</span></div>
-                                <div className="flex justify-between text-xs text-gray-500"><span>Còn lại (thanh toán khi nhận hàng):</span><span>{formatCurrency(amountRemaining)}</span></div>
+                                <div className="flex justify-between font-bold text-base"><span>{t('checkout.total') || 'Tổng cộng'}:</span><span>{formatCurrency(order.totalPrice)}</span></div>
+                                <div className="flex justify-between font-bold text-base text-red-600"><span>{t('checkout.amount_to_pay') || 'Cần thanh toán'}:</span><span>{formatCurrency(order.amountToPay)}</span></div>
+                                <div className="flex justify-between text-xs text-gray-500"><span>{t('order_confirmation.amount_remaining') || 'Còn lại (thanh toán khi nhận hàng):'}</span><span>{formatCurrency(amountRemaining)}</span></div>
                             </div>
                             
                             <div className="border-t pt-4 text-sm space-y-1">
-                                <p><span className="font-semibold">Giao đến:</span> {order.customer.name}</p>
-                                <p><span className="font-semibold">Địa chỉ:</span> {order.customer.address}</p>
-                                <p><span className="font-semibold">SĐT:</span> {order.customer.phone}</p>
-                                {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">Liên hệ gửi demo:</span> {order.customer.demoContact}</p>}
-                                <p><span className="font-semibold">Ngày nhận mong muốn:</span> {new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
+                                <p><span className="font-semibold">{t('order_confirmation.deliver_to') || 'Giao đến'}:</span> {order.customer.name}</p>
+                                <p><span className="font-semibold">{t('checkout.full_name') || 'Địa chỉ'}:</span> {order.customer.address}</p>
+                                <p><span className="font-semibold">{t('checkout.phone') || 'SĐT'}:</span> {order.customer.phone}</p>
+                                {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">{t('checkout.demo_contact_label') || 'Liên hệ gửi demo'}:</span> {order.customer.demoContact}</p>}
+                                <p><span className="font-semibold">{t('order_confirmation.desired_date') || 'Ngày nhận mong muốn'}:</span> {language === 'en' ? new Date(order.delivery.date).toLocaleDateString('en-US') : new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
                                 {order.delivery.notes && (
                                     <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-100 italic text-gray-700">
-                                        <span className="font-semibold not-italic">Ghi chú của bạn:</span> {order.delivery.notes}
+                                        <span className="font-semibold not-italic">{t('checkout.shipping_notes') || 'Ghi chú của bạn'}:</span> {order.delivery.notes}
                                     </div>
                                 )}
                             </div>

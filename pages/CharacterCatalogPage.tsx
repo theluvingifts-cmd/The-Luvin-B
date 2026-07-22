@@ -8,7 +8,7 @@ import { Search, Filter, Copy, Check, ChevronRight, LayoutGrid, List, MessageSqu
 import { motion, AnimatePresence } from 'motion/react';
 
 export const CharacterCatalogPage: React.FC = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [allParts, setAllParts] = useState<LegoPart[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -62,14 +62,14 @@ export const CharacterCatalogPage: React.FC = () => {
     }, []);
 
     const typeTabs = [
-        { id: 'all', label: 'Tất cả' },
-        { id: 'hair', label: 'Tóc' },
-        { id: 'face', label: 'Khuôn mặt' },
-        { id: 'shirt', label: 'Áo/Body' },
-        { id: 'pants', label: 'Quần' },
-        { id: 'hat', label: 'Mũ/Nón' },
-        { id: 'accessory', label: 'Phụ kiện' },
-        { id: 'pet', label: 'Thú cưng' },
+        { id: 'all', label: t('catalog.tabs.all') },
+        { id: 'hair', label: t('catalog.tabs.hair') },
+        { id: 'face', label: t('catalog.tabs.face') },
+        { id: 'shirt', label: t('catalog.tabs.shirt') },
+        { id: 'pants', label: t('catalog.tabs.pants') },
+        { id: 'hat', label: t('catalog.tabs.hat') },
+        { id: 'accessory', label: t('catalog.tabs.accessory') },
+        { id: 'pet', label: t('catalog.tabs.pet') },
     ];
 
     const filteredParts = useMemo(() => {
@@ -144,7 +144,7 @@ export const CharacterCatalogPage: React.FC = () => {
 
     const generateBulk = async () => {
         if (allParts.length === 0) {
-            alert("Đang tải dữ liệu, vui lòng đợi giây lát...");
+            alert(t('catalog.bulk_planner.loading_parts_wait'));
             return;
         }
 
@@ -162,7 +162,12 @@ export const CharacterCatalogPage: React.FC = () => {
             const pants = inStockParts.filter(p => p.type === 'pants');
 
             if (!hairs.length || !faces.length || !shirts.length || !pants.length) {
-                alert(`Cảnh báo: Không đủ linh kiện CÒN HÀNG để tạo ngẫu nhiên!\n\nSố lượng còn:\n- Tóc: ${hairs.length}\n- Mặt: ${faces.length}\n- Áo: ${shirts.length}\n- Quần: ${pants.length}`);
+                alert(t('catalog.bulk_planner.warning_not_enough_parts', {
+                    hair: hairs.length,
+                    face: faces.length,
+                    shirt: shirts.length,
+                    pants: pants.length
+                }));
                 setIsGenerating(false);
                 return;
             }
@@ -230,7 +235,7 @@ export const CharacterCatalogPage: React.FC = () => {
             setBulkCharacters(newChars);
         } catch (err) {
             console.error("Bulk generation error:", err);
-            alert("Có lỗi xảy ra khi tạo danh sách. Vui lòng thử lại!");
+            alert(t('catalog.bulk_planner.generation_error'));
         } finally {
             setIsGenerating(false);
         }
@@ -250,7 +255,7 @@ export const CharacterCatalogPage: React.FC = () => {
     const handleCopySelection = () => {
         const text = selectedIds.join('\n');
         navigator.clipboard.writeText(text);
-        alert('Đã sao chép danh sách ID đã chọn!');
+        alert(t('catalog.copid_id_list_success'));
     };
 
     const handleCopyBulkIds = () => {
@@ -263,12 +268,13 @@ export const CharacterCatalogPage: React.FC = () => {
         
         const text = allIds.join('\n');
         navigator.clipboard.writeText(text);
-        alert('Đã sao chép toàn bộ mã linh kiện của các nhân vật đã tạo!');
+        alert(t('catalog.copy_all_parts_success'));
     };
 
     const handleShareZalo = () => {
         const selectedParts = allParts.filter(p => selectedIds.includes(p.id));
-        const message = `Danh sách linh kiện LEGO tôi đã chọn:\n\n${selectedParts.map(p => `- ${p.name} (ID: ${p.id})`).join('\n')}\n\nTổng cộng: ${selectedIds.length} món.`;
+        const listText = selectedParts.map(p => `- ${p.name} (ID: ${p.id})`).join('\n');
+        const message = t('catalog.share_parts_zalo_message', { list: listText, count: selectedIds.length });
         window.open(`https://zalo.me/0964393115?text=${encodeURIComponent(message)}`, '_blank');
     };
 
@@ -280,19 +286,19 @@ export const CharacterCatalogPage: React.FC = () => {
                     <div className="max-w-4xl">
                         <div className="flex items-center gap-3 mb-3">
                             <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] block">
-                                Catalog for Bulk Orders
+                                {t('catalog.catalog_bulk_title')}
                             </span>
                             {bulkCharacters.length > 0 && (
                                 <span className="bg-pink-100 text-primary text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                                    Đang lập kế hoạch: {bulkCharacters.length} NV
+                                    {t('catalog.planning_badge', { count: bulkCharacters.length })}
                                 </span>
                             )}
                         </div>
                         <h1 className="text-4xl font-heading font-black text-gray-900 mb-4 leading-tight uppercase">
-                            Thư viện <span className="text-primary italic">Phụ kiện LEGO</span>
+                            {t('catalog.library_title')}
                         </h1>
                         <p className="text-xs text-gray-400 font-bold max-w-xl leading-relaxed mb-8">
-                            Dành riêng cho khách hàng sỉ và doanh nghiệp. Thiết kế nhanh danh sách nhân vật nam/nữ số lượng lớn và xem preview trực quan.
+                            {t('catalog.library_desc')}
                         </p>
 
                         <div className="flex flex-wrap gap-4 items-center">
@@ -300,7 +306,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input 
                                     type="text" 
-                                    placeholder="Tìm tên hoặc mã linh kiện..." 
+                                    placeholder={t('catalog.search_placeholder')} 
                                     className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -310,21 +316,21 @@ export const CharacterCatalogPage: React.FC = () => {
                                 <button 
                                     onClick={() => setViewMode('grid')}
                                     className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-primary' : 'text-gray-400'}`}
-                                    title="Dạng lưới"
+                                    title={t('catalog.tabs.grid') || 'Grid'}
                                 >
                                     <LayoutGrid className="w-5 h-5" />
                                 </button>
                                 <button 
                                     onClick={() => setViewMode('list')}
                                     className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-gray-400'}`}
-                                    title="Dạng danh sách"
+                                    title={t('catalog.tabs.list') || 'List'}
                                 >
                                     <List className="w-5 h-5" />
                                 </button>
                                 <button 
                                     onClick={() => setViewMode('bulk')}
                                     className={`relative p-2.5 rounded-lg transition-all ${viewMode === 'bulk' ? 'bg-white shadow-sm text-primary' : 'text-gray-400'}`}
-                                    title="Lập kế hoạch sỉ"
+                                    title={t('catalog.tabs.bulk') || 'Bulk'}
                                 >
                                     <Users className="w-5 h-5" />
                                     {bulkCharacters.length > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border-2 border-white"></span>}
@@ -334,13 +340,13 @@ export const CharacterCatalogPage: React.FC = () => {
                             <button 
                                 onClick={() => setIsTaggingMode(!isTaggingMode)}
                                 className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 transition-all group relative overflow-hidden ${isTaggingMode ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-200' : 'bg-white border-indigo-100 text-indigo-500 hover:bg-indigo-50'}`}
-                                title="Chế độ phân loại Nam/Nữ"
+                                title={t('catalog.tagging_gender')}
                             >
                                 <Tag className={`w-4 h-4 ${isTaggingMode ? 'fill-current' : ''}`} />
                                 <div className="flex flex-col items-start leading-none">
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Phân loại giới tính</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{t('catalog.tagging_gender')}</span>
                                     <span className={`text-[7px] font-bold uppercase opacity-80 ${isTaggingMode ? 'text-white' : 'text-gray-400'}`}>
-                                        {isTaggingMode ? 'Đang bật • Bấm để tắt' : 'Đang tắt • Bấm để sửa giới tính'}
+                                        {isTaggingMode ? t('catalog.tagging_on') : t('catalog.tagging_off')}
                                     </span>
                                 </div>
                                 {isTaggingMode && <span className="absolute top-0 right-0 w-2 h-2 bg-red-400 animate-ping rounded-full" />}
@@ -370,14 +376,14 @@ export const CharacterCatalogPage: React.FC = () => {
                         <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 border-t border-gray-50 pt-4">
                             <span className="shrink-0 flex items-center gap-1.5">
                                 <Users className="w-3 h-3" />
-                                Lọc giới tính:
+                                {t('catalog.filter_gender')}
                             </span>
                             <div className="flex gap-4">
                                 {[
-                                    { id: 'all', label: 'Tất cả' },
-                                    { id: 'male', label: 'Nam' },
-                                    { id: 'female', label: 'Nữ' },
-                                    { id: 'unisex', label: 'Unisex' }
+                                    { id: 'all', label: t('catalog.all') },
+                                    { id: 'male', label: t('catalog.male') },
+                                    { id: 'female', label: t('catalog.female') },
+                                    { id: 'unisex', label: t('catalog.unisex') }
                                 ].map(g => (
                                     <button 
                                         key={g.id}
@@ -404,8 +410,8 @@ export const CharacterCatalogPage: React.FC = () => {
                 ) : filteredParts.length === 0 && viewMode !== 'bulk' ? (
                     <div className="text-center py-24 bg-white rounded-[3rem] border border-dashed border-gray-200">
                         <div className="text-4xl mb-4">🔍</div>
-                        <h3 className="font-bold text-gray-900 uppercase">Không tìm thấy linh kiện</h3>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">vui lòng thử từ khóa khác</p>
+                        <h3 className="font-bold text-gray-900 uppercase">{t('catalog.no_parts_found')}</h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">{t('catalog.try_other_keywords')}</p>
                     </div>
                 ) : viewMode === 'grid' ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
@@ -450,19 +456,19 @@ export const CharacterCatalogPage: React.FC = () => {
                                                             onClick={(e) => handleOverrideGender(part.id, 'male', e)}
                                                             className={`py-1 rounded-md text-[7px] font-black uppercase transition-all ${partOverrides[part.id] === 'male' ? 'bg-blue-500 text-white shadow-md shadow-blue-200' : 'text-gray-400 hover:bg-white'}`}
                                                         >
-                                                            Nam
+                                                            {t('catalog.male')}
                                                         </button>
                                                         <button 
                                                             onClick={(e) => handleOverrideGender(part.id, 'female', e)}
                                                             className={`py-1 rounded-md text-[7px] font-black uppercase transition-all ${partOverrides[part.id] === 'female' ? 'bg-pink-500 text-white shadow-md shadow-pink-200' : 'text-gray-400 hover:bg-white'}`}
                                                         >
-                                                            Nữ
+                                                            {t('catalog.female')}
                                                         </button>
                                                         <button 
                                                             onClick={(e) => handleOverrideGender(part.id, 'unisex', e)}
                                                             className={`py-1 rounded-md text-[7px] font-black uppercase transition-all ${partOverrides[part.id] === 'unisex' ? 'bg-gray-400 text-white' : 'text-gray-400 hover:bg-white'}`}
                                                         >
-                                                            All
+                                                            {t('common.all') || 'All'}
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -474,12 +480,12 @@ export const CharacterCatalogPage: React.FC = () => {
                                                         }`}>
                                                             {partOverrides[part.id] && <Star className="w-2 h-2 fill-current" />}
                                                             <span className="text-[7px] font-black uppercase">
-                                                                {inferGender(part)} {partOverrides[part.id] ? '(Note)' : '(AI)'}
+                                                                {inferGender(part) === 'male' ? t('catalog.male') : inferGender(part) === 'female' ? t('catalog.female') : t('catalog.unisex')} {partOverrides[part.id] ? '(Note)' : '(AI)'}
                                                             </span>
                                                         </div>
                                                         {part.stock !== undefined && (
                                                             <span className={`text-[8px] font-bold ${part.stock > 10 ? 'text-green-400' : !isPartOutOfStock(part) ? 'text-orange-400' : 'text-red-400'}`}>
-                                                                • {!isPartOutOfStock(part) ? `Tồn ${part.stock}` : 'Hết'}
+                                                                • {!isPartOutOfStock(part) ? t('catalog.in_stock', { count: part.stock }) : t('catalog.out_of_stock')}
                                                             </span>
                                                         )}
                                                     </div>
@@ -503,11 +509,11 @@ export const CharacterCatalogPage: React.FC = () => {
                         <table className="w-full text-left">
                             <thead>
                                  <tr className="bg-gray-50 border-b border-gray-100">
-                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sản phẩm</th>
-                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:table-cell">Loại</th>
-                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mã ID</th>
-                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tồn kho</th>
-                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Thao tác</th>
+                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('catalog.table_product')}</th>
+                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:table-cell">{t('catalog.table_type')}</th>
+                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('catalog.table_id')}</th>
+                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('catalog.table_stock')}</th>
+                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">{t('catalog.table_actions')}</th>
                                  </tr>
                             </thead>
                             <tbody>
@@ -525,7 +531,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-gray-900 uppercase leading-none mb-1">{part.name}</span>
                                                     <span className={`text-[8px] font-black uppercase ${inferGender(part) === 'female' ? 'text-pink-400' : inferGender(part) === 'male' ? 'text-blue-400' : 'text-gray-300'}`}>
-                                                        {inferGender(part)}
+                                                        {inferGender(part) === 'male' ? t('catalog.male') : inferGender(part) === 'female' ? t('catalog.female') : t('catalog.unisex')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -538,7 +544,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`text-[10px] font-black uppercase text-gray-900`}>
-                                                {part.stock !== undefined ? `${part.stock} món` : 'Liên hệ'}
+                                                {part.stock !== undefined ? t('catalog.in_stock', { count: part.stock }) : (language === 'vi' ? 'Liên hệ' : 'Contact')}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -565,13 +571,13 @@ export const CharacterCatalogPage: React.FC = () => {
                         <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm space-y-8">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-6 bg-primary rounded-full"></div>
-                                <h3 className="text-lg font-black text-gray-900 uppercase">Cấu hình nhân vật sỉ</h3>
+                                <h3 className="text-lg font-black text-gray-900 uppercase">{t('catalog.bulk_planner.title')}</h3>
                             </div>
 
                             {/* Population Settings */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest block">Số lượng Nam</label>
+                                    <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest block">{t('catalog.bulk_planner.male_qty')}</label>
                                     <input 
                                         type="number" 
                                         value={bulkConfig.male} 
@@ -580,7 +586,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest block">Số lượng Nữ</label>
+                                    <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest block">{t('catalog.bulk_planner.female_qty')}</label>
                                     <input 
                                         type="number" 
                                         value={bulkConfig.female} 
@@ -589,14 +595,14 @@ export const CharacterCatalogPage: React.FC = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Kiểu chân (Toàn bộ)</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{t('catalog.bulk_planner.leg_type')}</label>
                                     <select 
                                         value={bulkConfig.legType}
                                         onChange={(e) => setBulkConfig(prev => ({ ...prev, legType: e.target.value as any }))}
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                     >
-                                        <option value="regular">Chân ngắn (Thường)</option>
-                                        <option value="long">Chân dài (Fashion/High-end)</option>
+                                        <option value="regular">{t('catalog.bulk_planner.leg_short')}</option>
+                                        <option value="long">{t('catalog.bulk_planner.leg_long')}</option>
                                     </select>
                                 </div>
                             </div>
@@ -607,14 +613,14 @@ export const CharacterCatalogPage: React.FC = () => {
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-4 bg-blue-400 rounded-full"></div>
-                                        <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Quy tắc riêng cho NAM</h4>
+                                        <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">{t('catalog.bulk_planner.male_rules')}</h4>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         {[
-                                            { label: 'Tóc', type: 'hair', key: 'hairId' },
-                                            { label: 'Mặt', type: 'face', key: 'faceId' },
-                                            { label: 'Áo', type: 'shirt', key: 'shirtId' },
-                                            { label: 'Quần', type: 'pants', key: 'pantsId' },
+                                            { label: t('catalog.tabs.hair'), type: 'hair', key: 'hairId' },
+                                            { label: t('catalog.tabs.face'), type: 'face', key: 'faceId' },
+                                            { label: t('catalog.tabs.shirt'), type: 'shirt', key: 'shirtId' },
+                                            { label: t('catalog.tabs.pants'), type: 'pants', key: 'pantsId' },
                                         ].map(field => {
                                             const currentId = (bulkConfig.maleTheme as any)[field.key];
                                             const part = allParts.find(p => p.id === currentId);
@@ -622,7 +628,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                                 <div key={field.key} className="space-y-1">
                                                     <div className="flex justify-between items-center px-1">
                                                         <label className="text-[9px] font-black text-gray-400 uppercase">{field.label}</label>
-                                                        <span className="text-[7px] font-bold text-blue-400 animate-pulse">BẤM ĐỂ CHỌN</span>
+                                                        <span className="text-[7px] font-bold text-blue-400 animate-pulse">{t('catalog.bulk_planner.click_to_select')}</span>
                                                     </div>
                                                     <button 
                                                         onClick={() => setOpenPicker({ type: field.type, gender: 'male' })}
@@ -632,8 +638,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                                             {part ? <img src={part.imageUrl} className="max-w-full max-h-full object-contain" alt="" /> : <RefreshCw className="w-4 h-4 text-gray-300" />}
                                                         </div>
                                                         <div className="flex-grow min-w-0">
-                                                            <div className="text-[10px] font-black text-gray-900 truncate uppercase">{part?.name || 'Ngẫu nhiên'}</div>
-                                                            <div className="text-[8px] font-mono font-bold text-gray-400">{part ? `#${part.id}` : 'AI tự phối'}</div>
+                                                            <div className="text-[10px] font-black text-gray-900 truncate uppercase">{part?.name || t('catalog.bulk_planner.random')}</div>
+                                                            <div className="text-[8px] font-mono font-bold text-gray-400">{part ? `#${part.id}` : t('catalog.bulk_planner.ai_generated')}</div>
                                                         </div>
                                                     </button>
                                                 </div>
@@ -646,14 +652,14 @@ export const CharacterCatalogPage: React.FC = () => {
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-4 bg-pink-400 rounded-full"></div>
-                                        <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Quy tắc riêng cho NỮ</h4>
+                                        <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">{t('catalog.bulk_planner.female_rules')}</h4>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         {[
-                                            { label: 'Tóc', type: 'hair', key: 'hairId' },
-                                            { label: 'Mặt', type: 'face', key: 'faceId' },
-                                            { label: 'Áo', type: 'shirt', key: 'shirtId' },
-                                            { label: 'Quần', type: 'pants', key: 'pantsId' },
+                                            { label: t('catalog.tabs.hair'), type: 'hair', key: 'hairId' },
+                                            { label: t('catalog.tabs.face'), type: 'face', key: 'faceId' },
+                                            { label: t('catalog.tabs.shirt'), type: 'shirt', key: 'shirtId' },
+                                            { label: t('catalog.tabs.pants'), type: 'pants', key: 'pantsId' },
                                         ].map(field => {
                                             const currentId = (bulkConfig.femaleTheme as any)[field.key];
                                             const part = allParts.find(p => p.id === currentId);
@@ -661,7 +667,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                                 <div key={field.key} className="space-y-1">
                                                     <div className="flex justify-between items-center px-1">
                                                         <label className="text-[9px] font-black text-gray-400 uppercase">{field.label}</label>
-                                                        <span className="text-[7px] font-bold text-pink-400 animate-pulse">BẤM ĐỂ CHỌN</span>
+                                                        <span className="text-[7px] font-bold text-pink-400 animate-pulse">{t('catalog.bulk_planner.click_to_select')}</span>
                                                     </div>
                                                     <button 
                                                         onClick={() => setOpenPicker({ type: field.type, gender: 'female' })}
@@ -671,8 +677,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                                             {part ? <img src={part.imageUrl} className="max-w-full max-h-full object-contain" alt="" /> : <RefreshCw className="w-4 h-4 text-gray-300" />}
                                                         </div>
                                                         <div className="flex-grow min-w-0">
-                                                            <div className="text-[10px] font-black text-gray-900 truncate uppercase">{part?.name || 'Ngẫu nhiên'}</div>
-                                                            <div className="text-[8px] font-mono font-bold text-gray-400">{part ? `#${part.id}` : 'AI tự phối'}</div>
+                                                            <div className="text-[10px] font-black text-gray-900 truncate uppercase">{part?.name || t('catalog.bulk_planner.random')}</div>
+                                                            <div className="text-[8px] font-mono font-bold text-gray-400">{part ? `#${part.id}` : t('catalog.bulk_planner.ai_generated')}</div>
                                                         </div>
                                                     </button>
                                                 </div>
@@ -690,7 +696,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                         className="px-6 py-4 bg-gray-50 text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all flex items-center gap-2"
                                     >
                                         <Trash2 className="w-4 h-4" />
-                                        Xóa nháp
+                                        {t('catalog.bulk_planner.clear_btn')}
                                     </button>
                                 )}
                                 <button 
@@ -699,7 +705,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                     className={`px-12 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 ${isGenerating ? 'opacity-70 cursor-not-allowed' : ''}`}
                                 >
                                     <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                                    {isGenerating ? 'Đang khởi tạo...' : 'Tạo danh sách'}
+                                    {isGenerating ? (language === 'vi' ? 'Đang khởi tạo...' : 'Generating...') : t('catalog.bulk_planner.generate_btn')}
                                 </button>
                             </div>
                         </div>
@@ -709,13 +715,13 @@ export const CharacterCatalogPage: React.FC = () => {
                         {bulkCharacters.length > 0 && (
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Xem trước danh sách ({bulkCharacters.length})</h3>
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">{t('catalog.bulk_planner.character_list_preview', { count: bulkCharacters.length })}</h3>
                                     <button 
                                         onClick={handleCopyBulkIds}
                                         className="flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-widest hover:underline"
                                     >
                                         <Download className="w-3 h-3" />
-                                        Xuất danh sách ID
+                                        {t('catalog.bulk_planner.copied_id_list')}
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
@@ -744,7 +750,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                                 <div className="mt-3 space-y-1">
                                                     <div className="flex justify-between items-center">
                                                         <span className={`text-[8px] font-black uppercase ${index < bulkConfig.male ? 'text-blue-500' : 'text-pink-500'}`}>
-                                                            {index < bulkConfig.male ? 'Nam' : 'Nữ'}
+                                                            {index < bulkConfig.male ? t('catalog.male') : t('catalog.female')}
                                                         </span>
                                                         <button 
                                                             onClick={() => {
@@ -784,8 +790,7 @@ export const CharacterCatalogPage: React.FC = () => {
                         {!bulkCharacters.length && (
                             <div className="text-center py-24 bg-white rounded-[3rem] border border-dashed border-gray-200">
                                 <div className="text-4xl mb-4">🏠</div>
-                                <h3 className="font-bold text-gray-900 uppercase">Chưa có nhân vật nào</h3>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Nhấn "Tạo ngẫu nhiên" để bắt đầu lập danh sách</p>
+                                <h3 className="font-bold text-gray-900 uppercase max-w-lg mx-auto px-6">{t('catalog.bulk_planner.list_not_generated_yet')}</h3>
                             </div>
                         )}
                     </div>
@@ -801,8 +806,8 @@ export const CharacterCatalogPage: React.FC = () => {
                                 {selectedIds.length}
                             </div>
                             <div>
-                                <h4 className="text-sm font-black text-white uppercase tracking-tight">Đang chọn {selectedIds.length} món</h4>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sẵn sàng để gửi yêu cầu sỉ</p>
+                                <h4 className="text-sm font-black text-white uppercase tracking-tight">{t('catalog.selected_items', { count: selectedIds.length })}</h4>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t('catalog.ready_to_send_wholesale')}</p>
                             </div>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
@@ -810,14 +815,14 @@ export const CharacterCatalogPage: React.FC = () => {
                                 onClick={handleCopySelection}
                                 className="flex-1 sm:flex-none px-6 py-3 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/5"
                             >
-                                Sao chép list ID
+                                {language === 'vi' ? 'Sao chép list ID' : 'Copy selected IDs'}
                             </button>
                             <button 
                                 onClick={handleShareZalo}
                                 className="flex-1 sm:flex-none px-6 py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-105 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
                             >
                                 <MessageSquare className="w-4 h-4 fill-current" />
-                                Gửi qua Zalo
+                                {language === 'vi' ? 'Gửi qua Zalo' : 'Send via Zalo'}
                             </button>
                             <button 
                                 onClick={() => setSelectedIds([])}
@@ -843,8 +848,12 @@ export const CharacterCatalogPage: React.FC = () => {
                                 ))}
                             </div>
                             <div>
-                                <h4 className="text-sm font-black text-white uppercase tracking-tight">{bulkCharacters.length} Nhân vật sỉ</h4>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Hoàn tất danh sách linh kiện</p>
+                                <h4 className="text-sm font-black text-white uppercase tracking-tight">
+                                    {bulkCharacters.length} {language === 'vi' ? 'Nhân vật sỉ' : 'Bulk characters'}
+                                </h4>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                    {language === 'vi' ? 'Hoàn tất danh sách linh kiện' : 'Complete parts list'}
+                                </p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -853,7 +862,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                 className="px-6 py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-105 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
                             >
                                 <Download className="w-4 h-4" />
-                                Lưu list linh kiện
+                                {language === 'vi' ? 'Lưu list linh kiện' : 'Save parts list'}
                             </button>
                         </div>
                     </div>
@@ -882,7 +891,10 @@ export const CharacterCatalogPage: React.FC = () => {
                             <div className="flex items-center gap-3">
                                 <div className={`w-3 h-3 rounded-full ${openPicker.gender === 'male' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
                                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">
-                                    Chọn {openPicker.type === 'hair' ? 'tóc' : openPicker.type === 'face' ? 'mặt' : openPicker.type === 'shirt' ? 'áo' : 'quần'} cho {openPicker.gender === 'male' ? 'Nam' : 'Nữ'}
+                                    {language === 'vi' 
+                                        ? `Chọn ${openPicker.type === 'hair' ? 'tóc' : openPicker.type === 'face' ? 'mặt' : openPicker.type === 'shirt' ? 'áo' : 'quần'} cho ${openPicker.gender === 'male' ? t('catalog.male') : t('catalog.female')}`
+                                        : `Select ${openPicker.type} for ${openPicker.gender === 'male' ? t('catalog.male') : t('catalog.female')}`
+                                    }
                                 </h3>
                             </div>
                             <div className="flex items-center gap-4">
@@ -890,7 +902,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                                     <input 
                                         type="text" 
-                                        placeholder="Tìm kiếm..." 
+                                        placeholder={language === 'vi' ? 'Tìm kiếm...' : 'Search...'} 
                                         value={pickerSearch}
                                         onChange={(e) => setPickerSearch(e.target.value)}
                                         className="pl-8 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 w-48"
@@ -919,7 +931,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                     className="aspect-square rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-4 hover:border-primary hover:bg-primary/5 transition-all group"
                                 >
                                     <RefreshCw className="w-8 h-8 text-gray-300 group-hover:text-primary transition-colors mb-2" />
-                                    <span className="text-[9px] font-black text-gray-400 uppercase group-hover:text-primary">Ngẫu nhiên</span>
+                                    <span className="text-[9px] font-black text-gray-400 uppercase group-hover:text-primary">{t('catalog.bulk_planner.random')}</span>
                                 </button>
 
                                 {allParts
@@ -956,7 +968,7 @@ export const CharacterCatalogPage: React.FC = () => {
                                             </div>
                                             {part.stock === 0 && (
                                                 <div className="absolute inset-0 bg-white/20 flex items-center justify-center rounded-3xl">
-                                                    <span className="bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">Hết</span>
+                                                    <span className="bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">{t('catalog.out_of_stock')}</span>
                                                 </div>
                                             )}
                                         </button>
@@ -972,7 +984,9 @@ export const CharacterCatalogPage: React.FC = () => {
                             }).length === 0 && (
                                 <div className="py-24 text-center">
                                     <Search className="w-12 h-12 text-gray-100 mx-auto mb-4" />
-                                    <p className="text-xs font-black text-gray-300 uppercase tracking-widest">Không tìm thấy linh kiện nào phù hợp</p>
+                                    <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
+                                        {language === 'vi' ? 'Không tìm thấy linh kiện nào phù hợp' : 'No matching parts found'}
+                                    </p>
                                 </div>
                             )}
                         </div>

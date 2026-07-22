@@ -62,19 +62,19 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                     <div className="flex-grow text-center sm:text-left">
                                         <h3 className="font-bold text-lg font-body text-luvin-pink">
                                             {item.frameId === 'accessory-only' 
-                                                ? (item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || 'Linh kiện lẻ') : 'Linh kiện lẻ') 
+                                                ? (item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || t('cart.single_part')) : t('cart.single_part')) 
                                                 : t('order_lookup.frame_lego', { name: frame.name })}
                                         </h3>
                                         <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
                                         <p className="text-sm text-gray-600">
                                             {item.frameId === 'accessory-only' 
-                                                ? 'Mua lẻ linh kiện / dịch vụ thêm' 
+                                                ? t('cart.accessory_only_desc') 
                                                 : t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}
                                         </p>
                                         {item.galleryOptions && (
                                             <div className="flex flex-wrap gap-2 sm:gap-3 mt-1 items-center">
-                                                {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">📸 {item.galleryOptions.photoFrameCount} Khung ảnh</span>}
-                                                {item.galleryOptions.lightCount && <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full shadow-sm">💡 {item.galleryOptions.lightCount} Đèn led</span>}
+                                                {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">📸 {item.galleryOptions.photoFrameCount} {t('collection.photo_frames')}</span>}
+                                                {item.galleryOptions.lightCount && <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full shadow-sm">💡 {item.galleryOptions.lightCount} {t('collection.led_lights')}</span>}
                                                 {item.galleryOptions.assembly && (
                                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
                                                         {item.galleryOptions.assembly === 'pre-assembled' ? `✨ ${t('studio.museum.assembly_pre')}` : `✂️ ${t('studio.museum.assembly_diy')}`}

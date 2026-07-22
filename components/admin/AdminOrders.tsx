@@ -197,6 +197,8 @@ interface AdminOrdersProps {
     role: 'admin' | 'warehouse' | null;
     onRefreshProducts: () => void;
     storeConfig?: StoreConfig;
+    ordersLimit?: number;
+    setOrdersLimit?: (limit: number) => void;
 }
 
 type OrderTab = 'active' | 'history';
@@ -211,7 +213,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
     currentUser, 
     role, 
     onRefreshProducts,
-    storeConfig
+    storeConfig,
+    ordersLimit = 150,
+    setOrdersLimit
 }) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
@@ -1023,6 +1027,17 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                         </button>
                     </div>
 
+                    {setOrdersLimit && (
+                        <div className="flex items-center justify-between text-[10px] bg-sky-50 text-sky-800 px-2.5 py-1.5 rounded-lg border border-sky-100 mt-1 select-none">
+                            <span className="font-bold flex items-center gap-1">⚡ Tải dữ liệu:</span>
+                            <div className="flex gap-1.5">
+                                <button onClick={() => setOrdersLimit(150)} className={`px-2 py-0.5 rounded font-black text-[9px] transition-all ${ordersLimit === 150 ? 'bg-sky-600 text-white shadow-sm' : 'bg-white text-sky-700 border border-sky-200 hover:bg-sky-100'}`}>150 đơn (⚡ Nhanh)</button>
+                                <button onClick={() => setOrdersLimit(500)} className={`px-2 py-0.5 rounded font-black text-[9px] transition-all ${ordersLimit === 500 ? 'bg-sky-600 text-white shadow-sm' : 'bg-white text-sky-700 border border-sky-200 hover:bg-sky-100'}`}>500 đơn</button>
+                                <button onClick={() => setOrdersLimit(0)} className={`px-2 py-0.5 rounded font-black text-[9px] transition-all ${ordersLimit === 0 ? 'bg-sky-600 text-white shadow-sm' : 'bg-white text-sky-700 border border-sky-200 hover:bg-sky-100'}`}>Tất cả</button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1 cursor-grab active:cursor-grabbing mt-1" ref={scrollContainerRef} onMouseDown={handleMouseDown} onMouseLeave={handleMouseLeave} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove}>
                         <button onClick={() => setFilterStatus('all')} className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition-colors select-none ${filterStatus === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>Tất cả</button>
                         {STATUS_CONFIG.filter(s => !s.isAction).filter(s => orderTab === 'active' ? !['Đã giao hàng', 'Huỷ đơn'].includes(s.label) : ['Đã giao hàng', 'Huỷ đơn'].includes(s.label)).map(status => (
@@ -1086,15 +1101,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             <div className={`lg:w-2/3 w-full bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden absolute inset-0 lg:static z-20 ${!selectedOrder ? 'hidden lg:flex' : 'flex'}`}>
                 {selectedOrder ? (
                     <div className="flex flex-col h-full relative">
-                        <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-start bg-white sticky top-0 z-30 shadow-sm">
-                            <div className="flex items-start gap-2 w-full">
-                                <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 mr-2 p-2 -ml-2 hover:bg-gray-100 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg></button>
-                                <div className="flex-grow">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                                        <h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                            {selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg" title="Đơn gấp">🔥</span>}
+                        <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col md:flex-row md:justify-between md:items-start gap-4 bg-white sticky top-0 z-30 shadow-sm">
+                            <div className="flex items-start gap-2 w-full min-w-0">
+                                <button onClick={() => setSelectedOrder(null)} className="lg:hidden text-gray-600 mr-2 p-2 -ml-2 hover:bg-gray-100 rounded-full flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg></button>
+                                <div className="flex-grow min-w-0">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1 flex-wrap">
+                                        <h2 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-2 truncate">
+                                            {selectedOrder.id}{selectedOrder.isUrgent && <span className="text-red-500 text-lg animate-bounce" title="Đơn gấp">🔥</span>}
                                         </h2>
-                                        <div className="mt-1 sm:mt-0">
+                                        <div className="mt-1 sm:mt-0 max-w-full">
                                             <StatusDropdown 
                                                 currentStatus={selectedOrder.status} 
                                                 onStatusChange={(status) => {
@@ -1109,22 +1124,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                     <p className="text-xs sm:text-sm text-gray-500 mt-1">Đặt lúc: {selectedOrder.createdAt ? formatDateTime(selectedOrder.createdAt) : '---'}</p>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-2">
-                                 <div className="flex gap-2">
-                                     <button onClick={handlePrintOrder} className="bg-gray-100 text-gray-700 p-2 sm:px-3 sm:py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-1" title="In phiếu đóng gói"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg><span className="hidden sm:inline">In phiếu</span></button>
-                                     {role === 'warehouse' && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (<button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white p-2 sm:px-4 sm:py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-2"><span>✅</span> <span className="hidden sm:inline">Xong</span></button>)}
+                            <div className="flex flex-row flex-wrap md:flex-col items-center md:items-end gap-2.5 w-full md:w-auto justify-start md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100 flex-shrink-0">
+                                 <div className="flex flex-wrap gap-2">
+                                     <button onClick={handlePrintOrder} className="bg-gray-100 text-gray-700 px-3 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5 shadow-sm" title="In phiếu đóng gói"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg><span>In phiếu</span></button>
+                                     {role === 'warehouse' && (selectedOrder.status === 'Đang đóng hàng' || selectedOrder.status === 'Ưu tiên xuất đơn' || selectedOrder.status === 'Chờ thanh toán' || selectedOrder.status === 'Đã xác nhận') && (<button onClick={handleMarkAsPacked} className="bg-indigo-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold text-xs sm:text-sm shadow hover:bg-indigo-700 transition-colors flex items-center gap-1.5"><span>✅</span> <span>Xong</span></button>)}
                                  </div>
-                                 <div className="flex gap-2 mt-1">
+                                 <div className="flex flex-wrap gap-2 items-center">
                                     <button 
                                         onClick={handleSendTestMail} 
                                         disabled={isSendingMail}
-                                        className="text-[10px] font-bold bg-pink-50 text-pink-600 px-2 py-1 rounded hover:bg-pink-100 flex items-center gap-1 disabled:opacity-50"
+                                        className="text-[10px] sm:text-xs font-bold bg-pink-50 text-pink-600 px-2.5 py-1.5 rounded hover:bg-pink-100 flex items-center gap-1 disabled:opacity-50 border border-pink-100"
                                     >
                                         {isSendingMail ? '...' : '📧 Gửi test mail cảm ơn'}
                                     </button>
-                                    {!isEditingOrder ? (<button onClick={startEditingOrder} disabled={isOrderPacked} className={`text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap ${isOrderPacked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{isOrderPacked ? 'Đã khoá' : 'Sửa chi tiết'}</button>) : (<div className="flex gap-2"><button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button><button onClick={saveOrderChanges} className="text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Lưu</button></div>)}
+                                    {!isEditingOrder ? (<button onClick={startEditingOrder} disabled={isOrderPacked} className={`text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap border ${isOrderPacked ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`}>{isOrderPacked ? 'Đã khoá' : 'Sửa chi tiết'}</button>) : (<div className="flex gap-2"><button onClick={cancelEditingOrder} className="text-xs font-bold bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200">Huỷ</button><button onClick={saveOrderChanges} className="text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Lưu</button></div>)}
                                  </div>
-                                 <label className="flex items-center gap-2 cursor-pointer select-none"><span className="text-xs font-medium text-gray-500">Gấp</span><input type="checkbox" className="accent-red-600 w-4 h-4" checked={selectedOrder.isUrgent || false} onChange={(e) => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} /></label>
+                                 <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200"><span className="text-xs font-bold text-red-600">GẤP 🔥</span><input type="checkbox" className="accent-red-600 w-4 h-4 cursor-pointer" checked={selectedOrder.isUrgent || false} onChange={(e) => handleUpdate(selectedOrder.id, { isUrgent: e.target.checked }, false)} /></label>
                             </div>
                         </div>
 

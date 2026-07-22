@@ -94,7 +94,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
 };
 
 export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCustomize, onAddToCart, templates: propTemplates, onZoomImage, allParts, frames, isLoadingParts, productLine: propProductLine, editingCartIndex, initialConfig, onUpdateCart, onCancelEdit, storeConfig }) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const { productLine: urlProductLine, category: urlCategory, templateId: urlTemplateId } = useParams();
     const navigate = useNavigate();
     
@@ -1029,7 +1029,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     <span className={`relative inline-flex rounded-full h-2.5 w-2.5 shadow-lg ${isCustomizing ? 'bg-white' : 'bg-primary'}`}></span>
                                 </span>
                                 <span className="relative text-[11px] font-black uppercase tracking-[0.12em] flex items-center gap-2">
-                                    {isCustomizing ? 'ĐANG TÙY CHỈNH' : 'BẤM ĐỂ CHỈNH MẪU'}
+                                    {isCustomizing ? (t('collection.customizing') || 'ĐANG TÙY CHỈNH') : (t('collection.edit_template') || 'BẤM ĐỂ CHỈNH MẪU')}
                                     <svg className={`w-4 h-4 transition-transform duration-300 ${isCustomizing ? 'rotate-180' : 'animate-bounce text-primary'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 9l-7 7-7-7" />
                                     </svg>
@@ -1099,7 +1099,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             className={`w-full py-4.5 rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/30 flex items-center justify-center gap-3 transition-all active:scale-95 sm:hidden border border-white/10 ${isCustomizing ? 'bg-primary text-white' : 'bg-gray-900 text-white'}`}
                                         >
                                             <span className={`animate-pulse ${isCustomizing ? 'text-white' : 'text-primary'}`}>✨</span> 
-                                            {isCustomizing ? 'ĐANG TÙY CHỈNH' : 'BẤM ĐỂ CHỈNH MẪU'}
+                                            {isCustomizing ? (t('collection.customizing') || 'ĐANG TÙY CHỈNH') : (t('collection.edit_template') || 'BẤM ĐỂ CHỈNH MẪU')}
                                             <svg className={`w-3.5 h-3.5 transition-transform duration-300 ${isCustomizing ? 'rotate-180' : 'animate-bounce'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                                         </button>
                                         {!isCustomizing && (
@@ -1142,7 +1142,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                     >
                                                         {isRecommended && (
                                                             <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-sm z-10 whitespace-nowrap">
-                                                                Khuyên dùng
+                                                                {t('collection.recommended') || 'Khuyên dùng'}
                                                             </div>
                                                         )}
                                                         <span className={`text-[10px] font-black uppercase tracking-tight mb-0.5 leading-none ${isSelected ? 'text-primary' : 'text-gray-900'}`}>{frame.name}</span>
@@ -1162,7 +1162,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex items-center gap-1.5 mt-1.5 px-1 animate-fade-in text-site-text/60">
                                     <div className="w-1 h-1 rounded-full bg-gray-300"></div>
                                     <p className="text-[9px] font-bold italic leading-tight">
-                                        * Lưu ý: Đây là giá khung, chưa bao gồm nhân vật, charm và phụ kiện.
+                                        {t('collection.frame_price_notice') || '* Lưu ý: Đây là giá khung, chưa bao gồm nhân vật, charm và phụ kiện.'}
                                     </p>
                                 </div>
 
@@ -1178,10 +1178,10 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             <span className="text-sm mr-2.5">⚠️</span>
                                             <div className="flex-grow">
                                                 <p className="text-[9px] sm:text-[10px] text-orange-700 font-black leading-tight uppercase tracking-tight mb-0.5">
-                                                    Cảnh báo kích thước
+                                                    {t('collection.size_warning') || 'Cảnh báo kích thước'}
                                                 </p>
                                                 <p className="text-[9px] text-orange-600 font-bold leading-normal">
-                                                    Khung nhỏ hơn có thể khiến chữ/ảnh khó nhìn & không thêm được nhiều charm/nhân vật
+                                                    {t('collection.size_warning_desc') || 'Khung nhỏ hơn có thể khiến chữ/ảnh khó nhìn & không thêm được nhiều charm/nhân vật'}
                                                 </p>
                                             </div>
                                             <button 
@@ -1202,7 +1202,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                                 </div>
-                                <h4 className="font-black text-[10px] text-blue-900 uppercase tracking-widest">Sản phẩm bao gồm:</h4>
+                                <h4 className="font-black text-[10px] text-blue-900 uppercase tracking-widest">{t('collection.product_includes') || 'Sản phẩm bao gồm:'}</h4>
                             </div>
                             <div className={`flex flex-wrap gap-2 ${selectedTemplate.productLine === 'gallery' ? 'justify-start' : 'justify-start'}`}>
                                 <div className="flex-1 min-w-[75px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-1.5 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
@@ -1224,13 +1224,13 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
                                             <span className="text-lg mb-1">📸</span>
                                             <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">
-                                                {(customConfig.galleryOptions?.photoFrameCount ?? selectedTemplate.galleryOptions?.photoFrameCount) || 0} khung ảnh
+                                                {(customConfig.galleryOptions?.photoFrameCount ?? selectedTemplate.galleryOptions?.photoFrameCount) || 0} {t('collection.photo_frames') || 'khung ảnh'}
                                             </span>
                                         </div>
                                         <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
                                             <span className="text-lg mb-1">💡</span>
                                             <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">
-                                                {(customConfig.galleryOptions?.lightCount ?? selectedTemplate.galleryOptions?.lightCount) || 0} đèn led
+                                                {(customConfig.galleryOptions?.lightCount ?? selectedTemplate.galleryOptions?.lightCount) || 0} {t('collection.led_lights') || 'đèn led'}
                                             </span>
                                         </div>
                                     </>
@@ -1242,12 +1242,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     {(customConfig?.galleryOptions?.assembly === 'pre-assembled') ? (
                                         <div className="flex items-center gap-2 text-green-600 font-bold italic text-[10px]">
                                             <span className="text-sm">✨</span>
-                                            <span>Shop sẽ lắp ráp và hoàn thiện 100% giúp bạn</span>
+                                            <span>{t('collection.shop_assemble') || 'Shop sẽ lắp ráp và hoàn thiện 100% giúp bạn'}</span>
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2 text-amber-600/80 font-bold italic text-[10px]">
                                             <Scissors className="w-3.5 h-3.5" />
-                                            <span>Lưu ý: Bạn tự tay lắp ráp và dán hoàn thiện (Dạng DIY Kit)</span>
+                                            <span>{t('collection.diy_kit_notice') || 'Lưu ý: Bạn tự tay lắp ráp và dán hoàn thiện (Dạng DIY Kit)'}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1278,7 +1278,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         {[
-                                            { id: 'diy', label: t('studio.museum.assembly_diy'), desc: t('studio.museum.assembly_diy_desc'), icon: '✂️', price: 'Miễn phí' },
+                                            { id: 'diy', label: t('studio.museum.assembly_diy'), desc: t('studio.museum.assembly_diy_desc'), icon: '✂️', price: t('common.free') || 'Miễn phí' },
                                             { id: 'pre-assembled', label: t('studio.museum.assembly_pre'), desc: t('studio.museum.assembly_pre_desc'), icon: '✨', price: `+${formatCurrency(storeConfig?.museumSurcharge ?? 70000)}` }
                                         ].map(opt => (
                                             <button
@@ -1318,7 +1318,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-2 text-amber-700/80 animate-fade-in shadow-sm">
                                             <Scissors className="w-4 h-4 mt-0.5" />
                                             <p className="text-[9px] font-black leading-relaxed italic text-amber-900/70">
-                                                Lưu ý: Với lựa chọn DIY, shop gửi đầy đủ linh kiện (ảnh, khung mini, đèn, charm), bạn sẽ tự cắt & dán vào khung để hoàn thiện tác phẩm.
+                                                {t('collection.diy_warning') || 'Lưu ý: Với lựa chọn DIY, shop gửi đầy đủ linh kiện (ảnh, khung mini, đèn, charm), bạn sẽ tự cắt & dán vào khung để hoàn thiện tác phẩm.'}
                                             </p>
                                         </div>
                                     )}
@@ -1331,7 +1331,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        Nhân vật ({customConfig.characters.length}) 
+                                        {t('studio.characters') || 'Nhân vật'} ({customConfig.characters.length}) 
                                         {(() => {
                                             const draggableCharms = customConfig.draggableItems.filter(i => 
                                                 i.type === 'charm' || i.type === 'accessory' || i.type === 'pet' || i.type === 'hat'
@@ -1392,7 +1392,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                         <div key={type} className="space-y-2.5">
                                                             <div className="flex justify-between items-center">
                                                                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                                                    {type === 'hair' ? 'Tóc' : type === 'face' ? 'Mặt' : type === 'shirt' ? 'Áo' : type === 'pants' ? 'Quần' : 'Bộ đồ'}
+                                                                    {type === 'hair' ? (t('studio.hair') || 'Tóc') : type === 'face' ? (t('studio.face') || 'Mặt') : type === 'shirt' ? (t('studio.shirt') || 'Áo') : type === 'pants' ? (t('studio.pants') || 'Quần') : (t('studio.set') || 'Bộ đồ')}
                                                                 </label>
                                                                 {char[type] && (
                                                                     <span className="text-[8px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase">{char[type].name}</span>
@@ -1521,7 +1521,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                 setShowPrintExample(opt.id);
                                                                             }}
                                                                             className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary rounded-full w-4 h-4 flex items-center justify-center text-[9px] shadow-sm transition-all z-10"
-                                                                            title="Xem ảnh ví dụ"
+                                                                            title={t('collection.view_example') || 'Xem ảnh ví dụ'}
                                                                         >
                                                                             i
                                                                         </button>
@@ -1637,8 +1637,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                     </div>
                                                     <div className="flex-grow text-left">
                                                         <p className="text-xs font-black text-gray-800 uppercase tracking-tight">
-                                                            {part?.name || 'Phụ kiện'}
-                                                            {isOutOfStock && <span className="ml-2 text-[8px] text-red-500 font-bold">(Hết hàng)</span>}
+                                                            {part?.name || (t('studio.accessories') || 'Phụ kiện')}
+                                                            {isOutOfStock && <span className="ml-2 text-[8px] text-red-500 font-bold">({t('common.out_of_stock') || 'Hết hàng'})</span>}
                                                         </p>
                                                         <div className="flex items-center gap-1.5">
                                                             <p className={`text-[10px] font-bold ${isOutOfStock ? 'text-gray-400' : 'text-primary'}`}>
@@ -1784,12 +1784,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                        {selectedTemplate.isSimple ? 'Chọn thêm Charm (Phụ kiện)' : 'Thêm phụ kiện khác'}
+                                        {selectedTemplate.isSimple ? (t('collection.select_charms_short') || 'Chọn thêm Charm (Phụ kiện)') : (t('collection.add_more_accessories') || 'Thêm phụ kiện khác')}
                                     </h3>
                                     <div className="relative">
                                         <input 
                                             type="text"
-                                            placeholder="Tìm kiếm charm..."
+                                            placeholder={t('collection.search_charms') || 'Tìm kiếm charm...'}
                                             value={charmSearch}
                                             onChange={(e) => setCharmSearch(e.target.value)}
                                             className="w-full sm:w-48 pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full text-[10px] focus:outline-none focus:border-primary/30 transition-all"
@@ -1842,7 +1842,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {selectedTemplate.galleryOptions?.showPhotoOptions && (
                                         <div className="space-y-2">
-                                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Số lượng khung ảnh</label>
+                                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{t('collection.photo_frames_count') || 'Số lượng khung ảnh'}</label>
                                             <div className="flex items-center gap-3">
                                                 <button 
                                                     onClick={() => setCustomConfig({
@@ -1858,7 +1858,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 </button>
                                                 <div className="flex-1 bg-white border border-pink-100 rounded-xl py-2 flex flex-col items-center justify-center shadow-sm">
                                                     <span className="text-sm font-black text-gray-800 leading-none">{customConfig.galleryOptions?.photoFrameCount || 0}</span>
-                                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">khung</span>
+                                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">{t('collection.frames_unit') || 'khung'}</span>
                                                 </div>
                                                 <button 
                                                     onClick={() => setCustomConfig({
@@ -1878,7 +1878,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
                                     {selectedTemplate.galleryOptions?.showLightOptions && (
                                         <div className="space-y-2">
-                                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Số lượng đèn LED</label>
+                                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{t('collection.led_lights_count') || 'Số lượng đèn LED'}</label>
                                             <div className="flex items-center gap-3">
                                                 <button 
                                                     onClick={() => setCustomConfig({
@@ -1894,7 +1894,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 </button>
                                                 <div className="flex-1 bg-white border border-pink-100 rounded-xl py-2 flex flex-col items-center justify-center shadow-sm">
                                                     <span className="text-sm font-black text-gray-800 leading-none">{customConfig.galleryOptions?.lightCount || 0}</span>
-                                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">bóng đèn</span>
+                                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">{t('collection.bulbs_unit') || 'bóng đèn'}</span>
                                                 </div>
                                                 <button 
                                                     onClick={() => setCustomConfig({
@@ -1921,7 +1921,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <div ref={noteSectionRef} className="space-y-2 scroll-mt-20">
                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                    {t('common.order_note')} <span className="text-[9px] text-red-500 font-bold lowercase tracking-normal">(bắt buộc)</span>
+                                    {t('common.order_note')} <span className="text-[9px] text-red-500 font-bold lowercase tracking-normal">({t('common.required') || 'bắt buộc'})</span>
                                 </h3>
                                 <div className="relative">
                                     <textarea 
@@ -1946,7 +1946,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     <div className="px-4 py-4 sm:px-6 sm:py-5 border-t border-gray-100 bg-white space-y-3 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
                         <div className="flex justify-between items-end">
                             <div>
-                                <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">Tổng cộng</span>
+                                <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest block mb-0.5">{t('common.subtotal') || 'Tổng cộng'}</span>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 leading-none">{formatCurrency(currentPrice)}</span>
                                     {originalPrice > currentPrice && (
@@ -2204,7 +2204,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                 <div className="mt-auto space-y-3">
                                     <div className="flex justify-between items-end">
                                         <div>
-                                            <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">Giá cơ bản</span>
+                                            <span className="text-[8px] text-gray-400 font-black block uppercase mb-0.5 tracking-tighter">{t('collection.base_price') || 'Giá cơ bản'}</span>
                                             <span className="text-sm sm:text-lg font-bold tracking-tight text-gray-900 leading-none">
                                                 {formatCurrency(totalPrice)}
                                             </span>
@@ -2242,7 +2242,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                 handleContactZalo(template.name, totalPrice, template.imageUrl);
                                             }}
                                             className="px-3 py-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5"
-                                            title="Cần tư vấn mẫu này"
+                                            title={t('collection.need_advice') || 'Cần tư vấn mẫu này'}
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

@@ -3,32 +3,59 @@ import { Order } from '../types';
 import { StoreConfig } from './configService';
 import { formatFullAddress } from '../utils/helpers';
 
-// Helper to send message/photo via API
-const sendTelegramMessage = async (token: string, chatId: string, text: string, photoUrl?: string) => {
-    try {
-        const response = await fetch('/api/send-telegram', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                token,
-                chatId,
-                text,
-                photoUrl // Gửi kèm URL ảnh nếu có
-            })
-        });
+// Helper function to escape HTML special characters for safe Telegram delivery
+const escapeHtml = (unsafe: string): string => {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+};
 
-        const data = await response.json();
-        if (response.ok && data.success) {
-            return { success: true };
-        } else {
-            return { success: false, error: data.error || 'Unknown error' };
+// Helper to send message/photo via API with robust retry and backoff mechanism
+const sendTelegramMessage = async (token: string, chatId: string, text: string, photoUrl?: string) => {
+    let attempts = 3;
+    let delay = 1000; // start with 1s delay
+    
+    while (attempts > 0) {
+        try {
+            const response = await fetch('/api/send-telegram', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    token,
+                    chatId,
+                    text,
+                    photoUrl // Gửi kèm URL ảnh nếu có
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                return { success: true };
+            } else {
+                console.warn(`Telegram send attempt failed (status ${response.status}): ${data.error || 'Unknown error'}. Attempts remaining: ${attempts - 1}`);
+                attempts--;
+                if (attempts === 0) {
+                    return { success: false, error: data.error || 'Unknown error' };
+                }
+            }
+        } catch (e: any) {
+            console.error(`Error sending Telegram (attempt ${4 - attempts}):`, e);
+            attempts--;
+            if (attempts === 0) {
+                return { success: false, error: e.message };
+            }
         }
-    } catch (e: any) {
-        console.error("Error sending Telegram:", e);
-        return { success: false, error: e.message };
+        
+        if (attempts > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // exponential backoff
+        }
     }
+    return { success: false, error: 'Failed after maximum retries' };
 };
 
 export const sendOrderTelegram = async (order: Order, config: StoreConfig) => {
@@ -55,14 +82,14 @@ export const sendOrderTelegram = async (order: Order, config: StoreConfig) => {
 
     // Create message content (HTML)
     const message = `
-<b>🔥 ĐƠN HÀNG MỚI: ${order.id}</b>
+<b>🔥 ĐƠN HÀNG MỚI: ${escapeHtml(order.id)}</b>
 --------------------------------
 <b>💵 Tổng tiền:</b> ${formatMoney(order.totalPrice)}
 <b>🗓️ Ngày nhận:</b> ${new Date(order.delivery.date).toLocaleDateString('vi-VN')}
-<b>👤 Khách hàng:</b> ${order.customer.name}
-<b>📞 SĐT:</b> <a href="tel:${order.customer.phone}">${order.customer.phone}</a>
-<b>📍 Địa chỉ:</b> ${formatFullAddress(order.customer)}
-<b>📝 Note:</b> ${order.delivery.notes || 'Không'}
+<b>👤 Khách hàng:</b> ${escapeHtml(order.customer.name)}
+<b>📞 SĐT:</b> <a href="tel:${escapeHtml(order.customer.phone)}">${escapeHtml(order.customer.phone)}</a>
+<b>📍 Địa chỉ:</b> ${escapeHtml(formatFullAddress(order.customer))}
+<b>📝 Note:</b> ${escapeHtml(order.delivery.notes || 'Không')}
 
 <b>🛒 Chi tiết sản phẩm:</b>
 ${itemsList}
@@ -103,16 +130,16 @@ export const sendErrorTelegram = async (error: any, context: string, customerInf
     };
 
     const errorMessage = typeof error === 'string' ? error : (error.message || safeStringify(error));
-    const customerStr = customerInfo ? `\n👤 <b>Khách:</b> ${customerInfo.name} (${customerInfo.phone})` : '';
+    const customerStr = customerInfo ? `\n👤 <b>Khách:</b> ${escapeHtml(customerInfo.name)} (${escapeHtml(customerInfo.phone)})` : '';
 
     const message = `
 <b>⚠️ LỖI HỆ THỐNG (THANH TOÁN/TẠO ĐƠN)</b>
 --------------------------------
-🛑 <b>Lỗi:</b> <code>${errorMessage}</code>
-📍 <b>Ngữ cảnh:</b> ${context}${customerStr}
+🛑 <b>Lỗi:</b> <code>${escapeHtml(errorMessage)}</code>
+📍 <b>Ngữ cảnh:</b> ${escapeHtml(context)}${customerStr}
 ⏰ <b>Thời gian:</b> ${new Date().toLocaleString('vi-VN')}
 
-<i>Vui lòng bửa lỗi ngay để không mất đơn hàng.</i>
+<i>Vui lòng sửa lỗi ngay để không mất đơn hàng.</i>
     `.trim();
 
     await sendTelegramMessage(config.telegramBotToken, config.telegramChatId, message);

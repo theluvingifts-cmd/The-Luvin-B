@@ -739,7 +739,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
                     );
                 })}
 
-                {(config.characters || []).map(char => (
+                {(Array.isArray(config.characters) ? config.characters : []).map(char => (
                     <Transformable 
                         key={`character-${char.id}`} id={`character-${char.id}`} initialTransform={char} 
                         onTransform={onItemTransform} 
@@ -749,10 +749,10 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
                         onDoubleClick={() => onCharacterDoubleClick && onCharacterDoubleClick(char.id)}
                     >
                        <div style={{width: '100%', height: '100%'}}><LegoCharacter character={char} pxPerCm={pxPerCm} /></div>
-                    </Transformable>
+                     </Transformable>
                 ))}
                 
-                {(config.draggableItems || []).map(item => {
+                {(Array.isArray(config.draggableItems) ? config.draggableItems : []).map(item => {
                     const isCharm = item.type === 'charm';
                     const part = !isCharm ? allParts[item.partId] : null;
                     
@@ -804,7 +804,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
                     );
                 })}
                 
-                {(config.texts || []).map(text => {
+                {(Array.isArray(config.texts) ? config.texts : []).map(text => {
                     const isSelected = selectedItemId === `text-${text.id}`;
                     return (
                         <Transformable 

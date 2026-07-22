@@ -759,7 +759,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         </div>
                         <p className="text-xs text-gray-500">
                             {storeConfig?.cardOutOfStock 
-                                ? "Hộp quà, túi & rơm (tạm hết thiệp đi kèm, áp dụng cho mỗi tranh trong giỏ hàng)" 
+                                ? t('checkout.gift_box_card_out_of_stock_desc') 
                                 : t('checkout.gift_box_desc')}
                         </p>
                     </div>
@@ -812,7 +812,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                     {(cartItems.some(item => (item.productLine || 'lego') === 'gallery') || cartItems.some(item => (item as any).productLine === 'gallery')) && (
                         <p className="mt-2 text-[10px] text-blue-600 font-bold italic px-2 flex items-center gap-2 animate-fade-in">
                             <Info className="w-3 h-3 flex-shrink-0" />
-                            <span>Lưu ý: Chỉ áp dụng gắn đèn cho khung LEGO, không áp dụng cho khung Gallery.</span>
+                            <span>{t('checkout.light_warning_gallery')}</span>
                         </p>
                     )}
                     {storeConfig?.lightOutOfStock && (
@@ -946,7 +946,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                     <span className="font-bold text-gray-800 text-[13px] sm:text-sm truncate">#{index + 1} {t('checkout.custom_frame')}</span>
                                     {item.galleryOptions?.assembly && (
                                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                            {item.galleryOptions.assembly === 'pre-assembled' ? 'Shop hoàn thiện' : 'Tự lắp'}
+                                            {item.galleryOptions.assembly === 'pre-assembled' ? t('checkout.assembly_pre_short') : t('checkout.assembly_diy_short')}
                                         </span>
                                     )}
                                 </div>

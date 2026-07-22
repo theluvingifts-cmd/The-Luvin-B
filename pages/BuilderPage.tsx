@@ -1124,6 +1124,36 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
                         />
                     </div>
                 </div>
+
+                {/* Highlight selected frame size so user does not design with wrong dimensions */}
+                {(() => {
+                    const currentFrame = frames.find(f => f.id === config.frameId);
+                    if (!currentFrame) return null;
+                    return (
+                        <div className="mt-3 p-3.5 bg-gradient-to-r from-pink-500/10 to-rose-500/10 border-2 border-dashed border-luvin-pink rounded-2xl flex items-center justify-between gap-3 shadow-sm select-none">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="w-9 h-9 bg-luvin-pink rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm shadow-pink-200">
+                                    📏
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-[9px] font-black uppercase text-pink-600 tracking-wider">
+                                        {t('studio.select_frame')}
+                                    </div>
+                                    <div className="text-xs sm:text-sm font-black text-gray-900 uppercase truncate">
+                                        {currentFrame.name}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white/90 backdrop-blur-sm px-3.5 py-1.5 rounded-xl border border-pink-100 shadow-sm flex items-baseline gap-0.5 flex-shrink-0">
+                                <span className="text-sm sm:text-base font-extrabold text-luvin-pink font-mono leading-none">
+                                    {currentFrame.frameWidthCm} × {currentFrame.frameHeightCm}
+                                </span>
+                                <span className="text-[9px] font-black text-gray-400">cm</span>
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start shadow-sm hidden lg:flex text-left">
                     <span className="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg></span>
                     <div className="text-xs text-amber-900 leading-relaxed"><p className="font-bold mb-1">{t('studio.important_note')}</p><p>{t('studio.preview_disclaimer')}</p></div>

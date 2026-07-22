@@ -12,7 +12,7 @@ import { useLanguage } from '../src/contexts/LanguageContext';
 const PACKED_STATUSES = ['Đang đóng hàng', 'Chờ chuyển hàng', 'Gửi hàng đi', 'Đã giao hàng', 'Huỷ đơn', 'Xoá đơn'];
 
 export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEditOrder: (order: Order) => void}> = ({onZoomImage, onEditOrder}) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [orderCode, setOrderCode] = useState('');
     const [foundOrder, setFoundOrder] = useState<Order | null | 'not_found' | 'permission_error'>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -104,16 +104,16 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                             paymentProofUrl: url, 
                             paymentProofUploadedAt: new Date().toISOString() 
                         });
-                        alert("Đã gửi ảnh xác nhận thành công!");
+                        alert(t('order_confirmation.alert_success') || "Đã gửi ảnh xác nhận thành công!");
                     } else {
-                        alert("Lỗi cập nhật đơn hàng.");
+                        alert(t('order_confirmation.alert_update_error') || "Lỗi cập nhật đơn hàng.");
                     }
                 } else {
-                    alert("Lỗi tải ảnh lên.");
+                    alert(t('order_confirmation.alert_upload_error') || "Lỗi tải ảnh lên.");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Đã có lỗi xảy ra.");
+                alert(t('order_confirmation.alert_general_error') || "Đã có lỗi xảy ra.");
             } finally {
                 setIsUploading(false);
             }
@@ -307,7 +307,7 @@ export const OrderLookupPage: React.FC<{onZoomImage: (url: string) => void; onEd
                                         <h2 className="font-heading font-bold text-2xl text-gray-900">{foundOrder.id}</h2>
                                         {foundOrder.isUrgent && <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">{t('order_lookup.urgent_order')}</span>}
                                     </div>
-                                    <p className="text-sm text-gray-500 mt-1">{t('order_lookup.order_date', { date: foundOrder.createdAt ? new Date(foundOrder.createdAt).toLocaleDateString('vi-VN') : '---' })}</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('order_lookup.order_date', { date: foundOrder.createdAt ? (language === 'en' ? new Date(foundOrder.createdAt).toLocaleDateString('en-US') : new Date(foundOrder.createdAt).toLocaleDateString('vi-VN')) : '---' })}</p>
                                 </div>
                                 
                                 {!PACKED_STATUSES.includes(foundOrder.status) && (

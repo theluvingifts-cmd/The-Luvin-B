@@ -294,14 +294,14 @@ export const HomePage: React.FC<HomePageProps> = ({ navigateTo, config: propConf
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
                     <div className="text-left">
                         <span className="text-primary font-bold tracking-widest text-[10px] uppercase mb-2 block">— New Collection</span>
-                        <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-2">Khung Gallery</h2>
-                        <p className="text-gray-500 text-sm max-w-lg">Bộ sưu tập khung trang trí nghệ thuật, tinh tế và sang trọng cho không gian sống của bạn.</p>
+                        <h2 className="font-heading text-4xl md:text-5xl font-bold text-gray-900 mb-2">{t('home.gallery_title')}</h2>
+                        <p className="text-gray-500 text-sm max-w-lg">{t('home.gallery_desc')}</p>
                     </div>
                     <button 
                         onClick={() => navigate('/collection/gallery/all')} 
                         className="group flex items-center gap-2 text-sm font-bold text-gray-900 border-b-2 border-gray-900 pb-1 hover:text-primary hover:border-primary transition-all whitespace-nowrap"
                     >
-                        Khám phá tất cả Gallery <span>→</span>
+                        {t('home.explore_gallery')} <span>→</span>
                     </button>
                 </div>
 
