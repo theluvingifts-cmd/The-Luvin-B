@@ -293,7 +293,7 @@ export const translations: any = {
                 assembly: "Cách thức hoàn thiện",
                 assembly_diy: "Tự lắp (DIY)",
                 assembly_diy_desc: "Shop gửi linh kiện rời, bạn tự tay cắt & dán vào khung mini (Cảm giác tự tay làm quà cực ý nghĩa).",
-                assembly_pre: "Shop hoàn thiện (+70k)",
+                assembly_pre: "Shop hoàn thiện",
                 assembly_pre_desc: "Shop sẽ tỉ mỉ lắp ráp, dán keo và hoàn thiện 100% sản phẩm giúp bạn.",
             }
         },
@@ -1040,7 +1040,7 @@ export const translations: any = {
                 assembly: "Assembly Option",
                 assembly_diy: "DIY Kit",
                 assembly_diy_desc: "We send components for you to assemble and glue yourself (Meaningful handmade experience).",
-                assembly_pre: "Pre-assembled (+70k)",
+                assembly_pre: "Pre-assembled",
                 assembly_pre_desc: "Shop will meticulously assemble and finish 100% of the product for you.",
             }
         },

@@ -128,7 +128,7 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
                 gallerySurcharge = storeConfig.museumSurcharge;
             } else {
                 try {
-                    const cached = typeof window !== 'undefined' ? localStorage.getItem('store_config_cache') : null;
+                    const cached = typeof window !== 'undefined' ? (localStorage.getItem('store_config') || localStorage.getItem('store_config_cache')) : null;
                     if (cached) {
                         const parsed = JSON.parse(cached);
                         if (parsed && typeof parsed.museumSurcharge === 'number') {

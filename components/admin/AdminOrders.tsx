@@ -781,10 +781,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             const newCharacters = [...currentItem.characters];
             if (partId === "") {
                  newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: undefined };
+                 if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = undefined;
+                 if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = undefined;
+                 if (partType === 'set') newCharacters[charIndex].selectedSetColor = undefined;
             } else if (selectedPart) {
                  newCharacters[charIndex] = { ...newCharacters[charIndex], [partType]: selectedPart };
                  if (partType === 'shirt') newCharacters[charIndex].selectedShirtColor = selectedPart.colors?.[0];
                  if (partType === 'pants') newCharacters[charIndex].selectedPantsColor = selectedPart.colors?.[0];
+                 if (partType === 'set') newCharacters[charIndex].selectedSetColor = selectedPart.colors?.[0];
             }
             newItems[itemIndex] = { ...currentItem, characters: newCharacters };
             newOrder.items = newItems;
@@ -792,7 +796,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         });
     };
 
-    const handleCharacterColorChange = (itemIndex: number, charIndex: number, partType: 'shirt' | 'pants', colorHex: string) => {
+    const handleCharacterColorChange = (itemIndex: number, charIndex: number, partType: 'shirt' | 'pants' | 'set', colorHex: string) => {
         if (!editForm) return;
         setEditForm(prev => {
             if (!prev) return null;
@@ -800,10 +804,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             const newItems = [...newOrder.items];
             const newCharacters = [...newItems[itemIndex].characters];
             const char = newCharacters[charIndex];
-            const part = partType === 'shirt' ? char.shirt : char.pants;
+            const part = partType === 'shirt' ? char.shirt : partType === 'pants' ? char.pants : char.set;
             const selectedColor = part?.colors?.find(c => c.hex === colorHex);
             if (partType === 'shirt') newCharacters[charIndex] = { ...char, selectedShirtColor: selectedColor };
             if (partType === 'pants') newCharacters[charIndex] = { ...char, selectedPantsColor: selectedColor };
+            if (partType === 'set') newCharacters[charIndex] = { ...char, selectedSetColor: selectedColor };
             newItems[itemIndex] = { ...newItems[itemIndex], characters: newCharacters };
             newOrder.items = newItems;
             return updateEditFormWithPrice(newOrder);
@@ -1507,9 +1512,38 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                                     <p className="font-bold text-gray-700 mb-1">Nhân vật {charIdx + 1}</p>
                                                                     {isEditingOrder && editForm && (<button onClick={() => handleRemoveCharacter(idx, charIdx)} className="absolute top-1 right-1 text-red-500 font-bold">×</button>)}
                                                                     {isEditingOrder && editForm ? (
-                                                                        <div className="space-y-1">{(['hair', 'face', 'shirt', 'pants', 'hat'] as const).map(partType => (<div key={partType} className="flex flex-col"><div className="flex justify-between items-center"><span className="text-gray-500 capitalize w-16">{partType}</span><select className="border rounded p-1 text-xs flex-grow" value={char[partType]?.id || ''} onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}><option value="">None</option>{partsByType[partType]?.map(part => (<option key={part.id} value={part.id}>{part.name}</option>))}</select></div>{['shirt', 'pants'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (<div className="flex gap-1 mt-1 ml-16">{char[partType]!.colors!.map(c => (<button key={c.hex} onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants', c.hex)} className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : char.selectedPantsColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`} style={{backgroundColor: c.hex}} title={c.name} />))}</div>)}</div>))}</div>
+                                                                        <div className="space-y-1">
+                                                                            {(['hair', 'face', 'shirt', 'pants', 'set', 'hat'] as const).map(partType => (
+                                                                                <div key={partType} className="flex flex-col">
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <span className="text-gray-500 capitalize w-16">{partType === 'set' ? 'Set đồ' : partType}</span>
+                                                                                        <select className="border rounded p-1 text-xs flex-grow" value={char[partType]?.id || ''} onChange={(e) => handleCharacterChange(idx, charIdx, partType, e.target.value)}>
+                                                                                            <option value="">None</option>
+                                                                                            {partsByType[partType]?.map(part => (
+                                                                                                <option key={part.id} value={part.id}>{part.name}</option>
+                                                                                            ))}
+                                                                                        </select>
+                                                                                    </div>
+                                                                                    {['shirt', 'pants', 'set'].includes(partType) && char[partType]?.colors && char[partType]!.colors!.length > 0 && (
+                                                                                        <div className="flex gap-1 mt-1 ml-16">
+                                                                                            {char[partType]!.colors!.map(c => (
+                                                                                                <button key={c.hex} onClick={() => handleCharacterColorChange(idx, charIdx, partType as 'shirt'|'pants'|'set', c.hex)} className={`w-4 h-4 rounded-full border ${ (partType === 'shirt' ? char.selectedShirtColor?.hex : partType === 'pants' ? char.selectedPantsColor?.hex : char.selectedSetColor?.hex) === c.hex ? 'ring-1 ring-gray-800 scale-110' : '' }`} style={{backgroundColor: c.hex}} title={c.name} />
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
                                                                     ) : (
-                                                                        <ul className="text-gray-600 space-y-0.5 mt-1">{char.hair && <li>Tóc: {char.hair.name}</li>}{char.face && <li>Mặt: {char.face.name}</li>}{char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}{char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}{char.hat && <li>Mũ: {char.hat.name}</li>}{Number(char.customPrintPrice) > 0 && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}</ul>
+                                                                        <ul className="text-gray-600 space-y-0.5 mt-1">
+                                                                            {char.hair && <li>Tóc: {char.hair.name}</li>}
+                                                                            {char.face && <li>Mặt: {char.face.name}</li>}
+                                                                            {char.shirt && <li>Áo: {char.shirt.name} {char.selectedShirtColor ? `(${char.selectedShirtColor.name})` : ''}</li>}
+                                                                            {char.pants && <li>Quần: {char.pants.name} {char.selectedPantsColor ? `(${char.selectedPantsColor.name})` : ''}</li>}
+                                                                            {char.set && <li>Set đồ: {char.set.name} {char.selectedSetColor ? `(${char.selectedSetColor.name})` : ''}</li>}
+                                                                            {char.hat && <li>Mũ: {char.hat.name}</li>}
+                                                                            {Number(char.customPrintPrice) > 0 && <li className="text-blue-600 font-bold">In yêu cầu: {formatCurrency(char.customPrintPrice, 'admin')}</li>}
+                                                                        </ul>
                                                                     )}
                                                                 </div>
                                                             </div>

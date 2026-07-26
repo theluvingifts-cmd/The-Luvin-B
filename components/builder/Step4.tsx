@@ -76,7 +76,7 @@ export const Step4Summary: React.FC<{
 
   let museumSurcharge = 70000;
   try {
-      const cached = typeof window !== 'undefined' ? localStorage.getItem('store_config_cache') : null;
+      const cached = typeof window !== 'undefined' ? (localStorage.getItem('store_config') || localStorage.getItem('store_config_cache')) : null;
       if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed && typeof parsed.museumSurcharge === 'number') {
