@@ -122,7 +122,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     }, [urlProductLine, propProductLine]);
 
     useEffect(() => {
-        setActiveCategory(t('common.all'));
+        setActiveCategories([t('common.all')]);
     }, [activeProductLine, t]);
 
     // 2. Sync with Prop when server data arrives
@@ -133,7 +133,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     }, [propTemplates]);
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeCategory, setActiveCategory] = useState(t('common.all'));
+    const [activeCategories, setActiveCategories] = useState<string[]>([t('common.all')]);
+    const [isMultiCategoryMode, setIsMultiCategoryMode] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<CollectionTemplate | null>(null);
     const [customConfig, setCustomConfig] = useState<FrameConfig | null>(null);
     const [showPrintExample, setShowPrintExample] = useState<string | null>(null);
@@ -176,7 +177,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 
                 // Also set active category if it matches
                 if (template.category) {
-                    setActiveCategory(template.category);
+                    setActiveCategories([template.category]);
                 }
             }
         }
@@ -203,10 +204,6 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             hair: [], face: [], shirt: [], pants: [], accessory: [], pet: [], hat: [], set: []
         };
         (Object.values(allParts) as LegoPart[]).forEach(p => {
-            // Keep all parts in the map, but we'll handle the visual display of OOS elsewhere
-            // or filter them for the user selection if desired. 
-            // Change: Don't filter out negative stock here, treat it as OOS but available to see.
-            // Exclude virtual services
             if (p.id.startsWith('srv-')) return;
             if (result[p.type]) {
                 result[p.type].push(p);
@@ -215,15 +212,28 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         return result;
     }, [allParts]);
 
-    // Update active category when URL changes (category only)
+    // Update active categories when URL changes (supports single or multi-category URLs e.g. "chia-tay+dong-nghiep")
     useEffect(() => {
         if (urlCategory && !urlTemplateId && displayTemplates.length > 0) {
-            const catMatch = categories.find(cat => slugify(cat) === urlCategory);
-            if (catMatch) {
-                setActiveCategory(catMatch);
+            const rawSlugs = urlCategory.split(/[\+,\,]/).map(s => s.trim()).filter(Boolean);
+            const matched: string[] = [];
+            rawSlugs.forEach(slug => {
+                const catMatch = categories.find(cat => slugify(cat) === slug);
+                if (catMatch && !matched.includes(catMatch)) {
+                    matched.push(catMatch);
+                }
+            });
+
+            if (matched.length > 0) {
+                setActiveCategories(matched);
+                if (matched.length > 1) {
+                    setIsMultiCategoryMode(true);
+                }
+            } else {
+                setActiveCategories([t('common.all')]);
             }
         }
-    }, [urlCategory, urlTemplateId, displayTemplates, categories]);
+    }, [urlCategory, urlTemplateId, displayTemplates, categories, t]);
 
     useEffect(() => {
         if (selectedTemplate) {
@@ -276,7 +286,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         let result = displayTemplates.filter(template => {
             const matchesLine = (template.productLine || 'lego') === activeProductLine;
             const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = activeCategory === t('common.all') || template.category === activeCategory;
+            const matchesCategory = activeCategories.length === 0 || 
+                                    activeCategories.includes(t('common.all')) || 
+                                    (template.category && activeCategories.includes(template.category));
             const isInStock = template.stock !== 0;
             
             // Price Filter
@@ -314,19 +326,47 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         }
 
         return result;
-    }, [displayTemplates, searchTerm, activeCategory, priceRange, charCount, sortBy, t, allParts, frames, activeProductLine]);
+    }, [displayTemplates, searchTerm, activeCategories, priceRange, charCount, sortBy, t, allParts, frames, activeProductLine]);
 
     const isInitialLoading = useMemo(() => {
         return displayTemplates.length === 0;
     }, [displayTemplates]);
 
-    const handleCategoryChange = (cat: string) => {
-        setActiveCategory(cat);
-        const categorySlug = slugify(cat);
+    const handleCategoryToggle = (cat: string, e?: React.MouseEvent) => {
+        const isShiftOrCtrl = e ? (e.shiftKey || e.ctrlKey || e.metaKey) : false;
+        const isMulti = isMultiCategoryMode || isShiftOrCtrl;
+
         if (cat === t('common.all')) {
+            setActiveCategories([t('common.all')]);
             navigate(`/collection/${activeProductLine}`, { replace: true });
+            return;
+        }
+
+        let nextCats: string[] = [];
+        if (isMulti) {
+            const currentWithoutAll = activeCategories.filter(c => c !== t('common.all'));
+            if (currentWithoutAll.includes(cat)) {
+                nextCats = currentWithoutAll.filter(c => c !== cat);
+            } else {
+                nextCats = [...currentWithoutAll, cat];
+            }
+            if (nextCats.length === 0) {
+                nextCats = [t('common.all')];
+            }
         } else {
-            navigate(`/collection/${activeProductLine}/${categorySlug}`, { replace: true });
+            nextCats = [cat];
+        }
+
+        setActiveCategories(nextCats);
+
+        const realCats = nextCats.filter(c => c !== t('common.all'));
+        if (realCats.length === 0) {
+            navigate(`/collection/${activeProductLine}`, { replace: true });
+        } else if (realCats.length === 1) {
+            navigate(`/collection/${activeProductLine}/${slugify(realCats[0])}`, { replace: true });
+        } else {
+            const multiSlug = realCats.map(c => slugify(c)).join('+');
+            navigate(`/collection/${activeProductLine}/${multiSlug}`, { replace: true });
         }
     };
 
@@ -936,7 +976,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         key={line.id}
                         onClick={() => {
                             navigate(`/collection/${line.id}`);
-                            setActiveCategory(t('common.all'));
+                            setActiveCategories([t('common.all')]);
                         }}
                         className={`flex-1 min-w-[140px] px-6 py-4 flex items-center justify-center gap-2 border-b-2 transition-all ${
                             activeProductLine === line.id 
@@ -2029,20 +2069,51 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             <div className="container mx-auto px-4 space-y-3">
                 {/* Categories */}
                 {activeProductLine !== 'gallery' && (
-                    <div className="overflow-x-auto no-scrollbar flex items-center gap-2">
-                        {categories.map(cat => (
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="overflow-x-auto no-scrollbar flex items-center gap-2 py-0.5">
+                                {categories.map(cat => {
+                                    const isAll = cat === t('common.all');
+                                    const isSelected = isAll 
+                                        ? (activeCategories.length === 0 || activeCategories.includes(t('common.all'))) 
+                                        : activeCategories.includes(cat);
+
+                                    return (
+                                        <button
+                                            key={cat}
+                                            onClick={(e) => handleCategoryToggle(cat, e)}
+                                            className={`px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                                                isSelected 
+                                                    ? 'bg-primary text-white shadow-md' 
+                                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            {isSelected && !isAll && <span className="text-[10px]">✓</span>}
+                                            {cat} <span className="opacity-40 text-[9px]">({filterCounts.categories[cat] || 0})</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
                             <button
-                                key={cat}
-                                onClick={() => handleCategoryChange(cat)}
-                                className={`px-5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                                    activeCategory === cat 
-                                        ? 'bg-primary text-white shadow-md' 
-                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                type="button"
+                                onClick={() => {
+                                    const nextMode = !isMultiCategoryMode;
+                                    setIsMultiCategoryMode(nextMode);
+                                    if (!nextMode && activeCategories.length > 1) {
+                                        handleCategoryToggle(activeCategories[0]);
+                                    }
+                                }}
+                                className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1 cursor-pointer ${
+                                    isMultiCategoryMode
+                                        ? 'bg-pink-50 border-luvin-pink text-luvin-pink shadow-sm'
+                                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                                 }`}
+                                title="Cho phép chọn cùng lúc 2 hoặc nhiều dịp"
                             >
-                                {cat} <span className="opacity-40 text-[9px]">({filterCounts.categories[cat] || 0})</span>
+                                <span>{isMultiCategoryMode ? '✓ Chọn nhiều dịp' : '➕ Chọn nhiều dịp'}</span>
                             </button>
-                        ))}
+                        </div>
                     </div>
                 )}
 
@@ -2263,7 +2334,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                 <div className="flex flex-col items-center justify-center py-32 text-center">
                     <div className="text-5xl mb-4 opacity-50">🔍</div>
                     <h3 className="text-lg font-bold text-gray-800">{t('collection.no_results')}</h3>
-                    <button onClick={() => {setSearchTerm(''); setActiveCategory(t('common.all'))}} className="mt-4 text-primary font-bold hover:underline">{t('collection.view_all')}</button>
+                    <button onClick={() => {setSearchTerm(''); setActiveCategories([t('common.all')]);}} className="mt-4 text-primary font-bold hover:underline">{t('collection.view_all')}</button>
                 </div>
             )}
         </div>
