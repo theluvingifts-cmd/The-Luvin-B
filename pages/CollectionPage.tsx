@@ -13,6 +13,8 @@ import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { getCachedTemplates } from '../services/configService';
 import { trackViewContent, trackAddToCart } from '../utils/analytics';
 import { getDisplayOrderCount, formatOrderNumber } from '../utils/orderUtils';
+import { incrementTemplatePurchaseCount } from '../services/templateService';
+import { incrementGlobalOrderCount } from '../services/orderService';
 
 const getOutOfStockParts = (config: FrameConfig | null, allParts: Record<string, LegoPart>) => {
     if (!config) return [];
@@ -515,7 +517,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         // Track AddToCart for Buy Now
         if (selectedTemplate) {
             trackAddToCart(selectedTemplate.id, selectedTemplate.name, currentPrice);
+            incrementTemplatePurchaseCount(selectedTemplate.id, 1);
         }
+        incrementGlobalOrderCount(1);
 
         navigateTo('checkout');
         setSelectedTemplate(null);

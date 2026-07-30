@@ -81,6 +81,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
   const [isSelfReferral, setIsSelfReferral] = useState(false);
+  const [isSamePhoneForDemo, setIsSamePhoneForDemo] = useState(true);
   
   const [manualReferralCode, setManualReferralCode] = useState(localStorage.getItem('referred_by') || '');
 
@@ -129,6 +130,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setDeliveryDate(initialOrder.delivery.date);
           setNotes(initialOrder.delivery.notes);
           setDemoContact(initialOrder.customer.demoContact || '');
+          if (initialOrder.customer.demoContact && initialOrder.customer.demoContact !== initialOrder.customer.phone) {
+              setIsSamePhoneForDemo(false);
+          }
           setShippingOption(initialOrder.shipping.method);
           setAddGiftBox(initialOrder.addGiftBox);
           setAddLight(initialOrder.addLight || false);
@@ -319,7 +323,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
                   if (!name) setName(lastOrder.customer.name);
                   if (!email && lastOrder.customer.email) setEmail(lastOrder.customer.email);
-                  if (!demoContact && lastOrder.customer.demoContact) setDemoContact(lastOrder.customer.demoContact);
+                  if (!demoContact && lastOrder.customer.demoContact) {
+                      setDemoContact(lastOrder.customer.demoContact);
+                      if (lastOrder.customer.demoContact !== phoneNumber) {
+                          setIsSamePhoneForDemo(false);
+                      }
+                  }
                   
                   // Auto-fill address components if not already set
                   // Try to match names with codes for dropdowns if API is working
@@ -357,6 +366,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       setPhone(numericVal);
       setPhoneError('');
       setIsLoyalCustomer(false);
+      if (isSamePhoneForDemo) {
+          setDemoContact(numericVal);
+      }
       if (numericVal.length === 10) {
           checkLoyaltyAndAutofill(numericVal);
       }
@@ -568,9 +580,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         type="text" 
                         placeholder={t('checkout.demo_contact_placeholder')} 
                         value={demoContact} 
-                        onChange={e => setDemoContact(e.target.value)} 
-                        className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none text-sm sm:text-base" 
-                        required 
+                        onChange={e => {
+                          setDemoContact(e.target.value);
+                          setIsSamePhoneForDemo(e.target.value === phone);
+                        }} 
+                        className={`w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-luvin-pink focus:border-transparent outline-none text-sm sm:text-base ${
+                          (isSamePhoneForDemo || demoContact === phone) && demoContact ? 'text-gray-400 font-normal' : 'text-gray-800 font-medium'
+                        }`} 
                       />
                       <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1 italic">{t('checkout.demo_contact_note')}</p>
                     </div>

@@ -396,6 +396,16 @@ export const getTotalOrderCount = async (): Promise<number> => {
     }
 };
 
+// 4b. Tăng tổng số lượng đơn hàng trong config/stats
+export const incrementGlobalOrderCount = async (amount: number = 1) => {
+    try {
+        const statsRef = doc(db, "config", "stats");
+        await setDoc(statsRef, { totalOrders: firestoreIncrement(amount) }, { merge: true });
+    } catch (err: any) {
+        console.warn("Lỗi cộng lượt đặt hàng:", err);
+    }
+};
+
 // 5. Update Order
 export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
     try {
