@@ -85,7 +85,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         
                                         {/* Character & Charm Previews */}
                                         <div className="flex flex-wrap gap-2 mt-2">
-                                            {item.characters.map((char, cIdx) => (
+                                            {(item.characters || []).map((char, cIdx) => (
                                                 <div key={cIdx} className="relative group">
                                                     <CharacterPreview character={char} size="sm" />
                                                     <div className="absolute -top-1 -right-1 bg-white border border-pink-200 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-pink-600 shadow-sm leading-none">
@@ -93,7 +93,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                                     </div>
                                                 </div>
                                             ))}
-                                            {item.draggableItems.filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 6).map((di, diIdx) => {
+                                            {(item.draggableItems || []).filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 6).map((di, diIdx) => {
                                                 const part = allParts[di.partId];
                                                 if (!part) return null;
                                                 return (

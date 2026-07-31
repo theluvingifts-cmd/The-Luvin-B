@@ -492,14 +492,14 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             
             const counts: Record<string, number> = {};
             recentOrders.forEach(o => {
-                o.items.forEach(item => {
-                    item.draggableItems.forEach(d => {
-                        if (d.type !== 'charm') {
+                (o.items || []).forEach(item => {
+                    (item.draggableItems || []).forEach(d => {
+                        if (d && d.type !== 'charm') {
                             counts[d.partId] = (counts[d.partId] || 0) + 1;
                         }
                     });
-                    item.characters.forEach(c => {
-                        if (c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
+                    (item.characters || []).forEach(c => {
+                        if (c && c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
                     });
                 });
             });

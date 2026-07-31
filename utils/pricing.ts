@@ -293,14 +293,16 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     });
 
     // 4. DRAGGABLE ITEMS
+    const draggables = Array.isArray(config.draggableItems) ? config.draggableItems : [];
     const partCounts: Record<string, number> = {};
-    config.draggableItems.forEach((item) => {
-        if (item.partId) {
+    draggables.forEach((item) => {
+        if (item && item.partId) {
             partCounts[item.partId] = (partCounts[item.partId] || 0) + 1;
         }
     });
 
-    config.draggableItems.forEach((item) => {
+    draggables.forEach((item) => {
+        if (!item) return;
         const part = allParts[item.partId];
         if (part) {
             // If part is out of stock, it should be $0 in price breakdown

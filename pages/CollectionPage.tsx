@@ -87,7 +87,7 @@ const fixOutOfStockParts = (config: FrameConfig, allParts: Record<string, LegoPa
         return updatedChar;
     });
 
-    const newDraggableItems = config.draggableItems.map(item => {
+    const newDraggableItems = (config.draggableItems || []).map(item => {
         // Keep original items even if out of stock, so they can be shown as greyed out in UI
         return item;
     });
@@ -505,8 +505,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const updateTemplateCharmColor = (partId: string, oldColor: OutfitColor | undefined, newColor: OutfitColor) => {
         if (!customConfig || !selectedTemplate) return;
-        const templateItemIds = new Set(selectedTemplate.config.draggableItems.map(i => i.id));
-        const newItems = customConfig.draggableItems.map(item => {
+        const templateItems = selectedTemplate.config.draggableItems || [];
+        const templateItemIds = new Set(templateItems.map(i => i.id));
+        const newItems = (customConfig.draggableItems || []).map(item => {
             // Match items that were part of the template AND share the same partId and current color
             const isMatch = templateItemIds.has(item.id) && 
                           item.partId === partId && 
@@ -747,9 +748,9 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         const groups: Record<string, { key: string, partId: string, originalItems: DraggableItem[], part: LegoPart, selectedColor?: OutfitColor }> = {};
         
         // Create a map of current items in customConfig for quick lookup by ID
-        const currentItemsMap = new Map<string, DraggableItem>(customConfig.draggableItems.map(i => [i.id, i]));
+        const currentItemsMap = new Map<string, DraggableItem>((customConfig.draggableItems || []).map(i => [i.id, i]));
 
-        selectedTemplate.config.draggableItems.forEach(templateItem => {
+        (selectedTemplate.config.draggableItems || []).forEach(templateItem => {
             // Look up the current state of this template item in the active config
             const currentItem = currentItemsMap.get(templateItem.id);
             if (!currentItem) return;
@@ -834,8 +835,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const groupedAddedExtraCharms = useMemo(() => {
         if (!customConfig || !selectedTemplate) return [];
         
-        const templateItemIds = new Set(selectedTemplate.config.draggableItems.map(i => i.id));
-        const extraItems = customConfig.draggableItems.filter(i => !templateItemIds.has(i.id));
+        const templateItemIds = new Set((selectedTemplate.config.draggableItems || []).map(i => i.id));
+        const extraItems = (customConfig.draggableItems || []).filter(i => !templateItemIds.has(i.id));
         
         const groups: Record<string, { key: string, partId: string, items: DraggableItem[], part: LegoPart, selectedColor?: OutfitColor }> = {};
         
@@ -893,7 +894,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
 
     const updateExtraCharmColor = (partId: string, oldColor: OutfitColor | undefined, newColor: OutfitColor) => {
         if (!customConfig) return;
-        const newItems = customConfig.draggableItems.map(item => {
+        const newItems = (customConfig.draggableItems || []).map(item => {
             if (item.partId === partId && (oldColor ? item.selectedColor?.hex === oldColor.hex : !item.selectedColor)) {
                 return { ...item, selectedColor: newColor };
             }
@@ -906,7 +907,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         if (!customConfig) return;
         setCustomConfig({
             ...customConfig,
-            draggableItems: customConfig.draggableItems.filter(i => i.id !== itemId)
+            draggableItems: (customConfig.draggableItems || []).filter(i => i.id !== itemId)
         });
     };
 
@@ -1002,7 +1003,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                         <div className="w-full h-full relative flex items-center justify-center p-12">
                             {selectedTemplate.isSimple ? (
                                 <div className="relative w-full h-full flex flex-wrap items-center justify-center gap-10 content-center scale-110">
-                                    {customConfig.characters.length === 0 && customConfig.draggableItems.length === 0 && (
+                                    {(customConfig.characters || []).length === 0 && (customConfig.draggableItems || []).length === 0 && (
                                         <div className="text-center animate-fade-in">
                                             <img 
                                                 src={selectedTemplate.imageUrl} 
@@ -1012,12 +1013,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             <p className="mt-6 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('collection.select_char_charm')}</p>
                                         </div>
                                     )}
-                                    {customConfig.characters.map((char) => (
+                                    {(customConfig.characters || []).map((char) => (
                                         <div key={char.id} className="transform scale-[2] hover:scale-[2.1] transition-transform duration-500 mx-4">
                                             <CharacterPreview character={char} hideHat={true} />
                                         </div>
                                     ))}
-                                    {customConfig.draggableItems.map((item) => (
+                                    {(customConfig.draggableItems || []).map((item) => (
                                         <div key={item.id} className="w-24 h-24 bg-white rounded-3xl shadow-xl border border-gray-100 p-2.5 flex items-center justify-center hover:scale-110 transition-transform duration-500">
                                             <img src={item.selectedColor?.imageUrl || allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="Item" />
                                         </div>
@@ -1100,7 +1101,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             
                             {selectedTemplate.isSimple ? (
                                 <div className="relative w-full h-full p-4 sm:p-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 content-center">
-                                    {customConfig.characters.length === 0 && customConfig.draggableItems.length === 0 && (
+                                    {(customConfig.characters || []).length === 0 && (customConfig.draggableItems || []).length === 0 && (
                                         <div className="text-center">
                                             <img 
                                                 src={selectedTemplate.imageUrl} 
@@ -1110,12 +1111,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('collection.select_char_charm')}</p>
                                         </div>
                                     )}
-                                    {customConfig.characters.map((char) => (
+                                    {(customConfig.characters || []).map((char) => (
                                         <div key={char.id} className="transform scale-125">
                                             <CharacterPreview character={char} hideHat={true} />
                                         </div>
                                     ))}
-                                    {customConfig.draggableItems.map((item) => (
+                                    {(customConfig.draggableItems || []).map((item) => (
                                         <div key={item.id} className="w-12 h-12 bg-white rounded-xl shadow-sm border border-pink-50 p-1 flex items-center justify-center">
                                             <img src={item.selectedColor?.imageUrl || allParts[item.partId]?.imageUrl} className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="Item" />
                                         </div>

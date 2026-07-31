@@ -545,7 +545,7 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
   const selectedDraggableType = useMemo(() => {
     if (!selectedItemId || !selectedItemId.startsWith('item-')) return null;
     const id = parseInt(selectedItemId.split('-')[1]);
-    const item = config.draggableItems.find(i => i.id === id);
+    const item = (config.draggableItems || []).find(i => i.id === id);
     return item?.type || null;
   }, [selectedItemId, config.draggableItems]);
 
@@ -554,11 +554,11 @@ const FramePreview = React.forwardRef<HTMLDivElement, FramePreviewProps>(({
       const [type, idStr] = selectedItemId.split('-');
       const id = parseInt(idStr);
       if (type === 'item') {
-          const item = config.draggableItems.find(i => i.id === id);
+          const item = (config.draggableItems || []).find(i => i.id === id);
           return item ? allParts[item.partId]?.colors : null;
       }
       if (type === 'character' && activePartType) {
-          const char = config.characters.find(c => c.id === id);
+          const char = (config.characters || []).find(c => c.id === id);
           if (!char) return null;
           if (activePartType === 'shirt' || activePartType === 'set') { 
               if (char.shirt?.colors && char.shirt.colors.length > 0) return char.shirt.colors;
