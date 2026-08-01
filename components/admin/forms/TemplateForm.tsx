@@ -172,7 +172,7 @@ export const TemplateForm: React.FC<{
     const handleUpdateCharmColor = (charmId: number, color: any) => {
         setConfig(prev => ({
             ...prev,
-            draggableItems: prev.draggableItems.map(item => item.id === charmId ? { ...item, selectedColor: color } : item)
+            draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(item => item.id === charmId ? { ...item, selectedColor: color } : item)
         }));
     };
 
@@ -186,11 +186,11 @@ export const TemplateForm: React.FC<{
             x: 50, y: 50, rotation: 0, scale: 1,
             selectedColor: part.colors?.[0]
         };
-        setConfig(prev => ({ ...prev, draggableItems: [...prev.draggableItems, newItem] }));
+        setConfig(prev => ({ ...prev, draggableItems: [...(Array.isArray(prev.draggableItems) ? prev.draggableItems : []), newItem] }));
     };
 
     const handleRemoveCharm = (id: number) => {
-        setConfig(prev => ({ ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== id) }));
+        setConfig(prev => ({ ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(i => i.id !== id) }));
     };
 
     const handleSave = () => {
@@ -907,9 +907,9 @@ export const TemplateForm: React.FC<{
                             </div>
 
                             {/* Added Charms Management */}
-                            {config.draggableItems.length > 0 && (
+                            {(Array.isArray(config.draggableItems) ? config.draggableItems : []).length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                    {config.draggableItems.map(item => {
+                                    {(Array.isArray(config.draggableItems) ? config.draggableItems : []).map(item => {
                                         const part = allParts.find(p => p.id === item.partId);
                                         return (
                                             <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-200 relative group shadow-sm">
@@ -928,7 +928,7 @@ export const TemplateForm: React.FC<{
                                                             value={item.x} 
                                                             onChange={(e) => setConfig(prev => ({
                                                                 ...prev,
-                                                                draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, x: parseFloat(e.target.value) } : i)
+                                                                draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(i => i.id === item.id ? { ...i, x: parseFloat(e.target.value) } : i)
                                                             }))}
                                                             className="w-full p-1 text-[10px] border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none"
                                                         />
@@ -940,7 +940,7 @@ export const TemplateForm: React.FC<{
                                                             value={item.y} 
                                                             onChange={(e) => setConfig(prev => ({
                                                                 ...prev,
-                                                                draggableItems: prev.draggableItems.map(i => i.id === item.id ? { ...i, y: parseFloat(e.target.value) } : i)
+                                                                draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(i => i.id === item.id ? { ...i, y: parseFloat(e.target.value) } : i)
                                                             }))}
                                                             className="w-full p-1 text-[10px] border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none"
                                                         />

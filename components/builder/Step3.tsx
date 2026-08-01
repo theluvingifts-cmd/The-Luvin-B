@@ -262,7 +262,7 @@ export const Step3Characters: React.FC<{
             selectedColor: part.colors?.find(c => c.stock === undefined || c.stock === null || c.stock !== 0) || part.colors?.[0],
             linkedCharId: activeCharacter?.id 
         };
-        setConfig(prev => ({...prev, draggableItems: [...prev.draggableItems, newItem]}));
+        setConfig(prev => ({...prev, draggableItems: [...(Array.isArray(prev.draggableItems) ? prev.draggableItems : []), newItem]}));
     };
 
     const handlePartSelect = (part: LegoPart | undefined) => {
@@ -320,7 +320,7 @@ export const Step3Characters: React.FC<{
                     const char = prev.characters.find(c => c.id === activeCharId);
                     if (!char || !char.hair?.preventScarf) return prev;
 
-                    const conflictingItems = prev.draggableItems.filter(
+                    const conflictingItems = (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(
                         item => {
                             if (item.linkedCharId !== activeCharId) return false;
                             const itemPart = allParts[item.partId];
@@ -332,7 +332,7 @@ export const Step3Characters: React.FC<{
                         if (showToast) showToast(t('studio.scarf_removed_notice'), 'error');
                         return {
                             ...prev,
-                            draggableItems: prev.draggableItems.filter(item => !conflictingItems.includes(item))
+                            draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(item => !conflictingItems.includes(item))
                         };
                     }
                     return prev;
@@ -346,7 +346,7 @@ export const Step3Characters: React.FC<{
       if (partType === 'hat') {
           setConfig(prev => ({
               ...prev,
-              draggableItems: prev.draggableItems.filter(item => item.type !== 'hat' || item.linkedCharId !== activeCharId)
+              draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(item => item.type !== 'hat' || item.linkedCharId !== activeCharId)
           }));
           return;
       }

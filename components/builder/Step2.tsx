@@ -72,7 +72,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         return t;
     });
 
-    const updatedDraggableItems = (config.draggableItems || []).map(item => {
+    const updatedDraggableItems = (Array.isArray(config.draggableItems) ? config.draggableItems : []).map(item => {
         if (item.linkedFieldId === fieldId) {
             const field = activeFields.find(f => f.id === fieldId);
             if (field?.type === 'image') {
@@ -108,7 +108,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         newFrameId = 'md';
     }
 
-    const overlayTexts = (bg.overlayConfig?.texts || []).map(t => {
+    const overlayTexts = (Array.isArray(bg.overlayConfig?.texts) ? bg.overlayConfig.texts : []).map(t => {
         if (t.linkedFieldId && config.customFormData?.[t.linkedFieldId]) {
             let val = config.customFormData[t.linkedFieldId];
             if (val.includes('-') && val.split('-').length === 3 && val.length === 10) {
@@ -120,7 +120,7 @@ export const Step2BackgroundAndDecorations: React.FC<{
         return t;
     });
 
-    const overlayDraggableItems = (bg.overlayConfig?.draggableItems || []).map(item => {
+    const overlayDraggableItems = (Array.isArray(bg.overlayConfig?.draggableItems) ? bg.overlayConfig.draggableItems : []).map(item => {
         if (item.linkedFieldId && config.customFormData?.[item.linkedFieldId]) {
             return { ...item, partId: config.customFormData[item.linkedFieldId] };
         }
@@ -175,8 +175,8 @@ export const Step2BackgroundAndDecorations: React.FC<{
   };
 
   const isFieldLinked = (fieldId: string) => {
-      return config.texts.some(t => t.linkedFieldId === fieldId) || 
-             config.draggableItems.some(i => i.linkedFieldId === fieldId) ||
+      return (Array.isArray(config.texts) ? config.texts : []).some(t => t.linkedFieldId === fieldId) || 
+             (Array.isArray(config.draggableItems) ? config.draggableItems : []).some(i => i.linkedFieldId === fieldId) ||
              (Array.isArray(config.shapes) ? config.shapes : []).some(s => s.linkedFieldId === fieldId);
   };
 

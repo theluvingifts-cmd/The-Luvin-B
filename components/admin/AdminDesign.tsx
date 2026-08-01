@@ -251,10 +251,10 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         const [type, idStr] = selectedItemId.split('-');
         const id = parseInt(idStr);
         setConfig(prev => {
-            if (type === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
+            if (type === 'text') return { ...prev, texts: (Array.isArray(prev.texts) ? prev.texts : []).map(t => t.id === id ? { ...t, ...updates } : t) };
+            if (type === 'item') return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(i => i.id === id ? { ...i, ...updates } : i) };
             if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(s => s.id === id ? { ...s, ...updates } : s) };
-            if (type === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
+            if (type === 'character') return { ...prev, characters: (Array.isArray(prev.characters) ? prev.characters : []).map(c => c.id === id ? { ...c, ...updates } : c) };
             return prev;
         });
     }, [selectedItemId]);
@@ -265,10 +265,10 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         const itemId = parseInt(rawId);
         setSelectedItemId(null);
         setConfig((prev: FrameConfig) => {
-            if (type === 'text') return { ...prev, texts: prev.texts.filter(t => t.id !== itemId) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter(i => i.id !== itemId) };
+            if (type === 'text') return { ...prev, texts: (Array.isArray(prev.texts) ? prev.texts : []).filter(t => t.id !== itemId) };
+            if (type === 'item') return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(i => i.id !== itemId) };
             if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).filter(s => s.id !== itemId) };
-            if (type === 'character') return { ...prev, characters: prev.characters.filter(c => c.id !== itemId) };
+            if (type === 'character') return { ...prev, characters: (Array.isArray(prev.characters) ? prev.characters : []).filter(c => c.id !== itemId) };
             return prev;
         });
     }, []);
@@ -277,8 +277,8 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         if (!selectedItemId) return null;
         const [type, idStr] = selectedItemId.split('-');
         const id = parseInt(idStr);
-        if (type === 'text') return config.texts.find(t => t.id === id);
-        if (type === 'item') return config.draggableItems.find(i => i.id === id);
+        if (type === 'text') return (Array.isArray(config.texts) ? config.texts : []).find(t => t.id === id);
+        if (type === 'item') return (Array.isArray(config.draggableItems) ? config.draggableItems : []).find(i => i.id === id);
         if (type === 'shape') return config.shapes?.find(s => s.id === id);
         if (type === 'character') return config.characters.find(c => c.id === id);
         return null;
@@ -464,7 +464,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
         const itemId = parseInt(rawId);
         setConfig((prev: FrameConfig) => {
             if (type === 'text') return { ...prev, texts: prev.texts.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
-            if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
+            if (type === 'item') return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             if (type === 'character') return { ...prev, characters: prev.characters.map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
             return prev;
@@ -500,7 +500,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                 }
                 return s;
             }),
-            draggableItems: (prev.draggableItems || []).map(item => {
+            draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(item => {
                 if (item.linkedFieldId === fieldId) {
                     const formFields = Array.isArray(prev.formFields) ? prev.formFields : [];
                     const field = formFields.find(f => f.id === fieldId);
@@ -534,8 +534,8 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
     };
 
     const isFieldLinked = (fieldId: string) => {
-        return config.texts.some(t => t.linkedFieldId === fieldId) || 
-               config.draggableItems.some(i => i.linkedFieldId === fieldId) ||
+        return (Array.isArray(config.texts) ? config.texts : []).some(t => t.linkedFieldId === fieldId) || 
+               (Array.isArray(config.draggableItems) ? config.draggableItems : []).some(i => i.linkedFieldId === fieldId) ||
                (Array.isArray(config.shapes) ? config.shapes : []).some(s => s.linkedFieldId === fieldId);
     };
 
@@ -550,10 +550,10 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
             if (type === 'h-center') updates.x = 50;
             if (type === 'v-center') updates.y = 50;
 
-            if (itemType === 'text') return { ...prev, texts: prev.texts.map(t => t.id === id ? { ...t, ...updates } : t) };
-            if (itemType === 'item') return { ...prev, draggableItems: prev.draggableItems.map(i => i.id === id ? { ...i, ...updates } : i) };
+            if (itemType === 'text') return { ...prev, texts: (Array.isArray(prev.texts) ? prev.texts : []).map(t => t.id === id ? { ...t, ...updates } : t) };
+            if (itemType === 'item') return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(i => i.id === id ? { ...i, ...updates } : i) };
             if (itemType === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(s => s.id === id ? { ...s, ...updates } : s) };
-            if (itemType === 'character') return { ...prev, characters: prev.characters.map(c => c.id === id ? { ...c, ...updates } : c) };
+            if (itemType === 'character') return { ...prev, characters: (Array.isArray(prev.characters) ? prev.characters : []).map(c => c.id === id ? { ...c, ...updates } : c) };
             return prev;
         });
     };
@@ -566,15 +566,15 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
 
         setConfig(prev => {
             if (itemType === 'text') {
-                const item = prev.texts.find(t => t.id === id);
+                const item = (Array.isArray(prev.texts) ? prev.texts : []).find(t => t.id === id);
                 if (!item) return prev;
-                const filtered = prev.texts.filter(t => t.id !== id);
+                const filtered = (Array.isArray(prev.texts) ? prev.texts : []).filter(t => t.id !== id);
                 return { ...prev, texts: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
             }
             if (itemType === 'item') {
-                const item = prev.draggableItems.find(i => i.id === id);
+                const item = (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).find(i => i.id === id);
                 if (!item) return prev;
-                const filtered = prev.draggableItems.filter(i => i.id !== id);
+                const filtered = (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(i => i.id !== id);
                 return { ...prev, draggableItems: direction === 'front' ? [...filtered, item] : [item, ...filtered] };
             }
             if (itemType === 'shape') {
@@ -1280,7 +1280,7 @@ export const AdminDesign: React.FC<AdminDesignProps> = ({ showToast }) => {
                                             <span className="truncate">Chữ: {t.content}</span>
                                         </div>
                                     ))}
-                                    {config.draggableItems.map(i => (
+                                    {(Array.isArray(config.draggableItems) ? config.draggableItems : []).map(i => (
                                         <div key={i.id} onClick={() => setSelectedItemId(`item-${i.id}`)} className={`p-2 border rounded-lg text-xs flex justify-between items-center cursor-pointer ${selectedItemId === `item-${i.id}` ? 'border-blue-500 bg-blue-50' : ''}`}>
                                             <span>{i.type === 'charm' ? 'Sticker/Ảnh' : 'Phụ kiện/Nhân vật'}</span>
                                         </div>

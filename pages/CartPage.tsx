@@ -62,7 +62,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                     <div className="flex-grow text-center sm:text-left">
                                         <h3 className="font-bold text-lg font-body text-luvin-pink">
                                             {item.frameId === 'accessory-only' 
-                                                ? (item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || t('cart.single_part')) : t('cart.single_part')) 
+                                                ? (item.draggableItems && item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || t('cart.single_part')) : t('cart.single_part')) 
                                                 : t('order_lookup.frame_lego', { name: frame.name })}
                                         </h3>
                                         <p className="text-sm text-gray-600">{t('common.price')}: {formatCurrency(totalPrice)}</p>
@@ -85,7 +85,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         
                                         {/* Character & Charm Previews */}
                                         <div className="flex flex-wrap gap-2 mt-2">
-                                            {(item.characters || []).map((char, cIdx) => (
+                                            {(Array.isArray(item.characters) ? item.characters : []).map((char, cIdx) => (
                                                 <div key={cIdx} className="relative group">
                                                     <CharacterPreview character={char} size="sm" />
                                                     <div className="absolute -top-1 -right-1 bg-white border border-pink-200 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-pink-600 shadow-sm leading-none">
@@ -93,7 +93,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                                     </div>
                                                 </div>
                                             ))}
-                                            {(item.draggableItems || []).filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 6).map((di, diIdx) => {
+                                            {(Array.isArray(item.draggableItems) ? item.draggableItems : []).filter(di => di.type === 'charm' || di.type === 'pet').slice(0, 6).map((di, diIdx) => {
                                                 const part = allParts[di.partId];
                                                 if (!part) return null;
                                                 return (

@@ -492,13 +492,13 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             
             const counts: Record<string, number> = {};
             recentOrders.forEach(o => {
-                (o.items || []).forEach(item => {
-                    (item.draggableItems || []).forEach(d => {
+                (Array.isArray(o.items) ? o.items : []).forEach(item => {
+                    (Array.isArray(item.draggableItems) ? item.draggableItems : []).forEach(d => {
                         if (d && d.type !== 'charm') {
                             counts[d.partId] = (counts[d.partId] || 0) + 1;
                         }
                     });
-                    (item.characters || []).forEach(c => {
+                    (Array.isArray(item.characters) ? item.characters : []).forEach(c => {
                         if (c && c.hat) counts[c.hat.id] = (counts[c.hat.id] || 0) + 1;
                     });
                 });
@@ -752,8 +752,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
               return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...nTransform } : item) };
           }
           const itemId = parseInt(rawId);
-          if (type === 'character') return { ...prev, characters: prev.characters.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
-          if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
+          if (type === 'character') return { ...prev, characters: (Array.isArray(prev.characters) ? prev.characters : []).map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
+          if (type === 'item') return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map((item: any) => item.id === itemId ? { ...item, ...nTransform } : item) };
           if (type === 'shape') {
               return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(item => item.id === itemId ? { ...item, ...nTransform } : item) };
           }
@@ -779,9 +779,9 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           if (type === 'text') {
               return { ...prev, texts: prev.texts.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           } else if (type === 'character') {
-              return { ...prev, characters: prev.characters.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+              return { ...prev, characters: (Array.isArray(prev.characters) ? prev.characters : []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           } else if (type === 'item') {
-              return { ...prev, draggableItems: prev.draggableItems.map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
+              return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           } else if (type === 'shape') {
               return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).map(item => item.id === idToUpdate ? { ...item, ...updates } : item) };
           }
@@ -796,7 +796,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           const itemId = parseInt(rawId);
           setConfig((prev: FrameConfig) => ({
               ...prev,
-              draggableItems: prev.draggableItems.map((item: any) => 
+              draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map((item: any) => 
                   item.id === itemId ? { ...item, isFlipped: !item.isFlipped } : item
               )
           }));
@@ -810,7 +810,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
           const itemId = parseInt(rawId);
           setConfig((prev: FrameConfig) => ({
               ...prev,
-              draggableItems: prev.draggableItems.map((item: any) => 
+              draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).map((item: any) => 
                   item.id === itemId ? { ...item, ...updates } : item
               )
           }));
@@ -834,8 +834,8 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
             return { ...prev, texts: prev.texts.filter(t => t.id !== idToDelete) };
         }
         const itemId = parseInt(rawId, 10);
-        if (type === 'character') return { ...prev, characters: prev.characters.filter((item: any) => item.id !== itemId) };
-        if (type === 'item') return { ...prev, draggableItems: prev.draggableItems.filter((item: any) => item.id !== itemId) };
+        if (type === 'character') return { ...prev, characters: (Array.isArray(prev.characters) ? prev.characters : []).filter((item: any) => item.id !== itemId) };
+        if (type === 'item') return { ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter((item: any) => item.id !== itemId) };
         if (type === 'shape') return { ...prev, shapes: (Array.isArray(prev.shapes) ? prev.shapes : []).filter(item => item.id !== itemId) };
         return prev;
     });
@@ -894,7 +894,7 @@ export const BuilderPage: React.FC<BuilderPageProps> = ({ config, setConfig, nav
 
   const addCharm = (dataUrl: string) => {
       const newCharm: any = { id: Date.now(), partId: dataUrl, type: 'charm', x: 50, y: 50, rotation: 0, scale: 0.5 };
-      setConfig((prev: FrameConfig) => ({...prev, draggableItems: [...prev.draggableItems, newCharm]}));
+      setConfig((prev: FrameConfig) => ({...prev, draggableItems: [...(Array.isArray(prev.draggableItems) ? prev.draggableItems : []), newCharm]}));
   }
   
   const captureFrameAsImage = async (): Promise<string> => {

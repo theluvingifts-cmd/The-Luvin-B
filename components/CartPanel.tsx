@@ -107,7 +107,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                   <div className="flex-grow min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-gray-800 truncate">
                       {item.frameId === 'accessory-only' 
-                        ? (item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || 'Linh kiện lẻ') : 'Linh kiện lẻ') 
+                        ? (item.draggableItems && item.draggableItems[0] ? (allParts[item.draggableItems[0].partId]?.name || 'Linh kiện lẻ') : 'Linh kiện lẻ') 
                         : t('cart.custom_lego_frame')}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-gray-500 truncate mb-1">

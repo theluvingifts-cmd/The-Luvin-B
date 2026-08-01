@@ -86,10 +86,10 @@ function sendCsvResponse(headers: string[], rows: string[][], filename: string, 
 function handleOrdersDataset(orders: Order[], type: string, res: any) {
     const formattedOrders = orders.map(order => {
         // Chi tiết sản phẩm
-        const itemsDetail = (order.items || []).map((item, idx) => {
-            const charCount = (item.characters || []).length;
-            const charmCount = (item.draggableItems || []).filter(di => di.type === 'charm').length;
-            const textCount = (item.texts || []).length;
+        const itemsDetail = (Array.isArray(order.items) ? order.items : []).map((item, idx) => {
+            const charCount = (Array.isArray(item.characters) ? item.characters : []).length;
+            const charmCount = (Array.isArray(item.draggableItems) ? item.draggableItems : []).filter(di => di.type === 'charm').length;
+            const textCount = (Array.isArray(item.texts) ? item.texts : []).length;
             return `Sản phẩm ${idx + 1} [Khung: ${item.frameId || 'Mặc định'}, Nhân vật: ${charCount}, Phụ kiện/Sticker: ${charmCount}, Chữ: ${textCount}]`;
         }).join(' | ');
 

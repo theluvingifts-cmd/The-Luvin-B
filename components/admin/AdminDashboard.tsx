@@ -327,17 +327,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
 
     const calculateOrderProfit = (order: Order): number => {
         let totalCost = 0;
-        (order.items || []).forEach(item => {
+        (Array.isArray(order.items) ? order.items : []).forEach(item => {
             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
             if (frame) totalCost += (frame.costPrice || 0);
-            (item.characters || []).forEach(char => {
+            (Array.isArray(item.characters) ? item.characters : []).forEach(char => {
                 if (char.hair) totalCost += (allKnownParts[char.hair.id]?.costPrice || 0);
                 if (char.face) totalCost += (allKnownParts[char.face.id]?.costPrice || 0);
                 if (char.shirt) totalCost += (allKnownParts[char.shirt.id]?.costPrice || 0);
                 if (char.pants) totalCost += (allKnownParts[char.pants.id]?.costPrice || 0);
                 if (char.hat) totalCost += (allKnownParts[char.hat.id]?.costPrice || 0);
             });
-            (item.draggableItems || []).forEach(di => {
+            (Array.isArray(item.draggableItems) ? item.draggableItems : []).forEach(di => {
                 if (di.type !== 'charm') {
                     totalCost += (allKnownParts[di.partId]?.costPrice || 0);
                 }
@@ -412,11 +412,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ orders, products
         };
 
         allCurrentOrders.forEach(order => {
-            (order.items || []).forEach(item => {
+            (Array.isArray(order.items) ? order.items : []).forEach(item => {
                 const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
                 const frameName = frame ? `Khung ${frame.name}` : `Khung ${item.frameId}`; 
                 inventory.frames[frameName] = (inventory.frames[frameName] || 0) + 1;
-                (item.draggableItems || []).forEach(di => {
+                (Array.isArray(item.draggableItems) ? item.draggableItems : []).forEach(di => {
                     if (di.type !== 'charm') {
                         const part = allKnownParts[di.partId];
                         if (part) {

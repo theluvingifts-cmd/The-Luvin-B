@@ -400,7 +400,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     const handleDeleteFont = async (fontId: string) => {
         if(confirm("Bạn có chắc muốn xóa font này?")) {
-            const updatedFonts = (storeConfig.uploadedFonts || []).filter(f => f.id !== fontId);
+            const updatedFonts = (Array.isArray(storeConfig.uploadedFonts) ? storeConfig.uploadedFonts : []).filter(f => f.id !== fontId);
             await updateStoreConfig({ uploadedFonts: updatedFonts });
             setStoreConfig(prev => ({ ...prev, uploadedFonts: updatedFonts }));
         }
@@ -449,7 +449,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     const handleDeleteStaff = async (email: string) => {
         if (confirm(`Bạn có chắc muốn xóa quyền truy cập của ${email}?`)) {
-            const updatedStaff = (storeConfig.staff || []).filter(s => s.email !== email);
+            const updatedStaff = (Array.isArray(storeConfig.staff) ? storeConfig.staff : []).filter(s => s.email !== email);
             const updatedStaffEmails = updatedStaff.map(s => s.email);
             const success = await updateStoreConfig({ 
                 staff: updatedStaff,
@@ -496,7 +496,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     const fontOptions = [
         { label: '--- Google Fonts ---', options: GOOGLE_FONTS.map(f => ({ value: f.name, label: f.label })) },
-        { label: '--- Custom Fonts ---', options: (storeConfig.uploadedFonts || []).map(f => ({ value: f.name, label: `${f.name} (Uploaded)` })) }
+        { label: '--- Custom Fonts ---', options: (Array.isArray(storeConfig.uploadedFonts) ? storeConfig.uploadedFonts : []).map(f => ({ value: f.name, label: `${f.name} (Uploaded)` })) }
     ];
 
     return (
@@ -747,12 +747,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                     </h4>
                                     <div className="space-y-4">
                                         <div className="flex flex-wrap gap-3">
-                                            {(storeConfig.polaroidSampleImages || []).map((url, idx) => (
+                                            {(Array.isArray(storeConfig.polaroidSampleImages) ? storeConfig.polaroidSampleImages : []).map((url, idx) => (
                                                 <div key={idx} className="relative group w-24 h-32 border rounded-lg bg-white overflow-hidden">
                                                     <img src={url} alt={`Sample ${idx}`} className="w-full h-full object-cover" />
                                                     <button 
                                                         onClick={() => {
-                                                            const updated = (storeConfig.polaroidSampleImages || []).filter((_, i) => i !== idx);
+                                                            const updated = (Array.isArray(storeConfig.polaroidSampleImages) ? storeConfig.polaroidSampleImages : []).filter((_, i) => i !== idx);
                                                             setStoreConfig(prev => ({ ...prev, polaroidSampleImages: updated }));
                                                             updateStoreConfig({ polaroidSampleImages: updated });
                                                         }}

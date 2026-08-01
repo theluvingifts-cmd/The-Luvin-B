@@ -105,7 +105,7 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
         }
         
         // 3. Draggable Items (Charms)
-        if (newItem.draggableItems && newItem.draggableItems.length > 0) {
+        if (Array.isArray(newItem.draggableItems) && newItem.draggableItems.length > 0) {
             const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
                 if (di.type === 'charm' && di.partId && di.partId.startsWith('data:')) {
                     try {
@@ -255,7 +255,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                         quantity: item.quantity || 1,
                         price: item.price || 0,
                         sku: item.templateId || 'LEGO_FRAME',
-                        variation_info: `Nhân vật: ${item.characters.length}, Phụ kiện: ${item.draggableItems.length}`
+                        variation_info: `Nhân vật: ${(Array.isArray(item.characters) ? item.characters : []).length}, Phụ kiện: ${(Array.isArray(item.draggableItems) ? item.draggableItems : []).length}`
                     })),
                     total_price: finalOrder.totalPrice,
                     discount_amount: finalOrder.discountAmount || 0,
