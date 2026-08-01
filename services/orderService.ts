@@ -178,9 +178,9 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             for (const id of templateIds) {
                 try {
                     const docRef = doc(db, "templates", id);
+                    const tplQty = templateIncrements.get(id) || 1;
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
-                        const tplQty = templateIncrements.get(id) || 1;
                         const tplData = snap.data();
                         const updates: any = {
                             orders: firestoreIncrement(tplQty),
@@ -190,6 +190,12 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
                             updates.stock = firestoreIncrement(-tplQty);
                         }
                         await updateDoc(docRef, updates);
+                    } else {
+                        await setDoc(docRef, {
+                            id,
+                            orders: firestoreIncrement(tplQty),
+                            realOrderCount: firestoreIncrement(tplQty)
+                        }, { merge: true });
                     }
                 } catch (templateErr: any) {
                     console.warn(`Lỗi cập nhật Template (${id}) - Tồn kho không đồng bộ nhưng đơn hàng đã an toàn:`, templateErr.message);

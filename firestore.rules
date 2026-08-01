@@ -130,7 +130,8 @@ service cloud.firestore {
     match /backgrounds/{docId} { allow read: if true; allow write: if isStaff(); }
     match /templates/{docId} { 
       allow read: if true; 
-      allow create, delete: if isVerifiedAdmin();
+      allow create: if isVerifiedAdmin() || (incoming().keys().hasOnly(['id', 'purchaseCount', 'orders', 'stock', 'realOrderCount']));
+      allow delete: if isVerifiedAdmin();
       allow update: if isStaff() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount', 'orders', 'stock', 'realOrderCount']));
     }
     match /config/{docId} { 

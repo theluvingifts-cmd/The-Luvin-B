@@ -79,11 +79,13 @@ export const deleteTemplate = async (id: string) => {
 
 export const incrementTemplatePurchaseCount = async (templateId: string, amount: number = 1) => {
     try {
+        if (!templateId) return;
         const docRef = doc(db, COLLECTION_NAME, templateId);
-        await updateDoc(docRef, {
+        await setDoc(docRef, {
+            id: templateId,
             realOrderCount: increment(amount),
             orders: increment(amount)
-        });
+        }, { merge: true });
     } catch (error) {
         console.error("Error incrementing purchase count:", error);
     }
