@@ -673,7 +673,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         
         const giftBoxFee = newOrder.addGiftBox ? 30000 * totalQuantity : 0;
         const lightFee = (newOrder.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 0) * legoQuantity : 0;
-        const polaroidFee = Number(newOrder.addPolaroid) === 2 ? 15000 : Number(newOrder.addPolaroid) === 4 ? 25000 : 0;
+        const pol2Price = storeConfig?.polaroidPrice2 || 15000;
+        const pol4Price = storeConfig?.polaroidPrice4 || 25000;
+        const polaroidFee = Number(newOrder.addPolaroid) === 2 ? pol2Price : Number(newOrder.addPolaroid) === 4 ? pol4Price : 0;
         const shippingFee = newOrder.shipping.fee || 0;
         const discount = newOrder.discountAmount || 0;
         const finalPrice = Math.max(0, subtotal + giftBoxFee + lightFee + polaroidFee + shippingFee - discount);
@@ -856,7 +858,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             
         const giftBoxFee = order.addGiftBox ? 30000 * totalQuantity : 0;
         const lightFee = (order.addLight && legoQuantity > 0) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
-        const polaroidFee = Number(order.addPolaroid) === 2 ? 15000 : Number(order.addPolaroid) === 4 ? 25000 : 0;
+        const pol2Price = storeConfig?.polaroidPrice2 || 15000;
+        const pol4Price = storeConfig?.polaroidPrice4 || 25000;
+        const polaroidFee = Number(order.addPolaroid) === 2 ? pol2Price : Number(order.addPolaroid) === 4 ? pol4Price : 0;
         const shippingFee = order.shipping.fee || 0;
         const discount = order.discountAmount || 0;
         const totalPrice = order.totalPrice; 

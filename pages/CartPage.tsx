@@ -2,6 +2,7 @@
 import React from 'react';
 import { FrameConfig, LegoPart, Page, CollectionTemplate, FrameOption } from '../types';
 import { calculatePrice, formatCurrency } from '../utils/pricing';
+import { getGalleryCounts } from '../utils/helpers';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from '../components/ZoomIcon';
 import { useLanguage } from '../src/contexts/LanguageContext';
@@ -71,17 +72,23 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                                 ? t('cart.accessory_only_desc') 
                                                 : t('order_lookup.item_desc', { count: item.characters.length, bg: item.background.type === 'color' ? t('order_lookup.bg_color') : t('order_lookup.bg_image') })}
                                         </p>
-                                        {item.galleryOptions && (
-                                            <div className="flex flex-wrap gap-2 sm:gap-3 mt-1 items-center">
-                                                {item.galleryOptions.photoFrameCount && <span className="text-xs text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">📸 {item.galleryOptions.photoFrameCount} {t('collection.photo_frames')}</span>}
-                                                {item.galleryOptions.lightCount && <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full shadow-sm">💡 {item.galleryOptions.lightCount} {t('collection.led_lights')}</span>}
-                                                {item.galleryOptions.assembly && (
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
-                                                        {item.galleryOptions.assembly === 'pre-assembled' ? `✨ ${t('studio.museum.assembly_pre')}` : `✂️ ${t('studio.museum.assembly_diy')}`}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
+                                        {(() => {
+                                            const template = templates.find(t => t.id === item.templateId);
+                                            const counts = getGalleryCounts(item, template);
+                                            const hasGalleryInfo = counts.photoFrameCount > 0 || counts.lightCount > 0 || item.galleryOptions?.assembly;
+                                            if (!hasGalleryInfo) return null;
+                                            return (
+                                                <div className="flex flex-wrap gap-2 sm:gap-3 mt-1 items-center">
+                                                    {counts.photoFrameCount > 0 && <span className="text-xs text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-full shadow-sm">📸 {counts.photoFrameCount} {t('collection.photo_frames')}</span>}
+                                                    {counts.lightCount > 0 && <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full shadow-sm">💡 {counts.lightCount} {t('collection.led_lights')}</span>}
+                                                    {item.galleryOptions?.assembly && (
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                                                            {item.galleryOptions.assembly === 'pre-assembled' ? `✨ ${t('studio.museum.assembly_pre')}` : `✂️ ${t('studio.museum.assembly_diy')}`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                         
                                         {/* Character & Charm Previews */}
                                         <div className="flex flex-wrap gap-2 mt-2">

@@ -281,6 +281,15 @@ export interface PresetBackground {
     formFields?: FormField[]; 
 }
 
+export interface TemplateConcept {
+    id: string;
+    name: string;
+    imageUrl: string;
+    characters?: LegoCharacterConfig[];
+    draggableItems?: DraggableItem[];
+    background?: BackgroundConfig;
+}
+
 export interface CollectionTemplate {
     id: string;
     name: string;
@@ -301,6 +310,7 @@ export interface CollectionTemplate {
     productLine?: 'lego' | 'gallery';
     order?: number;
     stock?: number;
+    concepts?: TemplateConcept[];
     galleryOptions?: {
         photoFrameCount?: number;
         lightCount?: number;

@@ -246,7 +246,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   
   const lightFee = (!storeConfig?.lightOutOfStock && addLight && hasLegoItems) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
 
-  const polaroidFee = polaroidOption === 2 ? 15000 : polaroidOption === 4 ? 25000 : 0;
+  const pol2Price = storeConfig?.polaroidPrice2 ?? 15000;
+  const pol4Price = storeConfig?.polaroidPrice4 ?? 25000;
+  const polaroidFee = polaroidOption === 2 ? pol2Price : polaroidOption === 4 ? pol4Price : 0;
   
   const daysDifference = useMemo(() => {
       if (!deliveryDate) return 0;
@@ -883,14 +885,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 onClick={() => setPolaroidOption(2)}
                                 className={`py-1.5 sm:py-2 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all border ${polaroidOption === 2 ? 'bg-luvin-pink text-white border-luvin-pink shadow-sm' : 'bg-white text-gray-400 border-gray-100 hover:border-luvin-pink'}`}
                             >
-                                {t('checkout.polaroid_option_2')}
+                                In 2 ảnh (+{formatCurrency(pol2Price)})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setPolaroidOption(4)}
                                 className={`py-1.5 sm:py-2 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all border ${polaroidOption === 4 ? 'bg-luvin-pink text-white border-luvin-pink shadow-sm' : 'bg-white text-gray-400 border-gray-100 hover:border-luvin-pink'}`}
                             >
-                                {t('checkout.polaroid_option_4')}
+                                In 4 ảnh (+{formatCurrency(pol4Price)})
                             </button>
                         </div>
                     </div>

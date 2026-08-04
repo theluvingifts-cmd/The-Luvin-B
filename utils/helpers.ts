@@ -117,6 +117,46 @@ export const formatFullAddress = (customer: { address: string; ward?: string; di
 };
 
 /**
+ * An toàn sao chép sâu (deep clone) một đối tượng mà không bị lỗi Circular structure hay DOM elements
+ */
+export const safeClone = <T>(obj: T): T => {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj !== 'object') return obj;
+
+    const seen = new WeakSet();
+    const clone = (item: any): any => {
+        if (item === null || item === undefined) return item;
+        if (typeof item !== 'object') return item;
+        if (typeof item === 'function') return undefined;
+        if (typeof Node !== 'undefined' && item instanceof Node) return undefined;
+        if (item.nodeType && typeof item.nodeName === 'string') return undefined;
+        if (item.$$typeof) return undefined; // React element
+
+        if (seen.has(item)) return undefined;
+        seen.add(item);
+
+        if (Array.isArray(item)) {
+            return item.map(i => clone(i)).filter(i => i !== undefined);
+        }
+
+        if (item instanceof Date) return new Date(item.getTime());
+
+        const result: any = {};
+        for (const key in item) {
+            if (Object.prototype.hasOwnProperty.call(item, key)) {
+                const val = clone(item[key]);
+                if (val !== undefined) {
+                    result[key] = val;
+                }
+            }
+        }
+        return result;
+    };
+
+    return clone(obj);
+};
+
+/**
  * Chuyển đổi một đối tượng thành chuỗi JSON một cách an toàn,
  * xử lý được các cấu trúc vòng (circular structure).
  */
@@ -248,4 +288,65 @@ export const cleanForFirestore = (obj: any, seen = new WeakSet()): any => {
         }
     }
     return newObj;
+};
+
+/**
+ * Automatically calculates photo frame and LED light counts for gallery products or configurations
+ */
+export const getGalleryCounts = (
+    customConfig?: any | null, 
+    template?: any | null
+): { photoFrameCount: number; lightCount: number } => {
+    let photoFrameCount = customConfig?.galleryOptions?.photoFrameCount 
+        ?? template?.galleryOptions?.photoFrameCount 
+        ?? template?.config?.galleryOptions?.photoFrameCount;
+
+    if (photoFrameCount === undefined || photoFrameCount === null || photoFrameCount === 0) {
+        // 1. Check formFields for image upload fields (e.g. photo frames on the wall)
+        const formFields = customConfig?.formFields || template?.config?.formFields || [];
+        const imageFieldsCount = Array.isArray(formFields) ? formFields.filter((f: any) => f && f.type === 'image').length : 0;
+
+        // 2. Check draggableItems for photo frames
+        const draggableItems = customConfig?.draggableItems || template?.config?.draggableItems || [];
+        const frameItemsCount = Array.isArray(draggableItems) ? draggableItems.filter((item: any) => 
+            item && (
+                item.type === 'frame' || 
+                item.isPhotoFrame || 
+                (typeof item.partId === 'string' && (item.partId.toLowerCase().includes('frame') || item.partId.toLowerCase().includes('khung')))
+            )
+        ).length : 0;
+
+        photoFrameCount = Math.max(imageFieldsCount, frameItemsCount);
+    }
+
+    let lightCount = customConfig?.galleryOptions?.lightCount 
+        ?? template?.galleryOptions?.lightCount 
+        ?? template?.config?.galleryOptions?.lightCount;
+
+    if (lightCount === undefined || lightCount === null || lightCount === 0) {
+        const draggableItems = customConfig?.draggableItems || template?.config?.draggableItems || [];
+        const lightItems = Array.isArray(draggableItems) ? draggableItems.filter((item: any) => 
+            item && (
+                item.type === 'light' || 
+                (typeof item.partId === 'string' && (item.partId.toLowerCase().includes('light') || item.partId.toLowerCase().includes('den') || item.partId.toLowerCase().includes('led')))
+            )
+        ) : [];
+        
+        if (lightItems.length > 0) {
+            lightCount = lightItems.length;
+        } else {
+            const isGallery = template?.productLine === 'gallery' || customConfig?.productLine === 'gallery' || (template?.name && template.name.toUpperCase().includes('GALLERY'));
+            if (isGallery) {
+                // Standard top LED spotlights for gallery frames
+                lightCount = 2;
+            } else {
+                lightCount = 0;
+            }
+        }
+    }
+
+    return {
+        photoFrameCount: Number(photoFrameCount) || 0,
+        lightCount: Number(lightCount) || 0
+    };
 };

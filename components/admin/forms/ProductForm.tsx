@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { LegoPart, OutfitColor, BulkPriceTier } from '../../../types';
 import { uploadFile } from '../../../services/uploadService';
+import { safeClone } from '../../../utils/helpers';
 import { formatCurrency } from '../../../utils/pricing';
 import { getDisplayOrderCount } from '../../../utils/orderUtils';
 import { DateInput } from '../../ui/DateInput';
@@ -184,7 +185,7 @@ export const ProductForm: React.FC<{
 
     const handleSave = () => {
         const dataToSave = { ...formData, colors: colors, bulkPricing: bulkTiers };
-        const cleanData = JSON.parse(JSON.stringify(dataToSave));
+        const cleanData = safeClone(dataToSave);
         onSave(cleanData);
     };
 

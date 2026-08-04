@@ -6,7 +6,7 @@ import { Scissors } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { COLLECTION_TEMPLATES } from '../constants';
 import { calculatePrice, formatCurrency, CHARACTER_BASE_PRICE, getEffectivePrice, isPartOutOfStock, getPartImageUrl } from '../utils/pricing';
-import { slugify } from '../utils/helpers';
+import { slugify, getGalleryCounts, safeClone } from '../utils/helpers';
 import { SmartImage } from '../components/shared/SmartImage';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
@@ -149,6 +149,31 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
     const [charCount, setCharCount] = useState<'all' | '1' | '2' | '3plus'>('all');
     const [sortBy, setSortBy] = useState<'default' | 'priceAsc' | 'priceDesc' | 'mostPurchased'>('default');
     const [isCustomizing, setIsCustomizing] = useState(false);
+    const [selectedConceptIndex, setSelectedConceptIndex] = useState<number>(0);
+
+    const handleSelectConcept = (idx: number) => {
+        if (!selectedTemplate || !selectedTemplate.concepts || !selectedTemplate.concepts[idx]) return;
+        setSelectedConceptIndex(idx);
+        const concept = selectedTemplate.concepts[idx];
+        setCustomConfig(prev => {
+            const next = { ...prev };
+            if (concept.characters && concept.characters.length > 0) {
+                next.characters = safeClone(concept.characters);
+            }
+            if (concept.draggableItems) {
+                next.draggableItems = safeClone(concept.draggableItems);
+            }
+            if (concept.background) {
+                next.background = safeClone(concept.background);
+            }
+            if (concept.imageUrl) {
+                next.previewImageUrl = concept.imageUrl;
+            }
+            next.selectedConceptId = concept.id;
+            next.selectedConceptName = concept.name;
+            return next;
+        });
+    };
 
     // Handle initial template selection from URL
     useEffect(() => {
@@ -163,13 +188,14 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     setOrderNote(initialConfig.customFormData?.order_note || '');
                 } else {
                     const fixedConfig = fixOutOfStockParts(template.config, allParts);
+                    const counts = getGalleryCounts(fixedConfig, template);
                     setCustomConfig({ 
                         ...fixedConfig, 
                         templateId: template.id,
-                        galleryOptions: template.productLine === 'gallery' ? {
-                            photoFrameCount: fixedConfig.galleryOptions?.photoFrameCount || template.galleryOptions?.photoFrameCount || 0,
-                            lightCount: fixedConfig.galleryOptions?.lightCount || template.galleryOptions?.lightCount || 0,
-                            assembly: fixedConfig.galleryOptions?.assembly || template.galleryOptions?.assembly || 'diy'
+                        galleryOptions: (template.productLine === 'gallery' || counts.photoFrameCount > 0) ? {
+                            photoFrameCount: counts.photoFrameCount,
+                            lightCount: counts.lightCount,
+                            assembly: fixedConfig.galleryOptions?.assembly || template.galleryOptions?.assembly || template.config?.galleryOptions?.assembly || 'diy'
                         } : fixedConfig.galleryOptions,
                         productLine: template.productLine || (urlProductLine as any) || activeProductLine 
                     });
@@ -376,14 +402,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         navigate(`/collection/${activeProductLine}/${categorySlug}/${template.id}`, { replace: true });
         setSelectedTemplate(template);
         const fixedConfig = fixOutOfStockParts(template.config, allParts);
+        const counts = getGalleryCounts(fixedConfig, template);
         
         // Initialize gallery options if it's a gallery product
         let galleryOptions = undefined;
-        if (template.productLine === 'gallery') {
+        if (template.productLine === 'gallery' || counts.photoFrameCount > 0) {
             const templateGallery = template.galleryOptions || template.config?.galleryOptions;
             galleryOptions = {
-                photoFrameCount: templateGallery?.photoFrameCount || 0,
-                lightCount: templateGallery?.lightCount || 0,
+                photoFrameCount: counts.photoFrameCount,
+                lightCount: counts.lightCount,
                 assembly: templateGallery?.assembly || 'diy'
             };
         }
@@ -539,8 +566,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             scrollToNote();
             return;
         }
+        const counts = getGalleryCounts(customConfig, selectedTemplate);
         const finalConfig = {
             ...customConfig,
+            galleryOptions: (selectedTemplate?.productLine === 'gallery' || counts.photoFrameCount > 0) ? {
+                ...(customConfig.galleryOptions || {}),
+                photoFrameCount: counts.photoFrameCount,
+                lightCount: counts.lightCount,
+                assembly: customConfig.galleryOptions?.assembly || selectedTemplate?.galleryOptions?.assembly || 'diy'
+            } : customConfig.galleryOptions,
             previewImageUrl: selectedTemplate?.imageUrl,
             customFormData: {
                 ...(customConfig.customFormData || {}),
@@ -575,8 +609,15 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             scrollToNote();
             return;
         }
+        const counts = getGalleryCounts(customConfig, selectedTemplate);
         const finalConfig = {
             ...customConfig,
+            galleryOptions: (selectedTemplate?.productLine === 'gallery' || counts.photoFrameCount > 0) ? {
+                ...(customConfig.galleryOptions || {}),
+                photoFrameCount: counts.photoFrameCount,
+                lightCount: counts.lightCount,
+                assembly: customConfig.galleryOptions?.assembly || selectedTemplate?.galleryOptions?.assembly || 'diy'
+            } : customConfig.galleryOptions,
             previewImageUrl: selectedTemplate?.imageUrl,
             customFormData: {
                 ...(customConfig.customFormData || {}),
@@ -992,21 +1033,23 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         </div>
 
         {/* Simple Clean Header */}
-        {selectedTemplate && customConfig && (
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
+        {selectedTemplate && customConfig && (() => {
+            const activePreviewImage = (selectedTemplate.concepts && selectedTemplate.concepts[selectedConceptIndex]?.imageUrl) || selectedTemplate.imageUrl || '';
+            return (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in" onClick={handleCloseModal}>
                 <div 
                     className="bg-white w-full max-w-2xl lg:max-w-6xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-slide-up flex flex-col lg:flex-row lg:h-[90vh] max-h-[90vh]"
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Left Pillar: Preview (Desktop) */}
                     <div className="hidden lg:flex w-1/2 bg-gray-50 items-center justify-center relative overflow-hidden border-r border-gray-100 shadow-inner">
-                        <div className="w-full h-full relative flex items-center justify-center p-12">
+                        <div className="w-full h-full relative flex flex-col items-center justify-center p-8">
                             {selectedTemplate.isSimple ? (
                                 <div className="relative w-full h-full flex flex-wrap items-center justify-center gap-10 content-center scale-110">
                                     {(Array.isArray(customConfig.characters) ? customConfig.characters : []).length === 0 && (Array.isArray(customConfig.draggableItems) ? customConfig.draggableItems : []).length === 0 && (
                                         <div className="text-center animate-fade-in">
                                             <img 
-                                                src={selectedTemplate.imageUrl} 
+                                                src={activePreviewImage} 
                                                 alt={selectedTemplate.name} 
                                                 className="max-h-72 mx-auto object-contain rounded-3xl opacity-40 grayscale blur-[2px]" 
                                             />
@@ -1025,12 +1068,33 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     ))}
                                 </div>
                             ) : (
-                                <div className="relative group w-full h-full flex items-center justify-center">
+                                <div className="relative group w-full h-full flex flex-col items-center justify-center">
                                     <img 
-                                        src={selectedTemplate.imageUrl} 
+                                        src={activePreviewImage} 
                                         alt={selectedTemplate.name} 
-                                        className="max-h-full max-w-full object-contain rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.12)] transition-transform duration-700 group-hover:scale-[1.02]" 
+                                        className="max-h-[80%] max-w-full object-contain rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.12)] transition-transform duration-700 group-hover:scale-[1.02]" 
                                     />
+                                    {selectedTemplate.concepts && selectedTemplate.concepts.length > 0 && (
+                                        <div className="flex items-center gap-2 mt-4 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-pink-100 shadow-lg z-10">
+                                            <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest mr-1">Concept:</span>
+                                            {selectedTemplate.concepts.map((concept, idx) => (
+                                                <button
+                                                    key={concept.id || idx}
+                                                    onClick={() => handleSelectConcept(idx)}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                                                        selectedConceptIndex === idx
+                                                            ? 'border-luvin-pink bg-pink-50 text-luvin-pink shadow-sm ring-2 ring-pink-200 scale-105'
+                                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                                >
+                                                    {concept.imageUrl && (
+                                                        <img src={concept.imageUrl} className="w-5 h-5 rounded-md object-cover" alt={concept.name} />
+                                                    )}
+                                                    <span>{concept.name || `Concept ${idx + 1}`}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1055,6 +1119,31 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight leading-tight mb-2">
                                 {selectedTemplate.name}
                             </h2>
+
+                            {/* Concept switcher buttons under header */}
+                            {selectedTemplate.concepts && selectedTemplate.concepts.length > 0 && (
+                                <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
+                                    {selectedTemplate.concepts.map((concept, idx) => {
+                                        const isSelected = selectedConceptIndex === idx;
+                                        return (
+                                            <button
+                                                key={concept.id || idx}
+                                                onClick={() => handleSelectConcept(idx)}
+                                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                                                    isSelected 
+                                                        ? 'bg-luvin-pink text-white border-luvin-pink shadow-md scale-105' 
+                                                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {concept.imageUrl && (
+                                                    <img src={concept.imageUrl} className="w-5 h-5 rounded-md object-cover border border-white/40" alt={concept.name} />
+                                                )}
+                                                <span>{concept.name || `Concept ${idx + 1}`}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                             
                             {/* Prominent Toggle button (Mobile Only) */}
                             <button 
@@ -1104,7 +1193,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                     {(Array.isArray(customConfig.characters) ? customConfig.characters : []).length === 0 && (Array.isArray(customConfig.draggableItems) ? customConfig.draggableItems : []).length === 0 && (
                                         <div className="text-center">
                                             <img 
-                                                src={selectedTemplate.imageUrl} 
+                                                src={activePreviewImage} 
                                                 alt={selectedTemplate.name} 
                                                 className="max-h-48 mx-auto object-contain rounded-xl opacity-50 grayscale" 
                                             />
@@ -1125,7 +1214,7 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                             ) : (
                                 <>
                                     <img 
-                                        src={selectedTemplate.imageUrl} 
+                                        src={activePreviewImage} 
                                         alt={selectedTemplate.name} 
                                         className="w-full h-full object-cover" 
                                     />
@@ -1264,22 +1353,25 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                         <span className="text-[8px] font-black text-blue-800 uppercase text-center leading-tight">{t('studio.include_card')}</span>
                                     </div>
                                 )}
-                                {selectedTemplate.productLine === 'gallery' && (
-                                    <>
-                                        <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
-                                            <span className="text-lg mb-1">📸</span>
-                                            <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">
-                                                {(customConfig.galleryOptions?.photoFrameCount ?? selectedTemplate.galleryOptions?.photoFrameCount) || 0} {t('collection.photo_frames') || 'khung ảnh'}
-                                            </span>
-                                        </div>
-                                        <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
-                                            <span className="text-lg mb-1">💡</span>
-                                            <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">
-                                                {(customConfig.galleryOptions?.lightCount ?? selectedTemplate.galleryOptions?.lightCount) || 0} {t('collection.led_lights') || 'đèn led'}
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
+                                {selectedTemplate.productLine === 'gallery' && (() => {
+                                    const counts = getGalleryCounts(customConfig, selectedTemplate);
+                                    return (
+                                        <>
+                                            <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
+                                                <span className="text-lg mb-1">📸</span>
+                                                <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">
+                                                    {counts.photoFrameCount} {t('collection.photo_frames') || 'khung ảnh'}
+                                                </span>
+                                            </div>
+                                            <div className="flex-1 min-w-[85px] sm:min-w-0 sm:flex-1 flex flex-col items-center p-2 bg-white rounded-2xl border border-blue-50/50 shadow-sm transition-all hover:scale-[1.02]">
+                                                <span className="text-lg mb-1">💡</span>
+                                                <span className="text-[9px] font-black text-blue-800 uppercase text-center leading-tight">
+                                                    {counts.lightCount} {t('collection.led_lights') || 'đèn led'}
+                                                </span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                             
                             {selectedTemplate.productLine === 'gallery' && (
@@ -1537,8 +1629,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                         <div className="grid grid-cols-3 gap-2">
                                                             {[
                                                                 { id: 'none', label: t('studio.none') || 'Không chọn', price: 0 },
-                                                                { id: 'standard', label: t('studio.standard_print') || 'In thường', price: 100000 },
-                                                                { id: 'premium', label: t('studio.premium_print') || 'In cao cấp', price: 300000 }
+                                                                { id: 'standard', label: t('studio.standard_print') || 'In thường', price: storeConfig?.customPrintStandardPrice ?? 100000 },
+                                                                { id: 'premium', label: t('studio.premium_print') || 'In cao cấp', price: storeConfig?.customPrintPremiumPrice ?? 300000 }
                                                             ].filter(opt => opt.id !== 'standard' || !storeConfig?.standardPrintOutOfStock).map(opt => (
                                                                 <div key={opt.id} className="relative">
                                                                     <button
@@ -1890,29 +1982,35 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{t('collection.photo_frames_count') || 'Số lượng khung ảnh'}</label>
                                             <div className="flex items-center gap-3">
                                                 <button 
-                                                    onClick={() => setCustomConfig({
-                                                        ...customConfig,
-                                                        galleryOptions: { 
-                                                            ...customConfig.galleryOptions, 
-                                                            photoFrameCount: Math.max(1, (customConfig.galleryOptions?.photoFrameCount || 1) - 1) 
-                                                        }
-                                                    })}
+                                                    onClick={() => {
+                                                        const currentFrames = getGalleryCounts(customConfig, selectedTemplate).photoFrameCount;
+                                                        setCustomConfig({
+                                                            ...customConfig,
+                                                            galleryOptions: { 
+                                                                ...customConfig.galleryOptions, 
+                                                                photoFrameCount: Math.max(1, currentFrames - 1) 
+                                                            }
+                                                        });
+                                                    }}
                                                     className="w-10 h-10 rounded-xl bg-white border border-pink-100 flex items-center justify-center text-pink-500 hover:bg-pink-50 transition-colors shadow-sm"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                                                 </button>
                                                 <div className="flex-1 bg-white border border-pink-100 rounded-xl py-2 flex flex-col items-center justify-center shadow-sm">
-                                                    <span className="text-sm font-black text-gray-800 leading-none">{customConfig.galleryOptions?.photoFrameCount || 0}</span>
+                                                    <span className="text-sm font-black text-gray-800 leading-none">{getGalleryCounts(customConfig, selectedTemplate).photoFrameCount}</span>
                                                     <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">{t('collection.frames_unit') || 'khung'}</span>
                                                 </div>
                                                 <button 
-                                                    onClick={() => setCustomConfig({
-                                                        ...customConfig,
-                                                        galleryOptions: { 
-                                                            ...customConfig.galleryOptions, 
-                                                            photoFrameCount: (customConfig.galleryOptions?.photoFrameCount || 0) + 1 
-                                                        }
-                                                    })}
+                                                    onClick={() => {
+                                                        const currentFrames = getGalleryCounts(customConfig, selectedTemplate).photoFrameCount;
+                                                        setCustomConfig({
+                                                            ...customConfig,
+                                                            galleryOptions: { 
+                                                                ...customConfig.galleryOptions, 
+                                                                photoFrameCount: currentFrames + 1 
+                                                            }
+                                                        });
+                                                    }}
                                                     className="w-10 h-10 rounded-xl bg-white border border-pink-100 flex items-center justify-center text-pink-500 hover:bg-pink-50 transition-colors shadow-sm"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
@@ -1926,29 +2024,35 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                             <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{t('collection.led_lights_count') || 'Số lượng đèn LED'}</label>
                                             <div className="flex items-center gap-3">
                                                 <button 
-                                                    onClick={() => setCustomConfig({
-                                                        ...customConfig,
-                                                        galleryOptions: { 
-                                                            ...customConfig.galleryOptions, 
-                                                            lightCount: Math.max(0, (customConfig.galleryOptions?.lightCount || 0) - 1) 
-                                                        }
-                                                    })}
+                                                    onClick={() => {
+                                                        const currentLights = getGalleryCounts(customConfig, selectedTemplate).lightCount;
+                                                        setCustomConfig({
+                                                            ...customConfig,
+                                                            galleryOptions: { 
+                                                                ...customConfig.galleryOptions, 
+                                                                lightCount: Math.max(0, currentLights - 1) 
+                                                            }
+                                                        });
+                                                    }}
                                                     className="w-10 h-10 rounded-xl bg-white border border-pink-100 flex items-center justify-center text-pink-500 hover:bg-pink-50 transition-colors shadow-sm"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                                                 </button>
                                                 <div className="flex-1 bg-white border border-pink-100 rounded-xl py-2 flex flex-col items-center justify-center shadow-sm">
-                                                    <span className="text-sm font-black text-gray-800 leading-none">{customConfig.galleryOptions?.lightCount || 0}</span>
+                                                    <span className="text-sm font-black text-gray-800 leading-none">{getGalleryCounts(customConfig, selectedTemplate).lightCount}</span>
                                                     <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">{t('collection.bulbs_unit') || 'bóng đèn'}</span>
                                                 </div>
                                                 <button 
-                                                    onClick={() => setCustomConfig({
-                                                        ...customConfig,
-                                                        galleryOptions: { 
-                                                            ...customConfig.galleryOptions, 
-                                                            lightCount: (customConfig.galleryOptions?.lightCount || 0) + 1 
-                                                        }
-                                                    })}
+                                                    onClick={() => {
+                                                        const currentLights = getGalleryCounts(customConfig, selectedTemplate).lightCount;
+                                                        setCustomConfig({
+                                                            ...customConfig,
+                                                            galleryOptions: { 
+                                                                ...customConfig.galleryOptions, 
+                                                                lightCount: currentLights + 1 
+                                                            }
+                                                        });
+                                                    }}
                                                     className="w-10 h-10 rounded-xl bg-white border border-pink-100 flex items-center justify-center text-pink-500 hover:bg-pink-50 transition-colors shadow-sm"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
@@ -2031,7 +2135,8 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                   </div>
                 </div>
             </div>
-        )}
+            );
+        })()}
 
         {/* Simple Clean Header */}
         <div className="bg-white border-b border-gray-100 pt-16 pb-8 px-4">

@@ -191,7 +191,9 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
         const isGallery = config.productLine === 'gallery';
         
         if (char.customPrintOption && char.customPrintOption !== 'none') {
-            const printPrice = char.customPrintPrice || (char.customPrintOption === 'premium' ? 300000 : 100000);
+            const stdPrintPrice = storeConfig?.customPrintStandardPrice ?? 100000;
+            const premPrintPrice = storeConfig?.customPrintPremiumPrice ?? 300000;
+            const printPrice = char.customPrintPrice || (char.customPrintOption === 'premium' ? premPrintPrice : stdPrintPrice);
             total += printPrice;
             breakdown.push({ 
                 label: `In theo yêu cầu ${char.customPrintOption === 'premium' ? '(Cao cấp)' : '(Thường)'} ${charLabel}`, 
@@ -348,10 +350,10 @@ export const calculatePrice = (config: FrameConfig, allParts: Record<string, Leg
     return { totalPrice: total, priceBreakdown: breakdown };
 };
 
-export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[]) => {
+export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoPart>, frames: FrameOption[], templates?: CollectionTemplate[], storeConfig?: any) => {
     let subtotal = 0;
     order.items.forEach(item => {
-        const { totalPrice } = calculatePrice(item, allParts, frames, templates);
+        const { totalPrice } = calculatePrice(item, allParts, frames, templates, undefined, storeConfig);
         subtotal += totalPrice * (item.quantity || 1);
     });
     const totalQuantityForGiftBox = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -360,8 +362,12 @@ export const calculateOrderTotal = (order: Order, allParts: Record<string, LegoP
         .reduce((sum, item) => sum + (item.quantity || 1), 0);
     
     const giftBoxFee = order.addGiftBox ? 30000 * totalQuantityForGiftBox : 0;
-    const lightFee = order.addLight ? 50000 * legoQuantity : 0;
-    const polaroidFee = Number(order.addPolaroid) === 2 ? 15000 : Number(order.addPolaroid) === 4 ? 25000 : 0;
+    const lightPrice = storeConfig?.lightPrice ?? 50000;
+    const lightFee = order.addLight ? lightPrice * legoQuantity : 0;
+    
+    const pol2Price = storeConfig?.polaroidPrice2 ?? 15000;
+    const pol4Price = storeConfig?.polaroidPrice4 ?? 25000;
+    const polaroidFee = Number(order.addPolaroid) === 2 ? pol2Price : Number(order.addPolaroid) === 4 ? pol4Price : 0;
     const shippingFee = order.shipping.fee || 0;
     const discount = order.discountAmount || 0;
     return Math.max(0, subtotal + giftBoxFee + lightFee + polaroidFee + shippingFee - discount);

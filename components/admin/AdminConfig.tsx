@@ -13,6 +13,7 @@ import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '../../config/firebase';
 import { testTelegramConnection } from '../../services/telegramService';
 import { findUnusedImages, deleteStorageFiles, UnusedFile, cleanupOldOrderImages } from '../../services/cleanupService';
+import { safeClone } from '../../utils/helpers';
 
 interface AdminConfigProps {
     storeConfig: StoreConfig;
@@ -183,7 +184,7 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
     const handleThemeChange = (path: string, value: string) => {
         setThemeConfig(prev => {
-            const newConfig = JSON.parse(JSON.stringify(prev));
+            const newConfig = safeClone(prev);
             const keys = path.split('.');
             let current = newConfig;
             for (let i = 0; i < keys.length - 1; i++) {
@@ -209,6 +210,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
             museumSurcharge: museumSurcharge,
             disableThankYouEmail: storeConfig.disableThankYouEmail,
             lightPrice: storeConfig.lightPrice,
+            customPrintStandardPrice: storeConfig.customPrintStandardPrice,
+            customPrintPremiumPrice: storeConfig.customPrintPremiumPrice,
+            polaroidPrice2: storeConfig.polaroidPrice2,
+            polaroidPrice4: storeConfig.polaroidPrice4,
             appIconUrl: storeConfig.appIconUrl,
             standardPrintImageUrl: storeConfig.standardPrintImageUrl,
             standardPrintOutOfStock: storeConfig.standardPrintOutOfStock,
@@ -230,6 +235,10 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                 museumSurcharge: museumSurcharge,
                 disableThankYouEmail: storeConfig.disableThankYouEmail,
                 lightPrice: storeConfig.lightPrice,
+                customPrintStandardPrice: storeConfig.customPrintStandardPrice,
+                customPrintPremiumPrice: storeConfig.customPrintPremiumPrice,
+                polaroidPrice2: storeConfig.polaroidPrice2,
+                polaroidPrice4: storeConfig.polaroidPrice4,
                 appIconUrl: storeConfig.appIconUrl,
                 standardPrintImageUrl: storeConfig.standardPrintImageUrl,
                 standardPrintOutOfStock: storeConfig.standardPrintOutOfStock,
@@ -704,9 +713,12 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
 
                                 <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-orange-50/30">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                            🎨 Ảnh mẫu In Yêu Cầu
-                                        </h4>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                                🎨 Dịch vụ & Giá In Yêu Cầu
+                                            </h4>
+                                            <p className="text-xs text-gray-400 mt-0.5">Tùy chỉnh giá gói in thường và in cao cấp cho mặt/áo/LEGO.</p>
+                                        </div>
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[10px] font-black uppercase ${storeConfig.standardPrintOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
                                                 {storeConfig.standardPrintOutOfStock ? 'In thường: Tạm tắt' : 'In thường: Đang bật'}
@@ -723,17 +735,45 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                             </button>
                                         </div>
                                     </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Giá In Thường (+VND)
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded text-sm bg-white font-bold" 
+                                                value={storeConfig.customPrintStandardPrice ?? 100000} 
+                                                onChange={(e) => setStoreConfig({...storeConfig, customPrintStandardPrice: Number(e.target.value)})} 
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1">Áp dụng cho gói In thường trong Studio & Mẫu thiết kế</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Giá In Cao Cấp (+VND)
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded text-sm bg-white font-bold" 
+                                                value={storeConfig.customPrintPremiumPrice ?? 300000} 
+                                                onChange={(e) => setStoreConfig({...storeConfig, customPrintPremiumPrice: Number(e.target.value)})} 
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1">Áp dụng cho gói In cao cấp trong Studio & Mẫu thiết kế</p>
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <ConfigImageUpload 
                                             label="Ảnh In Thường" 
-                                            description="Ví dụ cho gói 100k" 
+                                            description="Ví dụ cho gói in thường" 
                                             currentUrl={storeConfig.standardPrintImageUrl} 
                                             onUpload={(f) => handleConfigUpload(f, 'standardPrintImageUrl')} 
                                             isUploading={uploadingField === 'standardPrintImageUrl'} 
                                         />
                                         <ConfigImageUpload 
                                             label="Ảnh In Cao Cấp" 
-                                            description="Ví dụ cho gói 300k" 
+                                            description="Ví dụ cho gói in cao cấp" 
                                             currentUrl={storeConfig.premiumPrintImageUrl} 
                                             onUpload={(f) => handleConfigUpload(f, 'premiumPrintImageUrl')} 
                                             isUploading={uploadingField === 'premiumPrintImageUrl'} 
@@ -742,9 +782,37 @@ export const AdminConfig: React.FC<AdminConfigProps> = ({ storeConfig, setStoreC
                                 </div>
 
                                 <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-pink-50/20">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                        📸 Ảnh mẫu Polaroid
+                                    <h4 className="text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                                        📸 Dịch vụ & Giá In Ảnh Polaroid
                                     </h4>
+                                    <p className="text-xs text-gray-400 mb-4">Tùy chỉnh giá các gói in 2 ảnh và 4 ảnh Polaroid ở trang Thanh toán.</p>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 p-3 bg-white/80 rounded-xl border border-pink-100">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Giá In 2 Ảnh Polaroid (+VND)
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded text-sm bg-white font-bold" 
+                                                value={storeConfig.polaroidPrice2 ?? 15000} 
+                                                onChange={(e) => setStoreConfig({...storeConfig, polaroidPrice2: Number(e.target.value)})} 
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1">Phụ phí khi chọn in 2 ảnh Polaroid</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Giá In 4 Ảnh Polaroid (+VND)
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded text-sm bg-white font-bold" 
+                                                value={storeConfig.polaroidPrice4 ?? 25000} 
+                                                onChange={(e) => setStoreConfig({...storeConfig, polaroidPrice4: Number(e.target.value)})} 
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1">Phụ phí khi chọn in 4 ảnh Polaroid</p>
+                                        </div>
+                                    </div>
                                     <div className="space-y-4">
                                         <div className="flex flex-wrap gap-3">
                                             {(Array.isArray(storeConfig.polaroidSampleImages) ? storeConfig.polaroidSampleImages : []).map((url, idx) => (

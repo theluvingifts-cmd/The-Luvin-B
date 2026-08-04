@@ -2,6 +2,7 @@
 import React from 'react';
 import { FrameConfig, LegoPart, Page, CollectionTemplate, FrameOption } from '../types';
 import { calculatePrice, formatCurrency, FREE_SHIPPING_THRESHOLD } from '../utils/pricing';
+import { getGalleryCounts } from '../utils/helpers';
 import { FRAME_OPTIONS } from '../constants';
 import { ZoomIcon } from './ZoomIcon';
 import { useLanguage } from '../src/contexts/LanguageContext';
@@ -113,17 +114,23 @@ export const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems
                     <p className="text-[10px] sm:text-xs text-gray-500 truncate mb-1">
                       {item.frameId === 'accessory-only' ? 'Mua lẻ phụ kiện / dịch vụ thêm' : frame.name}
                     </p>
-                    {item.galleryOptions && (
-                        <div className="flex gap-2 mb-1">
-                            {item.galleryOptions.photoFrameCount && <span className="text-[9px] bg-pink-50 text-pink-600 px-1.5 rounded-md font-bold">{item.galleryOptions.photoFrameCount} Khung ảnh</span>}
-                            {item.galleryOptions.lightCount && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 rounded-md font-bold">{item.galleryOptions.lightCount} Đèn led</span>}
-                            {item.galleryOptions.assembly && (
-                                <span className={`text-[9px] px-1.5 rounded-md font-bold ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
-                                    {item.galleryOptions.assembly === 'pre-assembled' ? 'Hoàn thiện' : 'Tự lắp'}
-                                </span>
-                            )}
-                        </div>
-                    )}
+                    {(() => {
+                        const template = templates.find(t => t.id === item.templateId);
+                        const counts = getGalleryCounts(item, template);
+                        const hasGalleryInfo = counts.photoFrameCount > 0 || counts.lightCount > 0 || item.galleryOptions?.assembly;
+                        if (!hasGalleryInfo) return null;
+                        return (
+                            <div className="flex gap-2 mb-1 flex-wrap">
+                                {counts.photoFrameCount > 0 && <span className="text-[9px] bg-pink-50 text-pink-600 px-1.5 rounded-md font-bold">{counts.photoFrameCount} Khung ảnh</span>}
+                                {counts.lightCount > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 rounded-md font-bold">{counts.lightCount} Đèn led</span>}
+                                {item.galleryOptions?.assembly && (
+                                    <span className={`text-[9px] px-1.5 rounded-md font-bold ${item.galleryOptions.assembly === 'pre-assembled' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                                        {item.galleryOptions.assembly === 'pre-assembled' ? 'Hoàn thiện' : 'Tự lắp'}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
                     <div className="flex justify-between items-center mt-1">
                         <p className="text-sm font-bold tracking-tight text-luvin-pink">{formatCurrency(totalPrice * quantity)}</p>
                         <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">

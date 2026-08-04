@@ -80,11 +80,15 @@ export interface StoreConfig {
     // Email Config
     disableThankYouEmail?: boolean;
 
-    // Print Example Images
+    // Print Example Images & Pricing Config
     standardPrintImageUrl?: string;
     standardPrintOutOfStock?: boolean;
     premiumPrintImageUrl?: string;
     polaroidSampleImages?: string[];
+    customPrintStandardPrice?: number;
+    customPrintPremiumPrice?: number;
+    polaroidPrice2?: number;
+    polaroidPrice4?: number;
 
     // Shipping & Warehouse
     warehouseAddress?: string;

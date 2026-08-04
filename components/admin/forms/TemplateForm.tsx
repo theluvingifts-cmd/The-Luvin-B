@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
-import { CollectionTemplate, LegoPart, LegoCharacterConfig, DraggableItem, FrameConfig, FrameOption } from '../../../types';
+import { CollectionTemplate, TemplateConcept, LegoPart, LegoCharacterConfig, DraggableItem, FrameConfig, FrameOption } from '../../../types';
 import { INITIAL_FRAME_CONFIG, FRAME_OPTIONS } from '../../../constants';
 import { uploadFile } from '../../../services/uploadService';
 import { calculatePrice, formatCurrency } from '../../../utils/pricing';
 import { getDisplayOrderCount } from '../../../utils/orderUtils';
+import { safeClone } from '../../../utils/helpers';
 
 const SUGGESTED_CATEGORIES = ['Tình yêu', 'Sinh nhật', 'Kỷ niệm', 'Gia đình', 'Giáng sinh', 'Doanh nghiệp', 'Mẫu thiết kế yêu cầu', 'Màu trơn'];
 
@@ -23,6 +24,7 @@ export const TemplateForm: React.FC<{
         category: defaultCategory && defaultCategory !== 'all' ? defaultCategory : 'Khác', 
         config: INITIAL_FRAME_CONFIG
     });
+    const [concepts, setConcepts] = useState<TemplateConcept[]>(initialData?.concepts || []);
     const [isUploading, setIsUploading] = useState(false);
     const [configJson, setConfigJson] = useState(JSON.stringify(initialData?.config || INITIAL_FRAME_CONFIG, null, 2));
     
@@ -193,6 +195,71 @@ export const TemplateForm: React.FC<{
         setConfig(prev => ({ ...prev, draggableItems: (Array.isArray(prev.draggableItems) ? prev.draggableItems : []).filter(i => i.id !== id) }));
     };
 
+    const handleAddConceptFromCurrent = () => {
+        if (!formData.imageUrl) {
+            alert("Vui lòng tải ảnh đại diện mẫu chính trước khi tạo concept!");
+            return;
+        }
+        const newConcept: TemplateConcept = {
+            id: `cpt_${Date.now()}`,
+            name: `Concept ${concepts.length + 1}`,
+            imageUrl: formData.imageUrl,
+            characters: safeClone(config.characters || []),
+            draggableItems: safeClone(config.draggableItems || []),
+            background: config.background ? safeClone(config.background) : undefined
+        };
+        setConcepts(prev => [...prev, newConcept]);
+    };
+
+    const handleUpdateConceptFromCurrent = (conceptId: string) => {
+        setConcepts(prev => prev.map(c => {
+            if (c.id === conceptId) {
+                return {
+                    ...c,
+                    characters: safeClone(config.characters || []),
+                    draggableItems: safeClone(config.draggableItems || []),
+                    background: config.background ? safeClone(config.background) : undefined,
+                    imageUrl: formData.imageUrl || c.imageUrl
+                };
+            }
+            return c;
+        }));
+        alert("Đã cập nhật cấu hình nhân vật & charm hiện tại vào concept này!");
+    };
+
+    const handleLoadConceptToEditor = (cpt: TemplateConcept) => {
+        if (cpt.characters) {
+            setConfig(prev => ({
+                ...prev,
+                characters: safeClone(cpt.characters),
+                draggableItems: cpt.draggableItems ? safeClone(cpt.draggableItems) : prev.draggableItems,
+                background: cpt.background ? safeClone(cpt.background) : prev.background
+            }));
+        }
+        if (cpt.imageUrl) {
+            setFormData(prev => ({ ...prev, imageUrl: cpt.imageUrl }));
+        }
+    };
+
+    const handleConceptFileChange = async (e: React.ChangeEvent<HTMLInputElement>, conceptId: string) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            try {
+                const url = await uploadFile(file);
+                if (url) {
+                    setConcepts(prev => prev.map(c => c.id === conceptId ? { ...c, imageUrl: url } : c));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Lỗi khi tải ảnh concept");
+            }
+        }
+    };
+
+    const handleRemoveConcept = (conceptId: string) => {
+        setConcepts(prev => prev.filter(c => c.id !== conceptId));
+    };
+
     const handleSave = () => {
         try {
             if (!formData.name) {
@@ -214,6 +281,7 @@ export const TemplateForm: React.FC<{
             // isSimple just determines how it's displayed to the customer
             onSave({ 
                 ...formData, 
+                concepts: concepts.length > 0 ? concepts : undefined,
                 config: finalConfig 
             });
         } catch (e) {
@@ -650,7 +718,7 @@ export const TemplateForm: React.FC<{
                 </div>
                 
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Hình ảnh đại diện</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Hình ảnh đại diện (Chính)</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative">
                         <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
                         {isUploading ? (
@@ -667,6 +735,104 @@ export const TemplateForm: React.FC<{
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* CONCEPTS / VARIANT SECTION */}
+                <div className="bg-gradient-to-br from-pink-50/80 via-purple-50/50 to-blue-50/50 p-6 rounded-3xl border-2 border-pink-100/80 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 className="text-sm font-black text-pink-900 uppercase tracking-tight flex items-center gap-2">
+                                <span>🎨</span> Concept / Biến thể thiết kế (2-3 mẫu ảnh trên 1 sản phẩm)
+                            </h3>
+                            <p className="text-[10px] text-pink-600 font-bold uppercase tracking-widest mt-0.5">
+                                Khách chuyển chọn ảnh sẽ tự động đổi Nhân vật & Charm tương ứng
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleAddConceptFromCurrent}
+                            className="px-4 py-2 bg-pink-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-pink-700 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                        >
+                            <span>+</span> Tạo Concept từ thiết kế hiện tại
+                        </button>
+                    </div>
+
+                    {concepts.length === 0 ? (
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-dashed border-pink-200 text-center">
+                            <p className="text-xs text-pink-600 font-bold">Chưa có concept biến thể nào. Mẫu này sẽ có 1 ảnh xem trước duy nhất.</p>
+                            <p className="text-[10px] text-gray-500 mt-1">Nếu mẫu có nhiều concept (ví dụ 2 nhân vật, 3 nhân vật, hoặc 2 phong cách khác nhau), bấm nút <b>"+ Tạo Concept..."</b> để lưu nhiều concept vào 1 sản phẩm!</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {concepts.map((cpt, idx) => (
+                                <div key={cpt.id} className="bg-white rounded-2xl p-4 border border-pink-200 shadow-sm space-y-3 relative group">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveConcept(cpt.id)}
+                                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold hover:bg-red-200"
+                                        title="Xóa concept này"
+                                    >
+                                        ✕
+                                    </button>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Tên Concept #{idx + 1}</label>
+                                        <input
+                                            type="text"
+                                            value={cpt.name}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setConcepts(prev => prev.map(c => c.id === cpt.id ? { ...c, name: val } : c));
+                                            }}
+                                            className="w-full p-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 focus:border-pink-500 outline-none"
+                                            placeholder="VD: Concept 1 - 2 Nhân vật"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Ảnh xem trước Concept</label>
+                                        <div className="relative border border-gray-200 rounded-xl overflow-hidden h-28 bg-gray-50 flex items-center justify-center">
+                                            {cpt.imageUrl ? (
+                                                <img src={cpt.imageUrl} alt={cpt.name} className="w-full h-full object-contain" />
+                                            ) : (
+                                                <span className="text-xs text-gray-400">Chưa có ảnh</span>
+                                            )}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => handleConceptFileChange(e, cpt.id)}
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <span className="text-[9px] text-gray-400 block mt-1 text-center">Bấm vào hình để đổi ảnh concept</span>
+                                    </div>
+
+                                    <div className="text-[10px] text-pink-700 font-medium bg-pink-50 p-2 rounded-lg flex items-center justify-between">
+                                        <span>👥 {cpt.characters?.length || 0} Nhân vật</span>
+                                        <span>🧸 {cpt.draggableItems?.length || 0} Charm</span>
+                                    </div>
+
+                                    <div className="flex gap-1.5 pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateConceptFromCurrent(cpt.id)}
+                                            className="flex-1 py-1.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-lg text-[10px] font-bold hover:bg-pink-100 transition-colors"
+                                            title="Ghi đè nhân vật/charm hiện tại vào concept này"
+                                        >
+                                            📸 Cập nhật thiết kế
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleLoadConceptToEditor(cpt)}
+                                            className="flex-1 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold hover:bg-gray-100 transition-colors"
+                                            title="Tải nhân vật/charm của concept này lên màn hình sửa"
+                                        >
+                                            ✏️ Tải lên để sửa
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {!formData.isSimple && (
