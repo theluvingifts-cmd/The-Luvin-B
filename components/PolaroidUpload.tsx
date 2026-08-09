@@ -58,7 +58,7 @@ const PolaroidUpload: React.FC<PolaroidUploadProps> = ({ count, images, onImages
         <div className="mt-3.5 space-y-2 animate-fade-in px-0.5 pt-3 border-t border-gray-100">
             <div className="flex flex-col gap-0.5 mb-2 px-1">
                 <span className="text-[12px] font-bold text-gray-800 tracking-tight">{t('checkout.polaroid_upload_title')} <span className="text-luvin-pink bg-pink-50 px-1.5 py-0.5 rounded-md ml-1">({images.length}/{count})</span></span>
-                <p className="text-[9px] text-gray-400 italic font-medium leading-tight mt-0.5">{t('checkout.polaroid_upload_note')}</p>
+                <p className="text-[9px] text-gray-400 italic font-medium leading-tight mt-0.5 hidden sm:block">{t('checkout.polaroid_upload_note')}</p>
             </div>
 
             <div className="grid grid-cols-4 gap-2.5">

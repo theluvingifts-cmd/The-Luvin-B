@@ -73,34 +73,32 @@ const slimOrderItems = (items: FrameConfig[]): FrameConfig[] => {
     }));
 };
 
-// HELPER: Process images in order items
+// HELPER: Process images in order items safely
 const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfig[]> => {
     // 1. First slim down the data to remove heavy nested objects
     const slimmedItems = slimOrderItems(items);
 
-    // 2. Then proceed with image uploads
+    // 2. Then proceed with image uploads (failsafe)
     return Promise.all(slimmedItems.map(async (item) => {
         let newItem = { ...item };
         
         // 1. Preview Image
         if (newItem.previewImageUrl && newItem.previewImageUrl.startsWith('data:')) {
             try {
-                const cloudUrl = await uploadFile(newItem.previewImageUrl);
+                const cloudUrl = await uploadFile(newItem.previewImageUrl, 'temp');
                 if (cloudUrl) newItem.previewImageUrl = cloudUrl;
             } catch (e: any) {
-                console.error("Error uploading preview image:", e);
-                throw new Error(`Lỗi tải ảnh xem trước: ${e.message}`);
+                console.warn("Non-fatal error uploading preview image (keeping fallback):", e);
             }
         }
         
         // 2. Custom Background
         if (newItem.background && newItem.background.type === 'upload' && newItem.background.value.startsWith('data:')) {
              try {
-                const bgCloudUrl = await uploadFile(newItem.background.value);
+                const bgCloudUrl = await uploadFile(newItem.background.value, 'temp');
                 if (bgCloudUrl) newItem.background = { ...newItem.background, value: bgCloudUrl };
              } catch (e: any) {
-                console.error("Error uploading background image:", e);
-                throw new Error(`Lỗi tải ảnh nền: ${e.message}`);
+                console.warn("Non-fatal error uploading background image (keeping fallback):", e);
              }
         }
         
@@ -109,11 +107,10 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
             const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
                 if (di.type === 'charm' && di.partId && di.partId.startsWith('data:')) {
                     try {
-                        const charmUrl = await uploadFile(di.partId);
+                        const charmUrl = await uploadFile(di.partId, 'temp');
                         if (charmUrl) return { ...di, partId: charmUrl };
                     } catch (e: any) {
-                        console.error("Error uploading charm image:", e);
-                        throw new Error(`Lỗi tải ảnh charm: ${e.message}`);
+                        console.warn("Non-fatal error uploading charm image (keeping fallback):", e);
                     }
                 }
                 return di;

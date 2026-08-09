@@ -812,7 +812,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                     <span className="bg-gray-200 text-gray-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">{t('checkout.out_of_stock')}</span>
                                 )}
                             </div>
-                            <p className="text-xs text-gray-500">{t('checkout.light_desc')}</p>
+                            <p className="text-xs text-gray-500 hidden sm:block">{t('checkout.light_desc')}</p>
                         </div>
                         <div className="flex flex-col items-end min-w-[80px]">
                             <span className="font-bold text-luvin-pink text-sm">+{formatCurrency((storeConfig?.lightPrice || 50000) * legoQuantity)}</span>
@@ -865,7 +865,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <div className="flex justify-between items-start mb-1">
                             <div>
                                 <span className="font-bold text-gray-800 block text-[12px] sm:text-[13px] leading-tight">{t('checkout.add_polaroid')}</span>
-                                <p className="text-[9px] text-gray-400 leading-tight mt-0.5">{t('checkout.polaroid_desc')}</p>
+                                <p className="text-[9px] text-gray-400 leading-tight mt-0.5 hidden sm:block">{t('checkout.polaroid_desc')}</p>
                             </div>
                             {polaroidFee > 0 && (
                                 <span className="font-black text-luvin-pink text-xs whitespace-nowrap ml-2">+{formatCurrency(polaroidFee)}</span>
