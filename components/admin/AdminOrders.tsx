@@ -230,6 +230,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
     const [orderSearch, setOrderSearch] = useState('');
     const [sortMode, setSortMode] = useState<'newest' | 'urgent'>('urgent');
     const [showOnlyCod, setShowOnlyCod] = useState(false); // --- BỔ SUNG: BỘ LỌC COD ---
+    const [showOnlyPolaroid, setShowOnlyPolaroid] = useState(false); // --- BỔ SUNG: BỘ LỌC POLAROID ---
     
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -305,7 +306,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [orderTab, filterStatus, orderSearch, itemsPerPage, showOnlyCod]);
+    }, [orderTab, filterStatus, orderSearch, itemsPerPage, showOnlyCod, showOnlyPolaroid]);
 
     const allKnownParts = useMemo(() => {
         const dbParts = products.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, LegoPart>);
@@ -333,6 +334,11 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         // --- BỔ SUNG: LOGIC LỌC COD ---
         if (showOnlyCod) {
             result = result.filter(o => (o.totalPrice - (o.amountPaid || 0)) > 0);
+        }
+
+        // --- BỔ SUNG: LOGIC LỌC POLAROID ---
+        if (showOnlyPolaroid) {
+            result = result.filter(o => Boolean(o.addPolaroid && o.addPolaroid > 0) || Boolean(o.polaroidImages && o.polaroidImages.length > 0));
         }
 
         if (orderSearch.trim()) {
@@ -383,7 +389,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
             result.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
         }
         return result;
-    }, [orders, orderTab, sortMode, filterStatus, orderSearch, showOnlyCod]);
+    }, [orders, orderTab, sortMode, filterStatus, orderSearch, showOnlyCod, showOnlyPolaroid]);
 
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
     const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -1027,12 +1033,16 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                         <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
                     
-                    <div className="flex gap-2 w-full mt-1">
+                    <div className="flex gap-1.5 w-full mt-1">
                         <button onClick={() => setSortMode('newest')} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors ${sortMode === 'newest' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Mới nhất</button>
                         <button onClick={() => setSortMode('urgent')} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors ${sortMode === 'urgent' ? 'bg-red-50 text-red-600 border border-red-100' : 'text-gray-500 hover:text-gray-700'}`}>Cần gấp</button>
                         {/* --- BỔ SUNG: NÚT LỌC COD --- */}
                         <button onClick={() => setShowOnlyCod(!showOnlyCod)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors flex items-center justify-center gap-1 ${showOnlyCod ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-white text-gray-500 border border-gray-200 hover:text-gray-700'}`}>
-                            <span>💰</span> {showOnlyCod ? 'Chỉ đơn COD' : 'Tất cả COD'}
+                            <span>💰</span> {showOnlyCod ? 'Chỉ COD' : 'Tất cả COD'}
+                        </button>
+                        {/* --- BỔ SUNG: NÚT LỌC POLAROID --- */}
+                        <button onClick={() => setShowOnlyPolaroid(!showOnlyPolaroid)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-colors flex items-center justify-center gap-1 ${showOnlyPolaroid ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-white text-gray-500 border border-gray-200 hover:text-gray-700'}`}>
+                            <span>📸</span> {showOnlyPolaroid ? 'Có Polaroid' : 'Polaroid'}
                         </button>
                     </div>
 
@@ -1091,6 +1101,9 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                             )}
                                             {order.addLight && (
                                                 <span className="flex-shrink-0 text-yellow-500 text-sm" title="Đơn có đèn spotlight">💡</span>
+                                            )}
+                                            {(Boolean(order.addPolaroid && order.addPolaroid > 0) || Boolean(order.polaroidImages && order.polaroidImages.length > 0)) && (
+                                                <span className="flex-shrink-0 text-blue-500 text-sm" title={`Đơn có in ảnh Polaroid (${order.polaroidImages?.length || order.addPolaroid || 0} ảnh)`}>📸</span>
                                             )}
                                         </div>
                                     </div>
