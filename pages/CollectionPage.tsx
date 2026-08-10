@@ -1657,20 +1657,46 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                                                                                 e.stopPropagation();
                                                                                 setShowPrintExample(opt.id);
                                                                             }}
-                                                                            className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary rounded-full w-4 h-4 flex items-center justify-center text-[9px] shadow-sm transition-all z-10"
+                                                                            className="absolute -top-2 -right-1 bg-pink-50 text-primary border border-pink-200/80 hover:bg-primary hover:text-white rounded-full px-2 py-0.5 text-[9px] font-semibold transition-all z-10 flex items-center gap-1 shadow-2xs"
                                                                             title={t('collection.view_example') || 'Xem ảnh ví dụ'}
                                                                         >
-                                                                            i
+                                                                            <span className="w-3 h-3 bg-pink-100 text-primary rounded-full inline-flex items-center justify-center text-[8px] font-bold leading-none">i</span>
+                                                                            <span>Mẫu in</span>
                                                                         </button>
                                                                     )}
                                                                 </div>
                                                             ))}
                                                         </div>
                                                         
-                                                        <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50">
-                                                            <p className="text-[9px] text-orange-800 leading-relaxed font-bold">
-                                                                {t('studio.custom_print_tip')}
-                                                            </p>
+                                                        <div className="bg-gray-50/80 p-2.5 rounded-xl border border-gray-100/80 text-[10px] text-gray-500 leading-relaxed font-medium space-y-1.5">
+                                                            <p>{t('studio.custom_print_tip')}</p>
+                                                            <div className="flex items-center gap-1.5 pt-0.5 text-gray-600 flex-wrap">
+                                                                <span className="font-semibold text-gray-400">Xem mẫu:</span>
+                                                                {(!storeConfig?.standardPrintOutOfStock) && (
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            setShowPrintExample('standard');
+                                                                        }}
+                                                                        className="px-2 py-0.5 bg-white border border-gray-200 hover:border-pink-300 hover:text-primary rounded-md text-[10px] font-medium text-gray-700 transition-colors inline-flex items-center gap-1"
+                                                                    >
+                                                                        In Thường ⓘ
+                                                                    </button>
+                                                                )}
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        setShowPrintExample('premium');
+                                                                    }}
+                                                                    className="px-2 py-0.5 bg-white border border-gray-200 hover:border-pink-300 hover:text-primary rounded-md text-[10px] font-medium text-gray-700 transition-colors inline-flex items-center gap-1"
+                                                                >
+                                                                    In Cao Cấp ⓘ
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
