@@ -130,15 +130,19 @@ service cloud.firestore {
     match /backgrounds/{docId} { allow read: if true; allow write: if isStaff(); }
     match /templates/{docId} { 
       allow read: if true; 
-      allow create: if isVerifiedAdmin() || (incoming().keys().hasOnly(['id', 'purchaseCount', 'orders', 'stock', 'realOrderCount']));
+      allow create: if isVerifiedAdmin() || (incoming().keys().hasOnly(['id', 'purchaseCount', 'orders', 'stock', 'realOrderCount', 'fakeOrderCount']));
       allow delete: if isVerifiedAdmin();
-      allow update: if isStaff() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount', 'orders', 'stock', 'realOrderCount']));
+      allow update: if isStaff() || (incoming().diff(existing()).affectedKeys().hasOnly(['purchaseCount', 'orders', 'stock', 'realOrderCount', 'fakeOrderCount']));
     }
     match /config/{docId} { 
       allow read: if true; 
-      allow write: if isVerifiedAdmin() || (docId == 'stats') || (docId == 'general' && isStaff()); 
+      allow write: if isVerifiedAdmin() || (docId == 'stats') || (docId == 'auto_orders') || (docId == 'general' && isStaff()); 
       match /ads_costs/{date} {
         allow read, write: if isStaff();
+      }
+      match /daily_logs/{date} {
+        allow read: if true;
+        allow write: if true;
       }
     }
     match /vouchers/{docId} { 

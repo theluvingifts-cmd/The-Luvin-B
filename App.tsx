@@ -12,7 +12,7 @@ import { createOrder, updateOrder, countPartsInOrder } from './services/orderSer
 import { getAllParts, adjustStock } from './services/productService'; 
 import { getAllBackgrounds } from './services/backgroundService'; 
 import { getStoreConfig, DEFAULT_THEME, StoreConfig } from './services/configService'; 
-import { getAllTemplates, updateTemplate } from './services/templateService'; 
+import { getAllTemplates, updateTemplate, processDailyAutoOrderIncrement } from './services/templateService'; 
 import { getAllFeedbacks } from './services/feedbackService'; 
 import { getAllFrames } from './services/frameService'; 
 import { sendOrderEmail } from './services/emailService'; 
@@ -261,6 +261,9 @@ const App: React.FC = () => {
                 }
             }
             setIsLoadingParts(false);
+            
+            // Tự động kiểm tra và cộng lượt đặt hàng hàng ngày (~5 lượt ngẫu nhiên cho các mẫu)
+            processDailyAutoOrderIncrement();
           } catch (error) {
               console.error("Initial fetch error:", error);
               setIsLoadingParts(false);

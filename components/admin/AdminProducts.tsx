@@ -9,6 +9,7 @@ import { ProductForm } from './forms/ProductForm';
 import { FrameForm } from './forms/FrameForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { TemplateForm } from './forms/TemplateForm';
+import { AutoOrdersModal } from './modals/AutoOrdersModal';
 import { formatCurrency, getEffectivePrice } from '../../utils/pricing';
 import { getDisplayOrderCount, formatOrderNumber } from '../../utils/orderUtils';
 
@@ -50,6 +51,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
     const [templateCategory, setTemplateCategory] = useState('all');
     const [templateProductLine, setTemplateProductLine] = useState<'all' | 'lego' | 'gallery'>('all');
     const [showLowStockTemplatesOnly, setShowLowStockTemplatesOnly] = useState(false);
+    const [showAutoOrdersModal, setShowAutoOrdersModal] = useState(false);
 
     // Editing States (Objects)
     const [editingPart, setEditingPart] = useState<LegoPart | null>(null);
@@ -992,6 +994,14 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto justify-end">
                                         <button 
+                                            onClick={() => setShowAutoOrdersModal(true)} 
+                                            className="px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
+                                            title="Xem nhật ký & thống kê lượt đặt hàng tự động"
+                                        >
+                                            <span>🤖</span>
+                                            <span>Nhật ký tăng đơn</span>
+                                        </button>
+                                        <button 
                                             onClick={() => { if(window.confirm('Bạn có chắc chắn muốn reset toàn bộ mẫu về mặc định?')) handleSeedTemplates(); }} 
                                             className="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition-colors"
                                             title="Reset Mẫu"
@@ -1114,6 +1124,15 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products, frames, 
                     </div>
                 </div>
             )}
+
+            {/* Auto Orders Modal */}
+            <AutoOrdersModal 
+                isOpen={showAutoOrdersModal} 
+                onClose={() => setShowAutoOrdersModal(false)} 
+                templates={templates} 
+                onRefreshTemplates={onRefreshTemplates} 
+                showToast={showToast} 
+            />
         </div>
     );
 };

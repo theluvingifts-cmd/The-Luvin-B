@@ -360,3 +360,32 @@ export interface ThemeConfig {
         footer: { backgroundColor?: string; textColor?: string; };
     };
 }
+
+export interface AutoOrderDailyLogItem {
+    templateId: string;
+    templateName: string;
+    templateThumbnail?: string;
+    count: number;
+}
+
+export interface AutoOrderDailyLog {
+    id: string; // dateStr, e.g. '2026-08-12'
+    date: string;
+    timestamp: number;
+    totalAdded: number;
+    items: AutoOrderDailyLogItem[];
+}
+
+export interface AutoOrderSummary {
+    lastDate?: string;
+    lastUpdated?: number;
+    totalAutoAddedAllTime?: number;
+    templateTotals?: Record<string, {
+        templateId: string;
+        templateName: string;
+        templateThumbnail?: string;
+        totalAdded: number;
+        lastUpdated: number;
+    }>;
+}
+
