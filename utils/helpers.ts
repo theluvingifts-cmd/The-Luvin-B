@@ -297,6 +297,17 @@ export const getGalleryCounts = (
     customConfig?: any | null, 
     template?: any | null
 ): { photoFrameCount: number; lightCount: number } => {
+    const isGallery = template?.productLine === 'gallery' 
+        || customConfig?.productLine === 'gallery' 
+        || customConfig?.isMuseumStyle 
+        || customConfig?.frameId === 'gallery-1520'
+        || (typeof customConfig?.frameId === 'string' && customConfig.frameId.toLowerCase().includes('gallery'))
+        || (template?.name && template.name.toUpperCase().includes('GALLERY'));
+
+    if (!isGallery) {
+        return { photoFrameCount: 0, lightCount: 0 };
+    }
+
     let photoFrameCount = customConfig?.galleryOptions?.photoFrameCount 
         ?? template?.galleryOptions?.photoFrameCount 
         ?? template?.config?.galleryOptions?.photoFrameCount;

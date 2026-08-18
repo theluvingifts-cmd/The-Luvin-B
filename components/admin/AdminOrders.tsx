@@ -564,13 +564,14 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                         ${selectedOrder.items.map((item, idx) => {
                             const frame = frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId);
                             const frameName = frame ? frame.name : item.frameId;
-                            const assemblyInfo = item.galleryOptions?.assembly === 'pre-assembled' ? ' [HOÀN THIỆN]' : ' [TỰ LẮP]';
+                            const isGallery = item.productLine === 'gallery' || item.isMuseumStyle || item.frameId === 'gallery-1520' || (typeof item.frameId === 'string' && item.frameId.toLowerCase().includes('gallery')) || (frame && frame.isMuseumStyle);
+                            const assemblyInfo = (isGallery && item.galleryOptions?.assembly === 'pre-assembled') ? ' [HOÀN THIỆN]' : (isGallery && item.galleryOptions?.assembly ? ' [TỰ LẮP]' : '');
                             let galleryParts = [];
-                            if (item.galleryOptions?.photoFrameCount) galleryParts.push(`${item.galleryOptions.photoFrameCount} khung`);
-                            if (item.galleryOptions?.lightCount) galleryParts.push(`${item.galleryOptions.lightCount} đèn`);
+                            if (isGallery && item.galleryOptions?.photoFrameCount) galleryParts.push(`${item.galleryOptions.photoFrameCount} khung`);
+                            if (isGallery && item.galleryOptions?.lightCount) galleryParts.push(`${item.galleryOptions.lightCount} đèn`);
                             
-                            const galleryInfo = item.galleryOptions ? ` <span style="background: #fdf2f8; color: #db2777; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">${galleryParts.join(', ')}${assemblyInfo}</span>` : '';
-                             return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>Khung LEGO ${frameName}</strong>${galleryInfo}</td><td style="font-size: 12px;">${(Array.isArray(item.characters) ? item.characters : []).map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${(Array.isArray(item.draggableItems) ? item.draggableItems : []).length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${(Array.isArray(item.draggableItems) ? item.draggableItems : []).length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
+                            const galleryInfo = (isGallery && item.galleryOptions && (galleryParts.length > 0 || assemblyInfo)) ? ` <span style="background: #fdf2f8; color: #db2777; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">${galleryParts.join(', ')}${assemblyInfo}</span>` : '';
+                             return `<tr><td style="text-align: center">${idx + 1}</td><td><strong>${isGallery ? 'Khung Gallery' : 'Khung LEGO'} ${frameName}</strong>${galleryInfo}</td><td style="font-size: 12px;">${(Array.isArray(item.characters) ? item.characters : []).map((char, cIdx) => `<div>NV${cIdx + 1}: ${char.hair?.name || '-'}, ${char.face?.name || '-'}, ${char.shirt?.name || '-'}, ${char.pants?.name || '-'}</div>`).join('')}${(Array.isArray(item.draggableItems) ? item.draggableItems : []).length > 0 ? `<div style="margin-top: 4px; color: #555;">+ ${(Array.isArray(item.draggableItems) ? item.draggableItems : []).length} phụ kiện/thú cưng</div>` : ''}</td><td style="text-align: center">1</td></tr>`;
                         }).join('')}
                         ${selectedOrder.addGiftBox ? `<tr><td style="text-align: center">${selectedOrder.items.length + 1}</td><td>Hộp quà cao cấp</td><td>Thiệp + Rơm + Nơ</td><td style="text-align: center">${selectedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</td></tr>` : ''}
                         ${selectedOrder.addLight && legoQuantity > 0 ? `<tr><td style="text-align: center">${selectedOrder.items.length + (selectedOrder.addGiftBox ? 2 : 1)}</td><td>Đèn Spotlight</td><td>Đèn Led chiếu sáng</td><td style="text-align: center">${legoQuantity}</td></tr>` : ''}
@@ -1423,7 +1424,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                                                             ) : (
                                                                 <>
                                                                     <p className="font-bold text-gray-800 mb-1">Khung {(frames.find(f => f.id === item.frameId) || FRAME_OPTIONS.find(f => f.id === item.frameId))?.name || item.frameId}</p>
-                                                                    {item.galleryOptions && (
+                                                                    {((item.productLine === 'gallery' || item.isMuseumStyle || item.frameId === 'gallery-1520' || (typeof item.frameId === 'string' && item.frameId.toLowerCase().includes('gallery'))) && item.galleryOptions) && (
                                                                         <div className="flex gap-2 mb-1">
                                                                             {Number(item.galleryOptions.photoFrameCount) > 0 && <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.photoFrameCount} khung ảnh</span>}
                                                                             {Number(item.galleryOptions.lightCount) > 0 && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">{item.galleryOptions.lightCount} đèn led</span>}

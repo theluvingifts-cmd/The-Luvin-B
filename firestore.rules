@@ -141,8 +141,11 @@ service cloud.firestore {
         allow read, write: if isStaff();
       }
       match /daily_logs/{date} {
+        allow read, write: if true;
+      }
+      match /{allSubcollections=**} {
         allow read: if true;
-        allow write: if true;
+        allow write: if isStaff() || isVerifiedAdmin() || (docId == 'auto_orders');
       }
     }
     match /vouchers/{docId} { 

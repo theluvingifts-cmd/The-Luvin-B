@@ -24,6 +24,7 @@ export const AutoOrdersModal: React.FC<AutoOrdersModalProps> = ({
     const [summary, setSummary] = useState<AutoOrderSummary>({ totalAutoAddedAllTime: 0, templateTotals: {} });
     const [dailyLogs, setDailyLogs] = useState<AutoOrderDailyLog[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [modalFeedback, setModalFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -40,6 +41,7 @@ export const AutoOrdersModal: React.FC<AutoOrdersModalProps> = ({
 
     useEffect(() => {
         if (isOpen) {
+            setModalFeedback(null);
             loadData();
         }
     }, [isOpen]);
@@ -47,20 +49,26 @@ export const AutoOrdersModal: React.FC<AutoOrdersModalProps> = ({
     if (!isOpen) return null;
 
     const handleForceAdd = async () => {
-        if (!confirm("Bạn có chắc chắn muốn chạy cộng ngay +4 ~ +6 lượt đặt hàng ngẫu nhiên cho hôm nay?")) return;
         setRunningForce(true);
+        setModalFeedback(null);
         try {
-            const res = await processDailyAutoOrderIncrement(true);
+            const res = await processDailyAutoOrderIncrement(true, templates);
             if (res.processed) {
-                if (showToast) showToast(`Thành công! Đã cộng thêm ${res.count} lượt đặt hàng ngẫu nhiên.`, 'success');
+                const msg = `Thành công! Đã cộng ngẫu nhiên ${res.count} lượt đặt hàng cho các mẫu.`;
+                setModalFeedback({ message: msg, type: 'success' });
+                if (showToast) showToast(msg, 'success');
                 onRefreshTemplates();
                 await loadData();
             } else {
-                if (showToast) showToast('Không thể cộng thêm lúc này. Vui lòng thử lại.', 'error');
+                const msg = 'Không thể cộng thêm lúc này (danh sách mẫu trống hoặc chưa kết nối được).';
+                setModalFeedback({ message: msg, type: 'error' });
+                if (showToast) showToast(msg, 'error');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Force add error:", error);
-            if (showToast) showToast('Đã xảy ra lỗi khi cộng lượt bán.', 'error');
+            const msg = `Lỗi: ${error?.message || 'Đã xảy ra lỗi khi cộng lượt bán.'}`;
+            setModalFeedback({ message: msg, type: 'error' });
+            if (showToast) showToast(msg, 'error');
         } finally {
             setRunningForce(false);
         }
@@ -153,6 +161,26 @@ export const AutoOrdersModal: React.FC<AutoOrdersModalProps> = ({
                         </button>
                     </div>
                 </div>
+
+                {/* Feedback Banner */}
+                {modalFeedback && (
+                    <div className={`px-4 sm:px-6 py-2.5 text-xs font-semibold flex items-center justify-between border-b ${
+                        modalFeedback.type === 'success' 
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
+                            : 'bg-rose-50 text-rose-800 border-rose-100'
+                    }`}>
+                        <div className="flex items-center gap-2">
+                            <span>{modalFeedback.type === 'success' ? '✅' : '⚠️'}</span>
+                            <span>{modalFeedback.message}</span>
+                        </div>
+                        <button 
+                            onClick={() => setModalFeedback(null)}
+                            className="text-gray-400 hover:text-gray-600 text-xs px-1"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
 
                 {/* Tabs & Search Navigation */}
                 <div className="px-4 sm:px-6 pt-3 pb-2 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">

@@ -188,15 +188,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
                     setOrderNote(initialConfig.customFormData?.order_note || '');
                 } else {
                     const fixedConfig = fixOutOfStockParts(template.config, allParts);
-                    const counts = getGalleryCounts(fixedConfig, template);
+                    const isGallery = template.productLine === 'gallery';
+                    const counts = isGallery ? getGalleryCounts(fixedConfig, template) : { photoFrameCount: 0, lightCount: 0 };
                     setCustomConfig({ 
                         ...fixedConfig, 
                         templateId: template.id,
-                        galleryOptions: (template.productLine === 'gallery' || counts.photoFrameCount > 0) ? {
+                        galleryOptions: isGallery ? {
                             photoFrameCount: counts.photoFrameCount,
                             lightCount: counts.lightCount,
                             assembly: fixedConfig.galleryOptions?.assembly || template.galleryOptions?.assembly || template.config?.galleryOptions?.assembly || 'diy'
-                        } : fixedConfig.galleryOptions,
+                        } : undefined,
                         productLine: template.productLine || (urlProductLine as any) || activeProductLine 
                     });
                 }
@@ -402,11 +403,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
         navigate(`/collection/${activeProductLine}/${categorySlug}/${template.id}`, { replace: true });
         setSelectedTemplate(template);
         const fixedConfig = fixOutOfStockParts(template.config, allParts);
-        const counts = getGalleryCounts(fixedConfig, template);
+        const isGallery = template.productLine === 'gallery';
+        const counts = isGallery ? getGalleryCounts(fixedConfig, template) : { photoFrameCount: 0, lightCount: 0 };
         
         // Initialize gallery options if it's a gallery product
         let galleryOptions = undefined;
-        if (template.productLine === 'gallery' || counts.photoFrameCount > 0) {
+        if (isGallery) {
             const templateGallery = template.galleryOptions || template.config?.galleryOptions;
             galleryOptions = {
                 photoFrameCount: counts.photoFrameCount,
@@ -566,15 +568,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             scrollToNote();
             return;
         }
-        const counts = getGalleryCounts(customConfig, selectedTemplate);
+        const isGallery = selectedTemplate?.productLine === 'gallery';
+        const counts = isGallery ? getGalleryCounts(customConfig, selectedTemplate) : { photoFrameCount: 0, lightCount: 0 };
         const finalConfig = {
             ...customConfig,
-            galleryOptions: (selectedTemplate?.productLine === 'gallery' || counts.photoFrameCount > 0) ? {
+            galleryOptions: isGallery ? {
                 ...(customConfig.galleryOptions || {}),
                 photoFrameCount: counts.photoFrameCount,
                 lightCount: counts.lightCount,
                 assembly: customConfig.galleryOptions?.assembly || selectedTemplate?.galleryOptions?.assembly || 'diy'
-            } : customConfig.galleryOptions,
+            } : undefined,
             previewImageUrl: selectedTemplate?.imageUrl,
             customFormData: {
                 ...(customConfig.customFormData || {}),
@@ -609,15 +612,16 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ navigateTo, onCu
             scrollToNote();
             return;
         }
-        const counts = getGalleryCounts(customConfig, selectedTemplate);
+        const isGallery = selectedTemplate?.productLine === 'gallery';
+        const counts = isGallery ? getGalleryCounts(customConfig, selectedTemplate) : { photoFrameCount: 0, lightCount: 0 };
         const finalConfig = {
             ...customConfig,
-            galleryOptions: (selectedTemplate?.productLine === 'gallery' || counts.photoFrameCount > 0) ? {
+            galleryOptions: isGallery ? {
                 ...(customConfig.galleryOptions || {}),
                 photoFrameCount: counts.photoFrameCount,
                 lightCount: counts.lightCount,
                 assembly: customConfig.galleryOptions?.assembly || selectedTemplate?.galleryOptions?.assembly || 'diy'
-            } : customConfig.galleryOptions,
+            } : undefined,
             previewImageUrl: selectedTemplate?.imageUrl,
             customFormData: {
                 ...(customConfig.customFormData || {}),

@@ -122,7 +122,10 @@ export const reorderTemplatesList = async (items: CollectionTemplate[]) => {
 /**
  * Tự động cộng tầm 5 lượt đặt hàng vào random các mẫu mỗi ngày.
  */
-export const processDailyAutoOrderIncrement = async (forceRun: boolean = false): Promise<{ processed: boolean; count?: number; date?: string }> => {
+export const processDailyAutoOrderIncrement = async (
+    forceRun: boolean = false, 
+    targetTemplates?: CollectionTemplate[]
+): Promise<{ processed: boolean; count?: number; date?: string }> => {
     try {
         // Lấy ngày hiện tại theo giờ Việt Nam (YYYY-MM-DD)
         const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
@@ -157,9 +160,15 @@ export const processDailyAutoOrderIncrement = async (forceRun: boolean = false):
             }
         }
 
-        // Lấy tất cả mẫu hiện có
-        const templates = await getAllTemplates();
-        if (!templates || templates.length === 0) return { processed: false };
+        // Lấy tất cả mẫu hiện có (sử dụng targetTemplates nếu có sẵn)
+        const templates = (targetTemplates && targetTemplates.length > 0) 
+            ? targetTemplates 
+            : await getAllTemplates();
+            
+        if (!templates || templates.length === 0) {
+            console.warn("[AutoOrders] Không tìm thấy mẫu nào để cộng đơn.");
+            return { processed: false };
+        }
 
         // Tổng số lượt cộng hôm nay: ngẫu nhiên từ 4 đến 6 lượt (tầm 5 lượt)
         const totalAdditions = Math.floor(Math.random() * 3) + 4;
@@ -181,9 +190,13 @@ export const processDailyAutoOrderIncrement = async (forceRun: boolean = false):
 
         Object.entries(incrementsMap).forEach(([templateId, data]) => {
             const tRef = doc(db, COLLECTION_NAME, templateId);
-            batch.update(tRef, {
-                fakeOrderCount: increment(data.count)
-            });
+            const currentFake = Number(data.template.fakeOrderCount ?? data.template.purchaseCount ?? 0);
+            const nextCount = currentFake + data.count;
+
+            batch.set(tRef, {
+                fakeOrderCount: nextCount,
+                purchaseCount: nextCount
+            }, { merge: true });
 
             logItems.push({
                 templateId,
@@ -193,17 +206,29 @@ export const processDailyAutoOrderIncrement = async (forceRun: boolean = false):
             });
         });
 
-        // Save daily log document: config/auto_orders/daily_logs/{todayStr}
-        const dailyLogRef = doc(db, 'config', 'auto_orders', 'daily_logs', todayStr);
-        const existingLogSnap = await getDoc(dailyLogRef);
+        // Get existing summary to preserve and append to dailyLogs history
+        let currentSummaryData: any = {};
+        try {
+            const currentSummarySnap = await getDoc(autoOrdersDocRef);
+            if (currentSummarySnap.exists()) {
+                currentSummaryData = currentSummarySnap.data();
+            }
+        } catch {
+            // Ignore if doc does not exist yet
+        }
 
+        // Save daily log document: config/auto_orders/daily_logs/{todayStr}
         let finalItems = logItems;
         let finalTotalAdded = totalAdditions;
 
-        if (existingLogSnap.exists()) {
-            const existingData = existingLogSnap.data() as AutoOrderDailyLog;
+        const existingDailyLogs: AutoOrderDailyLog[] = Array.isArray(currentSummaryData?.dailyLogs) 
+            ? currentSummaryData.dailyLogs 
+            : [];
+
+        const existingTodayLog = existingDailyLogs.find(l => l.date === todayStr);
+        if (existingTodayLog) {
             const itemMap: Record<string, AutoOrderDailyLogItem> = {};
-            (existingData.items || []).forEach(item => {
+            (existingTodayLog.items || []).forEach(item => {
                 itemMap[item.templateId] = { ...item };
             });
             logItems.forEach(newItem => {
@@ -214,35 +239,57 @@ export const processDailyAutoOrderIncrement = async (forceRun: boolean = false):
                 }
             });
             finalItems = Object.values(itemMap);
-            finalTotalAdded = (existingData.totalAdded || 0) + totalAdditions;
+            finalTotalAdded = (existingTodayLog.totalAdded || 0) + totalAdditions;
         }
 
-        batch.set(dailyLogRef, {
+        const todayLogEntry: AutoOrderDailyLog = {
             id: todayStr,
             date: todayStr,
             timestamp: Date.now(),
             totalAdded: finalTotalAdded,
             items: finalItems
-        }, { merge: true });
+        };
+
+        const updatedDailyLogs = [
+            todayLogEntry,
+            ...existingDailyLogs.filter(log => log.date !== todayStr)
+        ].slice(0, 90); // Keep last 90 days
+
+        const currentTotalAllTime = Number(currentSummaryData?.totalAutoAddedAllTime || 0);
+
+        const templateTotals = { ...(currentSummaryData?.templateTotals || {}) };
+        logItems.forEach(item => {
+            const prevTotal = Number(templateTotals[item.templateId]?.totalAdded || 0);
+            templateTotals[item.templateId] = {
+                templateId: item.templateId,
+                templateName: item.templateName,
+                templateThumbnail: item.templateThumbnail || '',
+                totalAdded: prevTotal + item.count,
+                lastUpdated: Date.now()
+            };
+        });
 
         // Update overall summary in config/auto_orders
         const summaryUpdates: Record<string, any> = {
             lastDate: todayStr,
             lastUpdated: Date.now(),
-            totalAutoAddedAllTime: increment(totalAdditions)
+            totalAutoAddedAllTime: currentTotalAllTime + totalAdditions,
+            templateTotals,
+            dailyLogs: updatedDailyLogs
         };
-
-        logItems.forEach(item => {
-            summaryUpdates[`templateTotals.${item.templateId}.templateId`] = item.templateId;
-            summaryUpdates[`templateTotals.${item.templateId}.templateName`] = item.templateName;
-            summaryUpdates[`templateTotals.${item.templateId}.templateThumbnail`] = item.templateThumbnail || '';
-            summaryUpdates[`templateTotals.${item.templateId}.totalAdded`] = increment(item.count);
-            summaryUpdates[`templateTotals.${item.templateId}.lastUpdated`] = Date.now();
-        });
 
         batch.set(autoOrdersDocRef, summaryUpdates, { merge: true });
 
         await batch.commit();
+
+        // Optional: Save to subcollection for backward compatibility (non-blocking, won't fail the batch if rules reject subcollections)
+        try {
+            const dailyLogRef = doc(db, 'config', 'auto_orders', 'daily_logs', todayStr);
+            await setDoc(dailyLogRef, todayLogEntry, { merge: true });
+        } catch {
+            // Ignored safely if subcollection rule is not configured
+        }
+
         console.log(`[AutoOrders] Đã tự động cộng ${totalAdditions} lượt đặt hàng ngẫu nhiên cho ${Object.keys(incrementsMap).length} mẫu trong ngày ${todayStr}.`);
         return { processed: true, count: totalAdditions, date: todayStr };
     } catch (error) {
@@ -261,19 +308,37 @@ export const getAutoOrderLogsAndStats = async (): Promise<{
     try {
         const autoOrdersDocRef = doc(db, 'config', 'auto_orders');
         const summarySnap = await getDoc(autoOrdersDocRef);
-        const summary: AutoOrderSummary = summarySnap.exists() ? (summarySnap.data() as AutoOrderSummary) : {
+        const data = summarySnap.exists() ? summarySnap.data() : null;
+
+        const summary: AutoOrderSummary = data ? {
+            lastDate: data.lastDate,
+            lastUpdated: data.lastUpdated,
+            totalAutoAddedAllTime: data.totalAutoAddedAllTime || 0,
+            templateTotals: data.templateTotals || {}
+        } : {
             totalAutoAddedAllTime: 0,
             templateTotals: {}
         };
 
-        const logsColRef = collection(db, 'config', 'auto_orders', 'daily_logs');
-        const logsQuery = query(logsColRef, orderBy('timestamp', 'desc'));
-        const logsSnap = await getDocs(logsQuery);
+        // First prioritize embedded dailyLogs in config/auto_orders
+        let dailyLogs: AutoOrderDailyLog[] = Array.isArray(data?.dailyLogs) ? data.dailyLogs : [];
 
-        const dailyLogs: AutoOrderDailyLog[] = logsSnap.docs.map(docSnap => ({
-            id: docSnap.id,
-            ...docSnap.data()
-        })) as AutoOrderDailyLog[];
+        // If dailyLogs array is empty in parent doc, attempt to read from subcollection as fallback
+        if (dailyLogs.length === 0) {
+            try {
+                const logsColRef = collection(db, 'config', 'auto_orders', 'daily_logs');
+                const logsQuery = query(logsColRef, orderBy('timestamp', 'desc'));
+                const logsSnap = await getDocs(logsQuery);
+                if (!logsSnap.empty) {
+                    dailyLogs = logsSnap.docs.map(docSnap => ({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    })) as AutoOrderDailyLog[];
+                }
+            } catch {
+                // Subcollection read permission might not be set in cloud rules, fallback silently
+            }
+        }
 
         return { summary, dailyLogs };
     } catch (error) {

@@ -387,5 +387,6 @@ export interface AutoOrderSummary {
         totalAdded: number;
         lastUpdated: number;
     }>;
+    dailyLogs?: AutoOrderDailyLog[];
 }
 

@@ -74,6 +74,8 @@ export const CartPage: React.FC<CartPageProps> = ({ cartItems, onRemoveItem, onE
                                         </p>
                                         {(() => {
                                             const template = templates.find(t => t.id === item.templateId);
+                                            const isGallery = item.productLine === 'gallery' || template?.productLine === 'gallery' || item.isMuseumStyle || item.frameId === 'gallery-1520' || (typeof item.frameId === 'string' && item.frameId.toLowerCase().includes('gallery'));
+                                            if (!isGallery) return null;
                                             const counts = getGalleryCounts(item, template);
                                             const hasGalleryInfo = counts.photoFrameCount > 0 || counts.lightCount > 0 || item.galleryOptions?.assembly;
                                             if (!hasGalleryInfo) return null;

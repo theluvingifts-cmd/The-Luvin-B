@@ -88,7 +88,16 @@ export const TemplateForm: React.FC<{
             }
         }
         
-        setFormData(prev => ({ ...prev, [name]: finalValue }));
+        setFormData(prev => {
+            const updated = { ...prev, [name]: finalValue };
+            if (name === 'fakeOrderCount') {
+                updated.purchaseCount = finalValue;
+            }
+            if (name === 'realOrderCount') {
+                updated.orders = finalValue;
+            }
+            return updated;
+        });
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,15 +281,17 @@ export const TemplateForm: React.FC<{
             }
             
             // Sync gallery options into config for better persistence
+            const isGallery = formData.productLine === 'gallery';
             const finalConfig = {
                 ...config,
-                galleryOptions: formData.galleryOptions
+                galleryOptions: isGallery ? formData.galleryOptions : undefined
             };
 
             // Always use the visual 'config' state, even for simple templates
             // isSimple just determines how it's displayed to the customer
             onSave({ 
                 ...formData, 
+                galleryOptions: isGallery ? formData.galleryOptions : undefined,
                 concepts: concepts.length > 0 ? concepts : undefined,
                 config: finalConfig 
             });

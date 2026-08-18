@@ -36,10 +36,14 @@ export const ProductForm: React.FC<{
         } else if (name === 'preventScarf') {
             setFormData(prev => ({ ...prev, preventScarf: (e.target as HTMLInputElement).checked }));
         } else {
-            setFormData(prev => ({ 
-                ...prev, 
-                [name]: ['price', 'costPrice', 'salePrice', 'widthCm', 'heightCm', 'purchaseCount'].includes(name) ? Number(value) : value 
-            }));
+            const isNum = ['price', 'costPrice', 'salePrice', 'widthCm', 'heightCm', 'purchaseCount', 'fakeOrderCount', 'realOrderCount', 'orders'].includes(name);
+            const finalVal = isNum ? (value === '' ? 0 : Number(value)) : value;
+            setFormData(prev => {
+                const updated = { ...prev, [name]: finalVal };
+                if (name === 'fakeOrderCount') updated.purchaseCount = finalVal as number;
+                if (name === 'realOrderCount') updated.orders = finalVal as number;
+                return updated;
+            });
         }
     };
 
