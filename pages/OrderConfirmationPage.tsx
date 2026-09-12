@@ -231,7 +231,9 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({ or
                                 <p><span className="font-semibold">{t('checkout.full_name') || 'Địa chỉ'}:</span> {order.customer.address}</p>
                                 <p><span className="font-semibold">{t('checkout.phone') || 'SĐT'}:</span> {order.customer.phone}</p>
                                 {order.customer.demoContact && <p><span className="font-semibold text-luvin-pink">{t('checkout.demo_contact_label') || 'Liên hệ gửi demo'}:</span> {order.customer.demoContact}</p>}
-                                <p><span className="font-semibold">{t('order_confirmation.desired_date') || 'Ngày nhận mong muốn'}:</span> {language === 'en' ? new Date(order.delivery.date).toLocaleDateString('en-US') : new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
+                                {order.delivery.date && (
+                                    <p><span className="font-semibold">{t('order_confirmation.desired_date') || 'Ngày nhận mong muốn'}:</span> {language === 'en' ? new Date(order.delivery.date).toLocaleDateString('en-US') : new Date(order.delivery.date).toLocaleDateString('vi-VN')}</p>
+                                )}
                                 {order.delivery.notes && (
                                     <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-100 italic text-gray-700">
                                         <span className="font-semibold not-italic">{t('checkout.shipping_notes') || 'Ghi chú của bạn'}:</span> {order.delivery.notes}

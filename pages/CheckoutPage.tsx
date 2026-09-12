@@ -393,11 +393,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         return;
     }
 
-    if (!deliveryDate) {
-        alert(t('checkout.select_delivery_date'));
-        return;
-    }
-
     setIsSubmitting(true);
 
     let finalCommissionAmount = 0;
@@ -670,7 +665,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                             label={t('checkout.delivery_date')}
                             value={deliveryDate} 
                             onChange={setDeliveryDate} 
-                            required 
                             min={today} 
                            />
                            {isEarlyBird ? (
