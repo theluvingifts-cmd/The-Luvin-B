@@ -46,6 +46,17 @@ const PART_LABELS: Record<CharacterPartType, string> = {
   set: 'Bộ đồ',
 };
 
+type SelectorTab = CharacterPartType | 'print';
+
+const SELECTOR_TABS: Array<{ key: SelectorTab; label: string }> = [
+  { key: 'hair', label: 'Tóc' },
+  { key: 'face', label: 'Mặt' },
+  { key: 'shirt', label: 'Áo' },
+  { key: 'pants', label: 'Quần' },
+  { key: 'set', label: 'Bộ đồ' },
+  { key: 'print', label: 'In áo' },
+];
+
 const makeEmptyCharacter = (): LegoCharacterConfig => ({
   id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   x: 50,
@@ -116,6 +127,29 @@ const applyQuickSelectorTypography = (config: any) => {
         : '';
     }).join('\n');
   }
+};
+
+const applyStandaloneBranding = (config: any, title: string) => {
+  document.title = title;
+  const iconUrl = config?.faviconUrl || config?.appIconUrl || config?.logoUrl;
+  if (!iconUrl) return;
+
+  let favicon = (document.getElementById('favicon-link') || document.querySelector("link[rel~='icon']")) as HTMLLinkElement | null;
+  if (!favicon) {
+    favicon = document.createElement('link');
+    favicon.id = 'favicon-link';
+    favicon.rel = 'icon';
+    document.head.appendChild(favicon);
+  }
+  favicon.href = iconUrl;
+
+  let appleIcon = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
+  if (!appleIcon) {
+    appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon';
+    document.head.appendChild(appleIcon);
+  }
+  appleIcon.href = config?.appIconUrl || iconUrl;
 };
 
 const getFirstAvailableColor = (part?: LegoPart): OutfitColor | undefined => {
@@ -208,6 +242,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   const [loadedParts, setLoadedParts] = useState<LegoPartsMap>(LEGO_PARTS);
   const [internalLoading, setInternalLoading] = useState(!providedParts);
   const [internalLogoUrl, setInternalLogoUrl] = useState(providedLogoUrl || '');
+  const [storeConfig, setStoreConfig] = useState<any>({});
   const legoParts = providedParts || loadedParts;
   const isLoadingParts = providedParts ? Boolean(providedLoading) : internalLoading;
   const logoUrl = providedLogoUrl || internalLogoUrl;
@@ -226,21 +261,24 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   const [hydrated, setHydrated] = useState(false);
   const [restoredSavedSelection, setRestoredSavedSelection] = useState(false);
   const [seededDefaults, setSeededDefaults] = useState(false);
+  const [showPrintTab, setShowPrintTab] = useState(false);
+  const [printPreview, setPrintPreview] = useState<{ url: string; label: string; description: string } | null>(null);
 
   useEffect(() => {
-    if (providedParts) return;
     let active = true;
     const load = async () => {
       try {
-        const [parts, config] = await Promise.all([getAllParts(), getStoreConfig()]);
+        const [parts, config] = await Promise.all([providedParts ? Promise.resolve(null) : getAllParts(), getStoreConfig()]);
         if (!active) return;
-        if (parts?.length) setLoadedParts(categorizeParts(parts) as LegoPartsMap);
+        if (!providedParts && parts?.length) setLoadedParts(categorizeParts(parts) as LegoPartsMap);
+        setStoreConfig(config || {});
         if (config?.logoUrl) setInternalLogoUrl(config.logoUrl);
         applyQuickSelectorTypography(config);
+        applyStandaloneBranding(config, 'Chọn nhân vật & charm | The Luvin');
       } catch (error) {
         console.error('Cannot load quick selector data:', error);
       } finally {
-        if (active) setInternalLoading(false);
+        if (active && !providedParts) setInternalLoading(false);
       }
     };
     load();
@@ -388,6 +426,55 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     }));
   };
 
+  const printOptions = useMemo(() => {
+    const options = [
+      {
+        id: 'none' as const,
+        label: 'Không in',
+        price: 0,
+        imageUrl: '',
+        description: 'Giữ nguyên quần áo LEGO như mẫu đã chọn.',
+      },
+      {
+        id: 'standard' as const,
+        label: 'In thường',
+        price: Number(storeConfig?.customPrintStandardPrice ?? 100000) || 0,
+        imageUrl: String(storeConfig?.standardPrintImageUrl || ''),
+        description: 'In bề mặt áo quần, phù hợp thiết kế đơn giản. Thời gian hoàn thiện khoảng 7–10 ngày.',
+      },
+      {
+        id: 'premium' as const,
+        label: 'In cao cấp',
+        price: Number(storeConfig?.customPrintPremiumPrice ?? 300000) || 0,
+        imageUrl: String(storeConfig?.premiumPrintImageUrl || ''),
+        description: 'In chi tiết cao, sắc nét hơn và phù hợp thiết kế cần nhiều chi tiết. Thời gian hoàn thiện khoảng 7–10 ngày.',
+      },
+    ];
+    return options.filter(option => option.id !== 'standard' || !storeConfig?.standardPrintOutOfStock);
+  }, [
+    storeConfig?.customPrintStandardPrice,
+    storeConfig?.customPrintPremiumPrice,
+    storeConfig?.standardPrintOutOfStock,
+    storeConfig?.standardPrintImageUrl,
+    storeConfig?.premiumPrintImageUrl,
+  ]);
+
+  const setCharacterPrint = (option: 'none' | 'standard' | 'premium', price: number) => {
+    if (!activeCharacter) return;
+    setCharacters(prev => prev.map(character => character.id === activeCharacter.id
+      ? { ...character, customPrintOption: option, customPrintPrice: option === 'none' ? 0 : price }
+      : character,
+    ));
+  };
+
+  useEffect(() => {
+    if (!storeConfig?.standardPrintOutOfStock) return;
+    setCharacters(prev => prev.map(character => character.customPrintOption === 'standard'
+      ? { ...character, customPrintOption: 'none', customPrintPrice: 0 }
+      : character,
+    ));
+  }, [storeConfig?.standardPrintOutOfStock]);
+
   const selectCharacterPart = (part: LegoPart) => {
     if (!activeCharacter) return;
     setCharacters(prev => prev.map(character => {
@@ -461,6 +548,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     setCharacters(prev => [...prev, next]);
     setActiveCharacterId(next.id);
     setActivePartType('hair');
+    setShowPrintTab(false);
     setMode('character');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -510,6 +598,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     setCharmSearch('');
     setGenderFilter('all');
     setCharmType('all');
+    setShowPrintTab(false);
     setMode('character');
     try { localStorage.removeItem(STORAGE_KEY); } catch (error) {}
   };
@@ -572,6 +661,13 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
             )}
           </div>
         ))}
+        <div className="flex items-start justify-between gap-3">
+          <span className="shrink-0 text-gray-400">In quần áo</span>
+          <span className={`text-right font-semibold ${(character.customPrintOption || 'none') === 'none' ? 'text-gray-400' : 'text-[#b05b70]'}`}>
+            {(character.customPrintOption || 'none') === 'standard' ? 'In thường' : (character.customPrintOption || 'none') === 'premium' ? 'In cao cấp' : 'Không in'}
+            {(character.customPrintPrice || 0) > 0 && <span className="ml-1">· +{formatCurrency(character.customPrintPrice || 0)}</span>}
+          </span>
+        </div>
       </div>
     );
   };
@@ -585,7 +681,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   if (showSummary) {
     return (
       <div className="quick-selector min-h-screen bg-[#f6f4f2] px-3 py-4 font-body text-gray-900 sm:px-6 sm:py-8">
-        <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}.quick-selector *{font-family:var(--font-body)}`}</style>
+        <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}.quick-selector *{font-family:var(--font-body)}@media(min-width:1024px){.quick-selector{font-size:16px}.quick-selector main{min-height:calc(100vh - 64px)}}`}</style>
         <div className="mx-auto max-w-xl overflow-hidden rounded-[26px] border border-black/[0.06] bg-white shadow-[0_20px_60px_rgba(31,28,26,0.08)]">
           <div className="border-b border-gray-100 px-5 py-5 text-center sm:px-7 sm:py-7">
             {logoUrl ? (
@@ -595,7 +691,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
             )}
             <div className="mx-auto mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-xl text-green-600">✓</div>
             <h1 className="mt-3 text-xl font-extrabold tracking-tight sm:text-2xl" style={{ fontFamily: 'var(--font-body), Montserrat, sans-serif' }}>Đã xác nhận lựa chọn</h1>
-            <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-relaxed text-gray-400">Mã bên dưới chứa toàn bộ nhân vật, màu và charm bạn đã chọn. Gửi <b>nguyên mã</b> này cho shop qua Shopee / Zalo.</p>
+            <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-relaxed text-gray-400">Mã bên dưới chứa toàn bộ nhân vật, màu, lựa chọn in quần áo và charm bạn đã chọn. Gửi <b>nguyên mã</b> này cho shop qua Shopee / Zalo.</p>
           </div>
 
           <div className="p-4 sm:p-6">
@@ -633,8 +729,23 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     <div className="quick-selector min-h-screen bg-[#f6f4f2] pb-24 font-body text-gray-900 lg:pb-8">
       <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}.quick-selector *{font-family:var(--font-body)}`}</style>
 
+      {printPreview && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setPrintPreview(null)}>
+          <div className="w-full max-w-lg overflow-hidden rounded-[24px] bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="relative bg-[#f5f4f3]">
+              <img src={printPreview.url} alt={printPreview.label} className="max-h-[70vh] w-full object-contain" />
+              <button type="button" onClick={() => setPrintPreview(null)} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-lg font-bold text-white backdrop-blur-sm">×</button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm font-extrabold text-gray-900">{printPreview.label}</p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-gray-400">{printPreview.description}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 border-b border-black/[0.05] bg-[#f6f4f2]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-none items-center justify-between gap-3 px-4 sm:px-6 lg:h-16 lg:px-8 xl:px-10 2xl:px-14">
           <div className="flex min-w-0 items-center gap-3">
             {logoUrl ? (
               <img src={logoUrl} alt="The Luvin" className="h-7 max-w-[88px] object-contain" />
@@ -648,8 +759,8 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-5 lg:px-8">
-        <div className="mb-3 grid grid-cols-2 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/[0.04] sm:max-w-[420px]">
+      <main className="mx-auto w-full max-w-none px-3 py-3 sm:px-6 sm:py-5 lg:px-8 lg:py-6 xl:px-10 2xl:px-14">
+        <div className="mb-4 grid grid-cols-2 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/[0.04] sm:max-w-[420px] lg:w-[360px] lg:max-w-none xl:w-[390px] 2xl:w-[420px]">
           <button
             type="button"
             onClick={() => setMode('character')}
@@ -667,8 +778,8 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
         </div>
 
         {mode === 'character' ? (
-          <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
-            <aside className="lg:sticky lg:top-[72px]">
+          <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[390px_minmax(0,1fr)] 2xl:grid-cols-[420px_minmax(0,1fr)]">
+            <aside className="lg:sticky lg:top-[88px]">
               <div className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                   <div>
@@ -679,11 +790,11 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                 </div>
 
                 <div className="grid grid-cols-[142px_1fr] items-center gap-3 p-3 sm:grid-cols-[160px_1fr] sm:p-4 lg:block">
-                  <div className="flex h-[182px] items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-b from-[#fff8f9] to-[#f8f5f3] ring-1 ring-black/[0.04] sm:h-[196px] lg:h-[250px]">
+                  <div className="flex h-[182px] items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-b from-[#fff8f9] to-[#f8f5f3] ring-1 ring-black/[0.04] sm:h-[196px] lg:h-[300px] xl:h-[330px]">
                     {isLoadingParts ? (
                       <div className="h-36 w-24 animate-pulse rounded-2xl bg-white/80" />
                     ) : activeCharacter ? (
-                      <div className="scale-[1.18] lg:scale-[1.35]"><CharacterPreview character={activeCharacter} size="lg" /></div>
+                      <div className="scale-[1.18] lg:scale-[1.6] xl:scale-[1.75]"><CharacterPreview character={activeCharacter} size="lg" /></div>
                     ) : null}
                   </div>
 
@@ -700,6 +811,12 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                           <span className={`min-w-0 truncate font-bold ${part ? 'text-gray-700' : 'text-gray-300'}`}>{part?.name || 'Chưa chọn'}</span>
                         </div>
                       ))}
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="w-9 shrink-0 font-semibold text-gray-400">In</span>
+                        <span className={`min-w-0 truncate font-bold ${(activeCharacter?.customPrintOption || 'none') === 'none' ? 'text-gray-300' : 'text-[#b8566d]'}`}>
+                          {(activeCharacter?.customPrintOption || 'none') === 'standard' ? 'In thường' : (activeCharacter?.customPrintOption || 'none') === 'premium' ? 'In cao cấp' : 'Không in'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -722,32 +839,47 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                     )}
                   </div>
                 </div>
+
               </div>
 
               <button type="button" onClick={confirmSelection} className="mt-3 hidden min-h-[52px] w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xác nhận & lấy mã →</button>
             </aside>
 
-            <section className="min-w-0 overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
+            <section className="min-w-0 overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm lg:min-h-[calc(100vh-170px)]">
               <div className="border-b border-gray-100 p-3 sm:p-4">
-                <div className="grid grid-cols-5 gap-1 rounded-2xl bg-gray-50 p-1">
-                  {(Object.keys(PART_LABELS) as CharacterPartType[]).map(type => {
-                    const selectedPart = activeCharacter?.[type] as LegoPart | undefined;
-                    const selected = type === 'set' ? Boolean(activeCharacter?.set) : Boolean(selectedPart);
+                <div className="grid grid-cols-6 gap-1 rounded-2xl bg-gray-50 p-1 lg:gap-1.5 lg:p-1.5">
+                  {SELECTOR_TABS.map(tab => {
+                    const isPrint = tab.key === 'print';
+                    const partType = isPrint ? null : tab.key as CharacterPartType;
+                    const selectedPart = partType ? activeCharacter?.[partType] as LegoPart | undefined : undefined;
+                    const selected = isPrint
+                      ? (activeCharacter?.customPrintOption || 'none') !== 'none'
+                      : partType === 'set' ? Boolean(activeCharacter?.set) : Boolean(selectedPart);
+                    const active = isPrint ? showPrintTab : (!showPrintTab && activePartType === partType);
+
                     return (
                       <button
-                        key={type}
+                        key={tab.key}
                         type="button"
-                        onClick={() => { setActivePartType(type); setSearchTerm(''); }}
-                        className={`relative min-h-11 rounded-xl px-1 text-[11px] font-extrabold transition sm:text-xs ${activePartType === type ? 'bg-white text-[#b8566d] shadow-sm ring-1 ring-black/[0.04]' : 'text-gray-500'}`}
+                        onClick={() => {
+                          if (isPrint) {
+                            setShowPrintTab(true);
+                          } else if (partType) {
+                            setActivePartType(partType);
+                            setShowPrintTab(false);
+                          }
+                          setSearchTerm('');
+                        }}
+                        className={`relative min-h-11 rounded-xl px-0.5 text-[10px] font-extrabold transition sm:px-1 sm:text-xs lg:min-h-[52px] lg:text-[13px] ${active ? 'bg-white text-[#b8566d] shadow-sm ring-1 ring-black/[0.04]' : 'text-gray-500 hover:bg-white/60 hover:text-gray-700'}`}
                       >
-                        {PART_LABELS[type]}
-                        {selected && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#d77e92]" />}
+                        {tab.label}
+                        {selected && <span className="absolute right-1 top-1.5 h-1.5 w-1.5 rounded-full bg-[#d77e92] sm:right-1.5 lg:right-2 lg:top-2" />}
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="mt-3 grid grid-cols-[94px_minmax(0,1fr)] gap-2 sm:grid-cols-[110px_minmax(0,1fr)_auto]">
+                {!showPrintTab && <div className="mt-3 grid grid-cols-[94px_minmax(0,1fr)] gap-2 sm:grid-cols-[110px_minmax(0,1fr)_auto] lg:mt-4 lg:grid-cols-[140px_minmax(0,1fr)_auto] lg:gap-3">
                   <select
                     value={genderFilter}
                     onChange={event => setGenderFilter(event.target.value as GenderFilter)}
@@ -770,9 +902,9 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                   {selectedCharacterPart && (
                     <button type="button" onClick={clearActivePart} className="col-span-2 min-h-10 rounded-xl border border-gray-200 px-3 text-[10px] font-bold text-gray-400 hover:text-red-500 sm:col-span-1 sm:min-h-11">Bỏ {activeTypeLabel.toLowerCase()}</button>
                   )}
-                </div>
+                </div>}
 
-                {selectedCharacterPart && (
+                {!showPrintTab && selectedCharacterPart && (
                   <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[#faf8f7] px-3 py-3">
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold text-gray-400">Đang chọn {activeTypeLabel.toLowerCase()}</p>
@@ -784,13 +916,70 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                 )}
               </div>
 
-              <div className="p-3 sm:p-4">
-                {isLoadingParts ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+              <div className="p-3 sm:p-4 lg:p-5">
+                {showPrintTab ? (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl bg-[#faf8f7] px-3.5 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-extrabold text-gray-800">In quần áo · Nhân vật {activeCharacterIndex + 1}</p>
+                          <p className="mt-1 text-[10px] font-semibold leading-relaxed text-gray-400">Chọn mức in cho riêng nhân vật này. Bấm vào ảnh mẫu để xem lớn.</p>
+                        </div>
+                        {(activeCharacter?.customPrintPrice || 0) > 0 && <span className="shrink-0 rounded-full bg-[#fff0f3] px-2.5 py-1 text-[10px] font-extrabold text-[#b8566d]">+{formatCurrency(activeCharacter?.customPrintPrice || 0)}</span>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
+                      {printOptions.map(option => {
+                        const selected = (activeCharacter?.customPrintOption || 'none') === option.id;
+                        return (
+                          <div key={option.id} className={`overflow-hidden rounded-2xl border transition ${selected ? 'border-[#d9899d] bg-[#fff6f8] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                            {option.id === 'none' ? (
+                              <button
+                                type="button"
+                                onClick={() => setCharacterPrint(option.id, option.price)}
+                                className="flex aspect-[16/8] w-full items-center justify-center bg-[#f8f7f6] px-4 text-center"
+                              >
+                                <div>
+                                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl shadow-sm ring-1 ring-black/[0.05]">—</div>
+                                  <p className="mt-2 text-[10px] font-bold text-gray-400">Giữ nguyên mẫu LEGO</p>
+                                </div>
+                              </button>
+                            ) : option.imageUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setPrintPreview({ url: option.imageUrl, label: option.label, description: option.description })}
+                                className="group relative block aspect-[16/9] w-full overflow-hidden bg-[#f8f7f6]"
+                              >
+                                <img src={option.imageUrl} alt={`Ảnh mẫu ${option.label}`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                                <span className="absolute bottom-2 right-2 rounded-full bg-black/65 px-2 py-1 text-[9px] font-bold text-white backdrop-blur-sm">Xem ảnh mẫu</span>
+                              </button>
+                            ) : (
+                              <div className="flex aspect-[16/9] items-center justify-center bg-[#f8f7f6] px-4 text-center">
+                                <p className="text-[10px] font-bold text-gray-300">Shop chưa thêm ảnh mẫu</p>
+                              </div>
+                            )}
+
+                            <button type="button" onClick={() => setCharacterPrint(option.id, option.price)} className="block w-full p-3 text-left">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className={`text-xs font-extrabold ${selected ? 'text-[#a84d63]' : 'text-gray-800'}`}>{selected ? '✓ ' : ''}{option.label}</p>
+                                  <p className="mt-1 text-[10px] font-semibold leading-relaxed text-gray-400">{option.description}</p>
+                                </div>
+                                <span className={`shrink-0 text-[10px] font-extrabold ${option.price > 0 ? 'text-[#b8566d]' : 'text-gray-400'}`}>{option.price > 0 ? `+${formatCurrency(option.price)}` : '0 ₫'}</span>
+                              </div>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : isLoadingParts ? (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
                     {Array.from({ length: 12 }).map((_, index) => <div key={index} className="aspect-[0.82] animate-pulse rounded-2xl bg-gray-100" />)}
                   </div>
                 ) : visibleCharacterParts.length ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
                     {visibleCharacterParts.map(part => {
                       const selected = selectedCharacterPart?.id === part.id;
                       const selectedColor = selected ? getSelectedCharacterColor(activeCharacter, activePartType) : undefined;
@@ -818,7 +1007,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                           </button>
 
                           {canPickColorHere && (
-                            <div className="col-span-3 rounded-2xl border border-[#f0d5dc] bg-[#fffafb] p-3 shadow-sm sm:col-span-4 md:col-span-5 xl:col-span-6">
+                            <div className="col-span-3 rounded-2xl border border-[#f0d5dc] bg-[#fffafb] p-3 shadow-sm sm:col-span-4 md:col-span-5 lg:col-span-6 xl:col-span-7 2xl:col-span-8 lg:p-4">
                               <div className="mb-2.5 flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="text-[10px] font-semibold text-gray-400">Chọn màu cho</p>
@@ -846,8 +1035,8 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
             </section>
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
-            <aside className="lg:sticky lg:top-[72px]">
+          <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[370px_minmax(0,1fr)]">
+            <aside className="lg:sticky lg:top-[88px]">
               <div className="rounded-[24px] border border-black/[0.05] bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -879,7 +1068,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
               <button type="button" onClick={confirmSelection} className="mt-3 hidden w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xác nhận & lấy mã →</button>
             </aside>
 
-            <section className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
+            <section className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm lg:min-h-[calc(100vh-170px)]">
               <div className="border-b border-gray-100 p-3 sm:p-4">
                 <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
                   <select
@@ -906,11 +1095,11 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
 
               <div className="p-3 sm:p-4">
                 {isLoadingParts ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
                     {Array.from({ length: 12 }).map((_, index) => <div key={index} className="aspect-[0.82] animate-pulse rounded-2xl bg-gray-100" />)}
                   </div>
                 ) : charmParts.length ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
                     {charmParts.map(part => {
                       const choice = charms[part.id];
                       const selected = Boolean(choice);

@@ -18,18 +18,11 @@ export interface DecodedSelection {
   missingIds: string[];
 }
 
-type EncodedCharacter = [
-  string, number,
-  string,
-  string, number,
-  string, number,
-  string, number
-];
-
+type EncodedCharacter = Array<string | number>;
 type EncodedCharm = [string, number, number];
 
 type SelectionPayload = {
-  v: 1;
+  v: 1 | 2;
   c: EncodedCharacter[];
   a: EncodedCharm[];
 };
@@ -46,6 +39,18 @@ const getColorIndex = (part?: LegoPart, color?: OutfitColor) => {
 const getColorAt = (part: LegoPart | undefined, index: number) => {
   if (!part?.colors?.length || index < 0) return undefined;
   return part.colors[index];
+};
+
+const printOptionToCode = (option?: LegoCharacterConfig['customPrintOption']) => {
+  if (option === 'standard') return 1;
+  if (option === 'premium') return 2;
+  return 0;
+};
+
+const printCodeToOption = (value: number): LegoCharacterConfig['customPrintOption'] => {
+  if (value === 1) return 'standard';
+  if (value === 2) return 'premium';
+  return 'none';
 };
 
 const toBase64Url = (text: string) => {
@@ -74,18 +79,26 @@ const checksum = (value: string) => {
   return (hash >>> 0).toString(36).toUpperCase().padStart(7, '0').slice(-7);
 };
 
+const asString = (value: string | number | undefined) => typeof value === 'string' ? value : '';
+const asNumber = (value: string | number | undefined, fallback = -1) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 export const encodeSelectionCode = (
   characters: LegoCharacterConfig[],
   charms: SelectionCharmInput[]
 ) => {
   const payload: SelectionPayload = {
-    v: 1,
+    v: 2,
     c: characters.map(character => [
       character.hair?.id || '', getColorIndex(character.hair, character.selectedHairColor),
       character.face?.id || '',
       character.set?.id || '', getColorIndex(character.set, character.selectedSetColor),
       character.set ? '' : (character.shirt?.id || ''), character.set ? -1 : getColorIndex(character.shirt, character.selectedShirtColor),
       character.set ? '' : (character.pants?.id || ''), character.set ? -1 : getColorIndex(character.pants, character.selectedPantsColor),
+      printOptionToCode(character.customPrintOption),
+      Math.max(0, Math.round(Number(character.customPrintPrice) || 0)),
     ]),
     a: charms.map(choice => [
       choice.part.id,
@@ -116,7 +129,7 @@ export const decodeSelectionCode = (rawCode: string, parts: LegoPart[]): Decoded
     throw new Error('Không thể đọc mã lựa chọn này.');
   }
 
-  if (!payload || payload.v !== 1 || !Array.isArray(payload.c) || !Array.isArray(payload.a)) {
+  if (!payload || (payload.v !== 1 && payload.v !== 2) || !Array.isArray(payload.c) || !Array.isArray(payload.a)) {
     throw new Error('Phiên bản mã lựa chọn không được hỗ trợ.');
   }
 
@@ -134,11 +147,13 @@ export const decodeSelectionCode = (rawCode: string, parts: LegoPart[]): Decoded
   };
 
   const characters: LegoCharacterConfig[] = payload.c.map((row, index) => {
-    const hair = resolve(row[0]);
-    const face = resolve(row[2]);
-    const set = resolve(row[3]);
-    const shirt = set ? undefined : resolve(row[5]);
-    const pants = set ? undefined : resolve(row[7]);
+    const hair = resolve(asString(row[0]));
+    const face = resolve(asString(row[2]));
+    const set = resolve(asString(row[3]));
+    const shirt = set ? undefined : resolve(asString(row[5]));
+    const pants = set ? undefined : resolve(asString(row[7]));
+    const customPrintOption = payload.v >= 2 ? printCodeToOption(asNumber(row[9], 0)) : 'none';
+    const customPrintPrice = customPrintOption === 'none' ? 0 : Math.max(0, asNumber(row[10], 0));
 
     return {
       id: `decoded-${index + 1}`,
@@ -147,10 +162,12 @@ export const decodeSelectionCode = (rawCode: string, parts: LegoPart[]): Decoded
       set,
       shirt,
       pants,
-      selectedHairColor: getColorAt(hair, row[1]),
-      selectedSetColor: getColorAt(set, row[4]),
-      selectedShirtColor: getColorAt(shirt, row[6]),
-      selectedPantsColor: getColorAt(pants, row[8]),
+      selectedHairColor: getColorAt(hair, asNumber(row[1])),
+      selectedSetColor: getColorAt(set, asNumber(row[4])),
+      selectedShirtColor: getColorAt(shirt, asNumber(row[6])),
+      selectedPantsColor: getColorAt(pants, asNumber(row[8])),
+      customPrintOption,
+      customPrintPrice,
       x: 50,
       y: 70,
       rotation: 0,
@@ -159,12 +176,12 @@ export const decodeSelectionCode = (rawCode: string, parts: LegoPart[]): Decoded
   });
 
   const charms: DecodedSelectionCharm[] = payload.a.flatMap(row => {
-    const part = resolve(row[0]);
+    const part = resolve(asString(row[0]));
     if (!part) return [];
     return [{
       part,
-      quantity: Math.max(1, Math.min(99, Number(row[1]) || 1)),
-      selectedColor: getColorAt(part, row[2]),
+      quantity: Math.max(1, Math.min(99, asNumber(row[1], 1) || 1)),
+      selectedColor: getColorAt(part, asNumber(row[2])),
     }];
   });
 

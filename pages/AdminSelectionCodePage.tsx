@@ -15,6 +15,48 @@ const getDisplayPrice = (part?: LegoPart, color?: OutfitColor, quantity = 1) => 
   return getEffectivePrice(part, quantity, part.bulkPricing) + (color?.price || 0);
 };
 
+const applyAdminStandaloneBranding = (config: any) => {
+  document.title = 'Đọc mã lựa chọn | The Luvin';
+
+  const bodyFont = config?.theme?.global?.typography?.bodyFont || 'Montserrat';
+  const cleanBodyFont = String(bodyFont).replace(/['"]/g, '');
+  document.documentElement.style.setProperty('--font-body', `'${cleanBodyFont}'`);
+
+  const uploadedFonts = Array.isArray(config?.uploadedFonts) ? config.uploadedFonts : [];
+  if (uploadedFonts.length) {
+    const styleId = 'selection-admin-uploaded-fonts';
+    let style = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = styleId;
+      document.head.appendChild(style);
+    }
+    style.innerHTML = uploadedFonts.map((font: any) => {
+      const safeName = String(font.name || '').replace(/[^a-zA-Z0-9\s-]/g, '');
+      return safeName && font.url ? `@font-face{font-family:'${safeName}';src:url('${font.url}');font-weight:100 900;font-style:normal;font-display:swap;}` : '';
+    }).join('\n');
+  }
+
+  const iconUrl = config?.faviconUrl || config?.appIconUrl || config?.logoUrl;
+  if (!iconUrl) return;
+  let favicon = (document.getElementById('favicon-link') || document.querySelector("link[rel~='icon']")) as HTMLLinkElement | null;
+  if (!favicon) {
+    favicon = document.createElement('link');
+    favicon.id = 'favicon-link';
+    favicon.rel = 'icon';
+    document.head.appendChild(favicon);
+  }
+  favicon.href = iconUrl;
+
+  let appleIcon = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
+  if (!appleIcon) {
+    appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon';
+    document.head.appendChild(appleIcon);
+  }
+  appleIcon.href = config?.appIconUrl || iconUrl;
+};
+
 const PartRow: React.FC<{ label: string; part?: LegoPart; color?: OutfitColor; showPrice?: boolean }> = ({ label, part, color, showPrice }) => (
   <div className="flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 last:border-0">
     <span className="shrink-0 text-xs font-bold text-gray-400">{label}</span>
@@ -35,6 +77,7 @@ export const AdminSelectionCodePage: React.FC = () => {
   const [parts, setParts] = useState<LegoPart[]>([]);
   const [partsLoading, setPartsLoading] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
+  const [storeConfig, setStoreConfig] = useState<any>({});
   const [code, setCode] = useState('');
   const [decoded, setDecoded] = useState<DecodedSelection | null>(null);
   const [error, setError] = useState('');
@@ -56,7 +99,9 @@ export const AdminSelectionCodePage: React.FC = () => {
       .then(([nextParts, config]) => {
         if (!active) return;
         setParts(nextParts || []);
+        setStoreConfig(config || {});
         if (config?.logoUrl) setLogoUrl(config.logoUrl);
+        applyAdminStandaloneBranding(config);
       })
       .finally(() => active && setPartsLoading(false));
     return () => { active = false; };
@@ -90,6 +135,9 @@ export const AdminSelectionCodePage: React.FC = () => {
       list.filter(([, part]) => Boolean(part)).forEach(([label, part, color]) => {
         rows.push(`- ${label}: ${part?.name} [${part?.id}]${color ? ` - ${color.name}` : ''}`);
       });
+      const printOption = character.customPrintOption || 'none';
+      const printLabel = printOption === 'standard' ? 'In thường' : printOption === 'premium' ? 'In cao cấp' : 'Không in';
+      rows.push(`- In quần áo: ${printLabel}${(character.customPrintPrice || 0) > 0 ? ` (+${formatCurrency(character.customPrintPrice || 0)})` : ''}`);
     });
     if (decoded.charms.length) {
       rows.push('\nCharm / phụ kiện');
@@ -108,8 +156,9 @@ export const AdminSelectionCodePage: React.FC = () => {
   const totalExtras = useMemo(() => {
     if (!decoded) return 0;
     const sets = decoded.characters.reduce((sum, character) => sum + getDisplayPrice(character.set, character.selectedSetColor), 0);
+    const customPrints = decoded.characters.reduce((sum, character) => sum + Math.max(0, Number(character.customPrintPrice) || 0), 0);
     const charms = decoded.charms.reduce((sum, item) => sum + getDisplayPrice(item.part, item.selectedColor, item.quantity) * item.quantity, 0);
-    return sets + charms;
+    return sets + customPrints + charms;
   }, [decoded]);
 
   if (authLoading) {
@@ -126,7 +175,7 @@ export const AdminSelectionCodePage: React.FC = () => {
             <div className="h-5 w-px bg-gray-200" />
             <div className="min-w-0">
               <p className="truncate text-sm font-extrabold">Đọc mã lựa chọn</p>
-              <p className="hidden text-[10px] font-semibold text-gray-400 sm:block">Nhân vật & charm khách đã chọn</p>
+              <p className="hidden text-[10px] font-semibold text-gray-400 sm:block">Nhân vật, in quần áo & charm khách đã chọn</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -206,6 +255,15 @@ export const AdminSelectionCodePage: React.FC = () => {
                             <PartRow label="Quần" part={character.pants} color={character.selectedPantsColor} />
                           </>
                         )}
+                        <div className="flex items-start justify-between gap-4 border-t border-gray-100 py-2.5">
+                          <span className="shrink-0 text-xs font-bold text-gray-400">In quần áo</span>
+                          <div className="text-right">
+                            <p className={`text-xs font-extrabold ${(character.customPrintOption || 'none') === 'none' ? 'text-gray-400' : 'text-[#b8566d]'}`}>
+                              {(character.customPrintOption || 'none') === 'standard' ? 'In thường' : (character.customPrintOption || 'none') === 'premium' ? 'In cao cấp' : 'Không in'}
+                            </p>
+                            {(character.customPrintPrice || 0) > 0 && <p className="mt-0.5 text-[10px] font-extrabold text-[#b8566d]">+{formatCurrency(character.customPrintPrice || 0)}</p>}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </article>
