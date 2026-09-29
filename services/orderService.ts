@@ -81,7 +81,7 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
     // 2. Then proceed with image uploads (failsafe)
     return Promise.all(slimmedItems.map(async (item) => {
         let newItem = { ...item };
-        
+
         // 1. Preview Image
         if (newItem.previewImageUrl && newItem.previewImageUrl.startsWith('data:')) {
             try {
@@ -91,7 +91,7 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
                 console.warn("Non-fatal error uploading preview image (keeping fallback):", e);
             }
         }
-        
+
         // 2. Custom Background
         if (newItem.background && newItem.background.type === 'upload' && newItem.background.value.startsWith('data:')) {
              try {
@@ -101,7 +101,7 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
                 console.warn("Non-fatal error uploading background image (keeping fallback):", e);
              }
         }
-        
+
         // 3. Draggable Items (Charms)
         if (Array.isArray(newItem.draggableItems) && newItem.draggableItems.length > 0) {
             const processedDraggables = await Promise.all(newItem.draggableItems.map(async (di) => {
@@ -117,7 +117,7 @@ const processOrderItemsImages = async (items: FrameConfig[]): Promise<FrameConfi
             }));
             newItem.draggableItems = processedDraggables;
         }
-        
+
         return newItem; 
     }));
 };
@@ -127,7 +127,7 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
     try {
         // A. CHUẨN BỊ ẢNH (Bên ngoài transaction vì upload là async ngoài DB)
         const itemsWithImages = await processOrderItemsImages(order.items);
-        
+
         const timestamp = Date.now();
         const finalOrder: Order = {
             ...order,
@@ -135,7 +135,9 @@ export const createOrder = async (order: Omit<Order, 'status' | 'createdAt'>) =>
             createdAt: timestamp,
             status: "Chờ thanh toán",
             internalNotes: "",
-            isUrgent: false,
+            // Preserve the customer's rush-order choice so the order
+            // appears in the existing Admin "Cần gấp" queue.
+            isUrgent: order.isUrgent ?? false,
             adminDeadline: "",
             countedInStats: true, // Đánh dấu đơn hàng này đã được tính vào thống kê chung
             templateOrderCounted: false // Sẽ được cập nhật thành true trong transaction nếu thành công
@@ -377,13 +379,13 @@ export const getTotalOrderCount = async (): Promise<number> => {
                 return Math.max(0, data.totalOrders);
             }
         }
-        
+
         // Fallback: nếu không tồn tại hoặc lỗi, hãy thử kiểm tra trực tiếp collection (dành cho Admin khi đăng nhập)
         try {
             const coll = collection(db, "orders");
             const snapshot = await getCountFromServer(coll);
             const count = snapshot.data().count;
-            
+
             // Cập nhật lại stats doc cho các lần gọi sau của Guest hoạt động tốt
             const correctedCount = Math.max(0, count);
             await setDoc(statsRef, { totalOrders: correctedCount }, { merge: true }).catch(() => {});
@@ -415,10 +417,10 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         if (updates.items && Array.isArray(updates.items)) {
             updates.items = await processOrderItemsImages(updates.items);
         }
-        
+
         const orderRef = doc(db, "orders", orderId);
         const currentDoc = await getDoc(orderRef);
-        
+
         if (!currentDoc.exists()) return false;
         const currentData = currentDoc.data() as Order;
 
@@ -440,7 +442,7 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
                 if (currentData.status !== 'Đã giao hàng' && !currentData.thankYouEmailSent) {
                     // Cập nhật flag đã gửi mail vào updates luôn để lưu 1 lần
                     updates.thankYouEmailSent = true;
-                    
+
                     // Gửi email (không async/await để không làm chậm hành động của admin, gửi ngầm)
                     sendThankYouEmail({ ...currentData, ...updates }).catch(err => {
                         console.error("Lỗi khi gửi email cảm ơn tự động:", err);
@@ -464,7 +466,7 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
     try {
         const orderRef = doc(db, "orders", orderId);
         const snap = await getDoc(orderRef);
-        
+
         if (snap.exists()) {
             const orderData = snap.data() as Order;
             // Rollback statistics before deleting if not already cancelled/rolled back
@@ -485,10 +487,10 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
 // 7. Helper for Rollback Order Statistics (Khi hủy đơn)
 export const rollbackOrderStats = async (order: Order) => {
     if (!order.templateOrderCounted) return;
-    
+
     try {
         const partsUsage = countPartsInOrder(order.items);
-        
+
         await runTransaction(db, async (transaction) => {
             // A. Template rollbacks
             const templateIncrements = new Map<string, number>();
@@ -569,7 +571,7 @@ export const rollbackOrderStats = async (order: Order) => {
 export const incrementOrderStats = async (order: Order) => {
     try {
         const partsUsage = countPartsInOrder(order.items);
-        
+
         await runTransaction(db, async (transaction) => {
             const templateIncrements = new Map<string, number>();
             order.items.forEach(item => {

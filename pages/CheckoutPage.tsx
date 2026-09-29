@@ -12,7 +12,6 @@ import { trackFunnelStep } from '../services/analyticsService';
 import { useLanguage } from '../src/contexts/LanguageContext';
 import { getCollaboratorByReferralCode } from '../services/shareService';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
-import { DateInput } from '../components/ui/DateInput';
 import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
 import PolaroidUpload from '../components/PolaroidUpload';
 
@@ -43,17 +42,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [street, setStreet] = useState('');
   const [notes, setNotes] = useState('');
   const [demoContact, setDemoContact] = useState('');
-  
-  const [deliveryDate, setDeliveryDate] = useState('');
-  
+
+  const [priorityProcessing, setPriorityProcessing] = useState(false);
+
   const [provinces, setProvinces] = useState<{ name: string; code: number }[]>([]);
   const [districts, setDistricts] = useState<{ name: string; code: number }[]>([]);
   const [wards, setWards] = useState<{ name: string; code: number }[]>([]);
-  
+
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedWard, setSelectedWard] = useState('');
-  
+
   const [isApiError, setIsApiError] = useState(false);
   const [isLoadingProvinces, setIsLoadingProvinces] = useState(true);
 
@@ -63,11 +62,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [polaroidOption, setPolaroidOption] = useState<0 | 2 | 4>(0);
   const [polaroidImages, setPolaroidImages] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('deposit');
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [submissionError, setSubmissionError] = useState('');
-  
+
   const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
 
   // Voucher State
@@ -75,29 +74,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [voucherError, setVoucherError] = useState('');
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
-  
-  
+
+
   // Auto-fill & Loyalty State
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [isLoyalCustomer, setIsLoyalCustomer] = useState(false);
   const [isSelfReferral, setIsSelfReferral] = useState(false);
   const [isSamePhoneForDemo, setIsSamePhoneForDemo] = useState(true);
-  
+
   const [manualReferralCode, setManualReferralCode] = useState(localStorage.getItem('referred_by') || '');
 
   const GIFT_BOX_PRICE = 30000;
+  const PRIORITY_PROCESSING_FEE = 30000;
   const SHIPPING_FEES = { standard: 25000, express: 45000, bookship: 0 };
-  const EARLY_BIRD_THRESHOLD = 20; 
-  const EARLY_BIRD_DISCOUNT_PERCENT = 0.05; 
-  const LOYALTY_DISCOUNT_PERCENT = 0.05; 
-
-  const today = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, []);
+  const LOYALTY_DISCOUNT_PERCENT = 0.05;
 
   useEffect(() => {
     getStoreConfig().then(cfg => setStoreConfig(cfg));
@@ -112,7 +102,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           setName(initialOrder.customer.name);
           setPhone(initialOrder.customer.phone);
           setEmail(initialOrder.customer.email);
-          
+
           // If we have individual fields, use them. Otherwise fallback to full address as street.
           if (initialOrder.customer.province || initialOrder.customer.district || initialOrder.customer.ward) {
               setStreet(initialOrder.customer.address.split(',')[0].trim());
@@ -127,7 +117,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               setStreet(initialOrder.customer.address);
           }
 
-          setDeliveryDate(initialOrder.delivery.date);
+          setPriorityProcessing(initialOrder.isUrgent || false);
           setNotes(initialOrder.delivery.notes);
           setDemoContact(initialOrder.customer.demoContact || '');
           if (initialOrder.customer.demoContact && initialOrder.customer.demoContact !== initialOrder.customer.phone) {
@@ -217,7 +207,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }, [cartItems, allParts, templates, frames]);
 
   const totalQuantity = useMemo(() => cartItems.reduce((total, item) => total + (item.quantity || 1), 0), [cartItems]);
-  
+
   const legoQuantity = useMemo(() => {
     return cartItems
       .filter(item => (item.productLine || 'lego') === 'lego')
@@ -225,7 +215,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
   }, [cartItems]);
 
   const hasLegoItems = legoQuantity > 0;
-  
+
   const hasCustomPrint = useMemo(() => {
     return cartItems.some(item => {
       const { priceBreakdown } = calculatePrice(item, allParts, frames, templates);
@@ -235,32 +225,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
   let calculatedShippingFee = SHIPPING_FEES[shippingOption];
   const isFreeShippingEligible = subtotal >= FREE_SHIPPING_THRESHOLD;
-  
+
   if (shippingOption === 'standard' && isFreeShippingEligible) {
       calculatedShippingFee = 0;
   }
-  
+
   const shippingFee = calculatedShippingFee;
   // Gift box fee only if in stock and selected, based on quantity
   const giftBoxFee = (!storeConfig?.giftBoxOutOfStock && addGiftBox) ? GIFT_BOX_PRICE * totalQuantity : 0;
-  
+
   const lightFee = (!storeConfig?.lightOutOfStock && addLight && hasLegoItems) ? (storeConfig?.lightPrice || 50000) * legoQuantity : 0;
 
   const pol2Price = storeConfig?.polaroidPrice2 ?? 15000;
   const pol4Price = storeConfig?.polaroidPrice4 ?? 25000;
   const polaroidFee = polaroidOption === 2 ? pol2Price : polaroidOption === 4 ? pol4Price : 0;
-  
-  const daysDifference = useMemo(() => {
-      if (!deliveryDate) return 0;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const delivery = new Date(deliveryDate);
-      delivery.setHours(0, 0, 0, 0);
-      return Math.ceil((delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  }, [deliveryDate]);
 
-  const isEarlyBird = daysDifference >= EARLY_BIRD_THRESHOLD;
-  const earlyBirdDiscountAmount = isEarlyBird ? Math.round(subtotal * EARLY_BIRD_DISCOUNT_PERCENT) : 0;
+  const priorityFee = priorityProcessing ? PRIORITY_PROCESSING_FEE : 0;
 
   const loyaltyDiscountAmount = isLoyalCustomer ? Math.round(subtotal * LOYALTY_DISCOUNT_PERCENT) : 0;
 
@@ -274,8 +254,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       if (voucherDiscountAmount > subtotal) voucherDiscountAmount = subtotal;
   }
 
-  const totalDiscount = earlyBirdDiscountAmount + voucherDiscountAmount + loyaltyDiscountAmount;
-  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee + lightFee + polaroidFee - totalDiscount);
+  const totalDiscount = voucherDiscountAmount + loyaltyDiscountAmount;
+  const totalPrice = Math.max(0, subtotal + shippingFee + giftBoxFee + lightFee + polaroidFee + priorityFee - totalDiscount);
   const amountToPay = paymentMethod === 'deposit' ? Math.round(totalPrice * 0.7) : totalPrice;
 
   // Warning based on warehouse location (Dong Anh, Ha Noi)
@@ -288,9 +268,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
       if (!voucherCode.trim()) return;
       setIsCheckingVoucher(true);
       setVoucherError('');
-      
+
       const result = await validateVoucher(voucherCode, subtotal);
-      
+
       if (result.isValid && result.voucher) {
           setAppliedVoucher(result.voucher);
           setVoucherError('');
@@ -314,7 +294,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
               const history = await getOrdersByPhone(phoneNumber);
               if (history && history.length > 0) {
                   const lastOrder = history[0];
-                  
+
                   const hasConfirmedOrder = history.some(order => 
                     order.status === 'Đã giao hàng'
                   );
@@ -331,7 +311,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                           setIsSamePhoneForDemo(false);
                       }
                   }
-                  
+
                   // Auto-fill address components if not already set
                   // Try to match names with codes for dropdowns if API is working
                   if (!selectedProvince && lastOrder.customer.province) {
@@ -343,7 +323,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                           setIsApiError(true); // Fallback to text inputs ONLY if name doesn't match a code
                       }
                   }
-                  
+
                   if (!selectedDistrict && lastOrder.customer.district && !isApiError) {
                       // We can't easily match district/ward here because they depend on province selection
                       // which triggers an effect. So we might just set the name and hope for the best
@@ -396,7 +376,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     setIsSubmitting(true);
 
     let finalCommissionAmount = 0;
-    
+
     // Tiered Commission Logic
     if (manualReferralCode) {
         try {
@@ -416,7 +396,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         const successfulOrdersCount = refOrders.filter(o => o.status === 'Đã giao hàng').length;
                         rate = successfulOrdersCount < 2 ? 0.05 : 0.1;
                     }
-                    
+
                     finalCommissionAmount = Math.round(totalPrice * rate);
                     console.log(`Commission rate applied: ${rate * 100}%`);
                 }
@@ -434,12 +414,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
     const fullAddress = [street, wardVal, districtVal, provinceVal].filter(Boolean).join(', ');
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
-    
+
     let autoTags = '';
-    if (isEarlyBird) autoTags += t('checkout.early_bird_tag');
+    if (priorityProcessing) autoTags += '[ĐƠN LÀM GẤP +30K] ';
     if (isLoyalCustomer) autoTags += t('checkout.loyal_customer_tag');
     if (appliedVoucher) autoTags += t('checkout.voucher_tag', { code: appliedVoucher.code });
-    
+
     const itemNotes = cartItems
         .map((item, index) => {
             const note = item.customFormData?.order_note;
@@ -481,7 +461,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
             note: notes,
             demoContact 
           },
-          delivery: { date: deliveryDate, notes: finalNotes },
+          delivery: { date: initialOrder?.delivery.date || '', notes: finalNotes },
           items: cartItems.map(item => {
             const { totalPrice: itemPrice } = calculatePrice(item, allParts, frames, templates);
             return { ...item, price: itemPrice };
@@ -492,6 +472,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           polaroidImages: polaroidOption > 0 ? polaroidImages : [],
           shipping: { method: shippingOption, fee: shippingFee },
           payment: { method: paymentMethod },
+          isUrgent: priorityProcessing || initialOrder?.isUrgent || false,
           totalPrice,
           amountToPay,
           discountCode: appliedVoucher?.code || (isLoyalCustomer ? 'LOYALTY' : undefined),
@@ -542,10 +523,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
         )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
           <div className="lg:col-span-7 space-y-4 sm:space-y-6">
-            
+
             <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border shadow-sm">
               <h2 className="font-bold text-lg sm:text-xl text-gray-800 mb-4 sm:6 pb-2 border-b border-gray-200">{t('checkout.shipping_info')}</h2>
-              
+
               <div className="mb-4 sm:6 border-b border-gray-200 pb-4 sm:6">
                   <div className="flex justify-between items-center mb-2 sm:3">
                     <h3 className="text-[11px] sm:text-sm font-bold text-gray-500 uppercase tracking-wider">{t('checkout.recipient')}</h3>
@@ -594,7 +575,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   <div className="flex justify-between items-center mb-2 sm:3">
                     <h3 className="text-[11px] sm:text-sm font-bold text-gray-500 uppercase tracking-wider">{t('checkout.address_shipping')}</h3>
                   </div>
-                  
+
                   <div className="space-y-3 sm:4">
                      {!isApiError ? (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -661,21 +642,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:6 text-left">
                         <div>
-                           <DateInput 
-                            label={t('checkout.delivery_date')}
-                            value={deliveryDate} 
-                            onChange={setDeliveryDate} 
-                            min={today} 
-                           />
-                           {isEarlyBird ? (
-                               <p className="text-[10px] sm:text-xs text-green-600 font-bold mt-1 animate-pulse">
-                                   {t('checkout.early_bird_discount_applied', { days: daysDifference })}
-                               </p>
-                           ) : (
-                               <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                                   {t('checkout.early_bird_tip')}
-                               </p>
-                           )}
+                            <h3 className="font-semibold text-xs sm:text-sm mb-2 text-gray-700">Làm gấp / Ưu tiên đơn</h3>
+                            <label className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${priorityProcessing ? 'border-orange-300 bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50/40'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={priorityProcessing}
+                                    onChange={e => setPriorityProcessing(e.target.checked)}
+                                    className="mt-0.5 h-4 w-4 accent-orange-500"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-[11px] sm:text-sm font-bold text-gray-800">⚡ Ưu tiên xử lý & hoàn thiện</span>
+                                        <span className="text-[11px] sm:text-sm font-black text-orange-600 whitespace-nowrap">+{formatCurrency(PRIORITY_PROCESSING_FEE)}</span>
+                                    </div>
+                                    <p className="text-[9px] sm:text-[11px] text-gray-500 leading-relaxed mt-1">
+                                        Shop ưu tiên làm đơn sớm hơn. Phí này không gồm vận chuyển và không cam kết ngày giao chính xác.
+                                    </p>
+                                </div>
+                            </label>
                         </div>
                         <div>
                             <h3 className="font-semibold text-xs sm:text-sm mb-2 text-gray-700">{t('checkout.shipping_method')}</h3>
@@ -865,7 +849,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 <span className="font-black text-luvin-pink text-xs whitespace-nowrap ml-2">+{formatCurrency(polaroidFee)}</span>
                             )}
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-1 sm:gap-2 mt-2">
                             <button
                                 type="button"
@@ -903,7 +887,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
           </div>
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 rounded-lg border sticky top-24">
-                
+
               <div className="mb-4 pb-4 border-b border-gray-200">
                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
                     <div className="bg-green-100 text-green-800 p-3 rounded-lg text-sm font-bold flex items-center gap-2">
@@ -936,7 +920,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                   const { totalPrice } = calculatePrice(item, allParts, frames, templates);
                   const quantity = item.quantity || 1;
                   const frameName = (frames.find(f => f.id === item.frameId) || frames[0] || FRAME_OPTIONS[0]).name;
-                  
+
                   return (
                     <div key={index} className="border border-gray-100 rounded-2xl p-3 bg-white shadow-sm hover:shadow-md transition-all group">
                       <div className="flex justify-between items-center">
@@ -1010,10 +994,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                         <span className="text-gray-700 font-heading font-bold">{shippingOption === 'bookship' ? t('checkout.zero_vnd') : formatCurrency(shippingFee)}</span>
                     )}
                 </div>
-                {isEarlyBird && (
-                    <div className="flex justify-between text-green-600 font-bold tracking-tight">
-                        <span>{t('checkout.early_bird_discount')}</span>
-                        <span className="font-heading">-{formatCurrency(earlyBirdDiscountAmount)}</span>
+                {priorityProcessing && (
+                    <div className="flex justify-between text-orange-600 font-bold tracking-tight">
+                        <span>⚡ Phí ưu tiên làm gấp</span>
+                        <span className="font-heading">+{formatCurrency(priorityFee)}</span>
                     </div>
                 )}
                 {isLoyalCustomer && (
@@ -1122,7 +1106,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                               )}
                           </div>
                       </div>
-                      
+
                       <div className="flex gap-2 mt-1">
                         <a 
                             href="https://zalo.me/0964393115" 
