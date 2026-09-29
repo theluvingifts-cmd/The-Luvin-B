@@ -934,12 +934,25 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                         const selected = (activeCharacter?.customPrintOption || 'none') === option.id;
                         const hasSample = option.id !== 'none' && Boolean(option.imageUrl);
                         return (
-                          <div key={option.id} className={`rounded-2xl border p-3 transition ${selected ? 'border-[#d9899d] bg-[#fff6f8] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                          <div key={option.id} className={`overflow-hidden rounded-2xl border transition ${selected ? 'border-[#d9899d] bg-[#fff6f8] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
                             <button
                               type="button"
                               onClick={() => setCharacterPrint(option.id, option.price)}
-                              className="block w-full rounded-xl text-left"
+                              className="block w-full text-left"
                             >
+                              {option.id !== 'none' && hasSample && (
+                                <div className="relative aspect-[16/7] w-full overflow-hidden border-b border-gray-100 bg-[#f7f5f4] sm:aspect-[16/8]">
+                                  <img
+                                    src={option.imageUrl}
+                                    alt={`Ảnh mẫu ${option.label}`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/35 to-transparent px-3 pb-2 pt-8">
+                                    <span className="text-[9px] font-extrabold text-white drop-shadow">Ảnh mẫu {option.label.toLowerCase()}</span>
+                                  </div>
+                                </div>
+                              )}
+                              <div className="p-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
@@ -949,6 +962,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                                   <p className="mt-1.5 text-[10px] font-semibold leading-relaxed text-gray-400">{option.description}</p>
                                 </div>
                                 <span className={`shrink-0 text-[10px] font-extrabold ${option.price > 0 ? 'text-[#b8566d]' : 'text-gray-400'}`}>{option.price > 0 ? `+${formatCurrency(option.price)}` : '0 ₫'}</span>
+                              </div>
                               </div>
                             </button>
 
@@ -961,7 +975,8 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                                   if (!option.imageUrl) return;
                                   setPrintPreview({ url: option.imageUrl, label: option.label, description: option.description });
                                 }}
-                                className={`mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-extrabold transition ${hasSample ? 'border-[#efc3cd] bg-white text-[#a84d63] hover:bg-[#fff6f8]' : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'}`}
+                                style={{ width: 'calc(100% - 1.5rem)' }}
+                                className={`mx-3 mb-3 flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-extrabold transition ${hasSample ? 'border-[#efc3cd] bg-white text-[#a84d63] hover:bg-[#fff6f8]' : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'}`}
                               >
                                 <span aria-hidden="true">👁</span>
                                 {hasSample ? 'Xem ảnh mẫu' : 'Chưa có ảnh mẫu'}
