@@ -7,6 +7,7 @@ import { getAllParts } from '../services/productService';
 import { getStoreConfig } from '../services/configService';
 import { LEGO_PARTS } from '../constants';
 import { categorizeParts } from '../utils/helpers';
+import { encodeSelectionCode } from '../utils/selectionCode';
 
 type LegoPartsMap = {
   hair: LegoPart[];
@@ -220,6 +221,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   const [charmType, setCharmType] = useState<'all' | 'accessory' | 'pet' | 'hat'>('all');
   const [charms, setCharms] = useState<Record<string, CharmChoice>>({});
   const [showSummary, setShowSummary] = useState(false);
+  const [selectionCode, setSelectionCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [restoredSavedSelection, setRestoredSavedSelection] = useState(false);
@@ -517,36 +519,25 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     return count + [character.hair, character.face, character.shirt, character.pants, character.set].filter(Boolean).length;
   }, 0);
 
-  const buildTextSummary = () => {
-    const rows: string[] = ['THE LUVIN - LỰA CHỌN NHÂN VẬT & CHARM'];
-    characters.forEach((character, index) => {
-      rows.push(`\nNhân vật ${index + 1}:`);
-      const entries: Array<[string, LegoPart | undefined, OutfitColor | undefined]> = [
-        ['Tóc', character.hair, character.selectedHairColor],
-        ['Mặt', character.face, undefined],
-        ['Bộ', character.set, character.selectedSetColor],
-        ['Áo', character.set ? undefined : character.shirt, character.selectedShirtColor],
-        ['Quần', character.set ? undefined : character.pants, character.selectedPantsColor],
-      ];
-      entries.filter(([, part]) => Boolean(part)).forEach(([label, part, color]) => {
-        const priceText = label === 'Bộ' && part ? ` - ${formatCurrency(getPartDisplayPrice(part, color))}` : '';
-        rows.push(`- ${label}: ${part?.name} [${part?.id}]${color ? ` - ${color.name}` : ''}${priceText}`);
-      });
-    });
-    if (selectedCharmList.length) {
-      rows.push('\nCharm / phụ kiện:');
-      selectedCharmList.forEach(({ part, quantity, selectedColor }) => {
-        rows.push(`- ${part.name} [${part.id}] x${quantity}${selectedColor ? ` - ${selectedColor.name}` : ''} - ${formatCurrency(getPartDisplayPrice(part, selectedColor, quantity))}`);
-      });
-    }
-    return rows.join('\n');
-  };
-
-  const copySummary = async () => {
+  const copySelectionCode = async (value = selectionCode) => {
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(buildTextSummary());
+      await navigator.clipboard.writeText(value);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
+    } catch (error) {
+      setCopied(false);
+    }
+  };
+
+  const confirmSelection = async () => {
+    const code = encodeSelectionCode(characters, selectedCharmList);
+    setSelectionCode(code);
+    setShowSummary(true);
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
     } catch (error) {
       setCopied(false);
     }
@@ -594,73 +585,41 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   if (showSummary) {
     return (
       <div className="quick-selector min-h-screen bg-[#f6f4f2] px-3 py-4 font-body text-gray-900 sm:px-6 sm:py-8">
-        <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}`}</style>
-        <div className="mx-auto max-w-3xl overflow-hidden rounded-[26px] border border-black/[0.06] bg-white shadow-[0_20px_60px_rgba(31,28,26,0.08)]">
-          <div className="border-b border-gray-100 px-5 py-5 sm:px-7 sm:py-6">
-            <div className="flex items-start justify-between gap-4">
+        <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}.quick-selector *{font-family:var(--font-body)}`}</style>
+        <div className="mx-auto max-w-xl overflow-hidden rounded-[26px] border border-black/[0.06] bg-white shadow-[0_20px_60px_rgba(31,28,26,0.08)]">
+          <div className="border-b border-gray-100 px-5 py-5 text-center sm:px-7 sm:py-7">
+            {logoUrl ? (
+              <img src={logoUrl} alt="The Luvin" className="mx-auto h-9 max-w-[110px] object-contain" />
+            ) : (
+              <p className="text-xs font-black tracking-[0.12em] text-[#c96c81]">THE LUVIN</p>
+            )}
+            <div className="mx-auto mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-xl text-green-600">✓</div>
+            <h1 className="mt-3 text-xl font-extrabold tracking-tight sm:text-2xl" style={{ fontFamily: 'var(--font-body), Montserrat, sans-serif' }}>Đã xác nhận lựa chọn</h1>
+            <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-relaxed text-gray-400">Mã bên dưới chứa toàn bộ nhân vật, màu và charm bạn đã chọn. Gửi <b>nguyên mã</b> này cho shop qua Shopee / Zalo.</p>
+          </div>
+
+          <div className="p-4 sm:p-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#c96c81]">The Luvin</p>
-                <h1 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">Lựa chọn của bạn</h1>
-                <p className="mt-1.5 max-w-lg text-xs font-medium leading-relaxed text-gray-400">Chụp màn hình phần này và gửi lại shop. Tên và mã linh kiện đã được ghi sẵn để shop làm đúng mẫu.</p>
+                <p className="text-[10px] font-bold text-gray-400">Lựa chọn đã lưu trong mã</p>
+                <p className="mt-0.5 text-sm font-extrabold text-gray-900">{characters.length} nhân vật · {selectedCharmQuantity} charm</p>
               </div>
-              {logoUrl && <img src={logoUrl} alt="The Luvin" className="h-9 max-w-[100px] object-contain" />}
+              <span className="rounded-full bg-[#fff0f3] px-2.5 py-1 text-[10px] font-extrabold text-[#b8566d]">TLV1</span>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-[#fafafa] p-3.5">
+              <p className="break-all font-mono text-[11px] font-bold leading-5 text-gray-700 sm:text-xs">{selectionCode}</p>
+            </div>
+
+            <div className="mt-3 rounded-2xl border border-green-100 bg-green-50 px-3.5 py-3">
+              <p className="text-xs font-extrabold text-green-800">{copied ? '✓ Mã đã được tự động sao chép' : 'Mã đã sẵn sàng'}</p>
+              <p className="mt-1 text-[10px] font-semibold leading-relaxed text-green-700/70">Chỉ cần dán mã vào tin nhắn cho shop. Không cần chụp màn hình dài.</p>
             </div>
           </div>
 
-          <div className="space-y-5 p-4 sm:p-6">
-            <section>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-extrabold text-gray-900">Nhân vật</h2>
-                <SelectionBadge>{characters.length} nhân vật</SelectionBadge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {characters.map((character, index) => (
-                  <div key={character.id} className="rounded-2xl border border-gray-100 bg-[#fbfaf9] p-3.5">
-                    <div className="flex gap-4">
-                      <div className="flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.04]">
-                        <div className="scale-110"><CharacterPreview character={character} size="lg" /></div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="mb-2 text-xs font-extrabold text-gray-900">Nhân vật {index + 1}</p>
-                        {renderCharacterPartSummary(character)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-extrabold text-gray-900">Charm & phụ kiện</h2>
-                <SelectionBadge>{selectedCharmQuantity} món</SelectionBadge>
-              </div>
-              {selectedCharmList.length ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {selectedCharmList.map(({ part, quantity, selectedColor }) => (
-                    <div key={part.id} className="flex items-center gap-3 rounded-2xl border border-gray-100 p-3">
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-50">
-                        <SmartImage src={selectedColor?.imageUrl || getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold text-gray-800">{part.name}</p>
-                        <p className="mt-0.5 font-mono text-[10px] font-bold text-gray-400">{part.id}</p>
-                        {selectedColor && <p className="mt-1 text-[10px] font-semibold text-[#b05b70]">Màu: {selectedColor.name}</p>}
-                        <div className="mt-1"><PriceLabel part={part} selectedColor={selectedColor} quantity={quantity} compact /></div>
-                      </div>
-                      <span className="rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-extrabold text-white">x{quantity}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 py-7 text-center text-xs font-medium text-gray-300">Không chọn charm / phụ kiện</div>
-              )}
-            </section>
-          </div>
-
-          <div className="sticky bottom-0 flex gap-2 border-t border-gray-100 bg-white/95 p-3 backdrop-blur sm:p-4">
+          <div className="flex gap-2 border-t border-gray-100 bg-white p-3 sm:p-4">
             <button type="button" onClick={() => setShowSummary(false)} className="min-h-12 flex-1 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-bold text-gray-700">← Chỉnh lại</button>
-            <button type="button" onClick={copySummary} className="min-h-12 flex-1 rounded-2xl bg-[#111827] px-4 text-sm font-bold text-white">{copied ? '✓ Đã sao chép' : 'Sao chép mã'}</button>
+            <button type="button" onClick={() => copySelectionCode()} className="min-h-12 flex-[1.25] rounded-2xl bg-[#111827] px-4 text-sm font-bold text-white">{copied ? '✓ Đã sao chép' : 'Sao chép lại mã'}</button>
           </div>
         </div>
       </div>
@@ -765,7 +724,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                 </div>
               </div>
 
-              <button type="button" onClick={() => setShowSummary(true)} className="mt-3 hidden min-h-[52px] w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xem tóm tắt để chụp →</button>
+              <button type="button" onClick={confirmSelection} className="mt-3 hidden min-h-[52px] w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xác nhận & lấy mã →</button>
             </aside>
 
             <section className="min-w-0 overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
@@ -917,7 +876,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                   <div className="mt-4 rounded-2xl border border-dashed border-gray-200 py-8 text-center text-xs font-medium text-gray-300">Chưa chọn charm</div>
                 )}
               </div>
-              <button type="button" onClick={() => setShowSummary(true)} className="mt-3 hidden w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xem tóm tắt để chụp →</button>
+              <button type="button" onClick={confirmSelection} className="mt-3 hidden w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xác nhận & lấy mã →</button>
             </aside>
 
             <section className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
@@ -1000,7 +959,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
             <p className="text-[10px] font-semibold text-gray-400">Đã chọn</p>
             <p className="truncate text-xs font-extrabold text-gray-800">{characters.length} nhân vật · {selectedCharmQuantity} charm</p>
           </div>
-          <button type="button" onClick={() => setShowSummary(true)} className="min-h-12 shrink-0 rounded-2xl bg-[#111827] px-5 text-xs font-extrabold text-white shadow-lg">Tóm tắt để chụp</button>
+          <button type="button" onClick={confirmSelection} className="min-h-12 shrink-0 rounded-2xl bg-[#111827] px-5 text-xs font-extrabold text-white shadow-lg">Xác nhận & lấy mã</button>
         </div>
       </div>
     </div>
