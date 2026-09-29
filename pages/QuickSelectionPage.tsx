@@ -2,12 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { LegoCharacterConfig, LegoPart, OutfitColor } from '../types';
 import { CharacterPreview } from '../components/shared/CharacterPreview';
 import { SmartImage } from '../components/shared/SmartImage';
-import { formatCurrency, getEffectivePrice, getPartImageUrl, isPartOutOfStock } from '../utils/pricing';
+import { getPartImageUrl, isPartOutOfStock } from '../utils/pricing';
 import { getAllParts } from '../services/productService';
 import { getStoreConfig } from '../services/configService';
 import { LEGO_PARTS } from '../constants';
 import { categorizeParts } from '../utils/helpers';
-import { encodeSelectionCode } from '../utils/selectionCode';
 
 type LegoPartsMap = {
   hair: LegoPart[];
@@ -36,7 +35,7 @@ interface QuickSelectionPageProps {
   logoUrl?: string;
 }
 
-const STORAGE_KEY = 'the_luvin_quick_selection_v3';
+const STORAGE_KEY = 'the_luvin_quick_selection_v1';
 
 const PART_LABELS: Record<CharacterPartType, string> = {
   hair: 'Tóc',
@@ -46,17 +45,6 @@ const PART_LABELS: Record<CharacterPartType, string> = {
   set: 'Bộ đồ',
 };
 
-type SelectorTab = CharacterPartType | 'print';
-
-const SELECTOR_TABS: Array<{ key: SelectorTab; label: string }> = [
-  { key: 'hair', label: 'Tóc' },
-  { key: 'face', label: 'Mặt' },
-  { key: 'shirt', label: 'Áo' },
-  { key: 'pants', label: 'Quần' },
-  { key: 'set', label: 'Bộ đồ' },
-  { key: 'print', label: 'In áo' },
-];
-
 const makeEmptyCharacter = (): LegoCharacterConfig => ({
   id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   x: 50,
@@ -64,93 +52,6 @@ const makeEmptyCharacter = (): LegoCharacterConfig => ({
   rotation: 0,
   scale: 1,
 });
-
-const isUsablePart = (part?: LegoPart) => Boolean(part && !isPartOutOfStock(part) && supportsLego(part));
-
-const pickPreferredPants = (list: LegoPart[] = []) => {
-  const available = list.filter(isUsablePart);
-  if (!available.length) return undefined;
-
-  const normalize = (value = '') => value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-
-  const score = (part: LegoPart) => {
-    const text = normalize(`${part.name || ''} ${part.category || ''}`);
-    if (text.includes('chan dai') || text.includes('long leg') || text.includes('long-leg') || text.includes('legs long')) return 100;
-    if (text.includes('chan thap') || text.includes('chan ngan') || text.includes('short leg') || text.includes('short-leg')) return -100;
-    if (text.includes('dai') || text.includes('long')) return 20;
-    return 0;
-  };
-
-  return [...available].sort((a, b) => score(b) - score(a))[0];
-};
-
-const makeSampleCharacter = (parts: LegoPartsMap): LegoCharacterConfig => {
-  const pick = (list: LegoPart[] = []) => list.find(isUsablePart);
-  const hair = pick(parts.hair);
-  const face = pick(parts.face);
-  const shirt = pick(parts.shirt);
-  const pants = pickPreferredPants(parts.pants);
-
-  return {
-    ...makeEmptyCharacter(),
-    hair,
-    face,
-    shirt,
-    pants,
-    selectedHairColor: getFirstAvailableColor(hair),
-    selectedShirtColor: getFirstAvailableColor(shirt),
-    selectedPantsColor: getFirstAvailableColor(pants),
-  };
-};
-
-const applyQuickSelectorTypography = (config: any) => {
-  const bodyFont = config?.theme?.global?.typography?.bodyFont || 'Montserrat';
-  const cleanBodyFont = String(bodyFont).replace(/['"]/g, '');
-  document.documentElement.style.setProperty('--font-body', `'${cleanBodyFont}'`);
-
-  const fonts = Array.isArray(config?.uploadedFonts) ? config.uploadedFonts : [];
-  if (fonts.length) {
-    const styleId = 'quick-selector-uploaded-fonts';
-    let style = document.getElementById(styleId) as HTMLStyleElement | null;
-    if (!style) {
-      style = document.createElement('style');
-      style.id = styleId;
-      document.head.appendChild(style);
-    }
-    style.innerHTML = fonts.map((font: any) => {
-      const safeName = String(font.name || '').replace(/[^a-zA-Z0-9\s-]/g, '');
-      return safeName && font.url
-        ? `@font-face{font-family:'${safeName}';src:url('${font.url}');font-weight:100 900;font-style:normal;font-display:swap;}`
-        : '';
-    }).join('\n');
-  }
-};
-
-const applyStandaloneBranding = (config: any, title: string) => {
-  document.title = title;
-  const iconUrl = config?.faviconUrl || config?.appIconUrl || config?.logoUrl;
-  if (!iconUrl) return;
-
-  let favicon = (document.getElementById('favicon-link') || document.querySelector("link[rel~='icon']")) as HTMLLinkElement | null;
-  if (!favicon) {
-    favicon = document.createElement('link');
-    favicon.id = 'favicon-link';
-    favicon.rel = 'icon';
-    document.head.appendChild(favicon);
-  }
-  favicon.href = iconUrl;
-
-  let appleIcon = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
-  if (!appleIcon) {
-    appleIcon = document.createElement('link');
-    appleIcon.rel = 'apple-touch-icon';
-    document.head.appendChild(appleIcon);
-  }
-  appleIcon.href = config?.appIconUrl || iconUrl;
-};
 
 const getFirstAvailableColor = (part?: LegoPart): OutfitColor | undefined => {
   if (!part?.colors?.length) return undefined;
@@ -169,22 +70,6 @@ const inferGender = (part: LegoPart): 'male' | 'female' | 'unisex' => {
 
 const supportsLego = (part: LegoPart) => !part.supportedProductLines || part.supportedProductLines.includes('lego');
 
-const getPartDisplayPrice = (part?: LegoPart, selectedColor?: OutfitColor, quantity = 1) => {
-  if (!part) return 0;
-  const base = getEffectivePrice(part, quantity, part.bulkPricing);
-  return base + (selectedColor?.price || 0);
-};
-
-const PriceLabel: React.FC<{ part?: LegoPart; selectedColor?: OutfitColor; quantity?: number; compact?: boolean }> = ({ part, selectedColor, quantity = 1, compact = false }) => {
-  if (!part) return null;
-  const price = getPartDisplayPrice(part, selectedColor, quantity);
-  return (
-    <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} font-extrabold ${price > 0 ? 'text-[#b8566d]' : 'text-gray-400'}`}>
-      {price > 0 ? `+${formatCurrency(price)}` : formatCurrency(0)}
-    </span>
-  );
-};
-
 const SelectionBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span className="inline-flex items-center rounded-full bg-[#fff1f4] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#cf6e82]">
     {children}
@@ -200,33 +85,27 @@ const ColorPicker: React.FC<{
   const colors = (part?.colors || []).filter(color => color.stock === undefined || color.stock === null || Number(color.stock) > 0);
   if (colors.length <= 1) return null;
 
-  const compactLayout = colors.length > 5
-    ? 'grid grid-cols-5 gap-2 sm:flex sm:flex-wrap'
-    : 'flex flex-wrap gap-2';
-
   return (
-    <div className={compact ? 'w-full' : 'mt-4 rounded-2xl border border-gray-100 bg-white p-3 sm:p-4'}>
+    <div className={compact ? 'mt-2 flex flex-wrap gap-1.5' : 'mt-4 rounded-2xl border border-gray-100 bg-white p-3 sm:p-4'}>
       {!compact && <p className="mb-2 text-[11px] font-bold text-gray-500">Chọn màu</p>}
-      <div className={compact ? compactLayout : 'flex flex-wrap gap-2'}>
+      <div className="flex flex-wrap gap-2">
         {colors.map((color) => {
           const active = selectedColor?.name === color.name;
           return (
             <button
               key={`${part?.id}-${color.name}`}
               type="button"
-              title={color.name}
               onClick={(event) => {
                 event.stopPropagation();
                 onChange(color);
               }}
-              className={`${compact ? 'h-10 w-10 justify-self-start px-0 py-0 sm:h-9 sm:w-9' : 'min-h-9 px-2.5 py-1.5'} flex items-center justify-center gap-2 rounded-xl border text-[11px] font-bold transition ${
-                active ? 'border-[#dc8ea0] bg-[#fff1f4] text-[#a84d63] ring-1 ring-[#f4cbd4]' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              className={`flex min-h-9 items-center gap-2 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition ${
+                active ? 'border-[#dc8ea0] bg-[#fff1f4] text-[#a84d63]' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
               }`}
-              aria-label={`Chọn màu ${color.name}`}
               aria-pressed={active}
             >
               <span
-                className={`${compact ? 'h-5 w-5' : 'h-4 w-4'} rounded-full border border-black/10 shadow-inner`}
+                className="h-4 w-4 rounded-full border border-black/10 shadow-inner"
                 style={{ backgroundColor: color.hex || '#ffffff' }}
               />
               {!compact && <span>{color.name}</span>}
@@ -242,7 +121,6 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   const [loadedParts, setLoadedParts] = useState<LegoPartsMap>(LEGO_PARTS);
   const [internalLoading, setInternalLoading] = useState(!providedParts);
   const [internalLogoUrl, setInternalLogoUrl] = useState(providedLogoUrl || '');
-  const [storeConfig, setStoreConfig] = useState<any>({});
   const legoParts = providedParts || loadedParts;
   const isLoadingParts = providedParts ? Boolean(providedLoading) : internalLoading;
   const logoUrl = providedLogoUrl || internalLogoUrl;
@@ -256,29 +134,22 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   const [charmType, setCharmType] = useState<'all' | 'accessory' | 'pet' | 'hat'>('all');
   const [charms, setCharms] = useState<Record<string, CharmChoice>>({});
   const [showSummary, setShowSummary] = useState(false);
-  const [selectionCode, setSelectionCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [restoredSavedSelection, setRestoredSavedSelection] = useState(false);
-  const [seededDefaults, setSeededDefaults] = useState(false);
-  const [showPrintTab, setShowPrintTab] = useState(false);
-  const [printPreview, setPrintPreview] = useState<{ url: string; label: string; description: string } | null>(null);
 
   useEffect(() => {
+    if (providedParts) return;
     let active = true;
     const load = async () => {
       try {
-        const [parts, config] = await Promise.all([providedParts ? Promise.resolve(null) : getAllParts(), getStoreConfig()]);
+        const [parts, config] = await Promise.all([getAllParts(), getStoreConfig()]);
         if (!active) return;
-        if (!providedParts && parts?.length) setLoadedParts(categorizeParts(parts) as LegoPartsMap);
-        setStoreConfig(config || {});
+        if (parts?.length) setLoadedParts(categorizeParts(parts) as LegoPartsMap);
         if (config?.logoUrl) setInternalLogoUrl(config.logoUrl);
-        applyQuickSelectorTypography(config);
-        applyStandaloneBranding(config, 'Chọn nhân vật & charm | The Luvin');
       } catch (error) {
         console.error('Cannot load quick selector data:', error);
       } finally {
-        if (active && !providedParts) setInternalLoading(false);
+        if (active) setInternalLoading(false);
       }
     };
     load();
@@ -290,11 +161,8 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const hasCharacters = Array.isArray(parsed.characters) && parsed.characters.length > 0;
-        const hasCharms = parsed.charms && typeof parsed.charms === 'object' && Object.keys(parsed.charms).length > 0;
-        if (hasCharacters) setCharacters(parsed.characters);
+        if (Array.isArray(parsed.characters) && parsed.characters.length) setCharacters(parsed.characters);
         if (parsed.charms && typeof parsed.charms === 'object') setCharms(parsed.charms);
-        if (hasCharacters || hasCharms) setRestoredSavedSelection(true);
       }
     } catch (error) {
       console.warn('Cannot restore quick selection:', error);
@@ -302,14 +170,6 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
       setHydrated(true);
     }
   }, []);
-
-  useEffect(() => {
-    if (!hydrated || isLoadingParts || seededDefaults || restoredSavedSelection) return;
-    const sample = makeSampleCharacter(legoParts);
-    setCharacters([sample]);
-    setActiveCharacterId(sample.id);
-    setSeededDefaults(true);
-  }, [hydrated, isLoadingParts, seededDefaults, restoredSavedSelection, legoParts]);
 
   useEffect(() => {
     if (!activeCharacterId && characters[0]) setActiveCharacterId(characters[0].id);
@@ -426,55 +286,6 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     }));
   };
 
-  const printOptions = useMemo(() => {
-    const options = [
-      {
-        id: 'none' as const,
-        label: 'Không in',
-        price: 0,
-        imageUrl: '',
-        description: 'Giữ nguyên quần áo LEGO như mẫu đã chọn.',
-      },
-      {
-        id: 'standard' as const,
-        label: 'In thường',
-        price: Number(storeConfig?.customPrintStandardPrice ?? 100000) || 0,
-        imageUrl: String(storeConfig?.standardPrintImageUrl || ''),
-        description: 'In bề mặt áo quần, phù hợp thiết kế đơn giản. Thời gian hoàn thiện khoảng 7–10 ngày.',
-      },
-      {
-        id: 'premium' as const,
-        label: 'In cao cấp',
-        price: Number(storeConfig?.customPrintPremiumPrice ?? 300000) || 0,
-        imageUrl: String(storeConfig?.premiumPrintImageUrl || ''),
-        description: 'In chi tiết cao, sắc nét hơn và phù hợp thiết kế cần nhiều chi tiết. Thời gian hoàn thiện khoảng 7–10 ngày.',
-      },
-    ];
-    return options.filter(option => option.id !== 'standard' || !storeConfig?.standardPrintOutOfStock);
-  }, [
-    storeConfig?.customPrintStandardPrice,
-    storeConfig?.customPrintPremiumPrice,
-    storeConfig?.standardPrintOutOfStock,
-    storeConfig?.standardPrintImageUrl,
-    storeConfig?.premiumPrintImageUrl,
-  ]);
-
-  const setCharacterPrint = (option: 'none' | 'standard' | 'premium', price: number) => {
-    if (!activeCharacter) return;
-    setCharacters(prev => prev.map(character => character.id === activeCharacter.id
-      ? { ...character, customPrintOption: option, customPrintPrice: option === 'none' ? 0 : price }
-      : character,
-    ));
-  };
-
-  useEffect(() => {
-    if (!storeConfig?.standardPrintOutOfStock) return;
-    setCharacters(prev => prev.map(character => character.customPrintOption === 'standard'
-      ? { ...character, customPrintOption: 'none', customPrintPrice: 0 }
-      : character,
-    ));
-  }, [storeConfig?.standardPrintOutOfStock]);
-
   const selectCharacterPart = (part: LegoPart) => {
     if (!activeCharacter) return;
     setCharacters(prev => prev.map(character => {
@@ -494,21 +305,11 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
         next.set = undefined;
         next.selectedShirtColor = color;
         next.selectedSetColor = undefined;
-        if (!next.pants) {
-          const fallbackPants = pickPreferredPants(legoParts.pants || []);
-          next.pants = fallbackPants;
-          next.selectedPantsColor = getFirstAvailableColor(fallbackPants);
-        }
       } else if (part.type === 'pants') {
         next.pants = part;
         next.set = undefined;
         next.selectedPantsColor = color;
         next.selectedSetColor = undefined;
-        if (!next.shirt) {
-          const fallbackShirt = (legoParts.shirt || []).find(isUsablePart);
-          next.shirt = fallbackShirt;
-          next.selectedShirtColor = getFirstAvailableColor(fallbackShirt);
-        }
       } else if (part.type === 'hair') {
         next.hair = part;
         next.selectedHairColor = color;
@@ -544,11 +345,10 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   };
 
   const addCharacter = () => {
-    const next = makeSampleCharacter(legoParts);
+    const next = makeEmptyCharacter();
     setCharacters(prev => [...prev, next]);
     setActiveCharacterId(next.id);
     setActivePartType('hair');
-    setShowPrintTab(false);
     setMode('character');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -590,7 +390,7 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
   };
 
   const resetAll = () => {
-    const next = makeSampleCharacter(legoParts);
+    const next = makeEmptyCharacter();
     setCharacters([next]);
     setActiveCharacterId(next.id);
     setCharms({});
@@ -598,7 +398,6 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     setCharmSearch('');
     setGenderFilter('all');
     setCharmType('all');
-    setShowPrintTab(false);
     setMode('character');
     try { localStorage.removeItem(STORAGE_KEY); } catch (error) {}
   };
@@ -608,10 +407,33 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     return count + [character.hair, character.face, character.shirt, character.pants, character.set].filter(Boolean).length;
   }, 0);
 
-  const copySelectionCode = async (value = selectionCode) => {
-    if (!value) return;
+  const buildTextSummary = () => {
+    const rows: string[] = ['THE LUVIN - LỰA CHỌN NHÂN VẬT & CHARM'];
+    characters.forEach((character, index) => {
+      rows.push(`\nNhân vật ${index + 1}:`);
+      const entries: Array<[string, LegoPart | undefined, OutfitColor | undefined]> = [
+        ['Tóc', character.hair, character.selectedHairColor],
+        ['Mặt', character.face, undefined],
+        ['Bộ', character.set, character.selectedSetColor],
+        ['Áo', character.set ? undefined : character.shirt, character.selectedShirtColor],
+        ['Quần', character.set ? undefined : character.pants, character.selectedPantsColor],
+      ];
+      entries.filter(([, part]) => Boolean(part)).forEach(([label, part, color]) => {
+        rows.push(`- ${label}: ${part?.name} [${part?.id}]${color ? ` - ${color.name}` : ''}`);
+      });
+    });
+    if (selectedCharmList.length) {
+      rows.push('\nCharm / phụ kiện:');
+      selectedCharmList.forEach(({ part, quantity, selectedColor }) => {
+        rows.push(`- ${part.name} [${part.id}] x${quantity}${selectedColor ? ` - ${selectedColor.name}` : ''}`);
+      });
+    }
+    return rows.join('\n');
+  };
+
+  const copySummary = async () => {
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(buildTextSummary());
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch (error) {
@@ -619,25 +441,12 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
     }
   };
 
-  const confirmSelection = async () => {
-    const code = encodeSelectionCode(characters, selectedCharmList);
-    setSelectionCode(code);
-    setShowSummary(true);
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch (error) {
-      setCopied(false);
-    }
-  };
-
   const renderCharacterPartSummary = (character: LegoCharacterConfig) => {
-    const rows: Array<{ label: string; part?: LegoPart; color?: OutfitColor; showPrice?: boolean }> = [
+    const rows: Array<{ label: string; part?: LegoPart; color?: OutfitColor }> = [
       { label: 'Tóc', part: character.hair, color: character.selectedHairColor },
       { label: 'Mặt', part: character.face },
       ...(character.set
-        ? [{ label: 'Bộ đồ', part: character.set, color: character.selectedSetColor, showPrice: true }]
+        ? [{ label: 'Bộ đồ', part: character.set, color: character.selectedSetColor }]
         : [
             { label: 'Áo', part: character.shirt, color: character.selectedShirtColor },
             { label: 'Quần', part: character.pants, color: character.selectedPantsColor },
@@ -654,511 +463,399 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                 {row.part.name}
                 <span className="ml-1 font-mono text-[10px] font-bold text-gray-400">[{row.part.id}]</span>
                 {row.color && <span className="ml-1 text-[#b05b70]">· {row.color.name}</span>}
-                {row.showPrice && <span className="ml-1 text-[#b05b70]">· {formatCurrency(getPartDisplayPrice(row.part, row.color))}</span>}
               </span>
             ) : (
               <span className="font-medium text-gray-300">Chưa chọn</span>
             )}
           </div>
         ))}
-        <div className="flex items-start justify-between gap-3">
-          <span className="shrink-0 text-gray-400">In quần áo</span>
-          <span className={`text-right font-semibold ${(character.customPrintOption || 'none') === 'none' ? 'text-gray-400' : 'text-[#b05b70]'}`}>
-            {(character.customPrintOption || 'none') === 'standard' ? 'In thường' : (character.customPrintOption || 'none') === 'premium' ? 'In cao cấp' : 'Không in'}
-            {(character.customPrintPrice || 0) > 0 && <span className="ml-1">· +{formatCurrency(character.customPrintPrice || 0)}</span>}
-          </span>
-        </div>
       </div>
     );
   };
 
-  const activeCharacterIndex = Math.max(0, characters.findIndex(character => character.id === activeCharacter?.id));
-  const activeCharacterPartCount = activeCharacter
-    ? [activeCharacter.hair, activeCharacter.face, activeCharacter.set || activeCharacter.shirt, activeCharacter.set ? undefined : activeCharacter.pants].filter(Boolean).length
-    : 0;
-  const selectedCharmQuantity = selectedCharmList.reduce((sum, item) => sum + item.quantity, 0);
-
   if (showSummary) {
     return (
-      <div className="quick-selector min-h-screen bg-[#f6f4f2] px-3 py-4 font-body text-gray-900 sm:px-6 sm:py-8">
-        <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}.quick-selector *{font-family:var(--font-body)}@media(min-width:1024px){.quick-selector{font-size:16px}.quick-selector main{min-height:calc(100vh - 64px)}}`}</style>
-        <div className="mx-auto max-w-xl overflow-hidden rounded-[26px] border border-black/[0.06] bg-white shadow-[0_20px_60px_rgba(31,28,26,0.08)]">
-          <div className="border-b border-gray-100 px-5 py-5 text-center sm:px-7 sm:py-7">
-            {logoUrl ? (
-              <img src={logoUrl} alt="The Luvin" className="mx-auto h-9 max-w-[110px] object-contain" />
-            ) : (
-              <p className="text-xs font-black tracking-[0.12em] text-[#c96c81]">THE LUVIN</p>
-            )}
-            <div className="mx-auto mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-xl text-green-600">✓</div>
-            <h1 className="mt-3 text-xl font-extrabold tracking-tight sm:text-2xl" style={{ fontFamily: 'var(--font-body), Montserrat, sans-serif' }}>Đã xác nhận lựa chọn</h1>
-            <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-relaxed text-gray-400">Mã bên dưới chứa toàn bộ nhân vật, màu, lựa chọn in quần áo và charm bạn đã chọn. Gửi <b>nguyên mã</b> này cho shop qua Shopee / Zalo.</p>
-          </div>
-
-          <div className="p-4 sm:p-6">
-            <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="min-h-screen bg-[#f7f5f3] px-3 py-4 text-gray-900 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-black/[0.06] bg-white shadow-[0_20px_60px_rgba(31,28,26,0.08)]">
+          <div className="border-b border-gray-100 px-5 py-5 sm:px-8 sm:py-7">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold text-gray-400">Lựa chọn đã lưu trong mã</p>
-                <p className="mt-0.5 text-sm font-extrabold text-gray-900">{characters.length} nhân vật · {selectedCharmQuantity} charm</p>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.24em] text-[#cf6e82]">The Luvin</p>
+                <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Lựa chọn của bạn</h1>
+                <p className="mt-2 text-xs font-medium leading-relaxed text-gray-400 sm:text-sm">Chụp màn hình phần này và gửi lại shop để shop lên thiết kế đúng lựa chọn.</p>
               </div>
-              <span className="rounded-full bg-[#fff0f3] px-2.5 py-1 text-[10px] font-extrabold text-[#b8566d]">TLV1</span>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-[#fafafa] p-3.5">
-              <p className="break-all font-mono text-[11px] font-bold leading-5 text-gray-700 sm:text-xs">{selectionCode}</p>
-            </div>
-
-            <div className="mt-3 rounded-2xl border border-green-100 bg-green-50 px-3.5 py-3">
-              <p className="text-xs font-extrabold text-green-800">{copied ? '✓ Mã đã được tự động sao chép' : 'Mã đã sẵn sàng'}</p>
-              <p className="mt-1 text-[10px] font-semibold leading-relaxed text-green-700/70">Chỉ cần dán mã vào tin nhắn cho shop. Không cần chụp màn hình dài.</p>
+              {logoUrl && <img src={logoUrl} alt="The Luvin" className="h-10 max-w-[110px] object-contain" />}
             </div>
           </div>
 
-          <div className="flex gap-2 border-t border-gray-100 bg-white p-3 sm:p-4">
+          <div className="space-y-5 p-4 sm:p-7">
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-black uppercase tracking-[0.12em] text-gray-800">Nhân vật</h2>
+                <SelectionBadge>{characters.length} nhân vật</SelectionBadge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {characters.map((character, index) => (
+                  <div key={character.id} className="flex gap-4 rounded-2xl border border-gray-100 bg-[#fcfbfa] p-3.5">
+                    <div className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-black/[0.04]">
+                      <CharacterPreview character={character} size="lg" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="mb-2 text-xs font-black text-gray-900">Nhân vật {index + 1}</p>
+                      {renderCharacterPartSummary(character)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-black uppercase tracking-[0.12em] text-gray-800">Charm & phụ kiện</h2>
+                <SelectionBadge>{selectedCharmList.reduce((sum, item) => sum + item.quantity, 0)} món</SelectionBadge>
+              </div>
+              {selectedCharmList.length ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {selectedCharmList.map(({ part, quantity, selectedColor }) => (
+                    <div key={part.id} className="flex items-center gap-3 rounded-2xl border border-gray-100 p-3">
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-50">
+                        <SmartImage src={selectedColor?.imageUrl || getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-bold text-gray-800">{part.name}</p>
+                        <p className="mt-0.5 font-mono text-[10px] font-bold text-gray-400">{part.id}</p>
+                        {selectedColor && <p className="mt-1 text-[10px] font-semibold text-[#b05b70]">Màu: {selectedColor.name}</p>}
+                      </div>
+                      <span className="rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-black text-white">x{quantity}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 py-8 text-center text-xs font-medium text-gray-300">Không chọn charm / phụ kiện</div>
+              )}
+            </section>
+          </div>
+
+          <div className="sticky bottom-0 flex gap-2 border-t border-gray-100 bg-white/95 p-3 backdrop-blur sm:p-4">
             <button type="button" onClick={() => setShowSummary(false)} className="min-h-12 flex-1 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-bold text-gray-700">← Chỉnh lại</button>
-            <button type="button" onClick={() => copySelectionCode()} className="min-h-12 flex-[1.25] rounded-2xl bg-[#111827] px-4 text-sm font-bold text-white">{copied ? '✓ Đã sao chép' : 'Sao chép lại mã'}</button>
+            <button type="button" onClick={copySummary} className="min-h-12 flex-1 rounded-2xl bg-gray-900 px-4 text-sm font-bold text-white">{copied ? '✓ Đã sao chép' : 'Sao chép mã'}</button>
           </div>
         </div>
       </div>
     );
   }
 
-  const activeTypeLabel = PART_LABELS[activePartType];
-  const activeSelectedColor = getSelectedCharacterColor(activeCharacter, activePartType);
-
   return (
-    <div className="quick-selector min-h-screen bg-[#f6f4f2] pb-24 font-body text-gray-900 lg:pb-8">
-      <style>{`.quick-selector h1,.quick-selector h2,.quick-selector h3,.quick-selector h4,.quick-selector h5,.quick-selector h6{font-family:var(--font-body)!important}.quick-selector *{font-family:var(--font-body)}`}</style>
-
-      {printPreview && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setPrintPreview(null)}>
-          <div className="w-full max-w-lg overflow-hidden rounded-[24px] bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
-            <div className="relative bg-[#f5f4f3]">
-              <img src={printPreview.url} alt={printPreview.label} className="max-h-[70vh] w-full object-contain" />
-              <button type="button" onClick={() => setPrintPreview(null)} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-lg font-bold text-white backdrop-blur-sm">×</button>
-            </div>
-            <div className="p-4">
-              <p className="text-sm font-extrabold text-gray-900">{printPreview.label}</p>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-gray-400">{printPreview.description}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <header className="sticky top-0 z-50 border-b border-black/[0.05] bg-[#f6f4f2]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 w-full max-w-none items-center justify-between gap-3 px-4 sm:px-6 lg:h-16 lg:px-8 xl:px-10 2xl:px-14">
+    <div className="min-h-screen bg-[#f7f5f3] pb-28 text-gray-900 sm:pb-10">
+      <header className="sticky top-0 z-40 border-b border-black/[0.05] bg-[#f7f5f3]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt="The Luvin" className="h-7 max-w-[88px] object-contain" />
+              <img src={logoUrl} alt="The Luvin" className="h-8 max-w-[110px] object-contain sm:h-9" />
             ) : (
-              <span className="text-xs font-extrabold tracking-[0.08em] text-[#c96c81]">THE LUVIN</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f3c5cf] text-sm font-black text-white">L</div>
             )}
-            <div className="h-5 w-px bg-black/10" />
-            <p className="truncate text-sm font-extrabold text-gray-800">Chọn nhân vật & charm</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black leading-tight sm:text-base">Chọn nhân vật & charm</p>
+              <p className="hidden text-[11px] font-medium text-gray-400 sm:block">Chọn mẫu → chụp màn hình → gửi shop</p>
+            </div>
           </div>
-          <button type="button" onClick={resetAll} className="shrink-0 rounded-xl px-2.5 py-2 text-[11px] font-bold text-gray-400 hover:bg-white hover:text-gray-700">Làm lại</button>
+          <button type="button" onClick={resetAll} className="rounded-xl px-3 py-2 text-[11px] font-bold text-gray-400 transition hover:bg-white hover:text-gray-700">Làm lại</button>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-none px-3 py-3 sm:px-6 sm:py-5 lg:px-8 lg:py-6 xl:px-10 2xl:px-14">
-        <div className="mb-4 grid grid-cols-2 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/[0.04] sm:max-w-[420px] lg:w-[360px] lg:max-w-none xl:w-[390px] 2xl:w-[420px]">
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="mb-4 grid grid-cols-2 rounded-2xl border border-black/[0.05] bg-white p-1 shadow-sm sm:max-w-md">
           <button
             type="button"
             onClick={() => setMode('character')}
-            className={`min-h-11 rounded-xl px-4 text-sm font-extrabold transition ${mode === 'character' ? 'bg-[#111827] text-white shadow-sm' : 'text-gray-400'}`}
+            className={`min-h-11 rounded-xl px-4 text-sm font-black transition ${mode === 'character' ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}
           >
             Nhân vật <span className="ml-1 text-[10px] opacity-70">{characters.length}</span>
           </button>
           <button
             type="button"
             onClick={() => setMode('charm')}
-            className={`min-h-11 rounded-xl px-4 text-sm font-extrabold transition ${mode === 'charm' ? 'bg-[#111827] text-white shadow-sm' : 'text-gray-400'}`}
+            className={`min-h-11 rounded-xl px-4 text-sm font-black transition ${mode === 'charm' ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}
           >
-            Charm <span className="ml-1 text-[10px] opacity-70">{selectedCharmQuantity}</span>
+            Charm <span className="ml-1 text-[10px] opacity-70">{selectedCharmList.length}</span>
           </button>
         </div>
 
-        {mode === 'character' ? (
-          <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[390px_minmax(0,1fr)] 2xl:grid-cols-[420px_minmax(0,1fr)]">
-            <aside className="lg:sticky lg:top-[88px]">
-              <div className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400">Đang chỉnh</p>
-                    <p className="text-sm font-extrabold text-gray-900">Nhân vật {activeCharacterIndex + 1}</p>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px] xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0">
+            {mode === 'character' ? (
+              <div className="space-y-4">
+                <section className="rounded-[24px] border border-black/[0.05] bg-white p-3 shadow-sm sm:p-5">
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar">
+                    {characters.map((character, index) => {
+                      const active = character.id === activeCharacter?.id;
+                      return (
+                        <button
+                          key={character.id}
+                          type="button"
+                          onClick={() => setActiveCharacterId(character.id)}
+                          className={`flex shrink-0 items-center gap-2 rounded-2xl border p-2 pr-3 text-left transition ${active ? 'border-[#e0a0ae] bg-[#fff5f7] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                        >
+                          <div className="flex h-14 w-11 items-center justify-center overflow-hidden rounded-xl bg-white">
+                            <CharacterPreview character={character} size="sm" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-black text-gray-800">Nhân vật {index + 1}</p>
+                            <p className="mt-0.5 text-[9px] font-bold text-gray-400">{[character.hair, character.face, character.set || character.shirt, character.set ? undefined : character.pants].filter(Boolean).length} phần đã chọn</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    <button type="button" onClick={addCharacter} className="flex min-h-[64px] shrink-0 items-center gap-2 rounded-2xl border border-dashed border-gray-200 px-4 text-xs font-bold text-gray-500 hover:border-[#df9bac] hover:bg-[#fff8fa] hover:text-[#b85d72]">＋ Thêm nhân vật</button>
                   </div>
-                  <span className="rounded-full bg-[#fff0f3] px-2.5 py-1 text-[10px] font-extrabold text-[#b8566d]">{activeCharacterPartCount}/4 phần</span>
-                </div>
 
-                <div className="grid grid-cols-[142px_1fr] items-center gap-3 p-3 sm:grid-cols-[160px_1fr] sm:p-4 lg:block">
-                  <div className="flex h-[182px] items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-b from-[#fff8f9] to-[#f8f5f3] ring-1 ring-black/[0.04] sm:h-[196px] lg:h-[300px] xl:h-[330px]">
-                    {isLoadingParts ? (
-                      <div className="h-36 w-24 animate-pulse rounded-2xl bg-white/80" />
-                    ) : activeCharacter ? (
-                      <div className="scale-[1.18] lg:scale-[1.6] xl:scale-[1.75]"><CharacterPreview character={activeCharacter} size="lg" /></div>
-                    ) : null}
-                  </div>
+                  {activeCharacter && characters.length > 1 && (
+                    <div className="mt-3 flex justify-end">
+                      <button type="button" onClick={() => removeCharacter(activeCharacter.id)} className="text-[10px] font-bold text-gray-300 hover:text-red-500">Xóa nhân vật này</button>
+                    </div>
+                  )}
+                </section>
 
-                  <div className="min-w-0 lg:mt-4">
-                    <div className="space-y-2">
-                      {([
-                        ['Tóc', activeCharacter?.hair],
-                        ['Mặt', activeCharacter?.face],
-                        [activeCharacter?.set ? 'Bộ' : 'Áo', activeCharacter?.set || activeCharacter?.shirt],
-                        ['Quần', activeCharacter?.set ? undefined : activeCharacter?.pants],
-                      ] as Array<[string, LegoPart | undefined]>).map(([label, part]) => (
-                        <div key={label} className="flex items-center gap-2 text-[11px]">
-                          <span className="w-9 shrink-0 font-semibold text-gray-400">{label}</span>
-                          <span className={`min-w-0 truncate font-bold ${part ? 'text-gray-700' : 'text-gray-300'}`}>{part?.name || 'Chưa chọn'}</span>
-                        </div>
-                      ))}
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span className="w-9 shrink-0 font-semibold text-gray-400">In</span>
-                        <span className={`min-w-0 truncate font-bold ${(activeCharacter?.customPrintOption || 'none') === 'none' ? 'text-gray-300' : 'text-[#b8566d]'}`}>
-                          {(activeCharacter?.customPrintOption || 'none') === 'standard' ? 'In thường' : (activeCharacter?.customPrintOption || 'none') === 'premium' ? 'In cao cấp' : 'Không in'}
-                        </span>
+                <section className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
+                  <div className="border-b border-gray-100 p-3 sm:p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#cf6e82]">Bước 1</p>
+                        <h2 className="mt-1 text-lg font-black">Chọn từng phần nhân vật</h2>
+                      </div>
+                      <div className="flex rounded-xl bg-gray-50 p-1">
+                        {(['all', 'male', 'female'] as GenderFilter[]).map(gender => (
+                          <button
+                            key={gender}
+                            type="button"
+                            onClick={() => setGenderFilter(gender)}
+                            className={`min-h-9 rounded-lg px-3 text-[10px] font-black transition ${genderFilter === gender ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}
+                          >
+                            {gender === 'all' ? 'Tất cả' : gender === 'male' ? 'Nam' : 'Nữ'}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="border-t border-gray-100 p-3">
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    {characters.map((character, index) => (
-                      <button
-                        key={character.id}
-                        type="button"
-                        onClick={() => setActiveCharacterId(character.id)}
-                        className={`h-10 min-w-10 shrink-0 rounded-xl text-xs font-extrabold transition ${character.id === activeCharacter?.id ? 'bg-[#111827] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                      >
-                        {index + 1}
-                      </button>
-                    ))}
-                    <button type="button" onClick={addCharacter} className="h-10 shrink-0 rounded-xl border border-dashed border-gray-300 px-3 text-[11px] font-bold text-gray-500 hover:border-[#d997a7] hover:text-[#b8566d]">＋ Thêm</button>
-                    {activeCharacter && characters.length > 1 && (
-                      <button type="button" onClick={() => removeCharacter(activeCharacter.id)} className="ml-auto h-10 shrink-0 rounded-xl px-2 text-[10px] font-bold text-gray-300 hover:text-red-500">Xóa</button>
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {(Object.keys(PART_LABELS) as CharacterPartType[]).map(type => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setActivePartType(type);
+                            setSearchTerm('');
+                          }}
+                          className={`min-h-10 shrink-0 rounded-xl px-4 text-xs font-black transition ${activePartType === type ? 'bg-[#fff0f3] text-[#b7556b] ring-1 ring-[#e8b1bd]' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                        >
+                          {PART_LABELS[type]}
+                          {selectedCharacterPart?.type === type && <span className="ml-1.5">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <input
+                          value={searchTerm}
+                          onChange={event => setSearchTerm(event.target.value)}
+                          placeholder={`Tìm ${PART_LABELS[activePartType].toLowerCase()} theo tên hoặc mã...`}
+                          className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 pr-10 text-xs font-semibold outline-none transition focus:border-[#e3a5b3] focus:bg-white focus:ring-2 focus:ring-[#f9dbe2]"
+                        />
+                        {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">×</button>}
+                      </div>
+                      {selectedCharacterPart && (
+                        <button type="button" onClick={clearActivePart} className="min-h-11 shrink-0 rounded-xl border border-gray-200 px-3 text-[10px] font-bold text-gray-400 hover:text-red-500">Bỏ chọn</button>
+                      )}
+                    </div>
+
+                    <ColorPicker
+                      part={selectedCharacterPart}
+                      selectedColor={getSelectedCharacterColor(activeCharacter, activePartType)}
+                      onChange={color => setCharacterColor(activePartType, color)}
+                    />
+                  </div>
+
+                  <div className="p-3 sm:p-5">
+                    {isLoadingParts ? (
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                        {Array.from({ length: 12 }).map((_, index) => <div key={index} className="aspect-[0.82] animate-pulse rounded-2xl bg-gray-100" />)}
+                      </div>
+                    ) : visibleCharacterParts.length ? (
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                        {visibleCharacterParts.map(part => {
+                          const selected = selectedCharacterPart?.id === part.id;
+                          return (
+                            <button
+                              key={part.id}
+                              type="button"
+                              onClick={() => selectCharacterPart(part)}
+                              className={`group relative overflow-hidden rounded-2xl border p-1.5 text-left transition active:scale-[0.98] ${selected ? 'border-[#db8fa1] bg-[#fff5f7] shadow-sm ring-1 ring-[#f5ccd5]' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}
+                            >
+                              {selected && <span className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-[10px] font-black text-white">✓</span>}
+                              <div className="aspect-square overflow-hidden rounded-xl bg-gray-50">
+                                <SmartImage src={getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
+                              </div>
+                              <div className="px-1 pb-1 pt-2">
+                                <p className="line-clamp-2 min-h-[30px] text-[10px] font-bold leading-[1.35] text-gray-700 sm:text-[11px]">{part.name}</p>
+                                <p className="mt-1 truncate font-mono text-[9px] font-bold text-gray-300">{part.id}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center">
+                        <p className="text-sm font-bold text-gray-400">Không tìm thấy mẫu phù hợp</p>
+                        <button type="button" onClick={() => { setSearchTerm(''); setGenderFilter('all'); }} className="mt-2 text-xs font-bold text-[#c76c81]">Xóa bộ lọc</button>
+                      </div>
                     )}
                   </div>
-                </div>
-
+                </section>
               </div>
+            ) : (
+              <section className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm">
+                <div className="border-b border-gray-100 p-3 sm:p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#cf6e82]">Bước 2</p>
+                  <h2 className="mt-1 text-lg font-black">Chọn charm & phụ kiện</h2>
+                  <p className="mt-1 text-xs font-medium text-gray-400">Chạm để chọn. Chạm lại để bỏ chọn.</p>
 
-              <button type="button" onClick={confirmSelection} className="mt-3 hidden min-h-[52px] w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xác nhận & lấy mã →</button>
-            </aside>
-
-            <section className="min-w-0 overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm lg:min-h-[calc(100vh-170px)]">
-              <div className="border-b border-gray-100 p-3 sm:p-4">
-                <div className="grid grid-cols-6 gap-1 rounded-2xl bg-gray-50 p-1 lg:gap-1.5 lg:p-1.5">
-                  {SELECTOR_TABS.map(tab => {
-                    const isPrint = tab.key === 'print';
-                    const partType = isPrint ? null : tab.key as CharacterPartType;
-                    const selectedPart = partType ? activeCharacter?.[partType] as LegoPart | undefined : undefined;
-                    const selected = isPrint
-                      ? (activeCharacter?.customPrintOption || 'none') !== 'none'
-                      : partType === 'set' ? Boolean(activeCharacter?.set) : Boolean(selectedPart);
-                    const active = isPrint ? showPrintTab : (!showPrintTab && activePartType === partType);
-
-                    return (
+                  <div className="mt-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {([
+                      ['all', 'Tất cả'],
+                      ['accessory', 'Charm'],
+                      ['pet', 'Thú cưng'],
+                      ['hat', 'Mũ'],
+                    ] as const).map(([value, label]) => (
                       <button
-                        key={tab.key}
+                        key={value}
                         type="button"
-                        onClick={() => {
-                          if (isPrint) {
-                            setShowPrintTab(true);
-                          } else if (partType) {
-                            setActivePartType(partType);
-                            setShowPrintTab(false);
-                          }
-                          setSearchTerm('');
-                        }}
-                        className={`relative min-h-11 rounded-xl px-0.5 text-[10px] font-extrabold transition sm:px-1 sm:text-xs lg:min-h-[52px] lg:text-[13px] ${active ? 'bg-white text-[#b8566d] shadow-sm ring-1 ring-black/[0.04]' : 'text-gray-500 hover:bg-white/60 hover:text-gray-700'}`}
+                        onClick={() => setCharmType(value)}
+                        className={`min-h-10 shrink-0 rounded-xl px-4 text-xs font-black transition ${charmType === value ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                       >
-                        {tab.label}
-                        {selected && <span className="absolute right-1 top-1.5 h-1.5 w-1.5 rounded-full bg-[#d77e92] sm:right-1.5 lg:right-2 lg:top-2" />}
+                        {label}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+
+                  <div className="relative mt-3">
+                    <input
+                      value={charmSearch}
+                      onChange={event => setCharmSearch(event.target.value)}
+                      placeholder="Tìm charm theo tên hoặc mã..."
+                      className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 pr-10 text-xs font-semibold outline-none transition focus:border-[#e3a5b3] focus:bg-white focus:ring-2 focus:ring-[#f9dbe2]"
+                    />
+                    {charmSearch && <button type="button" onClick={() => setCharmSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">×</button>}
+                  </div>
                 </div>
 
-                {!showPrintTab && <div className="mt-3 grid grid-cols-[94px_minmax(0,1fr)] gap-2 sm:grid-cols-[110px_minmax(0,1fr)_auto] lg:mt-4 lg:grid-cols-[140px_minmax(0,1fr)_auto] lg:gap-3">
-                  <select
-                    value={genderFilter}
-                    onChange={event => setGenderFilter(event.target.value as GenderFilter)}
-                    className="min-h-11 rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-bold text-gray-600 outline-none focus:border-[#d997a7]"
-                    aria-label="Lọc giới tính"
-                  >
-                    <option value="all">Tất cả</option>
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                  </select>
-                  <div className="relative min-w-0">
-                    <input
-                      value={searchTerm}
-                      onChange={event => setSearchTerm(event.target.value)}
-                      placeholder={`Tìm ${activeTypeLabel.toLowerCase()}...`}
-                      className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 pr-9 text-xs font-semibold outline-none transition focus:border-[#d997a7] focus:ring-2 focus:ring-[#f9dbe2]"
-                    />
-                    {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-lg leading-none text-gray-300">×</button>}
-                  </div>
-                  {selectedCharacterPart && (
-                    <button type="button" onClick={clearActivePart} className="col-span-2 min-h-10 rounded-xl border border-gray-200 px-3 text-[10px] font-bold text-gray-400 hover:text-red-500 sm:col-span-1 sm:min-h-11">Bỏ {activeTypeLabel.toLowerCase()}</button>
-                  )}
-                </div>}
-
-                {!showPrintTab && selectedCharacterPart && (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[#faf8f7] px-3 py-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-gray-400">Đang chọn {activeTypeLabel.toLowerCase()}</p>
-                      <p className="mt-0.5 truncate text-xs font-extrabold text-gray-700">{selectedCharacterPart.name}</p>
-                      {activeSelectedColor && <p className="mt-0.5 truncate text-[10px] font-bold text-[#b8566d]">Màu: {activeSelectedColor.name}</p>}
+                <div className="p-3 sm:p-5">
+                  {isLoadingParts ? (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                      {Array.from({ length: 12 }).map((_, index) => <div key={index} className="aspect-[0.82] animate-pulse rounded-2xl bg-gray-100" />)}
                     </div>
-                    {activePartType === 'set' && <PriceLabel part={selectedCharacterPart} selectedColor={activeSelectedColor} />}
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3 sm:p-4 lg:p-5">
-                {showPrintTab ? (
-                  <div className="space-y-3">
-                    <div className="rounded-2xl bg-[#faf8f7] px-3.5 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-extrabold text-gray-800">In quần áo · Nhân vật {activeCharacterIndex + 1}</p>
-                          <p className="mt-1 text-[10px] font-semibold leading-relaxed text-gray-400">Chọn mức in cho riêng nhân vật này. Chỉ bấm “Xem ảnh mẫu” khi muốn mở ảnh lớn.</p>
-                        </div>
-                        {(activeCharacter?.customPrintPrice || 0) > 0 && <span className="shrink-0 rounded-full bg-[#fff0f3] px-2.5 py-1 text-[10px] font-extrabold text-[#b8566d]">+{formatCurrency(activeCharacter?.customPrintPrice || 0)}</span>}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
-                      {printOptions.map(option => {
-                        const selected = (activeCharacter?.customPrintOption || 'none') === option.id;
-                        const hasSample = option.id !== 'none' && Boolean(option.imageUrl);
+                  ) : charmParts.length ? (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6">
+                      {charmParts.map(part => {
+                        const choice = charms[part.id];
+                        const selected = Boolean(choice);
                         return (
-                          <div key={option.id} className={`overflow-hidden rounded-2xl border transition ${selected ? 'border-[#d9899d] bg-[#fff6f8] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
-                            <button
-                              type="button"
-                              onClick={() => setCharacterPrint(option.id, option.price)}
-                              className="block w-full text-left"
-                            >
-                              <div className="flex min-h-[98px] items-center justify-center bg-[#f8f7f6] px-4 text-center sm:min-h-[112px]">
-                                <div>
-                                  <div className={`mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-black/[0.05] ${selected ? 'text-[#b8566d]' : 'text-gray-500'}`}>
-                                    {option.id === 'none' ? '—' : '✦'}
-                                  </div>
-                                  <p className={`mt-2 text-[10px] font-extrabold ${selected ? 'text-[#a84d63]' : 'text-gray-500'}`}>
-                                    {option.id === 'none' ? 'Giữ nguyên mẫu LEGO' : selected ? 'Đã chọn gói in' : 'Bấm để chọn gói in'}
-                                  </p>
-                                </div>
+                          <div key={part.id} className={`relative overflow-hidden rounded-2xl border p-1.5 transition ${selected ? 'border-[#db8fa1] bg-[#fff5f7] shadow-sm ring-1 ring-[#f5ccd5]' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}>
+                            <button type="button" onClick={() => toggleCharm(part)} className="block w-full text-left active:scale-[0.98]">
+                              {selected && <span className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-[10px] font-black text-white">✓</span>}
+                              <div className="aspect-square overflow-hidden rounded-xl bg-gray-50">
+                                <SmartImage src={choice?.selectedColor?.imageUrl || getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
                               </div>
-
-                              <div className="p-3">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className={`text-xs font-extrabold ${selected ? 'text-[#a84d63]' : 'text-gray-800'}`}>{selected ? '✓ ' : ''}{option.label}</p>
-                                    <p className="mt-1 text-[10px] font-semibold leading-relaxed text-gray-400">{option.description}</p>
-                                  </div>
-                                  <span className={`shrink-0 text-[10px] font-extrabold ${option.price > 0 ? 'text-[#b8566d]' : 'text-gray-400'}`}>{option.price > 0 ? `+${formatCurrency(option.price)}` : '0 ₫'}</span>
-                                </div>
+                              <div className="px-1 pt-2">
+                                <p className="line-clamp-2 min-h-[30px] text-[10px] font-bold leading-[1.35] text-gray-700 sm:text-[11px]">{part.name}</p>
+                                <p className="mt-1 truncate font-mono text-[9px] font-bold text-gray-300">{part.id}</p>
                               </div>
                             </button>
 
-                            {option.id !== 'none' && (
-                              <div className="px-3 pb-3">
-                                <button
-                                  type="button"
-                                  disabled={!hasSample}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    if (!option.imageUrl) return;
-                                    setPrintPreview({ url: option.imageUrl, label: option.label, description: option.description });
-                                  }}
-                                  className={`flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-extrabold transition ${hasSample ? 'border-[#efc3cd] bg-white text-[#a84d63] hover:bg-[#fff6f8]' : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'}`}
-                                >
-                                  <span aria-hidden="true">👁</span>
-                                  {hasSample ? 'Xem ảnh mẫu' : 'Chưa có ảnh mẫu'}
-                                </button>
+                            {choice && (
+                              <div className="mt-2 border-t border-[#f3d9df] px-1 pt-2">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[9px] font-bold text-gray-400">Số lượng</span>
+                                  <div className="flex items-center rounded-lg border border-gray-200 bg-white">
+                                    <button type="button" onClick={() => updateCharmQuantity(part.id, choice.quantity - 1)} className="h-7 w-7 text-sm font-bold text-gray-500">−</button>
+                                    <span className="min-w-5 text-center text-[10px] font-black">{choice.quantity}</span>
+                                    <button type="button" onClick={() => updateCharmQuantity(part.id, choice.quantity + 1)} className="h-7 w-7 text-sm font-bold text-gray-500">+</button>
+                                  </div>
+                                </div>
+                                <ColorPicker part={part} selectedColor={choice.selectedColor} onChange={color => updateCharmColor(part.id, color)} compact />
                               </div>
                             )}
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                ) : isLoadingParts ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
-                    {Array.from({ length: 12 }).map((_, index) => <div key={index} className="aspect-[0.82] animate-pulse rounded-2xl bg-gray-100" />)}
-                  </div>
-                ) : visibleCharacterParts.length ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
-                    {visibleCharacterParts.map(part => {
-                      const selected = selectedCharacterPart?.id === part.id;
-                      const selectedColor = selected ? getSelectedCharacterColor(activeCharacter, activePartType) : undefined;
-                      const availableColors = (part.colors || []).filter(color => color.stock === undefined || color.stock === null || Number(color.stock) > 0);
-                      const canPickColorHere = selected && availableColors.length > 1 && activePartType !== 'face';
-                      const displayColor = selectedColor || getFirstAvailableColor(part);
-                      return (
-                        <React.Fragment key={part.id}>
-                          <button
-                            type="button"
-                            onClick={() => selectCharacterPart(part)}
-                            className={`group relative overflow-hidden rounded-2xl border p-1.5 text-left transition active:scale-[0.98] ${selected ? 'border-[#d9899d] bg-[#fff5f7] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}
-                          >
-                            {selected && <span className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-extrabold text-white">✓</span>}
-                            <div className="aspect-square overflow-hidden rounded-xl bg-[#f8f7f6]">
-                              <SmartImage src={selected && displayColor?.imageUrl ? displayColor.imageUrl : getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
-                            </div>
-                            <p className="line-clamp-2 min-h-[34px] px-1 pt-2 text-[10px] font-bold leading-[1.35] text-gray-700 sm:text-[11px]">{part.name}</p>
-                            {activePartType === 'set' && (
-                              <div className="px-1 pb-1 pt-0.5"><PriceLabel part={part} selectedColor={displayColor} compact /></div>
-                            )}
-                            {canPickColorHere && (
-                              <p className="px-1 pb-1 pt-0.5 text-[9px] font-extrabold text-[#b8566d]">Màu: {selectedColor?.name || displayColor?.name}</p>
-                            )}
-                          </button>
-
-                          {canPickColorHere && (
-                            <div className="col-span-3 rounded-2xl border border-[#f0d5dc] bg-[#fffafb] p-3 shadow-sm sm:col-span-4 md:col-span-5 lg:col-span-6 xl:col-span-7 2xl:col-span-8 lg:p-4">
-                              <div className="mb-2.5 flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-[10px] font-semibold text-gray-400">Chọn màu cho</p>
-                                  <p className="truncate text-xs font-extrabold text-gray-800">{part.name}</p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  {selectedColor && <p className="text-[10px] font-extrabold text-[#b8566d]">{selectedColor.name}</p>}
-                                  {activePartType === 'set' && <PriceLabel part={part} selectedColor={selectedColor || displayColor} compact />}
-                                </div>
-                              </div>
-                              <ColorPicker part={part} selectedColor={selectedColor} onChange={color => setCharacterColor(activePartType, color)} compact />
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-gray-200 py-14 text-center">
-                    <p className="text-sm font-bold text-gray-400">Không tìm thấy mẫu phù hợp</p>
-                    <button type="button" onClick={() => { setSearchTerm(''); setGenderFilter('all'); }} className="mt-2 text-xs font-bold text-[#c76c81]">Xóa bộ lọc</button>
-                  </div>
-                )}
-              </div>
-            </section>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center">
+                      <p className="text-sm font-bold text-gray-400">Không tìm thấy charm phù hợp</p>
+                      <button type="button" onClick={() => { setCharmSearch(''); setCharmType('all'); }} className="mt-2 text-xs font-bold text-[#c76c81]">Xóa bộ lọc</button>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[370px_minmax(0,1fr)]">
-            <aside className="lg:sticky lg:top-[88px]">
-              <div className="rounded-[24px] border border-black/[0.05] bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
+
+          <aside className="hidden lg:block">
+            <div className="sticky top-[88px] space-y-3">
+              <div className="rounded-[24px] border border-black/[0.05] bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-semibold text-gray-400">Đã chọn</p>
-                    <p className="text-base font-extrabold text-gray-900">{selectedCharmQuantity} charm</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#cf6e82]">Đang chọn</p>
+                    <h3 className="mt-1 text-base font-black">Xem nhanh</h3>
                   </div>
-                  <span className="rounded-full bg-[#fff0f3] px-2.5 py-1 text-[10px] font-extrabold text-[#b8566d]">{selectedCharmList.length} mẫu</span>
+                  <SelectionBadge>{chosenCharacterParts + selectedCharmList.length} lựa chọn</SelectionBadge>
                 </div>
 
-                {selectedCharmList.length ? (
-                  <div className="mt-4 space-y-2">
-                    {selectedCharmList.map(({ part, quantity, selectedColor }) => (
-                      <div key={part.id} className="flex items-center gap-2 rounded-xl bg-[#faf9f8] p-2">
-                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white">
-                          <SmartImage src={selectedColor?.imageUrl || getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[11px] font-bold text-gray-700">{part.name}</p>
-                          <PriceLabel part={part} selectedColor={selectedColor} quantity={quantity} compact />
-                        </div>
-                        <span className="text-[10px] font-extrabold text-gray-500">x{quantity}</span>
+                <div className="space-y-3">
+                  {characters.map((character, index) => (
+                    <div key={character.id} className="flex gap-3 rounded-2xl bg-[#faf9f8] p-3">
+                      <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
+                        <CharacterPreview character={character} size="md" />
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-gray-200 py-8 text-center text-xs font-medium text-gray-300">Chưa chọn charm</div>
-                )}
-              </div>
-              <button type="button" onClick={confirmSelection} className="mt-3 hidden w-full rounded-2xl bg-[#111827] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/10 lg:block">Xác nhận & lấy mã →</button>
-            </aside>
-
-            <section className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-sm lg:min-h-[calc(100vh-170px)]">
-              <div className="border-b border-gray-100 p-3 sm:p-4">
-                <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
-                  <select
-                    value={charmType}
-                    onChange={event => setCharmType(event.target.value as 'all' | 'accessory' | 'pet' | 'hat')}
-                    className="min-h-11 rounded-xl border border-gray-200 bg-white px-3 text-[11px] font-bold text-gray-600 outline-none focus:border-[#d997a7]"
-                  >
-                    <option value="all">Tất cả</option>
-                    <option value="accessory">Charm</option>
-                    <option value="pet">Thú cưng</option>
-                    <option value="hat">Mũ</option>
-                  </select>
-                  <div className="relative">
-                    <input
-                      value={charmSearch}
-                      onChange={event => setCharmSearch(event.target.value)}
-                      placeholder="Tìm charm..."
-                      className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 pr-9 text-xs font-semibold outline-none transition focus:border-[#d997a7] focus:ring-2 focus:ring-[#f9dbe2]"
-                    />
-                    {charmSearch && <button type="button" onClick={() => setCharmSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-lg leading-none text-gray-300">×</button>}
-                  </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-2 text-[11px] font-black">Nhân vật {index + 1}</p>
+                        {renderCharacterPartSummary(character)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
 
-              <div className="p-3 sm:p-4">
-                {isLoadingParts ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
-                    {Array.from({ length: 12 }).map((_, index) => <div key={index} className="aspect-[0.82] animate-pulse rounded-2xl bg-gray-100" />)}
-                  </div>
-                ) : charmParts.length ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-7 2xl:grid-cols-8">
-                    {charmParts.map(part => {
-                      const choice = charms[part.id];
-                      const selected = Boolean(choice);
-                      return (
-                        <div key={part.id} className={`relative overflow-hidden rounded-2xl border p-1.5 transition ${selected ? 'border-[#d9899d] bg-[#fff5f7] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}>
-                          <button type="button" onClick={() => toggleCharm(part)} className="block w-full text-left active:scale-[0.98]">
-                            {selected && <span className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#111827] text-[10px] font-extrabold text-white">✓</span>}
-                            <div className="aspect-square overflow-hidden rounded-xl bg-[#f8f7f6]">
-                              <SmartImage src={choice?.selectedColor?.imageUrl || getPartImageUrl(part)} alt={part.name} className="h-full w-full" />
-                            </div>
-                            <p className="line-clamp-2 min-h-[34px] px-1 pt-2 text-[10px] font-bold leading-[1.35] text-gray-700 sm:text-[11px]">{part.name}</p>
-                            <div className="px-1 pb-1 pt-0.5">
-                              <PriceLabel part={part} selectedColor={choice?.selectedColor || getFirstAvailableColor(part)} quantity={choice?.quantity || 1} compact />
-                            </div>
-                          </button>
-
-                          {choice && (
-                            <div className="mt-1.5 border-t border-[#f3d9df] pt-1.5">
-                              <div className="flex items-center justify-center rounded-xl bg-white ring-1 ring-black/[0.05]">
-                                <button type="button" onClick={() => updateCharmQuantity(part.id, choice.quantity - 1)} className="h-8 w-8 text-sm font-bold text-gray-500">−</button>
-                                <span className="min-w-6 text-center text-[10px] font-extrabold">{choice.quantity}</span>
-                                <button type="button" onClick={() => updateCharmQuantity(part.id, choice.quantity + 1)} className="h-8 w-8 text-sm font-bold text-gray-500">+</button>
-                              </div>
-                              <div className="mt-2"><ColorPicker part={part} selectedColor={choice.selectedColor} onChange={color => updateCharmColor(part.id, color)} compact /></div>
-                            </div>
-                          )}
+                {selectedCharmList.length > 0 && (
+                  <div className="mt-4 border-t border-gray-100 pt-4">
+                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">Charm đã chọn</p>
+                    <div className="space-y-2">
+                      {selectedCharmList.slice(0, 5).map(({ part, quantity }) => (
+                        <div key={part.id} className="flex items-center justify-between gap-2 text-[11px]">
+                          <span className="truncate font-semibold text-gray-600">{part.name}</span>
+                          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 font-black text-gray-500">x{quantity}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-gray-200 py-14 text-center">
-                    <p className="text-sm font-bold text-gray-400">Không tìm thấy charm phù hợp</p>
-                    <button type="button" onClick={() => { setCharmSearch(''); setCharmType('all'); }} className="mt-2 text-xs font-bold text-[#c76c81]">Xóa bộ lọc</button>
+                      ))}
+                      {selectedCharmList.length > 5 && <p className="text-[10px] font-bold text-gray-300">+ {selectedCharmList.length - 5} mẫu khác</p>}
+                    </div>
                   </div>
                 )}
               </div>
-            </section>
-          </div>
-        )}
+
+              <button type="button" onClick={() => setShowSummary(true)} className="min-h-14 w-full rounded-2xl bg-gray-900 px-5 text-sm font-black text-white shadow-lg shadow-black/10 transition hover:bg-black active:scale-[0.99]">Xem tóm tắt để chụp →</button>
+              <p className="px-3 text-center text-[10px] font-medium leading-relaxed text-gray-400">Trang này chỉ dùng để chọn mẫu. Không tạo đơn hàng và không tính giá.</p>
+            </div>
+          </aside>
+        </div>
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.06] bg-white/95 p-3 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <div className="min-w-0 flex-1 pl-1">
-            <p className="text-[10px] font-semibold text-gray-400">Đã chọn</p>
-            <p className="truncate text-xs font-extrabold text-gray-800">{characters.length} nhân vật · {selectedCharmQuantity} charm</p>
+            <p className="text-[10px] font-bold text-gray-400">Đã chọn</p>
+            <p className="truncate text-xs font-black text-gray-800">{characters.length} nhân vật · {selectedCharmList.reduce((sum, item) => sum + item.quantity, 0)} charm</p>
           </div>
-          <button type="button" onClick={confirmSelection} className="min-h-12 shrink-0 rounded-2xl bg-[#111827] px-5 text-xs font-extrabold text-white shadow-lg">Xác nhận & lấy mã</button>
+          <button type="button" onClick={() => setShowSummary(true)} className="min-h-12 shrink-0 rounded-2xl bg-gray-900 px-5 text-xs font-black text-white shadow-lg">Tóm tắt để chụp</button>
         </div>
       </div>
     </div>
