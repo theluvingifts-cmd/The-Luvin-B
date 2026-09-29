@@ -934,50 +934,38 @@ export const QuickSelectionPage: React.FC<QuickSelectionPageProps> = ({ legoPart
                         const selected = (activeCharacter?.customPrintOption || 'none') === option.id;
                         const hasSample = option.id !== 'none' && Boolean(option.imageUrl);
                         return (
-                          <div key={option.id} className={`overflow-hidden rounded-2xl border transition ${selected ? 'border-[#d9899d] bg-[#fff6f8] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                          <div key={option.id} className={`rounded-2xl border p-3 transition ${selected ? 'border-[#d9899d] bg-[#fff6f8] shadow-sm ring-1 ring-[#f4cbd4]' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
                             <button
                               type="button"
                               onClick={() => setCharacterPrint(option.id, option.price)}
-                              className="block w-full text-left"
+                              className="block w-full rounded-xl text-left"
                             >
-                              <div className="flex min-h-[98px] items-center justify-center bg-[#f8f7f6] px-4 text-center sm:min-h-[112px]">
-                                <div>
-                                  <div className={`mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-black/[0.05] ${selected ? 'text-[#b8566d]' : 'text-gray-500'}`}>
-                                    {option.id === 'none' ? '—' : '✦'}
-                                  </div>
-                                  <p className={`mt-2 text-[10px] font-extrabold ${selected ? 'text-[#a84d63]' : 'text-gray-500'}`}>
-                                    {option.id === 'none' ? 'Giữ nguyên mẫu LEGO' : selected ? 'Đã chọn gói in' : 'Bấm để chọn gói in'}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="p-3">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
                                     <p className={`text-xs font-extrabold ${selected ? 'text-[#a84d63]' : 'text-gray-800'}`}>{selected ? '✓ ' : ''}{option.label}</p>
-                                    <p className="mt-1 text-[10px] font-semibold leading-relaxed text-gray-400">{option.description}</p>
+                                    {selected && <span className="rounded-full bg-[#fdebef] px-2 py-0.5 text-[9px] font-extrabold text-[#b8566d]">Đã chọn</span>}
                                   </div>
-                                  <span className={`shrink-0 text-[10px] font-extrabold ${option.price > 0 ? 'text-[#b8566d]' : 'text-gray-400'}`}>{option.price > 0 ? `+${formatCurrency(option.price)}` : '0 ₫'}</span>
+                                  <p className="mt-1.5 text-[10px] font-semibold leading-relaxed text-gray-400">{option.description}</p>
                                 </div>
+                                <span className={`shrink-0 text-[10px] font-extrabold ${option.price > 0 ? 'text-[#b8566d]' : 'text-gray-400'}`}>{option.price > 0 ? `+${formatCurrency(option.price)}` : '0 ₫'}</span>
                               </div>
                             </button>
 
                             {option.id !== 'none' && (
-                              <div className="px-3 pb-3">
-                                <button
-                                  type="button"
-                                  disabled={!hasSample}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    if (!option.imageUrl) return;
-                                    setPrintPreview({ url: option.imageUrl, label: option.label, description: option.description });
-                                  }}
-                                  className={`flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-extrabold transition ${hasSample ? 'border-[#efc3cd] bg-white text-[#a84d63] hover:bg-[#fff6f8]' : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'}`}
-                                >
-                                  <span aria-hidden="true">👁</span>
-                                  {hasSample ? 'Xem ảnh mẫu' : 'Chưa có ảnh mẫu'}
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                disabled={!hasSample}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  if (!option.imageUrl) return;
+                                  setPrintPreview({ url: option.imageUrl, label: option.label, description: option.description });
+                                }}
+                                className={`mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-extrabold transition ${hasSample ? 'border-[#efc3cd] bg-white text-[#a84d63] hover:bg-[#fff6f8]' : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'}`}
+                              >
+                                <span aria-hidden="true">👁</span>
+                                {hasSample ? 'Xem ảnh mẫu' : 'Chưa có ảnh mẫu'}
+                              </button>
                             )}
                           </div>
                         );
