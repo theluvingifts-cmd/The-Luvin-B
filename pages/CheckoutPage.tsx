@@ -416,7 +416,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
     const orderId = initialOrder ? initialOrder.id : `#TL${Date.now().toString().slice(-6)}`;
 
     let autoTags = '';
-    if (priorityProcessing) autoTags += '[ĐƠN LÀM GẤP +30K] ';
+    if (priorityProcessing) autoTags += '[XỬ LÝ TRONG 24H +30K] ';
     if (isLoyalCustomer) autoTags += t('checkout.loyal_customer_tag');
     if (appliedVoucher) autoTags += t('checkout.voucher_tag', { code: appliedVoucher.code });
 
@@ -642,7 +642,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:6 text-left">
                         <div>
-                            <h3 className="font-semibold text-xs sm:text-sm mb-2 text-gray-700">Làm gấp / Ưu tiên đơn</h3>
+                            <h3 className="font-semibold text-xs sm:text-sm mb-2 text-gray-700">Xử lý đơn</h3>
                             <label className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${priorityProcessing ? 'border-orange-300 bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50/40'}`}>
                                 <input
                                     type="checkbox"
@@ -652,11 +652,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                                 />
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                        <span className="text-[11px] sm:text-sm font-bold text-gray-800">⚡ Ưu tiên xử lý & hoàn thiện</span>
+                                        <span className="text-[11px] sm:text-sm font-bold text-gray-800">⚡ Xử lý trong 24 giờ</span>
                                         <span className="text-[11px] sm:text-sm font-black text-orange-600 whitespace-nowrap">+{formatCurrency(PRIORITY_PROCESSING_FEE)}</span>
                                     </div>
                                     <p className="text-[9px] sm:text-[11px] text-gray-500 leading-relaxed mt-1">
-                                        Shop ưu tiên làm đơn sớm hơn. Phí này không gồm vận chuyển và không cam kết ngày giao chính xác.
+                                        Shop hoàn thiện đơn trong vòng 24 giờ sau khi xác nhận. Không bao gồm thời gian vận chuyển.
                                     </p>
                                 </div>
                             </label>
@@ -996,7 +996,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, allParts,
                 </div>
                 {priorityProcessing && (
                     <div className="flex justify-between text-orange-600 font-bold tracking-tight">
-                        <span>⚡ Phí ưu tiên làm gấp</span>
+                        <span>⚡ Xử lý trong 24 giờ</span>
                         <span className="font-heading">+{formatCurrency(priorityFee)}</span>
                     </div>
                 )}
