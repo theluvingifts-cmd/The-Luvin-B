@@ -1,0 +1,47 @@
+name: One-time simplify 24h processing
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-simplify-24h-processing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Simplify 24h processing option
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('pages/CheckoutPage.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              ("if (priorityProcessing) autoTags += '[ĐƠN LÀM GẤP +30K] ';", "if (priorityProcessing) autoTags += '[XỬ LÝ TRONG 24H +30K] ';"),
+              ('>Làm gấp / Ưu tiên đơn</h3>', '>Xử lý đơn</h3>'),
+              ('⚡ Ưu tiên xử lý & hoàn thiện', '⚡ Xử lý trong 24 giờ'),
+              ('Shop ưu tiên làm đơn sớm hơn. Phí này không gồm vận chuyển và không cam kết ngày giao chính xác.', 'Shop hoàn thiện đơn trong vòng 24 giờ sau khi xác nhận. Không bao gồm thời gian vận chuyển.'),
+              ('⚡ Phí ưu tiên làm gấp', '⚡ Xử lý trong 24 giờ'),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected text not found: {old}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git config user.name "theluvingifts-cmd"
+          git config user.email "theluvin.gifts@gmail.com"
+          git add pages/CheckoutPage.tsx
+          git commit -m "Simplify 24h processing option"
+          git push
